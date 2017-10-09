@@ -23,13 +23,13 @@ import (
 	"strings"
 )
 
-// LogLevel is the level of logging (0 Debug -> 6 Fatal).
-type LogLevel int
+// Level is the level of logging (0 Debug -> 6 Fatal).
+type Level int
 
 // Log levels. Go can't have variable and function of the same name so we keep
 // medium length (Dbg,Info,Warn,Err,Crit,Fatal) names for the functions.
 const (
-	Debug LogLevel = iota
+	Debug Level = iota
 	Verbose
 	Info
 	Warning
@@ -39,10 +39,12 @@ const (
 )
 
 var (
-	level          = Info // default is Info and up
-	levelToStrA    []string
-	levelToStrM    map[string]LogLevel
-	LogPrefix      = flag.String("LogPrefix", "> ", "Prefix to log lines before logged messages")
+	level       = Info // default is Info and up
+	levelToStrA []string
+	levelToStrM map[string]Level
+	// LogPrefix is a prefix to include in each log line.
+	LogPrefix = flag.String("logprefix", "> ", "Prefix to log lines before logged messages")
+	// LogFileAndLine determines if the log lines will contain caller file name and line number.
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
 )
 
@@ -56,11 +58,11 @@ func init() {
 		"Critical",
 		"Fatal",
 	}
-	levelToStrM = make(map[string]LogLevel, 2*len(levelToStrA))
+	levelToStrM = make(map[string]Level, 2*len(levelToStrA))
 	for l, name := range levelToStrA {
 		// Allow both -loglevel Verbose and -loglevel verbose ...
-		levelToStrM[name] = LogLevel(l)
-		levelToStrM[strings.ToLower(name)] = LogLevel(l)
+		levelToStrM[name] = Level(l)
+		levelToStrM[strings.ToLower(name)] = Level(l)
 	}
 	flag.Var(&level, "loglevel", fmt.Sprintf("loglevel, one of %v", levelToStrA))
 	log.SetFlags(log.Ltime)
@@ -68,19 +70,19 @@ func init() {
 
 // String returns the string representation of the level.
 // Needed for flag Var interface.
-func (l *LogLevel) String() string {
+func (l *Level) String() string {
 	return (*l).ToString()
 }
 
 // ToString returns the string representation of the level.
 // (this can't be the same name as the pointer receiver version)
-func (l LogLevel) ToString() string {
+func (l Level) ToString() string {
 	return levelToStrA[l]
 }
 
 // Set is called by the flags.
-func (l *LogLevel) Set(str string) error {
-	var lvl LogLevel
+func (l *Level) Set(str string) error {
+	var lvl Level
 	var ok bool
 	if lvl, ok = levelToStrM[str]; !ok {
 		// flag processing already logs the value
@@ -91,7 +93,7 @@ func (l *LogLevel) Set(str string) error {
 }
 
 // SetLogLevel sets the log level and returns the previous one.
-func SetLogLevel(lvl LogLevel) LogLevel {
+func SetLogLevel(lvl Level) Level {
 	prev := level
 	if lvl < Debug {
 		log.Printf("SetLogLevel called with level %d lower than Debug!", lvl)
@@ -107,27 +109,27 @@ func SetLogLevel(lvl LogLevel) LogLevel {
 }
 
 // GetLogLevel returns the currently configured LogLevel.
-func GetLogLevel() LogLevel {
+func GetLogLevel() Level {
 	return level
 }
 
 // Log returns true if a given level is currently logged.
-func Log(lvl LogLevel) bool {
+func Log(lvl Level) bool {
 	return lvl >= level
 }
 
-// LogLevelByName returns the LogLevel by its name.
-func LogLevelByName(str string) LogLevel {
+// LevelByName returns the LogLevel by its name.
+func LevelByName(str string) Level {
 	return levelToStrM[str]
 }
 
 // Logf logs with format at the given level.
 // 2 level of calls so it's always same depth for extracting caller file/line
-func Logf(lvl LogLevel, format string, rest ...interface{}) {
+func Logf(lvl Level, format string, rest ...interface{}) {
 	logPrintf(lvl, format, rest...)
 }
 
-func logPrintf(lvl LogLevel, format string, rest ...interface{}) {
+func logPrintf(lvl Level, format string, rest ...interface{}) {
 	if !Log(lvl) {
 		return
 	}
