@@ -215,7 +215,7 @@ func NewBasicClient(urlStr string, proto string, keepAlive bool) Fetcher {
 		return nil
 	}
 	if url.Scheme != "http" {
-		log.Errf("Only http is supported, can't use url %s", urlStr)
+		log.Errf("Only http is supported with the optimized client, use -stdclient for url %s", urlStr)
 		return nil
 	}
 	// note: Host includes the port
