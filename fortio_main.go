@@ -112,8 +112,8 @@ func fortioLoad() {
 	}
 	url := flag.Arg(0)
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
-	fmt.Printf("Fortio running at %g queries per second, %d->%d procs, for %v: %s\n",
-		*qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
+		http.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
 		Duration:    *durationFlag,
