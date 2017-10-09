@@ -1,6 +1,6 @@
 # Φορτίο
 
-Φορτίο (fortio) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
+Φορτίο (fortio) started as [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
 
 The name fortio comes from greek φορτίο which is load/burden.
 
@@ -125,9 +125,11 @@ All done 40 calls (plus 4 warmup) 102.599 ms avg, 7.8 qps
 
 ## Implementation details
 
-Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats.go) and a periodic runner engine in [periodic.go](periodic.go) with specializations for [http](httprunner.go) and [grpc](fortiogrpc/grpcrunner.go).
+Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](http/httprunner.go) and [grpc](fortiogrpc/grpcrunner.go).
+The [http/](http/) package includes a very high performance specialized http 1.1 client.
+You may find fortio's [logger](log/logger.go) useful as well. 
 
-You can run the histogram code standalone as a command line in [cmd/histogram/](cmd/histogram/), a basic echo http server in [cmd/echosrv/](cmd/echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in [cmd/fortio/](cmd/fortio/)
+You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 
 ## Another example output
 

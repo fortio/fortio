@@ -2,7 +2,7 @@
 
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 
-DOCKER_PREFIX := gcr.io/istio-testing/fortio
+DOCKER_PREFIX := docker.io/fortio/fortio
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
