@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package stats // import "github.com/fortio/fortio/stats"
 
 import (
 	"bufio"
@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+
+	"github.com/fortio/fortio/log"
 )
 
 // Counter is a type whose instances record values
@@ -67,7 +69,7 @@ func (c *Counter) Print(out io.Writer, msg string) {
 
 // Log outputs the stats to the logger.
 func (c *Counter) Log(msg string) {
-	Infof("%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g",
+	log.Infof("%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g",
 		msg, c.Count, c.Avg(), c.StdDev(), c.Min, c.Max, c.Sum)
 }
 
@@ -128,7 +130,7 @@ type Histogram struct {
 	Offset  float64 // offset applied to data before fitting into buckets
 	Divider float64 // divider applied to data before fitting into buckets
 	// Don't access directly (outside of this package):
-	hdata []int32 // n+1 buckets (for last one)
+	Hdata []int32 // n+1 buckets (for last one)
 }
 
 // NewHistogram creates a new histogram (sets up the buckets).
@@ -136,7 +138,7 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
 	h.Offset = Offset
 	h.Divider = Divider
-	h.hdata = make([]int32, numBuckets+1)
+	h.Hdata = make([]int32, numBuckets+1)
 	return h
 }
 
@@ -155,7 +157,7 @@ func init() {
 	}
 	// coding bug detection (aka impossible if it works once)
 	if idx != numBuckets-1 {
-		Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numBuckets, lastV)
+		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numBuckets, lastV)
 	}
 
 }
@@ -171,7 +173,7 @@ func (h *Histogram) Record(v float64) {
 	} else if scaledVal >= firstValue {
 		idx = val2Bucket[int(scaledVal)]
 	} // else it's <  and idx 0
-	h.hdata[idx]++
+	h.Hdata[idx]++
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -201,7 +203,7 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	// if the data is not sampled in several buckets
 	for i := 0; i < numBuckets; i++ {
 		cur = float64(histogramBuckets[i])*h.Divider + h.Offset
-		total += int64(h.hdata[i])
+		total += int64(h.Hdata[i])
 		perc = 100. * float64(total) / ctrTotal
 		if cur > h.Max {
 			break
@@ -233,7 +235,7 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 	// calculate the last bucket index
 	lastIdx := -1
 	for i := numBuckets; i >= 0; i-- {
-		if h.hdata[i] > 0 {
+		if h.Hdata[i] > 0 {
 			lastIdx = i
 			break
 		}
@@ -256,7 +258,7 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 
 	// output the data of each bucket of the histogram
 	for i := 0; i <= lastIdx; i++ {
-		if h.hdata[i] == 0 {
+		if h.Hdata[i] == 0 {
 			// empty bucket: skip it but update prev which is needed for next iter
 			if i < numBuckets {
 				prev = histogramBuckets[i]
@@ -264,7 +266,7 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 			continue
 		}
 
-		total += int64(h.hdata[i])
+		total += int64(h.Hdata[i])
 		// data in each row is separated by comma (",")
 		if i > 0 {
 			fmt.Fprintf(out, ">= %.6g ", multiplier*float64(prev)+h.Offset) // nolint: gas
@@ -279,7 +281,7 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 		} else {
 			fmt.Fprintf(out, ", %.6g ", multiplier*float64(prev)+h.Offset) // nolint: gas
 		}
-		fmt.Fprintf(out, ", %.2f, %d\n", perc, h.hdata[i]) // nolint: gas
+		fmt.Fprintf(out, ", %.2f, %d\n", perc, h.Hdata[i]) // nolint: gas
 	}
 
 	// print the information of target percentiles
@@ -292,15 +294,15 @@ func (h *Histogram) Log(msg string, percentile float64) {
 	w := bufio.NewWriter(&b)
 	h.Print(w, msg, percentile)
 	w.Flush() // nolint: gas,errcheck
-	Infof("%s", b.Bytes())
+	log.Infof("%s", b.Bytes())
 }
 
 // Reset clears the data. Reset it to NewHistogram state.
 func (h *Histogram) Reset() {
 	h.Counter.Reset()
 	// Leave Offset and Divider alone
-	for i := 0; i < len(h.hdata); i++ {
-		h.hdata[i] = 0
+	for i := 0; i < len(h.Hdata); i++ {
+		h.Hdata[i] = 0
 	}
 }
 
@@ -315,8 +317,8 @@ func (h *Histogram) Clone() *Histogram {
 func (h *Histogram) CopyFrom(src *Histogram) {
 	h.Counter = src.Counter
 	// we don't copy offset/divider as this assumes compatible src/dest
-	for i := 0; i < len(h.hdata); i++ {
-		h.hdata[i] += src.hdata[i]
+	for i := 0; i < len(h.Hdata); i++ {
+		h.Hdata[i] += src.Hdata[i]
 	}
 }
 
@@ -324,10 +326,10 @@ func (h *Histogram) CopyFrom(src *Histogram) {
 func (h *Histogram) Transfer(src *Histogram) {
 	// TODO potentially merge despite different offset/scale
 	if src.Offset != h.Offset {
-		Fatalf("Incompatible offsets in Histogram Transfer %f %f", src.Offset, h.Offset)
+		log.Fatalf("Incompatible offsets in Histogram Transfer %f %f", src.Offset, h.Offset)
 	}
 	if src.Divider != h.Divider {
-		Fatalf("Incompatible scale in Histogram Transfer %f %f", src.Divider, h.Divider)
+		log.Fatalf("Incompatible scale in Histogram Transfer %f %f", src.Divider, h.Divider)
 	}
 	if src.Count == 0 {
 		return
@@ -338,8 +340,8 @@ func (h *Histogram) Transfer(src *Histogram) {
 		return
 	}
 	h.Counter.Transfer(&src.Counter)
-	for i := 0; i < len(h.hdata); i++ {
-		h.hdata[i] += src.hdata[i]
+	for i := 0; i < len(h.Hdata); i++ {
+		h.Hdata[i] += src.Hdata[i]
 	}
 	src.Reset()
 }

@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package http
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/fortio/fortio/log"
 )
 
 func TestNewHTTPRequest(t *testing.T) {
@@ -110,7 +112,7 @@ func TestFoldFind2(t *testing.T) {
 var utf8Str = "世界aBcdefGHiJklmnopqrstuvwxyZ"
 
 func TestASCIIToUpper(t *testing.T) {
-	SetLogLevel(Debug)
+	log.SetLogLevel(log.Debug)
 	var tests = []struct {
 		input    string // input
 		expected string // output
@@ -244,7 +246,7 @@ func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 
 // Package's version (3x fastest)
 func BenchmarkASCIIToUpper(b *testing.B) {
-	SetLogLevel(Warning)
+	log.SetLogLevel(log.Warning)
 	for n := 0; n < b.N; n++ {
 		lw = ASCIIToUpper(utf8Str)
 	}

@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package stats
 
 import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"testing"
+
+	"github.com/fortio/fortio/log"
 )
 
 func TestCounter(t *testing.T) {
@@ -50,6 +51,8 @@ func TestCounter(t *testing.T) {
 	// Try the Log() function too:
 	log.SetOutput(w)
 	log.SetFlags(0)
+	*log.LogFileAndLine = false
+	*log.LogPrefix = ""
 	c.Counter.Log("testLog")
 	expected += "I testLog" + finalExpected
 	w.Flush() // nolint: errcheck

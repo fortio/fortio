@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package log // import "github.com/fortio/fortio/log"
 
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"runtime"
 	"strings"
@@ -41,8 +42,8 @@ var (
 	level          = Info // default is Info and up
 	levelToStrA    []string
 	levelToStrM    map[string]LogLevel
-	logPrefix      = flag.String("logprefix", "> ", "Prefix to log lines before logged messages")
-	logFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
+	LogPrefix      = flag.String("LogPrefix", "> ", "Prefix to log lines before logged messages")
+	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
 )
 
 func init() {
@@ -130,16 +131,26 @@ func logPrintf(lvl LogLevel, format string, rest ...interface{}) {
 	if !Log(lvl) {
 		return
 	}
-	if *logFileAndLine {
+	if *LogFileAndLine {
 		_, file, line, _ := runtime.Caller(2)
 		file = file[strings.LastIndex(file, "/")+1:]
-		log.Print(levelToStrA[lvl][0:1], " ", file, ":", line, *logPrefix, fmt.Sprintf(format, rest...))
+		log.Print(levelToStrA[lvl][0:1], " ", file, ":", line, *LogPrefix, fmt.Sprintf(format, rest...))
 	} else {
-		log.Print(levelToStrA[lvl][0:1], " ", *logPrefix, fmt.Sprintf(format, rest...))
+		log.Print(levelToStrA[lvl][0:1], " ", *LogPrefix, fmt.Sprintf(format, rest...))
 	}
 	if lvl == Fatal {
 		panic("aborting...")
 	}
+}
+
+// SetOutput sets the output to a different writer (forwards to system logger).
+func SetOutput(w io.Writer) {
+	log.SetOutput(w)
+}
+
+// SetFlags forwards flags to the system logger.
+func SetFlags(f int) {
+	log.SetFlags(f)
 }
 
 // -- would be nice to be able to create those in a loop instead of copypasta:
