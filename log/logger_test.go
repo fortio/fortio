@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package log // import "istio.io/fortio/log"
 
 import (
 	"bufio"
@@ -26,8 +26,8 @@ func TestLogger1(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	SetLogLevel(Info) // reset from other tests
-	*logFileAndLine = false
-	*logPrefix = ""
+	*LogFileAndLine = false
+	*LogPrefix = ""
 	log.SetOutput(w)
 	log.SetFlags(0)
 	// Start of the actual test

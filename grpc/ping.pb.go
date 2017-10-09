@@ -2,7 +2,7 @@
 // source: ping.proto
 
 /*
-Package fortiogrpc is a generated protocol buffer package.
+Package grpc is a generated protocol buffer package.
 
 It is generated from these files:
 	ping.proto
@@ -10,7 +10,7 @@ It is generated from these files:
 It has these top-level messages:
 	PingMessage
 */
-package fortiogrpc
+package grpc
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
@@ -119,7 +119,7 @@ func _PingServer_Ping_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/fortiogrpc.PingServer/Ping",
+		FullMethod: "/grpc.PingServer/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PingServerServer).Ping(ctx, req.(*PingMessage))
@@ -128,7 +128,7 @@ func _PingServer_Ping_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 var _PingServer_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "fortiogrpc.PingServer",
+	ServiceName: "grpc.PingServer",
 	HandlerType: (*PingServerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package periodic
 
 import (
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"istio.io/fortio/log"
 )
 
 func noop(t int) {
@@ -138,7 +140,7 @@ func TestParsePercentiles(t *testing.T) {
 		{str: "   ", list: []float64{}, err: true},
 		{str: "23,a,46", list: []float64{23}, err: true},
 	}
-	SetLogLevel(Debug) // for coverage
+	log.SetLogLevel(log.Debug) // for coverage
 	for _, tst := range tests {
 		actual, err := ParsePercentiles(tst.str)
 		if !reflect.DeepEqual(actual, tst.list) {

@@ -17,22 +17,25 @@
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 
-package fortio
+package http
 
 import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 func TestHTTPRunner(t *testing.T) {
-	SetLogLevel(Info)
+	log.SetLogLevel(log.Info)
 	http.HandleFunc("/foo/", EchoHandler)
 	port := DynamicHTTPServer(false)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
 	opts := HTTPRunnerOptions{
-		RunnerOptions: RunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
 			QPS: 100,
 		},
 		URL: baseURL,
@@ -55,14 +58,14 @@ func TestHTTPRunner(t *testing.T) {
 }
 
 func TestHTTPRunnerBadServer(t *testing.T) {
-	SetLogLevel(Info)
+	log.SetLogLevel(log.Info)
 	// Using http to an https server (or the current 'close all' dummy https server)
 	// should fail:
 	port := DynamicHTTPServer(true)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
 	opts := HTTPRunnerOptions{
-		RunnerOptions: RunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
 			QPS: 10,
 		},
 		URL: baseURL,
@@ -71,5 +74,5 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expecting an error but didn't get it when connecting to bad server")
 	}
-	Infof("Got expected error from mismatch/bad server: %v", err)
+	log.Infof("Got expected error from mismatch/bad server: %v", err)
 }
