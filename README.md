@@ -4,6 +4,17 @@
 
 The name fortio comes from greek φορτίο which is load/burden.
 
+## Installation
+
+1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
+2. `go get -u github.com/fortio/fortio`
+3. you can now run `fortio` (from your gopath bin/ directory)
+
+Or
+
+`docker run fortio/fortio arguments...`
+
+
 ## Command line arguments
 
 Fortio can be and http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers with the `server` command or issue grpc ping messages using the `grpcping` command.
