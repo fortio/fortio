@@ -1,5 +1,5 @@
 # Φορτίο
-<img src="https://github.com/istio/fortio/blob/master/fortio-logo-color.png" height=141 width=141 align=right>
+<img src="https://github.com/istio/fortio/blob/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
 
 Φορτίο (fortio) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
 

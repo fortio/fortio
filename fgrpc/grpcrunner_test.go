@@ -17,14 +17,14 @@
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 
-package grpc
+package fgrpc
 
 import (
 	"fmt"
 	"net"
 	"testing"
 
-	"istio.io/fortio/http"
+	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 
@@ -45,7 +45,7 @@ func DynamicGRPCHealthServer() int {
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fmt.Printf("Fortio %s grpc health server listening on port %v\n", http.Version, addr)
+	fmt.Printf("Fortio %s grpc health server listening on port %v\n", fhttp.Version, addr)
 	go func(socket net.Listener) {
 		if e := grpcServer.Serve(socket); e != nil {
 			log.Fatalf("failed to start grpc server: %v", e)

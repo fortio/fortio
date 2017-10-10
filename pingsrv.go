@@ -32,8 +32,8 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	fortiogrpc "istio.io/fortio/grpc"
-	"istio.io/fortio/http"
+	"istio.io/fortio/fgrpc"
+	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 )
@@ -51,7 +51,7 @@ var (
 type pingSrv struct {
 }
 
-func (s *pingSrv) Ping(c context.Context, in *fortiogrpc.PingMessage) (*fortiogrpc.PingMessage, error) {
+func (s *pingSrv) Ping(c context.Context, in *fgrpc.PingMessage) (*fgrpc.PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
 	out := *in
 	out.Ts = time.Now().UnixNano()
@@ -68,8 +68,8 @@ func pingServer(port int) {
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fortiogrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", http.Version, port)
+	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", fhttp.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
@@ -80,8 +80,8 @@ func pingClientCall(serverAddr string, n int, payload string) {
 	if err != nil {
 		log.Fatalf("failed to conect to %s: %v", serverAddr, err)
 	}
-	msg := &fortiogrpc.PingMessage{Payload: payload}
-	cli := fortiogrpc.NewPingServerClient(conn)
+	msg := &fgrpc.PingMessage{Payload: payload}
+	cli := fgrpc.NewPingServerClient(conn)
 	// Warm up:
 	_, err = cli.Ping(context.Background(), msg)
 	if err != nil {

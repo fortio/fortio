@@ -14,14 +14,16 @@
 
 package main
 
+// Do not add any external dependencies we want to keep fortio minimal.
+
 import (
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
 
-	"istio.io/fortio/grpc"
-	"istio.io/fortio/http"
+	"istio.io/fortio/fgrpc"
+	"istio.io/fortio/fhttp"
 	"istio.io/fortio/periodic"
 )
 
@@ -34,7 +36,7 @@ func (f *flagList) String() string {
 	return ""
 }
 func (f *flagList) Set(value string) error {
-	return http.AddAndValidateExtraHeader(value)
+	return fhttp.AddAndValidateExtraHeader(value)
 }
 
 // -- end of functions for -H support
@@ -42,7 +44,7 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
-		http.Version,
+		fhttp.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
@@ -79,8 +81,8 @@ var (
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
-	flag.IntVar(&http.BufferSizeKb, "httpbufferkb", http.BufferSizeKb, "Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.BoolVar(&http.CheckConnectionClosedHeader, "httpccch", http.CheckConnectionClosedHeader, "Check for Connection: Close Header")
+	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb, "Size of the buffer (max data size) for the optimized fhttp client in kbytes")
+	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader, "Check for Connection: Close Header")
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
 	}
@@ -96,7 +98,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go http.EchoServer(*echoPortFlag, *echoDbgPathFlag)
+		go fhttp.EchoServer(*echoPortFlag, *echoDbgPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
@@ -113,7 +115,7 @@ func fortioLoad() {
 	url := flag.Arg(0)
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
-		http.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+		fhttp.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
 		Duration:    *durationFlag,
@@ -123,13 +125,13 @@ func fortioLoad() {
 	}
 	var res periodic.HasRunnerResult
 	if *grpcFlag {
-		o := grpc.GRPCRunnerOptions{
+		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions: ro,
 			Destination:   url,
 		}
-		res, err = grpc.RunGRPCTest(&o)
+		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
-		o := http.HTTPRunnerOptions{
+		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions:     ro,
 			URL:               url,
 			HTTP10:            *http10Flag,
@@ -138,7 +140,7 @@ func fortioLoad() {
 			Profiler:          *profileFlag,
 			Compression:       *compressionFlag,
 		}
-		res, err = http.RunHTTPTest(&o)
+		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
 		fmt.Printf("Aborting because %v\n", err)

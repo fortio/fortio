@@ -1,5 +1,5 @@
 syntax = "proto3";
-package grpc;
+package fgrpc;
 
 message PingMessage {
   int64 seq      = 1; // sequence number

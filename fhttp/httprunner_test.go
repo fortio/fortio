@@ -17,7 +17,7 @@
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 
-package http
+package fhttp
 
 import (
 	"fmt"
