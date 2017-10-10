@@ -22,7 +22,7 @@ package main
 import (
 	"flag"
 
-	"github.com/fortio/fortio/http"
+	"istio.io/fortio/http"
 )
 
 var (

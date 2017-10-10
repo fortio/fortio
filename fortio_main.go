@@ -20,9 +20,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/fortio/fortio/grpc"
-	"github.com/fortio/fortio/http"
-	"github.com/fortio/fortio/periodic"
+	"istio.io/fortio/grpc"
+	"istio.io/fortio/http"
+	"istio.io/fortio/periodic"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:

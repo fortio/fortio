@@ -20,7 +20,7 @@
 // is also cmd/histogram to use the stats from the command line and cmd/echosrv
 // as a very light http server that can be used to test proxies etc like
 // the Istio components.
-package periodic // import "github.com/fortio/fortio/periodic"
+package periodic // import "istio.io/fortio/periodic"
 
 import (
 	"errors"
@@ -32,8 +32,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fortio/fortio/log"
-	"github.com/fortio/fortio/stats"
+	"istio.io/fortio/log"
+	"istio.io/fortio/stats"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).

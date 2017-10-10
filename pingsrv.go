@@ -32,10 +32,10 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	fortiogrpc "github.com/fortio/fortio/grpc"
-	"github.com/fortio/fortio/http"
-	"github.com/fortio/fortio/log"
-	"github.com/fortio/fortio/stats"
+	fortiogrpc "istio.io/fortio/grpc"
+	"istio.io/fortio/http"
+	"istio.io/fortio/log"
+	"istio.io/fortio/stats"
 )
 
 // To get most debugging/tracing:

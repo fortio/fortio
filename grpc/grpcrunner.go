@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc // import "github.com/fortio/fortio/grpc"
+package grpc // import "istio.io/fortio/grpc"
 
 import (
 	"context"
@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/fortio/fortio/log"
-	"github.com/fortio/fortio/periodic"
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 // TODO: refactor common parts between http and grpc runners

@@ -1,19 +1,19 @@
-# Φορτίο 
-<img src="https://github.com/fortio/fortio/blob/master/fortio-logo-color.png" height=141 width=141 align=right> 
+# Φορτίο
+<img src="https://github.com/istio/fortio/blob/master/fortio-logo-color.png" height=141 width=141 align=right>
 
-Φορτίο (fortio) started as [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
+Φορτίο (fortio) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
 
 The name fortio comes from greek φορτίο which is load/burden.
 
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
-2. `go get -u github.com/fortio/fortio`
+2. `go get -u istio.io/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
 Or
 
-`docker run fortio/fortio arguments...`
+`docker run istio/fortio arguments...`
 
 
 ## Command line arguments
@@ -139,7 +139,7 @@ All done 40 calls (plus 4 warmup) 102.599 ms avg, 7.8 qps
 
 Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](http/httprunner.go) and [grpc](fortiogrpc/grpcrunner.go).
 The [http/](http/) package includes a very high performance specialized http 1.1 client.
-You may find fortio's [logger](log/logger.go) useful as well. 
+You may find fortio's [logger](log/logger.go) useful as well.
 
 You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 

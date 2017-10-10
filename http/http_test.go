@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fortio/fortio/log"
+	"istio.io/fortio/log"
 )
 
 func TestNewHTTPRequest(t *testing.T) {

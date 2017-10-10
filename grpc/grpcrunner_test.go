@@ -24,9 +24,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/fortio/fortio/http"
-	"github.com/fortio/fortio/log"
-	"github.com/fortio/fortio/periodic"
+	"istio.io/fortio/http"
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"

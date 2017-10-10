@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortio/fortio/log"
+	"istio.io/fortio/log"
 )
 
 func noop(t int) {

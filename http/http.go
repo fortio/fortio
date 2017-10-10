@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package http // import "github.com/fortio/fortio/http"
+package http // import "istio.io/fortio/http"
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/fortio/fortio/log"
+	"istio.io/fortio/log"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.

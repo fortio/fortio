@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/fortio/fortio/log"
-	"github.com/fortio/fortio/periodic"
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 func TestHTTPRunner(t *testing.T) {

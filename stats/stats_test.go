@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fortio/fortio/log"
+	"istio.io/fortio/log"
 )
 
 func TestCounter(t *testing.T) {
