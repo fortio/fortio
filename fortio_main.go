@@ -14,14 +14,17 @@
 
 package main
 
+// Do not add any external dependencies we want to keep fortio minimal.
+
 import (
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
 
-	"istio.io/istio/devel/fortio"
-	"istio.io/istio/devel/fortio/fortiogrpc"
+	"istio.io/fortio/fgrpc"
+	"istio.io/fortio/fhttp"
+	"istio.io/fortio/periodic"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -33,7 +36,7 @@ func (f *flagList) String() string {
 	return ""
 }
 func (f *flagList) Set(value string) error {
-	return fortio.AddAndValidateExtraHeader(value)
+	return fhttp.AddAndValidateExtraHeader(value)
 }
 
 // -- end of functions for -H support
@@ -41,7 +44,7 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
-		fortio.Version,
+		fhttp.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
@@ -53,7 +56,7 @@ func usage(msgs ...interface{}) {
 }
 
 var (
-	defaults = &fortio.DefaultRunnerOptions
+	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
 	qpsFlag         = flag.Float64("qps", 8.0, "Queries Per Seconds or 0 for no wait")
 	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
@@ -78,15 +81,15 @@ var (
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
-	flag.IntVar(&fortio.BufferSizeKb, "httpbufferkb", fortio.BufferSizeKb, "Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.BoolVar(&fortio.CheckConnectionClosedHeader, "httpccch", fortio.CheckConnectionClosedHeader, "Check for Connection: Close Header")
+	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb, "Size of the buffer (max data size) for the optimized fhttp client in kbytes")
+	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader, "Check for Connection: Close Header")
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
 	}
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
-	percList, err = fortio.ParsePercentiles(*percentilesFlag)
+	percList, err = periodic.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
@@ -95,7 +98,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go fortio.EchoServer(*echoPortFlag, *echoDbgPathFlag)
+		go fhttp.EchoServer(*echoPortFlag, *echoDbgPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
@@ -111,24 +114,24 @@ func fortioLoad() {
 	}
 	url := flag.Arg(0)
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
-	fmt.Printf("Fortio running at %g queries per second, %d->%d procs, for %v: %s\n",
-		*qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
-	ro := fortio.RunnerOptions{
+	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
+		fhttp.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
 		Duration:    *durationFlag,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
 	}
-	var res fortio.HasRunnerResult
+	var res periodic.HasRunnerResult
 	if *grpcFlag {
-		o := fortiogrpc.GRPCRunnerOptions{
+		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions: ro,
 			Destination:   url,
 		}
-		res, err = fortiogrpc.RunGRPCTest(&o)
+		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
-		o := fortio.HTTPRunnerOptions{
+		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions:     ro,
 			URL:               url,
 			HTTP10:            *http10Flag,
@@ -137,7 +140,7 @@ func fortioLoad() {
 			Profiler:          *profileFlag,
 			Compression:       *compressionFlag,
 		}
-		res, err = fortio.RunHTTPTest(&o)
+		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
 		fmt.Printf("Aborting because %v\n", err)

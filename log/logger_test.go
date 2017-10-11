@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package log // import "istio.io/fortio/log"
 
 import (
 	"bufio"
@@ -26,12 +26,12 @@ func TestLogger1(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	SetLogLevel(Info) // reset from other tests
-	*logFileAndLine = false
-	*logPrefix = ""
+	*LogFileAndLine = false
+	*LogPrefix = ""
 	log.SetOutput(w)
 	log.SetFlags(0)
 	// Start of the actual test
-	SetLogLevel(LogLevelByName("Verbose"))
+	SetLogLevel(LevelByName("Verbose"))
 	expected := "I Log level is now 1 Verbose (was 2 Info)\n"
 	i := 0
 	LogVf("test Va %d", i) // Should show
@@ -40,7 +40,7 @@ func TestLogger1(t *testing.T) {
 	Warnf("test Wa %d", i) // Should show
 	i++
 	expected += "W test Wa 1\n"
-	prevLevel := SetLogLevel(LogLevelByName("error")) // works with lowercase too
+	prevLevel := SetLogLevel(LevelByName("error")) // works with lowercase too
 	expected += "I Log level is now 4 Error (was 1 Verbose)\n"
 	LogVf("test Vb %d", i) // Should not show
 	i++
@@ -50,7 +50,7 @@ func TestLogger1(t *testing.T) {
 	i++
 	expected += "E test E 4\n"
 	// test the rest of the api
-	Logf(LogLevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().ToString())
+	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().ToString())
 	expected += "C test 5 level str Verbose, cur Error\n"
 	SetLogLevel(Debug) // should be fine and invisible change
 	SetLogLevel(Debug - 1)

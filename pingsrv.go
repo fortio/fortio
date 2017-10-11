@@ -26,14 +26,16 @@ import (
 	"os"
 	"time"
 
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"istio.io/istio/devel/fortio"
-	"istio.io/istio/devel/fortio/fortiogrpc"
+	"istio.io/fortio/fgrpc"
+	"istio.io/fortio/fhttp"
+	"istio.io/fortio/log"
+	"istio.io/fortio/stats"
 )
 
 // To get most debugging/tracing:
@@ -49,8 +51,8 @@ var (
 type pingSrv struct {
 }
 
-func (s *pingSrv) Ping(c context.Context, in *fortiogrpc.PingMessage) (*fortiogrpc.PingMessage, error) {
-	fortio.LogVf("Ping called %+v (ctx %+v)", *in, c)
+func (s *pingSrv) Ping(c context.Context, in *fgrpc.PingMessage) (*fgrpc.PingMessage, error) {
+	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
 	out := *in
 	out.Ts = time.Now().UnixNano()
 	return &out, nil
@@ -59,34 +61,34 @@ func (s *pingSrv) Ping(c context.Context, in *fortiogrpc.PingMessage) (*fortiogr
 func pingServer(port int) {
 	socket, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fortio.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fortiogrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", fortio.Version, port)
+	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", fhttp.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
-		fortio.Fatalf("failed to start grpc server: %v", err)
+		log.Fatalf("failed to start grpc server: %v", err)
 	}
 }
 
 func pingClientCall(serverAddr string, n int, payload string) {
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
-		fortio.Fatalf("failed to conect to %s: %v", serverAddr, err)
+		log.Fatalf("failed to conect to %s: %v", serverAddr, err)
 	}
-	msg := &fortiogrpc.PingMessage{Payload: payload}
-	cli := fortiogrpc.NewPingServerClient(conn)
+	msg := &fgrpc.PingMessage{Payload: payload}
+	cli := fgrpc.NewPingServerClient(conn)
 	// Warm up:
 	_, err = cli.Ping(context.Background(), msg)
 	if err != nil {
-		fortio.Fatalf("grpc error from Ping0 %v", err)
+		log.Fatalf("grpc error from Ping0 %v", err)
 	}
-	skewHistogram := fortio.NewHistogram(-10, 2)
-	rttHistogram := fortio.NewHistogram(0, 10)
+	skewHistogram := stats.NewHistogram(-10, 2)
+	rttHistogram := stats.NewHistogram(0, 10)
 	for i := 1; i <= n; i++ {
 		msg.Seq = int64(i)
 		t1a := time.Now().UnixNano()
@@ -94,14 +96,14 @@ func pingClientCall(serverAddr string, n int, payload string) {
 		res1, err := cli.Ping(context.Background(), msg)
 		t2a := time.Now().UnixNano()
 		if err != nil {
-			fortio.Fatalf("grpc error from Ping1 %v", err)
+			log.Fatalf("grpc error from Ping1 %v", err)
 		}
 		t1b := res1.Ts
 		res2, err := cli.Ping(context.Background(), msg)
 		t3a := time.Now().UnixNano()
 		t2b := res2.Ts
 		if err != nil {
-			fortio.Fatalf("grpc error from Ping2 %v", err)
+			log.Fatalf("grpc error from Ping2 %v", err)
 		}
 		rt1 := t2a - t1a
 		rttHistogram.Record(float64(rt1) / 1000.)
@@ -112,7 +114,7 @@ func pingClientCall(serverAddr string, n int, payload string) {
 		midR := t1b + (rtR / 2)
 		avgRtt := (rt1 + rt2 + rtR) / 3
 		x := (midR - t2a)
-		fortio.Infof("Ping RTT %d (avg of %d, %d, %d ns) clock skew %d",
+		log.Infof("Ping RTT %d (avg of %d, %d, %d ns) clock skew %d",
 			avgRtt, rt1, rtR, rt2, x)
 		skewHistogram.Record(float64(x) / 1000.)
 		msg = res2
@@ -124,11 +126,11 @@ func pingClientCall(serverAddr string, n int, payload string) {
 func grpcHealthCheck(serverAddr string, svcname string, n int) {
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
-		fortio.Fatalf("failed to conect to %s: %v", serverAddr, err)
+		log.Fatalf("failed to conect to %s: %v", serverAddr, err)
 	}
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
-	rttHistogram := fortio.NewHistogram(0, 10)
+	rttHistogram := stats.NewHistogram(0, 10)
 	statuses := make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64)
 
 	for i := 1; i <= n; i++ {
@@ -136,7 +138,7 @@ func grpcHealthCheck(serverAddr string, svcname string, n int) {
 		res1, err := cli.Check(context.Background(), msg)
 		dur := time.Since(start)
 		if err != nil {
-			fortio.Fatalf("grpc error from Check %v", err)
+			log.Fatalf("grpc error from Check %v", err)
 		}
 		statuses[res1.Status]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package fortio (from greek for load) is a set of utilities to run a given
-// task at a target rate (qps) and gather statistics - for instance http
-// requests.
+// Package periodic for fortio (from greek for load) is a set of utilities to
+// run a given task at a target rate (qps) and gather statistics - for instance
+// http requests.
 //
 // The main executable using the library is cmd/fortio but there
 // is also cmd/histogram to use the stats from the command line and cmd/echosrv
 // as a very light http server that can be used to test proxies etc like
 // the Istio components.
-package fortio // import "istio.io/istio/devel/fortio"
+package periodic // import "istio.io/fortio/periodic"
 
 import (
 	"errors"
@@ -31,6 +31,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"istio.io/fortio/log"
+	"istio.io/fortio/stats"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -62,7 +65,7 @@ type RunnerOptions struct {
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
-	DurationHistogram *Histogram
+	DurationHistogram *stats.Histogram
 	ActualQPS         float64
 	ActualDuration    time.Duration
 }
@@ -98,7 +101,7 @@ type periodicRunner struct {
 func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	r := &periodicRunner{*opts} // by default just copy the input params
 	if r.QPS < 0 {
-		Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
+		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
 		r.QPS = 0
 	}
 	if r.NumThreads == 0 {
@@ -137,13 +140,13 @@ func (r *periodicRunner) Run() RunnerResults {
 	if useQPS {
 		numCalls = int64(r.QPS * r.Duration.Seconds())
 		if numCalls < 2 {
-			Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
+			log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
 			numCalls = 2
 			r.NumThreads = 1
 		}
 		if int64(2*r.NumThreads) > numCalls {
 			r.NumThreads = int(numCalls / 2)
-			Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
+			log.Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
 		}
 		numCalls /= int64(r.NumThreads)
 		totalCalls := numCalls * int64(r.NumThreads)
@@ -155,23 +158,23 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
-	functionDuration := NewHistogram(0, r.Resolution)
+	functionDuration := stats.NewHistogram(0, r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
-	sleepTime := NewHistogram(-0.001, 0.001)
+	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
-		Infof("Running single threaded")
+		log.Infof("Running single threaded")
 		runOne(0, functionDuration, sleepTime, numCalls, start, r)
 	} else {
 		var wg sync.WaitGroup
-		var fDs []*Histogram
-		var sDs []*Histogram
+		var fDs []*stats.Histogram
+		var sDs []*stats.Histogram
 		for t := 0; t < r.NumThreads; t++ {
 			durP := functionDuration.Clone()
 			sleepP := sleepTime.Clone()
 			fDs = append(fDs, durP)
 			sDs = append(sDs, sleepP)
 			wg.Add(1)
-			go func(t int, durP *Histogram, sleepP *Histogram) {
+			go func(t int, durP *stats.Histogram, sleepP *stats.Histogram) {
 				runOne(t, durP, sleepP, numCalls, start, r)
 				wg.Done()
 			}(t, durP, sleepP)
@@ -186,7 +189,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
 	fmt.Printf("Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	if useQPS {
-		percentNegative := 100. * float64(sleepTime.hdata[0]) / float64(sleepTime.Count)
+		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
 		// user.
@@ -194,7 +197,7 @@ func (r *periodicRunner) Run() RunnerResults {
 			sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
 			fmt.Printf("WARNING %.2f%% of sleep were falling behind\n", percentNegative)
 		} else {
-			if Log(Verbose) {
+			if log.Log(log.Verbose) {
 				sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
 			} else {
 				sleepTime.Counter.Print(os.Stdout, "Sleep times")
@@ -209,7 +212,7 @@ func (r *periodicRunner) Run() RunnerResults {
 }
 
 // runOne runs in 1 go routine.
-func runOne(id int, funcTimes *Histogram, sleepTimes *Histogram, numCalls int64, start time.Time, r *periodicRunner) {
+func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
 	var i int64
 	endTime := start.Add(r.Duration)
 	tIDStr := fmt.Sprintf("T%03d", id)
@@ -226,7 +229,7 @@ func runOne(id int, funcTimes *Histogram, sleepTimes *Histogram, numCalls int64,
 			// QPS mode:
 			// Do least 2 iterations, and the last one before bailing because of time
 			if (i >= 2) && (i != numCalls-1) {
-				Warnf("%s warning only did %d out of %d calls before reaching %v", tIDStr, i, numCalls, r.Duration)
+				log.Warnf("%s warning only did %d out of %d calls before reaching %v", tIDStr, i, numCalls, r.Duration)
 				break
 			}
 		}
@@ -244,17 +247,17 @@ func runOne(id int, funcTimes *Histogram, sleepTimes *Histogram, numCalls int64,
 			targetElapsedInSec := (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
 			targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
 			sleepDuration := targetElapsedDuration - elapsed
-			Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
+			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
 			time.Sleep(sleepDuration)
 		}
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(i) / elapsed.Seconds()
-	Infof("%s ended after %v : %d calls. qps=%g", tIDStr, elapsed, i, actualQPS)
-	if (numCalls > 0) && Log(Verbose) {
+	log.Infof("%s ended after %v : %d calls. qps=%g", tIDStr, elapsed, i, actualQPS)
+	if (numCalls > 0) && log.Log(log.Verbose) {
 		funcTimes.Log(tIDStr+" Function duration", 99)
-		if Log(Debug) {
+		if log.Log(log.Debug) {
 			sleepTimes.Log(tIDStr+" Sleep time", 50)
 		} else {
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
@@ -280,6 +283,6 @@ func ParsePercentiles(percentiles string) ([]float64, error) {
 	if len(res) == 0 {
 		return res, errors.New("list can't be empty")
 	}
-	LogVf("Will use %v for percentiles", res)
+	log.LogVf("Will use %v for percentiles", res)
 	return res, nil
 }

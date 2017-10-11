@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortiogrpc
+package fgrpc // import "istio.io/fortio/fgrpc"
 
 import (
 	"context"
@@ -24,7 +24,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"istio.io/istio/devel/fortio"
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 // TODO: refactor common parts between http and grpc runners
@@ -32,7 +33,7 @@ import (
 // GRPCRunnerResults is the aggregated result of an GRPCRunner.
 // Also is the internal type used per thread/goroutine.
 type GRPCRunnerResults struct {
-	fortio.RunnerResults
+	periodic.RunnerResults
 	client   grpc_health_v1.HealthClient
 	req      grpc_health_v1.HealthCheckRequest
 	RetCodes map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
@@ -46,11 +47,11 @@ var (
 // TestGRPC exercises GRPC health check at the target QPS.
 // To be set as the Function in RunnerOptions.
 func TestGRPC(t int) {
-	fortio.Debugf("Calling in %d", t)
+	log.Debugf("Calling in %d", t)
 	res, err := grpcstate[t].client.Check(context.Background(), &grpcstate[t].req)
-	fortio.Debugf("Got %v %v", res, err)
+	log.Debugf("Got %v %v", res, err)
 	if err != nil {
-		fortio.Errf("Error making health check %v", err)
+		log.Errf("Error making health check %v", err)
 	} else {
 		grpcstate[t].RetCodes[res.Status]++
 	}
@@ -59,7 +60,7 @@ func TestGRPC(t int) {
 // GRPCRunnerOptions includes the base RunnerOptions plus http specific
 // options.
 type GRPCRunnerOptions struct {
-	fortio.RunnerOptions
+	periodic.RunnerOptions
 	Destination string
 	Service     string
 	Profiler    string // file to save profiles to. defaults to no profiling
@@ -71,8 +72,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Function == nil {
 		o.Function = TestGRPC
 	}
-	fortio.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
-	r := fortio.NewPeriodicRunner(&o.RunnerOptions)
+	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
+	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
@@ -82,7 +83,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		// TODO: option to use certs
 		conn, err := grpc.Dial(o.Destination, grpc.WithInsecure())
 		if err != nil {
-			fortio.Errf("Error in grpc dial for %s %v", o.Destination, err)
+			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err
 		}
 		grpcstate[i].client = grpc_health_v1.NewHealthClient(conn)
@@ -92,7 +93,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		grpcstate[i].req = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 		_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
 		if err != nil {
-			fortio.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
+			log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
 			return nil, err
 		}
 		// Setup the stats for each 'thread'
@@ -102,7 +103,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Profiler != "" {
 		fc, err := os.Create(o.Profiler + ".cpu")
 		if err != nil {
-			fortio.Critf("Unable to create .cpu profile: %v", err)
+			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
 		pprof.StartCPUProfile(fc) //nolint: gas,errcheck
@@ -112,7 +113,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		pprof.StopCPUProfile()
 		fm, err := os.Create(o.Profiler + ".mem")
 		if err != nil {
-			fortio.Critf("Unable to create .mem profile: %v", err)
+			log.Critf("Unable to create .mem profile: %v", err)
 			return nil, err
 		}
 		runtime.GC()               // get up-to-date statistics

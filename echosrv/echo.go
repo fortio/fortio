@@ -22,7 +22,7 @@ package main
 import (
 	"flag"
 
-	"istio.io/istio/devel/fortio"
+	"istio.io/fortio/fhttp"
 )
 
 var (
@@ -32,5 +32,5 @@ var (
 
 func main() {
 	flag.Parse()
-	fortio.EchoServer(*port, *debugPath)
+	fhttp.EchoServer(*port, *debugPath)
 }

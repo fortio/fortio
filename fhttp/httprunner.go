@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fortio
+package fhttp
 
 import (
 	"fmt"
@@ -21,6 +21,10 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sort"
+
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
+	"istio.io/fortio/stats"
 )
 
 // Most of the code in this file is the library-fication of code originally
@@ -29,11 +33,11 @@ import (
 // HTTPRunnerResults is the aggregated result of an HTTPRunner.
 // Also is the internal type used per thread/goroutine.
 type HTTPRunnerResults struct {
-	RunnerResults
+	periodic.RunnerResults
 	client      Fetcher
 	RetCodes    map[int]int64
-	Sizes       *Histogram
-	HeaderSizes *Histogram
+	Sizes       *stats.Histogram
+	HeaderSizes *stats.Histogram
 }
 
 // Used globally / in TestHttp() TODO: change periodic.go to carry caller defined context
@@ -44,10 +48,10 @@ var (
 // TestHTTP http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func TestHTTP(t int) {
-	Debugf("Calling in %d", t)
+	log.Debugf("Calling in %d", t)
 	code, body, headerSize := httpstate[t].client.Fetch()
 	size := len(body)
-	Debugf("Got in %3d hsz %d sz %d", code, headerSize, size)
+	log.Debugf("Got in %3d hsz %d sz %d", code, headerSize, size)
 	httpstate[t].RetCodes[code]++
 	httpstate[t].Sizes.Record(float64(size))
 	httpstate[t].HeaderSizes.Record(float64(headerSize))
@@ -56,7 +60,7 @@ func TestHTTP(t int) {
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
 // options.
 type HTTPRunnerOptions struct {
-	RunnerOptions
+	periodic.RunnerOptions
 	URL               string
 	Compression       bool   // defaults to no compression, only used by std client
 	DisableFastClient bool   // defaults to fast client
@@ -72,13 +76,13 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	if o.Function == nil {
 		o.Function = TestHTTP
 	}
-	Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
-	r := NewPeriodicRunner(&o.RunnerOptions)
+	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
+	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
 	total := HTTPRunnerResults{
 		RetCodes:    make(map[int]int64),
-		Sizes:       NewHistogram(0, 100),
-		HeaderSizes: NewHistogram(0, 5),
+		Sizes:       stats.NewHistogram(0, 100),
+		HeaderSizes: stats.NewHistogram(0, 5),
 	}
 	httpstate = make([]HTTPRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
@@ -99,8 +103,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if code != http.StatusOK {
 			return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
 		}
-		if i == 0 && LogVerbose() {
-			LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+		if i == 0 && log.LogVerbose() {
+			log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
 		}
 		// Setup the stats for each 'thread'
 		httpstate[i].Sizes = total.Sizes.Clone()
@@ -111,7 +115,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	if o.Profiler != "" {
 		fc, err := os.Create(o.Profiler + ".cpu")
 		if err != nil {
-			Critf("Unable to create .cpu profile: %v", err)
+			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
 		pprof.StartCPUProfile(fc) //nolint: gas,errcheck
@@ -121,7 +125,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		pprof.StopCPUProfile()
 		fm, err := os.Create(o.Profiler + ".mem")
 		if err != nil {
-			Critf("Unable to create .mem profile: %v", err)
+			log.Critf("Unable to create .mem profile: %v", err)
 			return nil, err
 		}
 		runtime.GC()               // get up-to-date statistics
@@ -147,7 +151,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for _, k := range keys {
 		fmt.Printf("Code %3d : %d\n", k, total.RetCodes[k])
 	}
-	if LogVerbose() {
+	if log.LogVerbose() {
 		total.HeaderSizes.Print(os.Stdout, "Response Header Sizes Histogram", 50)
 		total.Sizes.Print(os.Stdout, "Response Body/Total Sizes Histogram", 50)
 	} else {

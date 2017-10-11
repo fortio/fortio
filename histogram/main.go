@@ -22,7 +22,8 @@ import (
 	"os"
 	"strconv"
 
-	"istio.io/istio/devel/fortio"
+	"istio.io/fortio/log"
+	"istio.io/fortio/stats"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 		pFlag       = flag.Float64("p", 90, "Percentile to calculate")
 	)
 	flag.Parse()
-	h := fortio.NewHistogram(*offsetFlag, *dividerFlag)
+	h := stats.NewHistogram(*offsetFlag, *dividerFlag)
 
 	scanner := bufio.NewScanner(os.Stdin)
 	linenum := 1
@@ -40,13 +41,13 @@ func main() {
 		line := scanner.Text()
 		v, err := strconv.ParseFloat(line, 64)
 		if err != nil {
-			fortio.Fatalf("Can't parse line %d: %v", linenum, err)
+			log.Fatalf("Can't parse line %d: %v", linenum, err)
 		}
 		h.Record(v)
 		linenum++
 	}
 	if err := scanner.Err(); err != nil {
-		fortio.Fatalf("Err reading standard input %v", err)
+		log.Fatalf("Err reading standard input %v", err)
 	}
 	// TODO use ParsePercentiles
 	h.Print(os.Stdout, "Histogram", *pFlag)

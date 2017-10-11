@@ -17,14 +17,16 @@
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 
-package fortiogrpc
+package fgrpc
 
 import (
 	"fmt"
 	"net"
 	"testing"
 
-	"istio.io/istio/devel/fortio"
+	"istio.io/fortio/fhttp"
+	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -36,29 +38,29 @@ import (
 func DynamicGRPCHealthServer() int {
 	socket, err := net.Listen("tcp", ":0")
 	if err != nil {
-		fortio.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 	addr := socket.Addr()
 	grpcServer := grpc.NewServer()
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fmt.Printf("Fortio %s grpc health server listening on port %v\n", fortio.Version, addr)
+	fmt.Printf("Fortio %s grpc health server listening on port %v\n", fhttp.Version, addr)
 	go func(socket net.Listener) {
 		if e := grpcServer.Serve(socket); e != nil {
-			fortio.Fatalf("failed to start grpc server: %v", e)
+			log.Fatalf("failed to start grpc server: %v", e)
 		}
 	}(socket)
 	return addr.(*net.TCPAddr).Port
 }
 
 func TestGRPCRunner(t *testing.T) {
-	fortio.SetLogLevel(fortio.Info)
+	log.SetLogLevel(log.Info)
 	port := DynamicGRPCHealthServer()
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
-		RunnerOptions: fortio.RunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
 			QPS:        100,
 			Resolution: 0.00001,
 		},
