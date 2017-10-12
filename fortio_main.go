@@ -81,7 +81,7 @@ var (
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
-	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb, "Size of the buffer (max data size) for the optimized fhttp client in kbytes")
+	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb, "Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader, "Check for Connection: Close Header")
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
