@@ -11,10 +11,12 @@ The name fortio comes from greek φορτίο which is load/burden.
 2. `go get -u istio.io/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
-Or
+Or use docker, for instance:
 
-`docker run istio/fortio arguments...`
-
+```shell
+docker run -p 8080:8080 -p 8079:8079 istio/fortio server &
+docker run istio/fortio load http://$HOSTNAME:8080/
+```
 
 ## Command line arguments
 
