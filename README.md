@@ -20,7 +20,7 @@ docker run istio/fortio load http://$HOSTNAME:8080/
 
 ## Command line arguments
 
-Fortio can be and http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers with the `server` command or issue grpc ping messages using the `grpcping` command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers with the `server` command or issue grpc ping messages using the `grpcping` command.
 
 ```
 $ fortio
@@ -81,13 +81,13 @@ and flags are:
 
 ## Example use and output
 
-Start the internal servers:
+* Start the internal servers:
 ```
 $ fortio server &
 Fortio 0.2.2 echo server listening on port 8080
 Fortio 0.2.2 grpc ping server listening on port 8079
 ```
-Simple grpc ping:
+* Simple grpc ping:
 ```
 $ fortio grpcping localhost
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
@@ -101,7 +101,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
-Load (low default qps/threading) test:
+* Load (low default qps/threading) test:
 ```
 $ fortio load http://www.google.com
 Fortio running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
