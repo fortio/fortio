@@ -61,6 +61,7 @@ var (
 	qpsFlag         = flag.Float64("qps", 8.0, "Queries Per Seconds or 0 for no wait")
 	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test")
+	endlessFlag     = flag.Bool("endless", false, "Run until interrupted (^C to stop)")
 	percentilesFlag = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
@@ -94,6 +95,15 @@ func main() {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
 
+	// Following code determines whether the t flag has been provided together with the endless flag as they are
+	// both mutual exclusive. durationFlag can't be tested because if t flag is omitted the durationFlag will hold
+	// the default value.
+	flagset := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) { flagset[f.Name]=true } )
+	if *endlessFlag && flagset["t"] {
+		usage("The -endless flag can not be combined with the -t flag")
+	}
+
 	switch command {
 	case "load":
 		fortioLoad()
@@ -113,12 +123,19 @@ func fortioLoad() {
 		usage("Error: fortio load needs a url or destination")
 	}
 	url := flag.Arg(0)
+	duration := *durationFlag
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
-	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
-		fhttp.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs",
+		fhttp.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+	if *endlessFlag {
+		fmt.Printf(", until interrupted: %s\n", url)
+		duration = 0 // Endless mode is determined by having duration value equal to 0
+	} else {
+		fmt.Printf(", for %v: %s\n", *durationFlag, url)
+	}
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
-		Duration:    *durationFlag,
+		Duration:    duration,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
