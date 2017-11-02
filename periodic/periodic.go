@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -219,7 +220,22 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
 	f := r.Function
+
+	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
+	terminated := false
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		terminated = true
+	}()
+
 	for {
+		if terminated {
+			// SIGINT was signaled
+			break
+		}
+
 		fStart := time.Now()
 		if fStart.After(endTime) {
 			if !useQPS {
