@@ -15,12 +15,9 @@
 package periodic
 
 import (
-	"reflect"
 	"sync"
 	"testing"
 	"time"
-
-	"istio.io/fortio/log"
 )
 
 func noop(t int) {
@@ -122,33 +119,5 @@ func TestStartMaxQps(t *testing.T) {
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	if count != expected {
 		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", count, expected)
-	}
-}
-
-func TestParsePercentiles(t *testing.T) {
-	var tests = []struct {
-		str  string    // input
-		list []float64 // expected
-		err  bool
-	}{
-		// Good cases
-		{str: "99.9", list: []float64{99.9}},
-		{str: "1,2,3", list: []float64{1, 2, 3}},
-		{str: "   17, -5.3,  78  ", list: []float64{17, -5.3, 78}},
-		// Errors
-		{str: "", list: []float64{}, err: true},
-		{str: "   ", list: []float64{}, err: true},
-		{str: "23,a,46", list: []float64{23}, err: true},
-	}
-	log.SetLogLevel(log.Debug) // for coverage
-	for _, tst := range tests {
-		actual, err := ParsePercentiles(tst.str)
-		if !reflect.DeepEqual(actual, tst.list) {
-			t.Errorf("ParsePercentiles got %#v expected %#v", actual, tst.list)
-		}
-		if (err != nil) != tst.err {
-			t.Errorf("ParsePercentiles got %v error while expecting err:%v for %s",
-				err, tst.err, tst.str)
-		}
 	}
 }

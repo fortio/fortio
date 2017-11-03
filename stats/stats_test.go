@@ -17,8 +17,13 @@ package stats
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"istio.io/fortio/log"
@@ -30,7 +35,7 @@ func TestCounter(t *testing.T) {
 	w := bufio.NewWriter(&b)
 	c.Counter.Print(w, "test1c")
 	expected := "test1c : count 0 avg NaN +/- NaN min 0 max 0 sum 0\n"
-	c.Print(w, "test1h", 50.0)
+	c.Print(w, "test1h", []float64{50.0})
 	expected += "test1h : no data\n"
 	c.Record(23.1)
 	c.Counter.Print(w, "test2")
@@ -112,7 +117,7 @@ func TestHistogram(t *testing.T) {
 	h.Record(501)
 	h.Record(751)
 	h.Record(1001)
-	h.Print(os.Stdout, "testHistogram1", 50)
+	h.Print(os.Stdout, "testHistogram1", []float64{50})
 	for i := 25; i <= 100; i += 25 {
 		fmt.Printf("%d%% at %g\n", i, h.CalcPercentile(float64(i)))
 	}
@@ -143,6 +148,170 @@ func TestHistogram(t *testing.T) {
 	}
 }
 
+// CheckEquals checks if actual == expect and fails the test and logs
+// failure (including filename:linenum if they are not equal).
+func CheckEquals(t *testing.T, actual interface{}, expected interface{}, msg interface{}) {
+	if expected != actual {
+		_, file, line, _ := runtime.Caller(1)
+		file = file[strings.LastIndex(file, "/")+1:]
+		fmt.Printf("%s:%d mismatch!\nactual:\n%+v\nexpected:\n%+v\nfor %+v\n", file, line, actual, expected, msg)
+		t.Fail()
+	}
+}
+
+func Assert(t *testing.T, cond bool, msg interface{}) {
+	if !cond {
+		_, file, line, _ := runtime.Caller(1)
+		file = file[strings.LastIndex(file, "/")+1:]
+		fmt.Printf("%s:%d assert failure: %+v\n", file, line, msg)
+		t.Fail()
+	}
+}
+
+// Checks properties that should be true for all non empty histograms
+func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
+	n := len(e.Data)
+	if n <= 0 {
+		t.Error("Unexpected empty histogram")
+		return
+	}
+	CheckEquals(t, e.Data[0].Start, e.Min, "first bucket starts at min")
+	CheckEquals(t, e.Data[n-1].End, e.Max, "end of last bucket is max")
+	CheckEquals(t, e.Data[n-1].Percent, 100., "last bucket is 100%")
+	// All buckets in order
+	var prev Bucket
+	var sum int64
+	for i := 0; i < n; i++ {
+		b := e.Data[i]
+		Assert(t, b.Start <= b.End, "End should always be after Start")
+		Assert(t, b.Count > 0, "Every exported bucket should have data")
+		Assert(t, b.Percent > 0, "Percentage should always be positive")
+		sum += b.Count
+		if i > 0 {
+			Assert(t, b.Start >= prev.End, "Start of next bucket >= end of previous")
+			Assert(t, b.Percent > prev.Percent, "Percentage should be ever increasing")
+		}
+		prev = b
+	}
+	CheckEquals(t, sum, e.Count, "Sum in buckets should add up to Counter's count")
+}
+
+func TestHistogramExport1(t *testing.T) {
+	h := NewHistogram(0, 10)
+	e := h.Export(nil) // no crash or error for empty ones
+	CheckEquals(t, e.Count, int64(0), "empty is 0 count")
+	CheckEquals(t, len(e.Data), 0, "empty is no bucket data")
+	h.Record(-137.4)
+	h.Record(251)
+	h.Record(501)
+	h.Record(751)
+	h.Record(1001.67)
+	e = h.Export([]float64{50, 99, 99.9})
+	CheckEquals(t, e.Count, int64(5), "count")
+	CheckEquals(t, e.Min, -137.4, "min")
+	CheckEquals(t, e.Max, 1001.67, "max")
+	n := len(e.Data)
+	CheckEquals(t, n, 5, "number of buckets")
+	CheckGenericHistogramDataProperties(t, e)
+	data, err := json.MarshalIndent(e, "", " ")
+	if err != nil {
+		t.Error(err)
+	}
+	CheckEquals(t, string(data), `{
+ "Count": 5,
+ "Min": -137.4,
+ "Max": 1001.67,
+ "Sum": 2367.27,
+ "Avg": 473.454,
+ "StdDev": 394.8242896074151,
+ "Data": [
+  {
+   "Start": -137.4,
+   "End": 10,
+   "Percent": 20,
+   "Count": 1
+  },
+  {
+   "Start": 250,
+   "End": 300,
+   "Percent": 40,
+   "Count": 1
+  },
+  {
+   "Start": 500,
+   "End": 600,
+   "Percent": 60,
+   "Count": 1
+  },
+  {
+   "Start": 700,
+   "End": 800,
+   "Percent": 80,
+   "Count": 1
+  },
+  {
+   "Start": 1000,
+   "End": 1001.67,
+   "Percent": 100,
+   "Count": 1
+  }
+ ],
+ "Percentiles": [
+  {
+   "Percentile": 50,
+   "Value": 550
+  },
+  {
+   "Percentile": 99,
+   "Value": 1001.5865
+  },
+  {
+   "Percentile": 99.9,
+   "Value": 1001.66165
+  }
+ ]
+}`, "Json output")
+}
+
+const (
+	NumRandomHistogram = 2000
+)
+
+func TestHistogramExportRandom(t *testing.T) {
+	for i := 0; i < NumRandomHistogram; i++ {
+		// offset [-500,500[  divisor ]0,100]
+		offset := (rand.Float64() - 0.5) * 1000
+		div := 100 * (1 - rand.Float64())
+		numEntries := 1 + rand.Int31n(10000)
+		//fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
+		h := NewHistogram(offset, div)
+		var n int32
+		var min float64
+		var max float64
+		for ; n < numEntries; n++ {
+			v := 3000 * (rand.Float64() - 0.25)
+			if n == 0 {
+				min = v
+				max = v
+			} else {
+				if v < min {
+					min = v
+				} else if v > max {
+					max = v
+				}
+			}
+			h.Record(v)
+		}
+		e := h.Export([]float64{0, 50, 100})
+		CheckGenericHistogramDataProperties(t, e)
+		CheckEquals(t, h.Count, int64(numEntries), "num entries should match")
+		CheckEquals(t, h.Min, min, "Min should match")
+		CheckEquals(t, h.Max, max, "Max should match")
+		CheckEquals(t, e.Percentiles[0].Value, min, "p0 should be min")
+		CheckEquals(t, e.Percentiles[2].Value, max, "p100 should be max")
+	}
+}
+
 func TestHistogramLastBucket(t *testing.T) {
 	// Use -1 offset so first bucket is negative values
 	h := NewHistogram( /* offset */ -1 /*scale */, 1)
@@ -156,19 +325,19 @@ func TestHistogramLastBucket(t *testing.T) {
 	h.Record(200000)
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
-	h.Print(w, "testLastBucket", 90)
+	h.Print(w, "testLastBucket", []float64{90})
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	// stdev part is not verified/could be brittle
 	expected := `testLastBucket : count 8 avg 50001.25 +/- 7.071e+04 min -1 max 200000 sum 400010
 # range, mid point, percentile, count
-< 0 , 0 , 12.50, 1
+>= -1 < 0 , -0.5 , 12.50, 1
 >= 0 < 1 , 0.5 , 25.00, 1
 >= 1 < 2 , 1.5 , 37.50, 1
 >= 3 < 4 , 3.5 , 50.00, 1
 >= 10 < 11 , 10.5 , 62.50, 1
 >= 74999 < 99999 , 87499 , 75.00, 1
->= 99999 , 99999 , 100.00, 2
+>= 99999 <= 200000 , 150000 , 100.00, 2
 # target 90% 160000
 `
 	if actual != expected {
@@ -183,14 +352,14 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	// TODO: fix the p51 (and p1...), should be 0 not 10
-	h.Print(w, "testHistogramWithNegativeNumbers", 51)
+	h.Print(w, "testHistogramWithNegativeNumbers", []float64{51})
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	// stdev part is not verified/could be brittle
 	expected := `testHistogramWithNegativeNumbers : count 2 avg 0 +/- 10 min -10 max 10 sum 0
 # range, mid point, percentile, count
-< -9 , -9 , 50.00, 1
->= 10 < 15 , 12.5 , 100.00, 1
+>= -10 < -9 , -9.5 , 50.00, 1
+>= 10 <= 10 , 10 , 100.00, 1
 # target 51% 10
 `
 	if actual != expected {
@@ -199,7 +368,7 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 }
 
 func TestTransferHistogram(t *testing.T) {
-	tP := 100. // TODO: use 75 and fix bug
+	tP := []float64{100.} // TODO: use 75 and fix bug
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h1 := NewHistogram(0, 10)
@@ -232,19 +401,19 @@ func TestTransferHistogram(t *testing.T) {
 	expected := `h1 before merge : count 2 avg 15 +/- 5 min 10 max 20 sum 30
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 50.00, 1
->= 20 < 30 , 25 , 100.00, 1
+>= 20 <= 20 , 20 , 100.00, 1
 # target 100% 20
 h2 before merge : count 2 avg 85 +/- 5 min 80 max 90 sum 170
 # range, mid point, percentile, count
 >= 80 < 90 , 85 , 50.00, 1
->= 90 < 100 , 95 , 100.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
 # target 100% 90
 merged h2 -> h1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
->= 90 < 100 , 95 , 100.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
 # target 100% 90
 h2 after merge : no data
 merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
@@ -253,7 +422,7 @@ merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
 >= 20 < 30 , 25 , 40.00, 1
 >= 50 < 60 , 55 , 60.00, 1
 >= 80 < 90 , 85 , 80.00, 1
->= 90 < 100 , 95 , 100.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
 # target 100% 90
 h1 should now be empty : no data
 h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
@@ -261,17 +430,45 @@ h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
->= 90 < 100 , 95 , 100.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
 # target 100% 90
 h3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
->= 90 < 100 , 95 , 100.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
 # target 100% 90
 `
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
+	}
+}
+
+func TestParsePercentiles(t *testing.T) {
+	var tests = []struct {
+		str  string    // input
+		list []float64 // expected
+		err  bool
+	}{
+		// Good cases
+		{str: "99.9", list: []float64{99.9}},
+		{str: "1,2,3", list: []float64{1, 2, 3}},
+		{str: "   17, -5.3,  78  ", list: []float64{17, -5.3, 78}},
+		// Errors
+		{str: "", list: []float64{}, err: true},
+		{str: "   ", list: []float64{}, err: true},
+		{str: "23,a,46", list: []float64{23}, err: true},
+	}
+	log.SetLogLevel(log.Debug) // for coverage
+	for _, tst := range tests {
+		actual, err := ParsePercentiles(tst.str)
+		if !reflect.DeepEqual(actual, tst.list) {
+			t.Errorf("ParsePercentiles got %#v expected %#v", actual, tst.list)
+		}
+		if (err != nil) != tst.err {
+			t.Errorf("ParsePercentiles got %v error while expecting err:%v for %s",
+				err, tst.err, tst.str)
+		}
 	}
 }

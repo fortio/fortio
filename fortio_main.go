@@ -17,14 +17,17 @@ package main
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/periodic"
+	"istio.io/fortio/stats"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -73,6 +76,7 @@ var (
 	echoPortFlag    = flag.Int("http-port", 8080, "http echo server port")
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug", "http echo server URI for debug, empty turns off that part (more secure)")
+	jsonFlag        = flag.String("json", "", "Json output to provided file (empty no json output)")
 
 	headersFlags flagList
 	percList     []float64
@@ -89,7 +93,7 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
-	percList, err = periodic.ParsePercentiles(*percentilesFlag)
+	percList, err = stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
@@ -149,6 +153,22 @@ func fortioLoad() {
 	fmt.Printf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		res.Result().DurationHistogram.Count,
 		*numThreadsFlag,
-		1000.*res.Result().DurationHistogram.Avg(),
+		1000.*res.Result().DurationHistogram.Avg,
 		res.Result().ActualQPS)
+	jsonFileName := *jsonFlag
+	if len(jsonFileName) > 0 {
+		j, err := json.MarshalIndent(res.Result(), "", "  ")
+		if err != nil {
+			log.Fatalf("Unable to json serialize result: %v", err)
+		}
+		f, err := os.Create(jsonFileName)
+		if err != nil {
+			log.Fatalf("Unable to create %s: %v", jsonFileName, err)
+		}
+		n, err := f.Write(j)
+		if err != nil {
+			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
+		}
+		fmt.Printf("Succesfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+	}
 }

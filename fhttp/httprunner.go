@@ -152,8 +152,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		fmt.Printf("Code %3d : %d\n", k, total.RetCodes[k])
 	}
 	if log.LogVerbose() {
-		total.HeaderSizes.Print(os.Stdout, "Response Header Sizes Histogram", 50)
-		total.Sizes.Print(os.Stdout, "Response Body/Total Sizes Histogram", 50)
+		total.HeaderSizes.Print(os.Stdout, "Response Header Sizes Histogram", []float64{50})
+		total.Sizes.Print(os.Stdout, "Response Body/Total Sizes Histogram", []float64{50})
 	} else {
 		total.HeaderSizes.Counter.Print(os.Stdout, "Response Header Sizes")
 		total.Sizes.Counter.Print(os.Stdout, "Response Body/Total Sizes")

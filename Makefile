@@ -1,4 +1,5 @@
-# Experimental Makefile to build fortio's docker images
+# Makefile to build fortio's docker images as well as short cut
+# for local test/install
 
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 
@@ -8,8 +9,18 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
-# Pushes the combo image and the 3 smaller images
-all: docker-version docker-push-internal
+# Local targets:
+install: test
+	go install ./...
+
+test:
+	go test -timeout 30s -race ./...
+
+lint:
+	gometaliner ./...
+
+# Docker: Pushes the combo image and the smaller image(s)
+all: install docker-version docker-push-internal
 	@for img in $(IMAGES); do \
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
@@ -29,4 +40,4 @@ docker-push-internal: docker-internal
 authorize:
 	gcloud docker --authorize-only --project istio-testing
 
-.PHONY: all docker-internal docker-push-internal docker-version authorize
+.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint

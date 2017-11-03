@@ -23,12 +23,9 @@
 package periodic // import "istio.io/fortio/periodic"
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -65,7 +62,7 @@ type RunnerOptions struct {
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
-	DurationHistogram *stats.Histogram
+	DurationHistogram *stats.HistogramData
 	ActualQPS         float64
 	ActualDuration    time.Duration
 }
@@ -194,21 +191,19 @@ func (r *periodicRunner) Run() RunnerResults {
 		// may want to know more about the distribution of sleep time and warn the
 		// user.
 		if percentNegative > 5 {
-			sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
+			sleepTime.Print(os.Stdout, "Aggregated Sleep Time", []float64{50})
 			fmt.Printf("WARNING %.2f%% of sleep were falling behind\n", percentNegative)
 		} else {
 			if log.Log(log.Verbose) {
-				sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
+				sleepTime.Print(os.Stdout, "Aggregated Sleep Time", []float64{50})
 			} else {
 				sleepTime.Counter.Print(os.Stdout, "Sleep times")
 			}
 		}
 	}
-	functionDuration.Print(os.Stdout, "Aggregated Function Time", r.Percentiles[0])
-	for _, p := range r.Percentiles[1:] {
-		fmt.Printf("# target %g%% %.6g\n", p, functionDuration.CalcPercentile(p))
-	}
-	return RunnerResults{functionDuration, actualQPS, elapsed}
+	result := RunnerResults{functionDuration.Export(r.Percentiles), actualQPS, elapsed}
+	result.DurationHistogram.Print(os.Stdout, "Aggregated Function Time")
+	return result
 }
 
 // runOne runs in 1 go routine.
@@ -256,33 +251,11 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	actualQPS := float64(i) / elapsed.Seconds()
 	log.Infof("%s ended after %v : %d calls. qps=%g", tIDStr, elapsed, i, actualQPS)
 	if (numCalls > 0) && log.Log(log.Verbose) {
-		funcTimes.Log(tIDStr+" Function duration", 99)
+		funcTimes.Log(tIDStr+" Function duration", []float64{99})
 		if log.Log(log.Debug) {
-			sleepTimes.Log(tIDStr+" Sleep time", 50)
+			sleepTimes.Log(tIDStr+" Sleep time", []float64{50})
 		} else {
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
 		}
 	}
-}
-
-// ParsePercentiles extracts the percentiles from string (flag).
-func ParsePercentiles(percentiles string) ([]float64, error) {
-	percs := strings.Split(percentiles, ",") // will make a size 1 array for empty input!
-	res := make([]float64, 0, len(percs))
-	for _, pStr := range percs {
-		pStr = strings.TrimSpace(pStr)
-		if len(pStr) == 0 {
-			continue
-		}
-		p, err := strconv.ParseFloat(pStr, 64)
-		if err != nil {
-			return res, err
-		}
-		res = append(res, p)
-	}
-	if len(res) == 0 {
-		return res, errors.New("list can't be empty")
-	}
-	log.LogVf("Will use %v for percentiles", res)
-	return res, nil
 }

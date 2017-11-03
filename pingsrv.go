@@ -119,8 +119,8 @@ func pingClientCall(serverAddr string, n int, payload string) {
 		skewHistogram.Record(float64(x) / 1000.)
 		msg = res2
 	}
-	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", 50)
-	rttHistogram.Print(os.Stdout, "RTT histogram usec", 50)
+	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", []float64{50})
+	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 }
 
 func grpcHealthCheck(serverAddr string, svcname string, n int) {
@@ -143,7 +143,7 @@ func grpcHealthCheck(serverAddr string, svcname string, n int) {
 		statuses[res1.Status]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)
 	}
-	rttHistogram.Print(os.Stdout, "RTT histogram usec", 50)
+	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 	fmt.Printf("Statuses %v\n", statuses)
 }
 
