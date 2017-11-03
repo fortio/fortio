@@ -118,7 +118,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.Resolution <= 0 {
 		r.Resolution = DefaultRunnerOptions.Resolution
 	}
-	if r.Duration < 0 {
+	if r.Duration == 0 {
 		r.Duration = DefaultRunnerOptions.Duration
 	}
 	return r
@@ -232,25 +232,17 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	tIDStr := fmt.Sprintf("T%03d", id)
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
+	hasDuration := (r.Duration > 0)
 	f := r.Function
 
 	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
-	terminated := false
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		terminated = true
-	}()
 
+	MainLoop:
 	for {
-		if terminated {
-			// SIGINT was signaled
-			break
-		}
-
 		fStart := time.Now()
-		if r.Duration > 0 && fStart.After(endTime) {
+		if hasDuration && fStart.After(endTime) {
 			if !useQPS {
 				// max speed test reached end:
 				break
@@ -267,12 +259,12 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 		i++
 		// if using QPS / pre calc expected call # mode:
 		if useQPS {
-			if numCalls > 0 && i >= numCalls {
+			if hasDuration && i >= numCalls {
 				break // expected exit for that mode
 			}
 			elapsed := time.Since(start)
 			var targetElapsedInSec float64
-			if numCalls > 0 {
+			if hasDuration {
 				// This next line is tricky - such as for 2s duration and 1qps there is 1
 				// sleep of 2s between the 2 calls and for 3qps in 1sec 2 sleep of 1/2s etc
 				targetElapsedInSec = (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
@@ -284,7 +276,19 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 			sleepDuration := targetElapsedDuration - elapsed
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
-			time.Sleep(sleepDuration)
+			select {
+			case <-c:
+				break MainLoop
+			case <-time.After(sleepDuration):
+				// continue normal execution
+			}
+		} else { // Not using QPS
+			select {
+			case <-c:
+				break MainLoop
+			default:
+				// continue to the next iteration
+			}
 		}
 	}
 	elapsed := time.Since(start)
