@@ -211,3 +211,15 @@ Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 Or graphically:
 
 ![Chart](https://user-images.githubusercontent.com/3664595/27990803-490a618c-6417-11e7-9773-12e0d051128f.png)
+
+## Contributing
+Contributions whether throuh issues, documentation, bug fixes, or new features
+are most welcome !
+
+Please also see [Istio's guidelines](https://github.com/istio/istio#contributing-to-the-project)
+
+And make sure to run those commands successfully before sending your PRs:
+```
+make test
+make lint
+```

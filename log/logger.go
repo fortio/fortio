@@ -163,7 +163,7 @@ func Debugf(format string, rest ...interface{}) {
 }
 
 // LogVf logs if Verbose level is on.
-func LogVf(format string, rest ...interface{}) {
+func LogVf(format string, rest ...interface{}) { //nolint: golint
 	logPrintf(Verbose, format, rest...)
 }
 
@@ -193,11 +193,11 @@ func Fatalf(format string, rest ...interface{}) {
 }
 
 // LogDebug shortcut for fortio.Log(fortio.Debug)
-func LogDebug() bool {
+func LogDebug() bool { //nolint: golint
 	return Log(Debug)
 }
 
 // LogVerbose shortcut for fortio.Log(fortio.Verbose)
-func LogVerbose() bool {
+func LogVerbose() bool { //nolint: golint
 	return Log(Verbose)
 }

@@ -535,7 +535,8 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 		}
 		c.size += n
 		if log.LogDebug() {
-			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s", n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
+			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
+				n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
 		}
 		if !parsedHeaders && c.parseHeaders {
 			// enough to get the code?
@@ -712,9 +713,11 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func closingServer(listener net.Listener) (err error) {
+func closingServer(listener net.Listener) error {
+	var err error
 	for {
-		c, err := listener.Accept()
+		var c net.Conn
+		c, err = listener.Accept()
 		if err != nil {
 			log.Errf("Accept error in dummy server %v", err)
 			break
@@ -726,7 +729,7 @@ func closingServer(listener net.Listener) (err error) {
 			break
 		}
 	}
-	return
+	return err
 }
 
 // DynamicHTTPServer listens on an available port, sets up an http or https
