@@ -46,6 +46,8 @@ func RoundDuration(d time.Duration) time.Duration {
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
+// TODO: Add -H (Headers) equivalent support
+
 // UIHandler is the UI handler creating the web forms and processing them.
 func UIHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
@@ -66,14 +68,6 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
 		}
 	}
-	/*
-		data, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Errf("Error reading %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	*/
 	if !JSONOnly {
 		// Normal html mode
 		const templ = `<!DOCTYPE html><html><head><title>Φορτίο (fortio) version {{.Version}}</title></head>
