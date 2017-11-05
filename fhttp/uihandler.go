@@ -23,13 +23,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"syscall"
 	"time"
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
+	"istio.io/fortio/stats"
 )
 
 // RoundDuration rounds to 10th of second. Only for positive durations.
@@ -40,7 +43,10 @@ func RoundDuration(d time.Duration) time.Duration {
 	return time.Duration(tenthSec * r)
 }
 
-// UIHandler is the UI handler
+// TODO: auto map from (Http)RunnerOptions to form generation and/or accept
+// JSON serialized options as input.
+
+// UIHandler is the UI handler creating the web forms and processing them.
 func UIHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	DoExit := false
@@ -49,10 +55,16 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 		DoExit = true
 	}
 	DoLoad := false
+	JsonOnly := false
 	url := r.FormValue("url")
 	if r.FormValue("load") == "Start" {
-		log.Infof("Start/load request from %v for %s", r.RemoteAddr, url)
 		DoLoad = true
+		if r.FormValue("json") == "on" {
+			JsonOnly = true
+			log.Infof("Starting JSON only load request from %v for %s", r.RemoteAddr, url)
+		} else {
+			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
+		}
 	}
 	/*
 		data, err := ioutil.ReadAll(r.Body)
@@ -62,7 +74,9 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
-	const templ = `<!DOCTYPE html><html><head><title>Φορτίο (fortio) version {{.Version}}</title></head>
+	if !JsonOnly {
+		// Normal html mode
+		const templ = `<!DOCTYPE html><html><head><title>Φορτίο (fortio) version {{.Version}}</title></head>
 <body>
 <h1>Φορτίο (fortio) version {{.Version}} 'UI'</h1>
 <p>
@@ -79,12 +93,16 @@ Running load test ...
 <form>
 <div>
 URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo" /> <br />
-QPS: <input type="text" name="qps" size="6" value="100" /> <br />
-Duration: <input type="text" name="t" size="12" value="5s" /> <br />
+QPS: <input type="text" name="qps" size="6" value="1000" />
+Duration: <input type="text" name="t" size="6" value="5s" /> <br />
+Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
+Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
+Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
+JSON output: <input type="checkbox" name="json" /> <br />
 <input type="submit" name="load" value="Start"/>
 </div>
 </form>
-<p>Or</p>
+<p><i>Or</i></p>
 <form method="POST">
 <div>
 Use with caution, will end this server: <input type="submit" name="exit" value="Exit" />
@@ -96,35 +114,48 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 </html>
 {{end}}
 `
-	t := template.Must(template.New("htmlOut").Parse(templ))
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	err := t.Execute(w, &struct {
-		R         *http.Request
-		Version   string
-		DebugPath string
-		DoExit    bool
-		UpTime    time.Duration
-		StartTime string
-		DoLoad    bool
-		Port      int
-	}{r, periodic.Version, debugPath, DoExit,
-		RoundDuration(time.Since(startTime)), startTime.Format(time.UnixDate),
-		DoLoad, httpPort})
-	if err != nil {
-		log.Critf("Template execution failed: %v", err)
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+		t := template.Must(template.New("htmlOut").Parse(templ))
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		err := t.Execute(w, &struct {
+			R         *http.Request
+			Version   string
+			DebugPath string
+			DoExit    bool
+			UpTime    time.Duration
+			StartTime string
+			DoLoad    bool
+			Port      int
+		}{r, periodic.Version, debugPath, DoExit,
+			RoundDuration(time.Since(startTime)), startTime.Format(time.UnixDate),
+			DoLoad, httpPort})
+		if err != nil {
+			log.Critf("Template execution failed: %v", err)
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+		}
+		if DoLoad || DoExit {
+			flusher.Flush()
+		}
 	}
 	if DoLoad {
-		flusher.Flush()
+		resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
+		percList, _ := stats.ParsePercentiles(r.FormValue("p"))
 		qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 		dur, _ := time.ParseDuration(r.FormValue("t"))
+		c, _ := strconv.Atoi(r.FormValue("c"))
+		out := io.Writer(w)
+		if JsonOnly {
+			out = os.Stderr
+		}
 		ro := periodic.RunnerOptions{
-			QPS:      qps,
-			Duration: dur,
-			Out:      w,
+			QPS:         qps,
+			Duration:    dur,
+			Out:         out,
+			NumThreads:  c,
+			Resolution:  resolution,
+			Percentiles: percList,
 		}
 		o := HTTPRunnerOptions{
 			RunnerOptions: ro,
@@ -134,20 +165,22 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		if err != nil {
 			w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err)))
 		} else {
-			w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre><hr /><pre>\n",
-				res.Result().DurationHistogram.Count,
-				1000.*res.Result().DurationHistogram.Avg,
-				res.Result().ActualQPS)))
-			j, err := json.MarshalIndent(res, "", "  ")
-			if err != nil {
-				log.Fatalf("Unable to json serialize result: %v", err)
+			if JsonOnly {
+				w.Header().Set("Content-Type", "application/json")
+				j, err := json.MarshalIndent(res, "", "  ")
+				if err != nil {
+					log.Fatalf("Unable to json serialize result: %v", err)
+				}
+				w.Write(j)
+			} else {
+				w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre></body></html>\n",
+					res.Result().DurationHistogram.Count,
+					1000.*res.Result().DurationHistogram.Avg,
+					res.Result().ActualQPS)))
 			}
-			w.Write(j)
-			w.Write([]byte("\n</pre></body></html>\n"))
 		}
 	}
 	if DoExit {
-		flusher.Flush()
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}
 }

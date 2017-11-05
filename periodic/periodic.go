@@ -308,4 +308,6 @@ MainLoop:
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
 		}
 	}
+	// Put back default handling of ^C (for UI server mode)
+	signal.Reset(os.Interrupt)
 }
