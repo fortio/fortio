@@ -49,8 +49,9 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 		DoExit = true
 	}
 	DoLoad := false
+	url := r.FormValue("url")
 	if r.FormValue("load") == "Start" {
-		log.Critf("Exit request from %v", r.RemoteAddr)
+		log.Infof("Start/load request from %v for %s", r.RemoteAddr, url)
 		DoLoad = true
 	}
 	/*
@@ -127,7 +128,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		}
 		o := HTTPRunnerOptions{
 			RunnerOptions: ro,
-			URL:           r.FormValue("url"),
+			URL:           url,
 		}
 		res, err := RunHTTPTest(&o)
 		if err != nil {
@@ -137,7 +138,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 				res.Result().DurationHistogram.Count,
 				1000.*res.Result().DurationHistogram.Avg,
 				res.Result().ActualQPS)))
-			j, err := json.MarshalIndent(res.Result(), "", "  ")
+			j, err := json.MarshalIndent(res, "", "  ")
 			if err != nil {
 				log.Fatalf("Unable to json serialize result: %v", err)
 			}
