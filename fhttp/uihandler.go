@@ -55,12 +55,12 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 		DoExit = true
 	}
 	DoLoad := false
-	JsonOnly := false
+	JSONOnly := false
 	url := r.FormValue("url")
 	if r.FormValue("load") == "Start" {
 		DoLoad = true
 		if r.FormValue("json") == "on" {
-			JsonOnly = true
+			JSONOnly = true
 			log.Infof("Starting JSON only load request from %v for %s", r.RemoteAddr, url)
 		} else {
 			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
@@ -74,7 +74,7 @@ func UIHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	*/
-	if !JsonOnly {
+	if !JSONOnly {
 		// Normal html mode
 		const templ = `<!DOCTYPE html><html><head><title>Φορτίο (fortio) version {{.Version}}</title></head>
 <body>
@@ -120,14 +120,14 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			R         *http.Request
 			Version   string
 			DebugPath string
-			DoExit    bool
-			UpTime    time.Duration
 			StartTime string
-			DoLoad    bool
+			UpTime    time.Duration
 			Port      int
-		}{r, periodic.Version, debugPath, DoExit,
-			RoundDuration(time.Since(startTime)), startTime.Format(time.UnixDate),
-			DoLoad, httpPort})
+			DoExit    bool
+			DoLoad    bool
+		}{r, periodic.Version, debugPath,
+			startTime.Format(time.UnixDate), RoundDuration(time.Since(startTime)),
+			httpPort, DoExit, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -146,7 +146,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		dur, _ := time.ParseDuration(r.FormValue("t"))
 		c, _ := strconv.Atoi(r.FormValue("c"))
 		out := io.Writer(w)
-		if JsonOnly {
+		if JSONOnly {
 			out = os.Stderr
 		}
 		ro := periodic.RunnerOptions{
@@ -163,16 +163,20 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		}
 		res, err := RunHTTPTest(&o)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err)))
+			w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
 		} else {
-			if JsonOnly {
+			if JSONOnly {
 				w.Header().Set("Content-Type", "application/json")
 				j, err := json.MarshalIndent(res, "", "  ")
 				if err != nil {
 					log.Fatalf("Unable to json serialize result: %v", err)
 				}
-				w.Write(j)
+				_, err = w.Write(j)
+				if err != nil {
+					log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+				}
 			} else {
+				// nolint: errcheck
 				w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre></body></html>\n",
 					res.Result().DurationHistogram.Count,
 					1000.*res.Result().DurationHistogram.Avg,
@@ -181,6 +185,6 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		}
 	}
 	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
 	}
 }
