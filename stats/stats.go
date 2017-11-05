@@ -17,9 +17,12 @@ package stats // import "istio.io/fortio/stats"
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
+	"strconv"
+	"strings"
 
 	"istio.io/fortio/log"
 )
@@ -133,6 +136,43 @@ type Histogram struct {
 	Hdata []int32 // n+1 buckets (for last one)
 }
 
+// For export of the data:
+
+// Interval is a range from start to end.
+// Interval are left closed, open right expect the last one which includes Max.
+// ie [Start, End[ with the next one being [PrevEnd, NextEnd[.
+type Interval struct {
+	Start float64
+	End   float64
+}
+
+// Bucket is the data for 1 bucket: an Interval and the occurrence Count for
+// that interval.
+type Bucket struct {
+	Interval
+	Percent float64 // Cumulative percentile
+	Count   int64   // How many in this bucket
+}
+
+// Percentile value for the percentile
+type Percentile struct {
+	Percentile float64 // For this Percentile
+	Value      float64 // value at that Percentile
+}
+
+// HistogramData is the exported Histogram data, a sorted list of intervals
+// covering [Min, Max]. Pure data, so Counter for instance is flattened
+type HistogramData struct {
+	Count       int64
+	Min         float64
+	Max         float64
+	Sum         float64
+	Avg         float64
+	StdDev      float64
+	Data        []Bucket
+	Percentiles []Percentile
+}
+
 // NewHistogram creates a new histogram (sets up the buckets).
 func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
@@ -227,9 +267,16 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	return (prev + (percentile-prevPerc)*(cur-prev)/(perc-prevPerc))
 }
 
-// Print dumps the histogram (and counter) to the provided writer.
-// Also calculates the percentile.
-func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
+// Export translate the internal representation of the histogram data in
+// an externally usable one. Calculates the request Percentiles.
+func (h *Histogram) Export(percentiles []float64) *HistogramData {
+	var res HistogramData
+	res.Count = h.Counter.Count
+	res.Min = h.Counter.Min
+	res.Max = h.Counter.Max
+	res.Sum = h.Counter.Sum
+	res.Avg = h.Counter.Avg()
+	res.StdDev = h.Counter.StdDev()
 	multiplier := h.Divider
 
 	// calculate the last bucket index
@@ -241,22 +288,14 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 		}
 	}
 	if lastIdx == -1 {
-		fmt.Fprintf(out, "%s : no data\n", msg) // nolint: gas
-		return
+		return &res
 	}
 
-	// the base counter part:
-	h.Counter.Print(out, msg)
-	fmt.Fprintln(out, "# range, mid point, percentile, count") // nolint: gas
 	// previous bucket value:
 	prev := histogramBuckets[0]
 	var total int64
 	ctrTotal := float64(h.Count)
-	// we can combine this loop and the calcPercentile() one but it's
-	// easier to read/maintain/test when separated and it's only 2 pass on
-	// very little data
-
-	// output the data of each bucket of the histogram
+	// export the data of each bucket of the histogram
 	for i := 0; i <= lastIdx; i++ {
 		if h.Hdata[i] == 0 {
 			// empty bucket: skip it but update prev which is needed for next iter
@@ -265,34 +304,71 @@ func (h *Histogram) Print(out io.Writer, msg string, percentile float64) {
 			}
 			continue
 		}
-
+		var b Bucket
 		total += int64(h.Hdata[i])
-		// data in each row is separated by comma (",")
-		if i > 0 {
-			fmt.Fprintf(out, ">= %.6g ", multiplier*float64(prev)+h.Offset) // nolint: gas
+		if len(res.Data) == 0 {
+			// First entry, start is min
+			b.Start = h.Min
+		} else {
+			b.Start = multiplier*float64(prev) + h.Offset
 		}
-		perc := 100. * float64(total) / ctrTotal
+		b.Percent = 100. * float64(total) / ctrTotal
 		if i < numBuckets {
 			cur := histogramBuckets[i]
-			fmt.Fprintf(out, "< %.6g ", multiplier*float64(cur)+h.Offset) // nolint: gas
-			midpt := multiplier*float64(prev+cur)/2. + h.Offset
-			fmt.Fprintf(out, ", %.6g ", midpt) // nolint: gas
+			b.End = multiplier*float64(cur) + h.Offset
 			prev = cur
 		} else {
-			fmt.Fprintf(out, ", %.6g ", multiplier*float64(prev)+h.Offset) // nolint: gas
+			// Last Entry
+			b.Start = multiplier*float64(prev) + h.Offset
+			b.End = h.Max
 		}
-		fmt.Fprintf(out, ", %.2f, %d\n", perc, h.Hdata[i]) // nolint: gas
+		b.Count = int64(h.Hdata[i])
+		res.Data = append(res.Data, b)
+	}
+	res.Data[len(res.Data)-1].End = h.Max
+	for _, p := range percentiles {
+		res.Percentiles = append(res.Percentiles, Percentile{p, h.CalcPercentile(p)})
+	}
+	return &res
+}
+
+// Print dumps the histogram (and counter) to the provided writer.
+// Also calculates the percentile.
+func (e *HistogramData) Print(out io.Writer, msg string) {
+	if len(e.Data) == 0 {
+		fmt.Fprintf(out, "%s : no data\n", msg) // nolint: gas
+		return
+	}
+	// the base counter part:
+	fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", // nolint(errorcheck)
+		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
+	fmt.Fprintln(out, "# range, mid point, percentile, count") // nolint: gas
+	sep := "<"
+	for i, b := range e.Data {
+		if i == len(e.Data)-1 {
+			sep = "<=" // last interval is inclusive (of max value)
+		}
+		fmt.Fprintf(out, ">= %.6g %s %.6g , %.6g , %.2f, %d\n", b.Start, sep, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
 
 	// print the information of target percentiles
-	fmt.Fprintf(out, "# target %g%% %.6g\n", percentile, h.CalcPercentile(percentile)) // nolint: gas
+	for _, p := range e.Percentiles {
+		fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+	}
+}
+
+// Print dumps the histogram (and counter) to the provided writer.
+// Also calculates the percentiles. Use Export() once and Print if you
+// are going to need the Export results too.
+func (h *Histogram) Print(out io.Writer, msg string, percentiles []float64) {
+	h.Export(percentiles).Print(out, msg)
 }
 
 // Log Logs the histogram to the counter.
-func (h *Histogram) Log(msg string, percentile float64) {
+func (h *Histogram) Log(msg string, percentiles []float64) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
-	h.Print(w, msg, percentile)
+	h.Print(w, msg, percentiles)
 	w.Flush() // nolint: gas,errcheck
 	log.Infof("%s", b.Bytes())
 }
@@ -344,4 +420,26 @@ func (h *Histogram) Transfer(src *Histogram) {
 		h.Hdata[i] += src.Hdata[i]
 	}
 	src.Reset()
+}
+
+// ParsePercentiles extracts the percentiles from string (flag).
+func ParsePercentiles(percentiles string) ([]float64, error) {
+	percs := strings.Split(percentiles, ",") // will make a size 1 array for empty input!
+	res := make([]float64, 0, len(percs))
+	for _, pStr := range percs {
+		pStr = strings.TrimSpace(pStr)
+		if len(pStr) == 0 {
+			continue
+		}
+		p, err := strconv.ParseFloat(pStr, 64)
+		if err != nil {
+			return res, err
+		}
+		res = append(res, p)
+	}
+	if len(res) == 0 {
+		return res, errors.New("list can't be empty")
+	}
+	log.LogVf("Will use %v for percentiles", res)
+	return res, nil
 }

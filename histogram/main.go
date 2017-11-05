@@ -18,7 +18,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -28,12 +30,17 @@ import (
 
 func main() {
 	var (
-		offsetFlag  = flag.Float64("offset", 0.0, "Offset for the data")
-		dividerFlag = flag.Float64("divider", 1, "Divider/scaling for the data")
-		pFlag       = flag.Float64("p", 90, "Percentile to calculate")
+		offsetFlag      = flag.Float64("offset", 0.0, "Offset for the data")
+		dividerFlag     = flag.Float64("divider", 1, "Divider/scaling for the data")
+		percentilesFlag = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
+		jsonFlag        = flag.Bool("json", false, "Json output")
 	)
 	flag.Parse()
 	h := stats.NewHistogram(*offsetFlag, *dividerFlag)
+	percList, err := stats.ParsePercentiles(*percentilesFlag)
+	if err != nil {
+		log.Fatalf("Unable to extract percentiles from -p: %v", err)
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	linenum := 1
@@ -49,6 +56,13 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		log.Fatalf("Err reading standard input %v", err)
 	}
-	// TODO use ParsePercentiles
-	h.Print(os.Stdout, "Histogram", *pFlag)
+	if *jsonFlag {
+		b, err := json.MarshalIndent(h.Export(percList), "", "  ")
+		if err != nil {
+			log.Fatalf("Unable to create Json: %v", err)
+		}
+		fmt.Print(string(b))
+	} else {
+		h.Print(os.Stdout, "Histogram", percList)
+	}
 }

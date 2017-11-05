@@ -23,18 +23,21 @@
 package periodic // import "istio.io/fortio/periodic"
 
 import (
-	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
+)
+
+const (
+	// Version is the overall package version (used to version json output too).
+	Version = "0.3.0"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -62,13 +65,15 @@ type RunnerOptions struct {
 	NumThreads  int
 	Percentiles []float64
 	Resolution  float64
+	Out         io.Writer
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
-	DurationHistogram *stats.Histogram
+	DurationHistogram *stats.HistogramData
 	ActualQPS         float64
 	ActualDuration    time.Duration
+	Version           string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -85,7 +90,7 @@ func (r *RunnerResults) Result() *RunnerResults {
 
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
-type PeriodicRunner interface {
+type PeriodicRunner interface { // nolint: golint
 	// Starts the run. Returns actual QPS and Histogram of function durations.
 	Run() RunnerResults
 	// Returns the options normalized by constructor - do not mutate
@@ -104,6 +109,9 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.QPS < 0 {
 		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
 		r.QPS = 0
+	}
+	if r.Out == nil {
+		r.Out = os.Stdout
 	}
 	if r.NumThreads == 0 {
 		r.NumThreads = DefaultRunnerOptions.NumThreads
@@ -162,12 +170,12 @@ func (r *periodicRunner) Run() RunnerResults {
 			numCalls = 0
 		}
 	} else {
-		fmt.Printf("Starting at max qps with %d thread(s) [gomax %d] ",
+		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
 		if hasDuration {
-			fmt.Printf("for %v\n", r.Duration)
+			fmt.Fprintf(r.Out, "for %v\n", r.Duration)
 		} else {
-			fmt.Printf("until interrupted\n")
+			fmt.Fprintf(r.Out, "until interrupted\n")
 		}
 	}
 	start := time.Now()
@@ -201,28 +209,26 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
-	fmt.Printf("Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
 		// user.
 		if percentNegative > 5 {
-			sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
-			fmt.Printf("WARNING %.2f%% of sleep were falling behind\n", percentNegative)
+			sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
+			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative)
 		} else {
 			if log.Log(log.Verbose) {
-				sleepTime.Print(os.Stdout, "Aggregated Sleep Time", 50)
+				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
 			} else {
-				sleepTime.Counter.Print(os.Stdout, "Sleep times")
+				sleepTime.Counter.Print(r.Out, "Sleep times")
 			}
 		}
 	}
-	functionDuration.Print(os.Stdout, "Aggregated Function Time", r.Percentiles[0])
-	for _, p := range r.Percentiles[1:] {
-		fmt.Printf("# target %g%% %.6g\n", p, functionDuration.CalcPercentile(p))
-	}
-	return RunnerResults{functionDuration, actualQPS, elapsed}
+	result := RunnerResults{functionDuration.Export(r.Percentiles), actualQPS, elapsed, Version}
+	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+	return result
 }
 
 // runOne runs in 1 go routine.
@@ -239,7 +245,7 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	MainLoop:
+MainLoop:
 	for {
 		fStart := time.Now()
 		if hasDuration && fStart.After(endTime) {
@@ -295,33 +301,11 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	actualQPS := float64(i) / elapsed.Seconds()
 	log.Infof("%s ended after %v : %d calls. qps=%g", tIDStr, elapsed, i, actualQPS)
 	if (numCalls > 0) && log.Log(log.Verbose) {
-		funcTimes.Log(tIDStr+" Function duration", 99)
+		funcTimes.Log(tIDStr+" Function duration", []float64{99})
 		if log.Log(log.Debug) {
-			sleepTimes.Log(tIDStr+" Sleep time", 50)
+			sleepTimes.Log(tIDStr+" Sleep time", []float64{50})
 		} else {
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
 		}
 	}
-}
-
-// ParsePercentiles extracts the percentiles from string (flag).
-func ParsePercentiles(percentiles string) ([]float64, error) {
-	percs := strings.Split(percentiles, ",") // will make a size 1 array for empty input!
-	res := make([]float64, 0, len(percs))
-	for _, pStr := range percs {
-		pStr = strings.TrimSpace(pStr)
-		if len(pStr) == 0 {
-			continue
-		}
-		p, err := strconv.ParseFloat(pStr, 64)
-		if err != nil {
-			return res, err
-		}
-		res = append(res, p)
-	}
-	if len(res) == 0 {
-		return res, errors.New("list can't be empty")
-	}
-	log.LogVf("Will use %v for percentiles", res)
-	return res, nil
 }

@@ -33,8 +33,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"istio.io/fortio/fgrpc"
-	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 )
 
@@ -69,7 +69,7 @@ func pingServer(port int) {
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", fhttp.Version, port)
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", periodic.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
@@ -119,8 +119,8 @@ func pingClientCall(serverAddr string, n int, payload string) {
 		skewHistogram.Record(float64(x) / 1000.)
 		msg = res2
 	}
-	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", 50)
-	rttHistogram.Print(os.Stdout, "RTT histogram usec", 50)
+	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", []float64{50})
+	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 }
 
 func grpcHealthCheck(serverAddr string, svcname string, n int) {
@@ -143,7 +143,7 @@ func grpcHealthCheck(serverAddr string, svcname string, n int) {
 		statuses[res1.Status]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)
 	}
-	rttHistogram.Print(os.Stdout, "RTT histogram usec", 50)
+	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 	fmt.Printf("Statuses %v\n", statuses)
 }
 

@@ -34,10 +34,14 @@ import (
 // Also is the internal type used per thread/goroutine.
 type HTTPRunnerResults struct {
 	periodic.RunnerResults
-	client      Fetcher
-	RetCodes    map[int]int64
-	Sizes       *stats.Histogram
-	HeaderSizes *stats.Histogram
+	client   Fetcher
+	RetCodes map[int]int64
+	// internal type/data
+	sizes       *stats.Histogram
+	headerSizes *stats.Histogram
+	// exported result
+	Sizes       *stats.HistogramData
+	HeaderSizes *stats.HistogramData
 }
 
 // Used globally / in TestHttp() TODO: change periodic.go to carry caller defined context
@@ -53,8 +57,8 @@ func TestHTTP(t int) {
 	size := len(body)
 	log.Debugf("Got in %3d hsz %d sz %d", code, headerSize, size)
 	httpstate[t].RetCodes[code]++
-	httpstate[t].Sizes.Record(float64(size))
-	httpstate[t].HeaderSizes.Record(float64(headerSize))
+	httpstate[t].sizes.Record(float64(size))
+	httpstate[t].headerSizes.Record(float64(headerSize))
 }
 
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
@@ -79,10 +83,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
+	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := HTTPRunnerResults{
 		RetCodes:    make(map[int]int64),
-		Sizes:       stats.NewHistogram(0, 100),
-		HeaderSizes: stats.NewHistogram(0, 5),
+		sizes:       stats.NewHistogram(0, 100),
+		headerSizes: stats.NewHistogram(0, 5),
 	}
 	httpstate = make([]HTTPRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
@@ -107,8 +112,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
 		}
 		// Setup the stats for each 'thread'
-		httpstate[i].Sizes = total.Sizes.Clone()
-		httpstate[i].HeaderSizes = total.HeaderSizes.Clone()
+		httpstate[i].sizes = total.sizes.Clone()
+		httpstate[i].headerSizes = total.headerSizes.Clone()
 		httpstate[i].RetCodes = make(map[int]int64)
 	}
 
@@ -131,7 +136,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		runtime.GC()               // get up-to-date statistics
 		pprof.WriteHeapProfile(fm) // nolint:gas,errcheck
 		fm.Close()                 // nolint:gas,errcheck
-		fmt.Printf("Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
+		fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
 	// Numthreads may have reduced
 	numThreads = r.Options().NumThreads
@@ -144,19 +149,21 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			}
 			total.RetCodes[k] += httpstate[i].RetCodes[k]
 		}
-		total.Sizes.Transfer(httpstate[i].Sizes)
-		total.HeaderSizes.Transfer(httpstate[i].HeaderSizes)
+		total.sizes.Transfer(httpstate[i].sizes)
+		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		fmt.Printf("Code %3d : %d\n", k, total.RetCodes[k])
+		fmt.Fprintf(out, "Code %3d : %d\n", k, total.RetCodes[k])
 	}
+	total.HeaderSizes = total.headerSizes.Export([]float64{50})
+	total.Sizes = total.sizes.Export([]float64{50})
 	if log.LogVerbose() {
-		total.HeaderSizes.Print(os.Stdout, "Response Header Sizes Histogram", 50)
-		total.Sizes.Print(os.Stdout, "Response Body/Total Sizes Histogram", 50)
+		total.HeaderSizes.Print(out, "Response Header Sizes Histogram")
+		total.Sizes.Print(out, "Response Body/Total Sizes Histogram")
 	} else {
-		total.HeaderSizes.Counter.Print(os.Stdout, "Response Header Sizes")
-		total.Sizes.Counter.Print(os.Stdout, "Response Body/Total Sizes")
+		total.headerSizes.Counter.Print(out, "Response Header Sizes")
+		total.sizes.Counter.Print(out, "Response Body/Total Sizes")
 	}
 	return &total, nil
 }

@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -61,8 +62,7 @@ func init() {
 
 // Version is the fortio package version (TODO:auto gen/extract).
 const (
-	Version       = "v0.3.0"
-	userAgent     = "istio/fortio-" + Version
+	userAgent     = "istio/fortio-" + periodic.Version
 	retcodeOffset = len("HTTP/1.X ")
 )
 
@@ -530,7 +530,8 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 		}
 		c.size += n
 		if log.LogDebug() {
-			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s", n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
+			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
+				n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
 		}
 		if !parsedHeaders && c.parseHeaders {
 			// enough to get the code?
@@ -707,9 +708,11 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func closingServer(listener net.Listener) (err error) {
+func closingServer(listener net.Listener) error {
+	var err error
 	for {
-		c, err := listener.Accept()
+		var c net.Conn
+		c, err = listener.Accept()
 		if err != nil {
 			log.Errf("Accept error in dummy server %v", err)
 			break
@@ -721,7 +724,7 @@ func closingServer(listener net.Listener) (err error) {
 			break
 		}
 	}
-	return
+	return err
 }
 
 // DynamicHTTPServer listens on an available port, sets up an http or https
@@ -799,7 +802,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
-	buf.WriteString(Version)
+	buf.WriteString(periodic.Version)
 	buf.WriteString(" echo debug server on ")
 	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
@@ -852,7 +855,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 
 // EchoServer starts a debug / echo http server on the given port.
 func EchoServer(port int, debugPath string) {
-	fmt.Printf("Fortio %s echo server listening on port %v\n", Version, port)
+	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
