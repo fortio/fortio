@@ -33,8 +33,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"istio.io/fortio/fgrpc"
-	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 )
 
@@ -69,7 +69,7 @@ func pingServer(port int) {
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", fhttp.Version, port)
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", periodic.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}

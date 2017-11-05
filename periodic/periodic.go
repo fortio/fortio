@@ -33,6 +33,11 @@ import (
 	"istio.io/fortio/stats"
 )
 
+const (
+	// Version is the overall package version (used to version json output too).
+	Version = "0.3.0"
+)
+
 // DefaultRunnerOptions are the default values for options (do not mutate!).
 // This is only useful for initializing flag default values.
 // You do not need to use this directly, you can pass a newly created
@@ -58,6 +63,7 @@ type RunnerOptions struct {
 	NumThreads  int
 	Percentiles []float64
 	Resolution  float64
+	Out         *os.File
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -65,6 +71,7 @@ type RunnerResults struct {
 	DurationHistogram *stats.HistogramData
 	ActualQPS         float64
 	ActualDuration    time.Duration
+	Version           string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -100,6 +107,9 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.QPS < 0 {
 		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
 		r.QPS = 0
+	}
+	if r.Out == nil {
+		r.Out = os.Stdout
 	}
 	if r.NumThreads == 0 {
 		r.NumThreads = DefaultRunnerOptions.NumThreads
@@ -147,10 +157,10 @@ func (r *periodicRunner) Run() RunnerResults {
 		}
 		numCalls /= int64(r.NumThreads)
 		totalCalls := numCalls * int64(r.NumThreads)
-		fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+		fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
 			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
 	} else {
-		fmt.Printf("Starting at max qps with %d thread(s) [gomax %d] for %v\n",
+		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] for %v\n",
 			r.NumThreads, runtime.GOMAXPROCS(0), r.Duration)
 	}
 	start := time.Now()
@@ -184,25 +194,25 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
-	fmt.Printf("Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
 		// user.
 		if percentNegative > 5 {
-			sleepTime.Print(os.Stdout, "Aggregated Sleep Time", []float64{50})
-			fmt.Printf("WARNING %.2f%% of sleep were falling behind\n", percentNegative)
+			sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
+			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative)
 		} else {
 			if log.Log(log.Verbose) {
-				sleepTime.Print(os.Stdout, "Aggregated Sleep Time", []float64{50})
+				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
 			} else {
-				sleepTime.Counter.Print(os.Stdout, "Sleep times")
+				sleepTime.Counter.Print(r.Out, "Sleep times")
 			}
 		}
 	}
-	result := RunnerResults{functionDuration.Export(r.Percentiles), actualQPS, elapsed}
-	result.DurationHistogram.Print(os.Stdout, "Aggregated Function Time")
+	result := RunnerResults{functionDuration.Export(r.Percentiles), actualQPS, elapsed, Version}
+	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	return result
 }
 
