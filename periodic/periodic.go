@@ -24,6 +24,7 @@ package periodic // import "istio.io/fortio/periodic"
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"sync"
@@ -63,7 +64,7 @@ type RunnerOptions struct {
 	NumThreads  int
 	Percentiles []float64
 	Resolution  float64
-	Out         *os.File
+	Out         io.Writer
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
