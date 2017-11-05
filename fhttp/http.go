@@ -52,6 +52,11 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
+	// UI and Debug prefix/paths (read in ui handler)
+	uiPath    string
+	debugPath string
+	startTime time.Time
+	httpPort  int
 )
 
 func init() {
@@ -61,7 +66,7 @@ func init() {
 
 // Version is the fortio package version (TODO:auto gen/extract).
 const (
-	Version       = "0.3.0"
+	Version       = "0.3.1"
 	userAgent     = "istio/fortio-" + Version
 	retcodeOffset = len("HTTP/1.X ")
 )
@@ -800,7 +805,9 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(Version)
-	buf.WriteString(" echo debug server on ")
+	buf.WriteString(" echo debug server up for ")
+	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
+	buf.WriteString(" on ")
 	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
@@ -850,11 +857,21 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// EchoServer starts a debug / echo http server on the given port.
-func EchoServer(port int, debugPath string) {
+// TODO: consider moving the ui to another package to keep the echo server small
+
+// Server starts a debug / echo http server on the given port.
+func Server(port int, debugpath string, uipath string) {
+	uiPath = uipath
+	debugPath = debugpath
+	startTime = time.Now()
+	httpPort = port
 	fmt.Printf("Fortio %s echo server listening on port %v\n", Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
+	}
+	if uiPath != "" {
+		http.HandleFunc(uiPath, UIHandler)
+		fmt.Printf("UI started - visit:\nhttp://localhost:%d%s\n", port, uiPath)
 	}
 	http.HandleFunc("/", EchoHandler)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {

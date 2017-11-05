@@ -49,7 +49,7 @@ func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
 		fhttp.Version,
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and http echo servers), grpcping (grpc client)",
+		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:") // nolint(gas)
 	flag.PrintDefaults()
@@ -76,6 +76,7 @@ var (
 	echoPortFlag    = flag.Int("http-port", 8080, "http echo server port")
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug", "http echo server URI for debug, empty turns off that part (more secure)")
+	uiPathFlag      = flag.String("ui-path", "/fortio", "http server URI for UI, empty turns off that part (more secure)")
 	jsonFlag        = flag.String("json", "", "Json output to provided file (empty no json output)")
 
 	headersFlags flagList
@@ -102,7 +103,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go fhttp.EchoServer(*echoPortFlag, *echoDbgPathFlag)
+		go fhttp.Server(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
