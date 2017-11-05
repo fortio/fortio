@@ -123,6 +123,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		ro := periodic.RunnerOptions{
 			QPS:      qps,
 			Duration: dur,
+			Out:      w,
 		}
 		o := HTTPRunnerOptions{
 			RunnerOptions: ro,
