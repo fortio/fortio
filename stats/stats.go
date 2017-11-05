@@ -161,9 +161,12 @@ type Percentile struct {
 }
 
 // HistogramData is the exported Histogram data, a sorted list of intervals
-// covering [Min, Max]
+// covering [Min, Max]. Pure data, so Counter for instance is flattened
 type HistogramData struct {
-	Counter
+	Count       int64
+	Min         float64
+	Max         float64
+	Sum         float64
 	Avg         float64
 	StdDev      float64
 	Data        []Bucket
@@ -268,7 +271,10 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 // an externally usable one. Calculates the request Percentiles.
 func (h *Histogram) Export(percentiles []float64) *HistogramData {
 	var res HistogramData
-	res.Counter = h.Counter
+	res.Count = h.Counter.Count
+	res.Min = h.Counter.Min
+	res.Max = h.Counter.Max
+	res.Sum = h.Counter.Sum
 	res.Avg = h.Counter.Avg()
 	res.StdDev = h.Counter.StdDev()
 	multiplier := h.Divider

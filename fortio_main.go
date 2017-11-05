@@ -159,7 +159,7 @@ func fortioLoad() {
 		res.Result().ActualQPS)
 	jsonFileName := *jsonFlag
 	if len(jsonFileName) > 0 {
-		j, err := json.MarshalIndent(res.Result(), "", "  ")
+		j, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
 			log.Fatalf("Unable to json serialize result: %v", err)
 		}
