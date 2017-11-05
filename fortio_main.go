@@ -180,11 +180,16 @@ func fortioLoad() {
 				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
 			}
 		}
-		n, err := f.Write(j)
+		n, err := f.Write(append(j, '\n'))
 		if err != nil {
 			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
 		}
-		f.Write([]byte{'\n'})
+		if f != os.Stdout {
+			err := f.Close()
+			if err != nil {
+				log.Fatalf("Close error for %s: %v", jsonFileName, err)
+			}
+		}
 		fmt.Fprintf(out, "Succesfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }
