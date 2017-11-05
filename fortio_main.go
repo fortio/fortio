@@ -63,7 +63,7 @@ var (
 	// Very small default so people just trying with random URLs don't affect the target
 	qpsFlag         = flag.Float64("qps", 8.0, "Queries Per Seconds or 0 for no wait")
 	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test")
+	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
 	percentilesFlag = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
@@ -120,8 +120,15 @@ func fortioLoad() {
 	url := flag.Arg(0)
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
-	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
-		periodic.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs",
+		periodic.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+	if *durationFlag <= 0 {
+		// Infinite mode is determined by having a negative duration value
+		*durationFlag = -1
+		fmt.Printf(", until interrupted: %s\n", url)
+	} else {
+		fmt.Printf(", for %v: %s\n", *durationFlag, url)
+	}
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
 		Duration:    *durationFlag,
