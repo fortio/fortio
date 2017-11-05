@@ -146,7 +146,7 @@ type Interval struct {
 	End   float64
 }
 
-// Bucket is the data for 1 bucket: an Interval and the occurence Count for
+// Bucket is the data for 1 bucket: an Interval and the occurrence Count for
 // that interval.
 type Bucket struct {
 	Interval

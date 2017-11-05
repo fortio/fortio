@@ -75,8 +75,9 @@ var (
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
 	echoPortFlag    = flag.Int("http-port", 8080, "http echo server port")
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
-	echoDbgPathFlag = flag.String("echo-debug-path", "/debug", "http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag        = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
+	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
+		"http echo server URI for debug, empty turns off that part (more secure)")
+	jsonFlag = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
 
 	headersFlags flagList
 	percList     []float64
@@ -85,8 +86,10 @@ var (
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
-	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb, "Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader, "Check for Connection: Close Header")
+	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
+		"Size of the buffer (max data size) for the optimized http client in kbytes")
+	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
+		"Check for Connection: Close Header")
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
 	}
@@ -190,6 +193,6 @@ func fortioLoad() {
 				log.Fatalf("Close error for %s: %v", jsonFileName, err)
 			}
 		}
-		fmt.Fprintf(out, "Succesfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+		fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }

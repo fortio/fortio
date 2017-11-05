@@ -16,8 +16,15 @@ install: test
 test:
 	go test -timeout 30s -race ./...
 
+# Run once
+install-linters:
+	go get -u github.com/alecthomas/gometalinter
+	gometalinter -i -u
+
+# TODO: do something about cyclomatic complexity
 lint:
-	gometalinter ./...
+	gometalinter --vendored-linters --enable-all \
+			--exclude=.pb.go --disable=gocyclo --line-length=132 ./...
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: install docker-version docker-push-internal
@@ -40,4 +47,4 @@ docker-push-internal: docker-internal
 authorize:
 	gcloud docker --authorize-only --project istio-testing
 
-.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint
+.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint install-linters
