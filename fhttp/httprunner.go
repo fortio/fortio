@@ -83,6 +83,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
+	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := HTTPRunnerResults{
 		RetCodes:    make(map[int]int64),
 		sizes:       stats.NewHistogram(0, 100),
@@ -135,7 +136,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		runtime.GC()               // get up-to-date statistics
 		pprof.WriteHeapProfile(fm) // nolint:gas,errcheck
 		fm.Close()                 // nolint:gas,errcheck
-		fmt.Fprintf(o.Out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
+		fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
 	// Numthreads may have reduced
 	numThreads = r.Options().NumThreads
@@ -153,16 +154,16 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		fmt.Fprintf(o.Out, "Code %3d : %d\n", k, total.RetCodes[k])
+		fmt.Fprintf(out, "Code %3d : %d\n", k, total.RetCodes[k])
 	}
 	total.HeaderSizes = total.headerSizes.Export([]float64{50})
 	total.Sizes = total.sizes.Export([]float64{50})
 	if log.LogVerbose() {
-		total.HeaderSizes.Print(o.Out, "Response Header Sizes Histogram")
-		total.Sizes.Print(o.Out, "Response Body/Total Sizes Histogram")
+		total.HeaderSizes.Print(out, "Response Header Sizes Histogram")
+		total.Sizes.Print(out, "Response Body/Total Sizes Histogram")
 	} else {
-		total.headerSizes.Counter.Print(o.Out, "Response Header Sizes")
-		total.sizes.Counter.Print(o.Out, "Response Body/Total Sizes")
+		total.headerSizes.Counter.Print(out, "Response Header Sizes")
+		total.sizes.Counter.Print(out, "Response Body/Total Sizes")
 	}
 	return &total, nil
 }
