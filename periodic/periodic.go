@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -117,7 +118,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.Resolution <= 0 {
 		r.Resolution = DefaultRunnerOptions.Resolution
 	}
-	if r.Duration <= 0 {
+	if r.Duration == 0 {
 		r.Duration = DefaultRunnerOptions.Duration
 	}
 	return r
@@ -136,25 +137,38 @@ func (r *periodicRunner) Options() *RunnerOptions {
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
 	useQPS := (r.QPS > 0)
+	hasDuration := (r.Duration > 0)
 	var numCalls int64
 	if useQPS {
-		numCalls = int64(r.QPS * r.Duration.Seconds())
-		if numCalls < 2 {
-			log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
-			numCalls = 2
-			r.NumThreads = 1
+		// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
+		if hasDuration {
+			numCalls = int64(r.QPS * r.Duration.Seconds())
+			if numCalls < 2 {
+				log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
+				numCalls = 2
+				r.NumThreads = 1
+			}
+			if int64(2*r.NumThreads) > numCalls {
+				r.NumThreads = int(numCalls / 2)
+				log.Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
+			}
+			numCalls /= int64(r.NumThreads)
+			totalCalls := numCalls * int64(r.NumThreads)
+			fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+		} else {
+			fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
+			numCalls = 0
 		}
-		if int64(2*r.NumThreads) > numCalls {
-			r.NumThreads = int(numCalls / 2)
-			log.Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
-		}
-		numCalls /= int64(r.NumThreads)
-		totalCalls := numCalls * int64(r.NumThreads)
-		fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
 	} else {
-		fmt.Printf("Starting at max qps with %d thread(s) [gomax %d] for %v\n",
-			r.NumThreads, runtime.GOMAXPROCS(0), r.Duration)
+		fmt.Printf("Starting at max qps with %d thread(s) [gomax %d] ",
+			r.NumThreads, runtime.GOMAXPROCS(0))
+		if hasDuration {
+			fmt.Printf("for %v\n", r.Duration)
+		} else {
+			fmt.Printf("until interrupted\n")
+		}
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
@@ -218,10 +232,17 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	tIDStr := fmt.Sprintf("T%03d", id)
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
+	hasDuration := (r.Duration > 0)
 	f := r.Function
+
+	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	MainLoop:
 	for {
 		fStart := time.Now()
-		if fStart.After(endTime) {
+		if hasDuration && fStart.After(endTime) {
 			if !useQPS {
 				// max speed test reached end:
 				break
@@ -238,18 +259,36 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 		i++
 		// if using QPS / pre calc expected call # mode:
 		if useQPS {
-			if i >= numCalls {
+			if hasDuration && i >= numCalls {
 				break // expected exit for that mode
 			}
 			elapsed := time.Since(start)
-			// This next line is tricky - such as for 2s duration and 1qps there is 1
-			// sleep of 2s between the 2 calls and for 3qps in 1sec 2 sleep of 1/2s etc
-			targetElapsedInSec := (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
+			var targetElapsedInSec float64
+			if hasDuration {
+				// This next line is tricky - such as for 2s duration and 1qps there is 1
+				// sleep of 2s between the 2 calls and for 3qps in 1sec 2 sleep of 1/2s etc
+				targetElapsedInSec = (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
+			} else {
+				// Calculate the target elapsed when in endless execution
+				targetElapsedInSec = float64(i) / perThreadQPS
+			}
 			targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
 			sleepDuration := targetElapsedDuration - elapsed
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
-			time.Sleep(sleepDuration)
+			select {
+			case <-c:
+				break MainLoop
+			case <-time.After(sleepDuration):
+				// continue normal execution
+			}
+		} else { // Not using QPS
+			select {
+			case <-c:
+				break MainLoop
+			default:
+				// continue to the next iteration
+			}
 		}
 	}
 	elapsed := time.Since(start)
