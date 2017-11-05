@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	"istio.io/fortio/log"
+	"istio.io/fortio/periodic"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -66,8 +67,7 @@ func init() {
 
 // Version is the fortio package version (TODO:auto gen/extract).
 const (
-	Version       = "0.3.1"
-	userAgent     = "istio/fortio-" + Version
+	userAgent     = "istio/fortio-" + periodic.Version
 	retcodeOffset = len("HTTP/1.X ")
 )
 
@@ -804,7 +804,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
-	buf.WriteString(Version)
+	buf.WriteString(periodic.Version)
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
@@ -865,7 +865,7 @@ func Server(port int, debugpath string, uipath string) {
 	debugPath = debugpath
 	startTime = time.Now()
 	httpPort = port
-	fmt.Printf("Fortio %s echo server listening on port %v\n", Version, port)
+	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}

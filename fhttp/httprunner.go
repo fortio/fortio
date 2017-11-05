@@ -131,7 +131,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		runtime.GC()               // get up-to-date statistics
 		pprof.WriteHeapProfile(fm) // nolint:gas,errcheck
 		fm.Close()                 // nolint:gas,errcheck
-		fmt.Printf("Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
+		fmt.Fprintf(o.Out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
 	// Numthreads may have reduced
 	numThreads = r.Options().NumThreads
@@ -149,14 +149,14 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		fmt.Printf("Code %3d : %d\n", k, total.RetCodes[k])
+		fmt.Fprintf(o.Out, "Code %3d : %d\n", k, total.RetCodes[k])
 	}
 	if log.LogVerbose() {
-		total.HeaderSizes.Print(os.Stdout, "Response Header Sizes Histogram", []float64{50})
-		total.Sizes.Print(os.Stdout, "Response Body/Total Sizes Histogram", []float64{50})
+		total.HeaderSizes.Print(o.Out, "Response Header Sizes Histogram", []float64{50})
+		total.Sizes.Print(o.Out, "Response Body/Total Sizes Histogram", []float64{50})
 	} else {
-		total.HeaderSizes.Counter.Print(os.Stdout, "Response Header Sizes")
-		total.Sizes.Counter.Print(os.Stdout, "Response Body/Total Sizes")
+		total.HeaderSizes.Counter.Print(o.Out, "Response Header Sizes")
+		total.Sizes.Counter.Print(o.Out, "Response Body/Total Sizes")
 	}
 	return &total, nil
 }

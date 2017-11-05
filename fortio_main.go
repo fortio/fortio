@@ -47,7 +47,7 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
-		fhttp.Version,
+		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
@@ -76,8 +76,8 @@ var (
 	echoPortFlag    = flag.Int("http-port", 8080, "http echo server port")
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug", "http echo server URI for debug, empty turns off that part (more secure)")
+	jsonFlag        = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
 	uiPathFlag      = flag.String("ui-path", "/fortio", "http server URI for UI, empty turns off that part (more secure)")
-	jsonFlag        = flag.String("json", "", "Json output to provided file (empty no json output)")
 
 	headersFlags flagList
 	percList     []float64
@@ -119,14 +119,16 @@ func fortioLoad() {
 	}
 	url := flag.Arg(0)
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
-	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
-		fhttp.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
+	out := os.Stderr
+	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs, for %v: %s\n",
+		periodic.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0), *durationFlag, url)
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
 		Duration:    *durationFlag,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
+		Out:         out,
 	}
 	var res periodic.HasRunnerResult
 	if *grpcFlag {
@@ -148,10 +150,10 @@ func fortioLoad() {
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
-		fmt.Printf("Aborting because %v\n", err)
+		fmt.Fprintf(out, "Aborting because %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
+	fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		res.Result().DurationHistogram.Count,
 		*numThreadsFlag,
 		1000.*res.Result().DurationHistogram.Avg,
@@ -162,14 +164,21 @@ func fortioLoad() {
 		if err != nil {
 			log.Fatalf("Unable to json serialize result: %v", err)
 		}
-		f, err := os.Create(jsonFileName)
-		if err != nil {
-			log.Fatalf("Unable to create %s: %v", jsonFileName, err)
+		var f *os.File
+		if jsonFileName == "-" {
+			f = os.Stdout
+			jsonFileName = "stdout"
+		} else {
+			f, err = os.Create(jsonFileName)
+			if err != nil {
+				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
+			}
 		}
 		n, err := f.Write(j)
 		if err != nil {
 			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
 		}
-		fmt.Printf("Succesfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+		f.Write([]byte{'\n'})
+		fmt.Fprintf(out, "Succesfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }

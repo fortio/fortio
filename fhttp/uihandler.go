@@ -106,7 +106,9 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		StartTime string
 		DoLoad    bool
 		Port      int
-	}{r, Version, debugPath, DoExit, RoundDuration(time.Since(startTime)), startTime.Format(time.UnixDate), DoLoad, httpPort})
+	}{r, periodic.Version, debugPath, DoExit,
+		RoundDuration(time.Since(startTime)), startTime.Format(time.UnixDate),
+		DoLoad, httpPort})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
