@@ -46,8 +46,6 @@ func RoundDuration(d time.Duration) time.Duration {
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
-// TODO: Add -H (Headers) equivalent support
-
 // UIHandler is the UI handler creating the web forms and processing them.
 func UIHandler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
