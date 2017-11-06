@@ -92,6 +92,11 @@ Duration: <input type="text" name="t" size="6" value="5s" /> <br />
 Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
 Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
 Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
+Headers: <br />
+{{ range $name, $vals := .Headers }}{{range $val := $vals}}
+<input type="text" name="H" size=40 value="{{$name}}: {{ $val }}" /> <br />
+{{end}}{{end}}
+<input type="text" name="H" size=40 value="" /> <br />
 JSON output: <input type="checkbox" name="json" /> <br />
 <input type="submit" name="load" value="Start"/>
 </div>
@@ -112,6 +117,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		err := t.Execute(w, &struct {
 			R         *http.Request
+			Headers   http.Header
 			Version   string
 			DebugPath string
 			StartTime string
@@ -119,7 +125,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			Port      int
 			DoExit    bool
 			DoLoad    bool
-		}{r, periodic.Version, debugPath,
+		}{r, extraHeaders, periodic.Version, debugPath,
 			startTime.Format(time.UnixDate), RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
@@ -139,6 +145,22 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 		dur, _ := time.ParseDuration(r.FormValue("t"))
 		c, _ := strconv.Atoi(r.FormValue("c"))
+		firstHeader := true
+		for _, header := range r.Form["H"] {
+			if len(header) == 0 {
+				continue
+			}
+			log.LogVf("adding header %v", header)
+			if firstHeader {
+				// If there is at least 1 non empty H passed, reset the header list
+				extraHeaders = make(http.Header)
+				firstHeader = false
+			}
+			err := AddAndValidateExtraHeader(header)
+			if err != nil {
+				log.Errf("Error adding custom headers: %v", err)
+			}
+		}
 		out := io.Writer(w)
 		if JSONOnly {
 			out = os.Stderr
