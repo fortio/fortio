@@ -32,5 +32,5 @@ var (
 
 func main() {
 	flag.Parse()
-	fhttp.EchoServer(*port, *debugPath)
+	fhttp.Serve(*port, *debugPath)
 }

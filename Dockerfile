@@ -11,5 +11,5 @@ COPY --from=build /go/src/istio.io/fortio.bin /usr/local/bin/fortio
 EXPOSE 8079
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/fortio"]
-# start the server mode (grpc ping on 8079, http echo on 8080) by default
+# start the server mode (grpc ping on 8079, http echo and UI on 8080) by default
 CMD ["server"]

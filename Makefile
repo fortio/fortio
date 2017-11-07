@@ -21,10 +21,12 @@ install-linters:
 	go get -u github.com/alecthomas/gometalinter
 	gometalinter -i -u
 
+# Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
+LINT_PACKAGES:=./...
 # TODO: do something about cyclomatic complexity
 lint:
-	gometalinter --vendored-linters --enable-all \
-			--exclude=.pb.go --disable=gocyclo --line-length=132 ./...
+	gometalinter --vendored-linters --enable-all --aggregate \
+			--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: install docker-version docker-push-internal

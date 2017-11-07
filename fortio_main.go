@@ -28,6 +28,7 @@ import (
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/ui"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -49,7 +50,7 @@ func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and http echo servers), grpcping (grpc client)",
+		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:") // nolint(gas)
 	flag.PrintDefaults()
@@ -77,7 +78,8 @@ var (
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
+	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
+	uiPathFlag = flag.String("ui-path", "/fortio", "http server URI for UI, empty turns off that part (more secure)")
 
 	headersFlags flagList
 	percList     []float64
@@ -105,7 +107,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go fhttp.EchoServer(*echoPortFlag, *echoDbgPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()

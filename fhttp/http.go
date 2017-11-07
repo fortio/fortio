@@ -40,6 +40,8 @@ type Fetcher interface {
 	Fetch() (int, []byte, int)
 }
 
+// TODO: make this usable simultaneously by multiple requests (for instance not share global state like extra headers)
+
 var (
 	// ExtraHeaders to be added to each request.
 	extraHeaders http.Header
@@ -53,10 +55,12 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
+	// Start time of the server (used in debug handler for uptime).
+	startTime time.Time
 )
 
 func init() {
-	extraHeaders = make(http.Header)
+	ResetHeaders()
 	extraHeaders.Add("User-Agent", userAgent)
 }
 
@@ -65,6 +69,16 @@ const (
 	userAgent     = "istio/fortio-" + periodic.Version
 	retcodeOffset = len("HTTP/1.X ")
 )
+
+// ResetHeaders resets all the headers, including the User-Agent one.
+func ResetHeaders() {
+	extraHeaders = make(http.Header)
+}
+
+// GetHeaders returns the current set of headers.
+func GetHeaders() http.Header {
+	return extraHeaders
+}
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
 func AddAndValidateExtraHeader(h string) error {
@@ -797,13 +811,23 @@ environment:
 }
 */
 
+// RoundDuration rounds to 10th of second. Only for positive durations.
+// TODO: switch to Duration.Round once switched to go 1.9
+func RoundDuration(d time.Duration) time.Duration {
+	tenthSec := int64(100 * time.Millisecond)
+	r := int64(d+50*time.Millisecond) / tenthSec
+	return time.Duration(tenthSec * r)
+}
+
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(periodic.Version)
-	buf.WriteString(" echo debug server on ")
+	buf.WriteString(" echo debug server up for ")
+	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
+	buf.WriteString(" on ")
 	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
@@ -853,8 +877,9 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// EchoServer starts a debug / echo http server on the given port.
-func EchoServer(port int, debugPath string) {
+// Serve starts a debug / echo http server on the given port.
+func Serve(port int, debugPath string) {
+	startTime = time.Now()
 	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
