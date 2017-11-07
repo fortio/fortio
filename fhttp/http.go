@@ -40,7 +40,7 @@ type Fetcher interface {
 	Fetch() (int, []byte, int)
 }
 
-// TODO: make this usable simultaneously by multiple request (for instance not share global state like extra headers)
+// TODO: make this usable simultaneously by multiple requests (for instance not share global state like extra headers)
 
 var (
 	// ExtraHeaders to be added to each request.
