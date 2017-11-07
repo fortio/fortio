@@ -17,6 +17,7 @@ package fhttp
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"istio.io/fortio/log"
 )
@@ -211,6 +212,25 @@ func TestDebugSummary(t *testing.T) {
 	for _, tst := range tests {
 		if actual := DebugSummary([]byte(tst.input), 8); actual != tst.expected {
 			t.Errorf("Got '%s', expected '%s' for DebugSummary(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+func TestRoundDuration(t *testing.T) {
+	var tests = []struct {
+		input    time.Duration
+		expected time.Duration
+	}{
+		{0, 0},
+		{1200 * time.Millisecond, 1200 * time.Millisecond},
+		{1201 * time.Millisecond, 1200 * time.Millisecond},
+		{1249 * time.Millisecond, 1200 * time.Millisecond},
+		{1250 * time.Millisecond, 1300 * time.Millisecond},
+		{1299 * time.Millisecond, 1300 * time.Millisecond},
+	}
+	for _, tst := range tests {
+		if actual := RoundDuration(tst.input); actual != tst.expected {
+			t.Errorf("Got %v, expected %v for RoundDuration(%v)", actual, tst.expected, tst.input)
 		}
 	}
 }

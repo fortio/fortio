@@ -17,7 +17,7 @@
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 
-package fhttp // import "istio.io/fortio/fhttp"
+package ui // import "istio.io/fortio/ui"
 
 import (
 	"encoding/json"
@@ -30,24 +30,25 @@ import (
 	"syscall"
 	"time"
 
+	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 )
 
-// RoundDuration rounds to 10th of second. Only for positive durations.
-// TODO: switch to Duration.Round once switched to go 1.9
-func RoundDuration(d time.Duration) time.Duration {
-	tenthSec := int64(100 * time.Millisecond)
-	r := int64(d+50*time.Millisecond) / tenthSec
-	return time.Duration(tenthSec * r)
-}
+var (
+	// UI and Debug prefix/paths (read in ui handler)
+	uiPath    string
+	debugPath string
+	startTime time.Time
+	httpPort  int
+)
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
-// UIHandler is the UI handler creating the web forms and processing them.
-func UIHandler(w http.ResponseWriter, r *http.Request) {
+// Handler is the UI handler creating the web forms and processing them.
+func Handler(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	DoExit := false
 	if r.FormValue("exit") == "Exit" {
@@ -123,8 +124,8 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			Port      int
 			DoExit    bool
 			DoLoad    bool
-		}{r, extraHeaders, periodic.Version, debugPath,
-			startTime.Format(time.UnixDate), RoundDuration(time.Since(startTime)),
+		}{r, fhttp.GetHeaders(), periodic.Version, debugPath,
+			startTime.Format(time.UnixDate), fhttp.RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
@@ -151,10 +152,10 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			log.LogVf("adding header %v", header)
 			if firstHeader {
 				// If there is at least 1 non empty H passed, reset the header list
-				extraHeaders = make(http.Header)
+				fhttp.ResetHeaders()
 				firstHeader = false
 			}
-			err := AddAndValidateExtraHeader(header)
+			err := fhttp.AddAndValidateExtraHeader(header)
 			if err != nil {
 				log.Errf("Error adding custom headers: %v", err)
 			}
@@ -171,11 +172,11 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			Resolution:  resolution,
 			Percentiles: percList,
 		}
-		o := HTTPRunnerOptions{
+		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions: ro,
 			URL:           url,
 		}
-		res, err := RunHTTPTest(&o)
+		res, err := fhttp.RunHTTPTest(&o)
 		if err != nil {
 			w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
 		} else {
@@ -201,4 +202,18 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 	if DoExit {
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
 	}
+}
+
+// Serve starts the fhttp.Serve() plus the UI server on the given port
+// and paths (empty disables the feature).
+func Serve(port int, debugpath string, uipath string) {
+	uiPath = uipath
+	debugPath = debugpath
+	startTime = time.Now()
+	httpPort = port
+	if uiPath != "" {
+		http.HandleFunc(uiPath, Handler)
+		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
+	}
+	fhttp.Serve(port, debugpath)
 }

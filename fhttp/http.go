@@ -56,14 +56,11 @@ var (
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
 	// UI and Debug prefix/paths (read in ui handler)
-	uiPath    string
-	debugPath string
 	startTime time.Time
-	httpPort  int
 )
 
 func init() {
-	extraHeaders = make(http.Header)
+	ResetHeaders()
 	extraHeaders.Add("User-Agent", userAgent)
 }
 
@@ -72,6 +69,16 @@ const (
 	userAgent     = "istio/fortio-" + periodic.Version
 	retcodeOffset = len("HTTP/1.X ")
 )
+
+// ResetHeaders resets all the headers, including the User-Agent one.
+func ResetHeaders() {
+	extraHeaders = make(http.Header)
+}
+
+// GetHeaders returns the current set of headers.
+func GetHeaders() http.Header {
+	return extraHeaders
+}
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
 func AddAndValidateExtraHeader(h string) error {
@@ -804,6 +811,14 @@ environment:
 }
 */
 
+// RoundDuration rounds to 10th of second. Only for positive durations.
+// TODO: switch to Duration.Round once switched to go 1.9
+func RoundDuration(d time.Duration) time.Duration {
+	tenthSec := int64(100 * time.Millisecond)
+	r := int64(d+50*time.Millisecond) / tenthSec
+	return time.Duration(tenthSec * r)
+}
+
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
@@ -862,21 +877,12 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO: consider moving the ui to another package to keep the echo server small
-
-// Server starts a debug / echo http server on the given port.
-func Server(port int, debugpath string, uipath string) {
-	uiPath = uipath
-	debugPath = debugpath
+// Serve starts a debug / echo http server on the given port.
+func Serve(port int, debugPath string) {
 	startTime = time.Now()
-	httpPort = port
 	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
-	}
-	if uiPath != "" {
-		http.HandleFunc(uiPath, UIHandler)
-		fmt.Printf("UI started - visit:\nhttp://localhost:%d%s\n", port, uiPath)
 	}
 	http.HandleFunc("/", EchoHandler)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {

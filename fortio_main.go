@@ -28,6 +28,7 @@ import (
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/ui"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -106,7 +107,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go fhttp.Server(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
