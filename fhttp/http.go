@@ -55,7 +55,7 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
-	// UI and Debug prefix/paths (read in ui handler)
+	// Start time of the server (used in debug handler for uptime).
 	startTime time.Time
 )
 

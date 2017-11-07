@@ -37,11 +37,13 @@ import (
 )
 
 var (
-	// UI and Debug prefix/paths (read in ui handler)
-	uiPath    string
+	// UI and Debug prefix/paths (read in ui handler).
+	logoPath  string
 	debugPath string
+	// Used to construct default URL to self.
+	httpPort int
+	// Start time of the UI Server (for uptime info).
 	startTime time.Time
-	httpPort  int
 )
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -69,9 +71,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !JSONOnly {
 		// Normal html mode
-		const templ = `<!DOCTYPE html><html><head><title>Φορτίο (fortio) version {{.Version}}</title></head>
-<body>
-<h1>Φορτίο (fortio) version {{.Version}} 'UI'</h1>
+		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}} control UI</title></head>
+<body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
+<img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
+<img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
+<img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
+<h1>Φορτίο (fortio) v{{.Version}} control UI</h1>
 <p>
 Up for {{.UpTime}} (since {{.StartTime}})
 </p>
@@ -118,13 +123,14 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			R         *http.Request
 			Headers   http.Header
 			Version   string
+			LogoPath  string
 			DebugPath string
 			StartTime string
 			UpTime    time.Duration
 			Port      int
 			DoExit    bool
 			DoLoad    bool
-		}{r, fhttp.GetHeaders(), periodic.Version, debugPath,
+		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath,
 			startTime.Format(time.UnixDate), fhttp.RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
@@ -204,16 +210,25 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 	}
 }
 
+// LogoHandler is the handler for the logo
+func LogoHandler(w http.ResponseWriter, r *http.Request) {
+	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	w.Header().Set("Content-Type", "image/svg+xml")
+	// nolint: errcheck, lll
+	w.Write([]byte(`<svg viewBox="0 0 424 650" xmlns="http://www.w3.org/2000/svg"><g fill="#fff"><path d="M422 561l-292 79-118-79 411 0Zm-282-350v280l-138 45 138-325ZM173 11l0 480 250 47-250-527Z"/></g></svg>`))
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature).
-func Serve(port int, debugpath string, uipath string) {
-	uiPath = uipath
+func Serve(port int, debugpath string, uiPath string) {
 	debugPath = debugpath
 	startTime = time.Now()
 	httpPort = port
 	if uiPath != "" {
 		http.HandleFunc(uiPath, Handler)
 		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
+		logoPath = uiPath + "/logo.svg"
+		http.HandleFunc(logoPath, LogoHandler)
 	}
 	fhttp.Serve(port, debugpath)
 }
