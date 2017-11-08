@@ -38,8 +38,9 @@ import (
 
 var (
 	// UI and Debug prefix/paths (read in ui handler).
-	logoPath  string
-	debugPath string
+	logoPath    string
+	debugPath   string
+	chartJSPath string
 	// Used to construct default URL to self.
 	httpPort int
 	// Start time of the UI Server (for uptime info).
@@ -51,7 +52,7 @@ var (
 
 // Handler is the UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	LogRequest(r)
 	DoExit := false
 	if r.FormValue("exit") == "Exit" {
 		log.Critf("Exit request from %v", r.RemoteAddr)
@@ -71,7 +72,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !JSONOnly {
 		// Normal html mode
-		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}} control UI</title></head>
+		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}} control UI</title>
+<script src="{{.ChartJSPath}}"></script>
+</head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
 <img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
 <img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
@@ -82,6 +85,8 @@ Up for {{.UpTime}} (since {{.StartTime}})
 </p>
 <p>
 {{if .DoLoad}}
+<canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
+<br/>
 Running load test ...
 <pre>
 {{else}}
@@ -120,17 +125,18 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		t := template.Must(template.New("htmlOut").Parse(templ))
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		err := t.Execute(w, &struct {
-			R         *http.Request
-			Headers   http.Header
-			Version   string
-			LogoPath  string
-			DebugPath string
-			StartTime string
-			UpTime    time.Duration
-			Port      int
-			DoExit    bool
-			DoLoad    bool
-		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath,
+			R           *http.Request
+			Headers     http.Header
+			Version     string
+			LogoPath    string
+			DebugPath   string
+			ChartJSPath string
+			StartTime   string
+			UpTime      time.Duration
+			Port        int
+			DoExit      bool
+			DoLoad      bool
+		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.UnixDate), fhttp.RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
@@ -198,10 +204,95 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 				}
 			} else {
 				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre></body></html>\n",
-					res.Result().DurationHistogram.Count,
-					1000.*res.Result().DurationHistogram.Avg,
-					res.Result().ActualQPS)))
+				w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+					res.DurationHistogram.Count,
+					1000.*res.DurationHistogram.Avg,
+					res.ActualQPS)))
+				w.Write([]byte(`var dataP = [{x: 0, y: 0}, `)) // nolint: errcheck
+				for i, it := range res.DurationHistogram.Data {
+					var x float64
+					if i == len(res.DurationHistogram.Data)-1 {
+						//last point we use the end part (max)
+						x = 1000. * it.End
+					} else {
+						x = 1000. * (it.Start + it.End) / 2.
+					}
+					// nolint: errcheck
+					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
+				}
+				w.Write([]byte(`];var dataH = [`)) // nolint: errcheck
+				for _, it := range res.DurationHistogram.Data {
+					startX := 1000. * it.Start
+					endX := 1000. * it.End
+					// nolint: errcheck
+					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
+				}
+				// nolint: errcheck
+				w.Write([]byte(`];
+					var chartEl = document.getElementById('chart1');
+					chartEl.style.visibility='visible';
+					var ctx = chartEl.getContext('2d');
+					var chart = new Chart(ctx, {
+							type: 'line',
+					    data: {datasets: [
+								{
+            		label: 'Cumulative %',
+								data: dataP,
+								fill: false,
+								yAxisID: 'P',
+								stepped: true,
+								backgroundColor: 'rgba(134, 87, 167, 1)',
+								borderColor: 'rgba(134, 87, 167, 1)',
+							},
+								{
+	            		label: 'Histogram: Count',
+									data: dataH,
+									yAxisID: 'H',
+									pointStyle: 'line',
+						      borderColor: 'rgba(87, 167, 134, .9)',
+									backgroundColor: 'rgba(87, 167, 134, .75)'
+								}]
+						  },
+							options: {
+									elements: {
+										line: {
+											tension: 0, // disables bezier curves
+										}
+									},
+					        scales: {
+					            xAxes: [{
+					                type: 'linear',
+													scaleLabel : {
+														display: true,
+														labelString: 'Latency in ms'
+													}
+					            }],
+											yAxes: [{
+												id: 'P',
+												position: 'right',
+												ticks: {
+													beginAtZero: true,
+												},
+												scaleLabel : {
+													display: true,
+													labelString: '%'
+												}
+										},
+											{
+												id: 'H',
+												ticks: {
+													beginAtZero: true,
+												},
+												scaleLabel : {
+													display: true,
+													labelString: 'Count'
+												}
+											}]
+					        }
+					    }
+					});
+					</script>
+					</body></html>`))
 			}
 		}
 	}
@@ -212,10 +303,34 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 
 // LogoHandler is the handler for the logo
 func LogoHandler(w http.ResponseWriter, r *http.Request) {
-	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	LogRequest(r)
 	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 	// nolint: errcheck, lll
 	w.Write([]byte(`<svg viewBox="0 0 424 650" xmlns="http://www.w3.org/2000/svg"><g fill="#fff"><path d="M422 561l-292 79-118-79 411 0Zm-282-350v280l-138 45 138-325ZM173 11l0 480 250 47-250-527Z"/></g></svg>`))
+}
+
+// LogRequest logs the incoming request, including headers when loglevel is verbose
+func LogRequest(r *http.Request) {
+	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	if log.LogVerbose() {
+		for name, headers := range r.Header {
+			for _, h := range headers {
+				log.LogVf("Header %v: %v\n", name, h)
+			}
+		}
+	}
+}
+
+// ChartJSHandler is the handler for the Chart.js library
+func ChartJSHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r)
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
+	_, err := w.Write([]byte(chartjs))
+	if err != nil {
+		log.Errf("Error writing JS lib to %v: %v", r.RemoteAddr, err)
+	}
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
@@ -229,6 +344,8 @@ func Serve(port int, debugpath string, uiPath string) {
 		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
 		logoPath = uiPath + "/logo.svg"
 		http.HandleFunc(logoPath, LogoHandler)
+		chartJSPath = uiPath + "/Chart.min.js"
+		http.HandleFunc(chartJSPath, ChartJSHandler)
 	}
 	fhttp.Serve(port, debugpath)
 }
