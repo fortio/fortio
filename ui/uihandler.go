@@ -171,7 +171,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 				fhttp.ResetHeaders()
 				firstHeader = false
 			}
-			err := fhttp.AddAndValidateExtraHeader(header)
+			err = fhttp.AddAndValidateExtraHeader(header)
 			if err != nil {
 				log.Errf("Error adding custom headers: %v", err)
 			}

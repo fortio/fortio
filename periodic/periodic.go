@@ -114,7 +114,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 		r.QPS = DefaultRunnerOptions.QPS
 	} else if r.QPS < 0 {
 		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
-		r.QPS = 0
+		r.QPS = -1
 	}
 	if r.Out == nil {
 		r.Out = os.Stdout
