@@ -154,7 +154,11 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 		resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
 		percList, _ := stats.ParsePercentiles(r.FormValue("p"))
 		qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
-		dur, _ := time.ParseDuration(r.FormValue("t"))
+		durStr := r.FormValue("t")
+		dur, err := time.ParseDuration(durStr)
+		if err != nil {
+			log.Errf("Error parsing duration '%s': %v", durStr, err)
+		}
 		c, _ := strconv.Atoi(r.FormValue("c"))
 		firstHeader := true
 		for _, header := range r.Form["H"] {
@@ -248,11 +252,22 @@ var chart = new Chart(ctx, {
    label: 'Histogram: Count',
    data: dataH,
    yAxisID: 'H',
-   pointStyle: 'line',
+   pointStyle: 'rect',
+   radius: 1,
    borderColor: 'rgba(87, 167, 134, .9)',
    backgroundColor: 'rgba(87, 167, 134, .75)'
   }]},
   options: {
+   title: {
+    display: true,
+		fontStyle: 'normal',
+    text: ['Histogram at `))
+				// nolint: errcheck
+				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual)','%d connections for %s (actual %v)",
+					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration))))
+				// nolint: errcheck
+				w.Write([]byte(`'],
+    },
     elements: {
      line: {
       tension: 0, // disables bezier curves
@@ -263,7 +278,7 @@ var chart = new Chart(ctx, {
         type: 'linear',
         scaleLabel : {
          display: true,
-         labelString: 'Latency in ms'
+         labelString: 'Response time in ms'
         }
       }],
       yAxes: [{

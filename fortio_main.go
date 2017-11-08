@@ -62,7 +62,7 @@ func usage(msgs ...interface{}) {
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
-	qpsFlag         = flag.Float64("qps", 8.0, "Queries Per Seconds or 0 for no wait")
+	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
 	percentilesFlag = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
@@ -132,6 +132,9 @@ func fortioLoad() {
 		fmt.Printf(", until interrupted: %s\n", url)
 	} else {
 		fmt.Printf(", for %v: %s\n", *durationFlag, url)
+	}
+	if *qpsFlag <= 0 {
+		*qpsFlag = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
 	}
 	ro := periodic.RunnerOptions{
 		QPS:         *qpsFlag,
