@@ -229,70 +229,69 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 				}
 				// nolint: errcheck
 				w.Write([]byte(`];
-					var chartEl = document.getElementById('chart1');
-					chartEl.style.visibility='visible';
-					var ctx = chartEl.getContext('2d');
-					var chart = new Chart(ctx, {
-							type: 'line',
-					    data: {datasets: [
-								{
-            		label: 'Cumulative %',
-								data: dataP,
-								fill: false,
-								yAxisID: 'P',
-								stepped: true,
-								backgroundColor: 'rgba(134, 87, 167, 1)',
-								borderColor: 'rgba(134, 87, 167, 1)',
-							},
-								{
-	            		label: 'Histogram: Count',
-									data: dataH,
-									yAxisID: 'H',
-									pointStyle: 'line',
-						      borderColor: 'rgba(87, 167, 134, .9)',
-									backgroundColor: 'rgba(87, 167, 134, .75)'
-								}]
-						  },
-							options: {
-									elements: {
-										line: {
-											tension: 0, // disables bezier curves
-										}
-									},
-					        scales: {
-					            xAxes: [{
-					                type: 'linear',
-													scaleLabel : {
-														display: true,
-														labelString: 'Latency in ms'
-													}
-					            }],
-											yAxes: [{
-												id: 'P',
-												position: 'right',
-												ticks: {
-													beginAtZero: true,
-												},
-												scaleLabel : {
-													display: true,
-													labelString: '%'
-												}
-										},
-											{
-												id: 'H',
-												ticks: {
-													beginAtZero: true,
-												},
-												scaleLabel : {
-													display: true,
-													labelString: 'Count'
-												}
-											}]
-					        }
-					    }
-					});
-					</script>
-					</body></html>`))
+var chartEl = document.getElementById('chart1');
+chartEl.style.visibility='visible';
+var ctx = chartEl.getContext('2d');
+var chart = new Chart(ctx, {
+  type: 'line',
+  data: {datasets: [
+  {
+   label: 'Cumulative %',
+   data: dataP,
+   fill: false,
+   yAxisID: 'P',
+   stepped: true,
+   backgroundColor: 'rgba(134, 87, 167, 1)',
+   borderColor: 'rgba(134, 87, 167, 1)',
+  },
+  {
+   label: 'Histogram: Count',
+   data: dataH,
+   yAxisID: 'H',
+   pointStyle: 'line',
+   borderColor: 'rgba(87, 167, 134, .9)',
+   backgroundColor: 'rgba(87, 167, 134, .75)'
+  }]},
+  options: {
+    elements: {
+     line: {
+      tension: 0, // disables bezier curves
+     }
+    },
+    scales: {
+      xAxes: [{
+        type: 'linear',
+        scaleLabel : {
+         display: true,
+         labelString: 'Latency in ms'
+        }
+      }],
+      yAxes: [{
+       id: 'P',
+       position: 'right',
+       ticks: {
+        beginAtZero: true,
+       },
+       scaleLabel : {
+        display: true,
+        labelString: '%'
+       }
+       },
+      {
+       id: 'H',
+       ticks: {
+        beginAtZero: true,
+       },
+       scaleLabel : {
+        display: true,
+        labelString: 'Count'
+       }
+      }]
+    }
+  }
+});
+</script>
+</body></html>`))
 			}
 		}
 	}
