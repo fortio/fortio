@@ -225,11 +225,16 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
 				}
 				w.Write([]byte(`];var dataH = [`)) // nolint: errcheck
+				prev := 1000. * res.DurationHistogram.Data[0].Start
 				for _, it := range res.DurationHistogram.Data {
 					startX := 1000. * it.Start
 					endX := 1000. * it.End
+					if startX != prev {
+						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX)))
+					}
 					// nolint: errcheck
 					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
+					prev = endX
 				}
 				// nolint: errcheck
 				w.Write([]byte(`];
