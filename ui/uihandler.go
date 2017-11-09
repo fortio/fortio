@@ -52,7 +52,7 @@ var (
 
 // TODO: break down into functions to generate the x,y data that can be unit tested
 // and a function to process the result and produce the graph and one for the UI/form
-// and triggering the run seperately.
+// and triggering the run separately.
 
 // Handler is the UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +237,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 					startX := 1000. * it.Start
 					endX := 1000. * it.End
 					if startX != prev {
-						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX)))
+						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX))) // nolint: errcheck
 					}
 					// nolint: errcheck
 					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
