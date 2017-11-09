@@ -89,7 +89,9 @@ Up for {{.UpTime}} (since {{.StartTime}})
 </p>
 <br />
 {{if .DoLoad}}
+<div class="chart-container" style="position: relative; height:65vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
+</div>
 <div id="running">
 <br/>
 Running load test... Results pending...
@@ -269,9 +271,11 @@ var chart = new Chart(ctx, {
    backgroundColor: 'rgba(87, 167, 134, .75)'
   }]},
   options: {
+  responsive: true,
+   maintainAspectRatio: false,
    title: {
     display: true,
-		fontStyle: 'normal',
+    fontStyle: 'normal',
     text: ['Histogram at `))
 				// nolint: errcheck
 				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual)','%d connections for %s (actual %v)",
