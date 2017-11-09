@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.3.1"
+	Version = "0.3.2"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -45,6 +45,7 @@ const (
 // You do not need to use this directly, you can pass a newly created
 // RunnerOptions and 0 valued fields will be reset to these defaults.
 var DefaultRunnerOptions = RunnerOptions{
+	QPS:         8,
 	Duration:    5 * time.Second,
 	NumThreads:  4,
 	Percentiles: []float64{90.0},
@@ -71,8 +72,11 @@ type RunnerOptions struct {
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
 	DurationHistogram *stats.HistogramData
+	RequestedQPS      string
+	RequestedDuration string
 	ActualQPS         float64
 	ActualDuration    time.Duration
+	NumThreads        int
 	Version           string
 }
 
@@ -106,9 +110,11 @@ type periodicRunner struct {
 // internal version, returning the concrete implementation.
 func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	r := &periodicRunner{*opts} // by default just copy the input params
-	if r.QPS < 0 {
+	if r.QPS == 0 {
+		r.QPS = DefaultRunnerOptions.QPS
+	} else if r.QPS < 0 {
 		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
-		r.QPS = 0
+		r.QPS = -1
 	}
 	if r.Out == nil {
 		r.Out = os.Stdout
@@ -147,9 +153,13 @@ func (r *periodicRunner) Run() RunnerResults {
 	useQPS := (r.QPS > 0)
 	hasDuration := (r.Duration > 0)
 	var numCalls int64
+	requestedQPS := "max"
+	requestedDuration := "until stop"
 	if useQPS {
+		requestedQPS = fmt.Sprintf("%.9g", r.QPS)
 		// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 		if hasDuration {
+			requestedDuration = fmt.Sprint(r.Duration)
 			numCalls = int64(r.QPS * r.Duration.Seconds())
 			if numCalls < 2 {
 				log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
@@ -162,10 +172,10 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 			numCalls /= int64(r.NumThreads)
 			totalCalls := numCalls * int64(r.NumThreads)
-			fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
 		} else {
-			fmt.Printf("Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
+			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
 			numCalls = 0
 		}
@@ -173,6 +183,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
 		if hasDuration {
+			requestedDuration = fmt.Sprint(r.Duration)
 			fmt.Fprintf(r.Out, "for %v\n", r.Duration)
 		} else {
 			fmt.Fprintf(r.Out, "until interrupted\n")
@@ -226,7 +237,8 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 		}
 	}
-	result := RunnerResults{functionDuration.Export(r.Percentiles), actualQPS, elapsed, Version}
+	result := RunnerResults{functionDuration.Export(r.Percentiles), requestedQPS, requestedDuration,
+		actualQPS, elapsed, r.NumThreads, Version}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	return result
 }
