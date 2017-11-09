@@ -50,6 +50,10 @@ var (
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
+// TODO: break down into functions to generate the x,y data that can be unit tested
+// and a function to process the result and produce the graph and one for the UI/form
+// and triggering the run seperately.
+
 // Handler is the UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r)
@@ -83,11 +87,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <p>
 Up for {{.UpTime}} (since {{.StartTime}})
 </p>
-<p>
+<br />
 {{if .DoLoad}}
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
+<div id="running">
 <br/>
-Running load test ...
+Running load test... Results pending...
+</div>
 <pre>
 {{else}}
 {{if .DoExit}}
@@ -120,8 +126,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 {{end}}
 </body>
 </html>
-{{end}}
-`
+{{end}}`
 		t := template.Must(template.New("htmlOut").Parse(templ))
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 		err := t.Execute(w, &struct {
@@ -238,6 +243,7 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 				}
 				// nolint: errcheck
 				w.Write([]byte(`];
+document.getElementById('running').style.display='none';
 var chartEl = document.getElementById('chart1');
 chartEl.style.visibility='visible';
 var ctx = chartEl.getContext('2d');
