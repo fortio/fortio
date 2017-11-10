@@ -76,19 +76,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !JSONOnly {
 		// Normal html mode
-		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}} control UI</title>
+		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
 <img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
 <img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
 <img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
-<h1>Φορτίο (fortio) v{{.Version}} control UI</h1>
-<p>
-Up for {{.UpTime}} (since {{.StartTime}})
-</p>
-<br />
+<h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
+<p>Up for {{.UpTime}} (since {{.StartTime}}).
 {{if .DoLoad}}
+<p>Testing {{.TargetURL}}
+<br />
 <div class="chart-container" style="position: relative; height:65vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
 </div>
@@ -139,12 +138,13 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			DebugPath   string
 			ChartJSPath string
 			StartTime   string
+			TargetURL   string
 			UpTime      time.Duration
 			Port        int
 			DoExit      bool
 			DoLoad      bool
 		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.UnixDate), fhttp.RoundDuration(time.Since(startTime)),
+			startTime.Format(time.UnixDate), url, fhttp.RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
