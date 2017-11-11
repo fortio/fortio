@@ -95,6 +95,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <br/>
 Running load test... Results pending...
 </div>
+<div id="update" style="visibility: hidden">
+<form id="updtForm" action="javascript:updateChart()">
+Time axis max <input type="text" name="xmax" size="5" /> ms,
+logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
+Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
+</form>
+</div>
 <pre>
 {{else}}
 {{if .DoExit}}
@@ -248,7 +255,51 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 document.getElementById('running').style.display='none';
 var chartEl = document.getElementById('chart1');
 chartEl.style.visibility='visible';
+document.getElementById('update').style.visibility='visible';
 var ctx = chartEl.getContext('2d');
+var linearXAxe = {
+ type: 'linear',
+ scaleLabel : {
+  display: true,
+  labelString: 'Response time in ms'
+ }
+}
+var logXAxe = {
+  type: 'logarithmic',
+  scaleLabel : {
+   display: true,
+   labelString: 'Response time in ms (log scale)'
+  },
+  ticks: {
+		min: dataH[0].x,
+    callback: function(tick, index, ticks) {return tick.toLocaleString()}
+  }
+}
+var linearYAxe = {
+       id: 'H',
+       type: 'linear',
+       ticks: {
+        beginAtZero: true,
+       },
+       scaleLabel : {
+        display: true,
+        labelString: 'Count'
+       }
+      };
+var logYAxe = {
+ id: 'H',
+ type: 'logarithmic',
+ display: true,
+ ticks: {
+ // min: 1, // log mode works even with 0s
+ // Needed to not get scientific notation display:
+ callback: function(tick, index, ticks) {return tick.toString()}
+ },
+ scaleLabel : {
+ display: true,
+ labelString: 'Count (log scale)'
+ }
+}
 var chart = new Chart(ctx, {
   type: 'line',
   data: {datasets: [
@@ -261,7 +312,7 @@ var chart = new Chart(ctx, {
    backgroundColor: 'rgba(134, 87, 167, 1)',
    borderColor: 'rgba(134, 87, 167, 1)',
   },
-  {
+ {
    label: 'Histogram: Count',
    data: dataH,
    yAxisID: 'H',
@@ -269,7 +320,7 @@ var chart = new Chart(ctx, {
    radius: 1,
    borderColor: 'rgba(87, 167, 134, .9)',
    backgroundColor: 'rgba(87, 167, 134, .75)'
-  }]},
+ }]},
   options: {
   responsive: true,
    maintainAspectRatio: false,
@@ -289,13 +340,9 @@ var chart = new Chart(ctx, {
      }
     },
     scales: {
-      xAxes: [{
-        type: 'linear',
-        scaleLabel : {
-         display: true,
-         labelString: 'Response time in ms'
-        }
-      }],
+      xAxes: [
+       linearXAxe
+      ],
       yAxes: [{
        id: 'P',
        position: 'right',
@@ -307,19 +354,35 @@ var chart = new Chart(ctx, {
         labelString: '%'
        }
        },
-      {
-       id: 'H',
-       ticks: {
-        beginAtZero: true,
-       },
-       scaleLabel : {
-        display: true,
-        labelString: 'Count'
-       }
-      }]
+      linearYAxe
+      ]
     }
   }
 });
+function updateChart() {
+	var form = document.getElementById('updtForm')
+	var formMax = form.xmax.value.trim()
+	var scales = chart.config.options.scales
+	var xaxis = scales.xAxes[0]
+	if (form.xlog.checked) {
+		xaxis = logXAxe
+	} else {
+		xaxis = linearXAxe
+	}
+	if (form.ylog.checked) {
+		chart.config.options.scales = {xAxes: [xaxis], yAxes: [scales.yAxes[0], logYAxe]}
+	} else {
+		chart.config.options.scales = {xAxes: [xaxis], yAxes: [scales.yAxes[0], linearYAxe]}
+	}
+	chart.update()
+	xaxis = chart.config.options.scales.xAxes[0]
+	if (formMax != "" && formMax != "max") {
+		xaxis.ticks.max = parseFloat(formMax)
+	} else {
+		delete xaxis.ticks.max
+	}
+	chart.update()
+}
 </script>
 </body></html>`))
 			}
