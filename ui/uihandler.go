@@ -97,7 +97,9 @@ Running load test... Results pending...
 </div>
 <div id="update" style="visibility: hidden">
 <form id="updtForm" action="javascript:updateChart()">
-Time axis max <input type="text" name="xmax" size="5" /> ms,
+<input type="submit" value="Update:" />
+Time axis min <input type="text" name="xmin" size="5" /> ms,
+max <input type="text" name="xmax" size="5" /> ms,
 logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
 Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
 </form>
@@ -226,9 +228,15 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 					res.DurationHistogram.Count,
 					1000.*res.DurationHistogram.Avg,
 					res.ActualQPS)))
-				w.Write([]byte(`var dataP = [{x: 0, y: 0}, `)) // nolint: errcheck
+				w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
 				for i, it := range res.DurationHistogram.Data {
 					var x float64
+					if i == 0 {
+						// Extra point, 1/N at min itself
+						x = 1000. * it.Start
+						// nolint: errcheck
+						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
+					}
 					if i == len(res.DurationHistogram.Data)-1 {
 						//last point we use the end part (max)
 						x = 1000. * it.End
@@ -261,7 +269,11 @@ var linearXAxe = {
  type: 'linear',
  scaleLabel : {
   display: true,
-  labelString: 'Response time in ms'
+  labelString: 'Response time in ms',
+  ticks: {
+   min: 0,
+   beginAtZero: true,
+  },
  }
 }
 var logXAxe = {
@@ -271,7 +283,7 @@ var logXAxe = {
    labelString: 'Response time in ms (log scale)'
   },
   ticks: {
-		min: dataH[0].x,
+    min: dataH[0].x,
     callback: function(tick, index, ticks) {return tick.toLocaleString()}
   }
 }
@@ -327,10 +339,16 @@ var chart = new Chart(ctx, {
    title: {
     display: true,
     fontStyle: 'normal',
-    text: ['Histogram at `))
+    text: ['Response time histogram at `))
+				percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
+				for _, p := range res.DurationHistogram.Percentiles {
+					percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
+				}
+				percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
 				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual)','%d connections for %s (actual %v)",
-					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration))))
+				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual) %d connections for %s (actual %v)','%s",
+					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
+					percStr)))
 				// nolint: errcheck
 				w.Write([]byte(`'],
     },
@@ -361,25 +379,33 @@ var chart = new Chart(ctx, {
 });
 function updateChart() {
 	var form = document.getElementById('updtForm')
+	var formMin = form.xmin.value.trim()
 	var formMax = form.xmax.value.trim()
 	var scales = chart.config.options.scales
-	var xaxis = scales.xAxes[0]
+	var newAxis
+	var newXMin = parseFloat(formMin)
 	if (form.xlog.checked) {
-		xaxis = logXAxe
+		newXAxis = logXAxe
+		if (formMin == "0") {
+			newXMin = dataH[0].x // log doesn't like 0 xaxis
+		}
 	} else {
-		xaxis = linearXAxe
+		newXAxis = linearXAxe
 	}
 	if (form.ylog.checked) {
-		chart.config.options.scales = {xAxes: [xaxis], yAxes: [scales.yAxes[0], logYAxe]}
+		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], logYAxe]}
 	} else {
-		chart.config.options.scales = {xAxes: [xaxis], yAxes: [scales.yAxes[0], linearYAxe]}
+		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], linearYAxe]}
 	}
 	chart.update()
-	xaxis = chart.config.options.scales.xAxes[0]
+	var newNewXAxis = chart.config.options.scales.xAxes[0]
+	if (formMin != "") {
+		newNewXAxis.ticks.min = newXMin
+	}
 	if (formMax != "" && formMax != "max") {
-		xaxis.ticks.max = parseFloat(formMax)
+		newNewXAxis.ticks.max = parseFloat(formMax)
 	} else {
-		delete xaxis.ticks.max
+		delete newNewXAxis.ticks.max
 	}
 	chart.update()
 }
