@@ -76,25 +76,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !JSONOnly {
 		// Normal html mode
-		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}} control UI</title>
+		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
 <img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
 <img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
 <img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
-<h1>Φορτίο (fortio) v{{.Version}} control UI</h1>
-<p>
-Up for {{.UpTime}} (since {{.StartTime}})
-</p>
-<br />
+<h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
+<p>Up for {{.UpTime}} (since {{.StartTime}}).
 {{if .DoLoad}}
-<div class="chart-container" style="position: relative; height:65vh; width:98vw">
+<p>Testing {{.TargetURL}}
+<br />
+<div class="chart-container" style="position: relative; height:70vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
 </div>
 <div id="running">
 <br/>
 Running load test... Results pending...
+</div>
+<div id="update" style="visibility: hidden">
+<form id="updtForm" action="javascript:updateChart()">
+<input type="submit" value="Update:" />
+Time axis min <input type="text" name="xmin" size="5" /> ms,
+max <input type="text" name="xmax" size="5" /> ms,
+logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
+Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
+</form>
 </div>
 <pre>
 {{else}}
@@ -139,12 +147,13 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 			DebugPath   string
 			ChartJSPath string
 			StartTime   string
+			TargetURL   string
 			UpTime      time.Duration
 			Port        int
 			DoExit      bool
 			DoLoad      bool
 		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.UnixDate), fhttp.RoundDuration(time.Since(startTime)),
+			startTime.Format(time.UnixDate), url, fhttp.RoundDuration(time.Since(startTime)),
 			httpPort, DoExit, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
@@ -219,9 +228,15 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 					res.DurationHistogram.Count,
 					1000.*res.DurationHistogram.Avg,
 					res.ActualQPS)))
-				w.Write([]byte(`var dataP = [{x: 0, y: 0}, `)) // nolint: errcheck
+				w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
 				for i, it := range res.DurationHistogram.Data {
 					var x float64
+					if i == 0 {
+						// Extra point, 1/N at min itself
+						x = 1000. * it.Start
+						// nolint: errcheck
+						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
+					}
 					if i == len(res.DurationHistogram.Data)-1 {
 						//last point we use the end part (max)
 						x = 1000. * it.End
@@ -248,7 +263,55 @@ Use with caution, will end this server: <input type="submit" name="exit" value="
 document.getElementById('running').style.display='none';
 var chartEl = document.getElementById('chart1');
 chartEl.style.visibility='visible';
+document.getElementById('update').style.visibility='visible';
 var ctx = chartEl.getContext('2d');
+var linearXAxe = {
+ type: 'linear',
+ scaleLabel : {
+  display: true,
+  labelString: 'Response time in ms',
+  ticks: {
+   min: 0,
+   beginAtZero: true,
+  },
+ }
+}
+var logXAxe = {
+  type: 'logarithmic',
+  scaleLabel : {
+   display: true,
+   labelString: 'Response time in ms (log scale)'
+  },
+  ticks: {
+    //min: dataH[0].x, // newer chart.js are ok with 0 on x axis too
+    callback: function(tick, index, ticks) {return tick.toLocaleString()}
+  }
+}
+var linearYAxe = {
+       id: 'H',
+       type: 'linear',
+       ticks: {
+        beginAtZero: true,
+       },
+       scaleLabel : {
+        display: true,
+        labelString: 'Count'
+       }
+      };
+var logYAxe = {
+ id: 'H',
+ type: 'logarithmic',
+ display: true,
+ ticks: {
+ // min: 1, // log mode works even with 0s
+ // Needed to not get scientific notation display:
+ callback: function(tick, index, ticks) {return tick.toString()}
+ },
+ scaleLabel : {
+ display: true,
+ labelString: 'Count (log scale)'
+ }
+}
 var chart = new Chart(ctx, {
   type: 'line',
   data: {datasets: [
@@ -261,7 +324,7 @@ var chart = new Chart(ctx, {
    backgroundColor: 'rgba(134, 87, 167, 1)',
    borderColor: 'rgba(134, 87, 167, 1)',
   },
-  {
+ {
    label: 'Histogram: Count',
    data: dataH,
    yAxisID: 'H',
@@ -269,17 +332,23 @@ var chart = new Chart(ctx, {
    radius: 1,
    borderColor: 'rgba(87, 167, 134, .9)',
    backgroundColor: 'rgba(87, 167, 134, .75)'
-  }]},
+ }]},
   options: {
   responsive: true,
    maintainAspectRatio: false,
    title: {
     display: true,
     fontStyle: 'normal',
-    text: ['Histogram at `))
+    text: ['Response time histogram at `))
+				percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
+				for _, p := range res.DurationHistogram.Percentiles {
+					percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
+				}
+				percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
 				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual)','%d connections for %s (actual %v)",
-					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration))))
+				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual) %d connections for %s (actual %v)','%s",
+					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
+					percStr)))
 				// nolint: errcheck
 				w.Write([]byte(`'],
     },
@@ -289,13 +358,9 @@ var chart = new Chart(ctx, {
      }
     },
     scales: {
-      xAxes: [{
-        type: 'linear',
-        scaleLabel : {
-         display: true,
-         labelString: 'Response time in ms'
-        }
-      }],
+      xAxes: [
+       linearXAxe
+      ],
       yAxes: [{
        id: 'P',
        position: 'right',
@@ -307,19 +372,45 @@ var chart = new Chart(ctx, {
         labelString: '%'
        }
        },
-      {
-       id: 'H',
-       ticks: {
-        beginAtZero: true,
-       },
-       scaleLabel : {
-        display: true,
-        labelString: 'Count'
-       }
-      }]
+      linearYAxe
+      ]
     }
   }
 });
+function updateChart() {
+	var form = document.getElementById('updtForm')
+	var formMin = form.xmin.value.trim()
+	var formMax = form.xmax.value.trim()
+	var scales = chart.config.options.scales
+	var newAxis
+	var newXMin = parseFloat(formMin)
+	if (form.xlog.checked) {
+		newXAxis = logXAxe
+		//if (formMin == "0") {
+		//	newXMin = dataH[0].x // log doesn't like 0 xaxis
+		//}
+	} else {
+		newXAxis = linearXAxe
+	}
+	if (form.ylog.checked) {
+		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], logYAxe]}
+	} else {
+		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], linearYAxe]}
+	}
+	chart.update()
+	var newNewXAxis = chart.config.options.scales.xAxes[0]
+	if (formMin != "") {
+		newNewXAxis.ticks.min = newXMin
+	} else {
+		delete newNewXAxis.ticks.min
+	}
+	if (formMax != "" && formMax != "max") {
+		newNewXAxis.ticks.max = parseFloat(formMax)
+	} else {
+		delete newNewXAxis.ticks.max
+	}
+	chart.update()
+}
 </script>
 </body></html>`))
 			}
