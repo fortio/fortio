@@ -88,7 +88,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 {{if .DoLoad}}
 <p>Testing {{.TargetURL}}
 <br />
-<div class="chart-container" style="position: relative; height:65vh; width:98vw">
+<div class="chart-container" style="position: relative; height:70vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
 </div>
 <div id="running">
@@ -283,7 +283,7 @@ var logXAxe = {
    labelString: 'Response time in ms (log scale)'
   },
   ticks: {
-    min: dataH[0].x,
+    //min: dataH[0].x, // newer chart.js are ok with 0 on x axis too
     callback: function(tick, index, ticks) {return tick.toLocaleString()}
   }
 }
@@ -386,9 +386,9 @@ function updateChart() {
 	var newXMin = parseFloat(formMin)
 	if (form.xlog.checked) {
 		newXAxis = logXAxe
-		if (formMin == "0") {
-			newXMin = dataH[0].x // log doesn't like 0 xaxis
-		}
+		//if (formMin == "0") {
+		//	newXMin = dataH[0].x // log doesn't like 0 xaxis
+		//}
 	} else {
 		newXAxis = linearXAxe
 	}
@@ -401,6 +401,8 @@ function updateChart() {
 	var newNewXAxis = chart.config.options.scales.xAxes[0]
 	if (formMin != "") {
 		newNewXAxis.ticks.min = newXMin
+	} else {
+		delete newNewXAxis.ticks.min
 	}
 	if (formMax != "" && formMax != "max") {
 		newNewXAxis.ticks.max = parseFloat(formMax)
