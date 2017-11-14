@@ -38,9 +38,11 @@ import (
 
 var (
 	// UI and Debug prefix/paths (read in ui handler).
-	logoPath    string
-	debugPath   string
-	chartJSPath string
+	uiPath      string // absolute (base)
+	logoPath    string // relative
+	chartJSPath string // relative
+	debugPath   string // mostly relative
+	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
 	httpPort int
 	// Start time of the UI Server (for uptime info).
@@ -50,6 +52,7 @@ var (
 const (
 	logoURI    = "logo.svg"
 	chartjsURI = "Chart.min.js"
+	fetchURI   = "fetch/"
 )
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -132,9 +135,15 @@ JSON output: <input type="checkbox" name="json" /> <br />
 </div>
 </form>
 <p><i>Or</i></p>
+<form action="javascript:document.location += 'fetch/' + document.getElementById('uri').value">
+<div>
+Debug fetch http://<input type="text" id="uri" name="uri" value="" size=50/>
+</div>
+</form>
+<p><i>Or</i></p>
 <form method="POST">
 <div>
-Use with caution, will end this server: <input type="submit" name="exit" value="Exit" />
+Use with caution, will interrupt/end this server: <input type="submit" name="exit" value="Exit" />
 </div>
 </form>
 <p>See also <a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>.
@@ -458,18 +467,46 @@ func ChartJSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// FetcherHandler is the handler for the fetcher/proxy.
+func FetcherHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r)
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Critf("hijacking not supported")
+		return
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		log.Errf("hijacking error %v", err)
+		return
+	}
+	// Don't forget to close the connection:
+	defer conn.Close()
+	url := r.URL.String()[len(fetchPath):]
+	client := fhttp.NewBasicClient("http://"+url, "1.1", false)
+	if client == nil {
+		return // error logged already
+	}
+	_, data, _ := client.Fetch()
+	_, err = conn.Write(data)
+	if err != nil {
+		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
+	}
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(port int, debugpath string, uiPath string) {
-	debugPath = debugpath
+func Serve(port int, debugpath string, uipath string) {
 	startTime = time.Now()
 	httpPort = port
-	if uiPath != "" {
+	if uipath != "" {
+		uiPath = uipath
 		if uiPath[len(uiPath)-1] != '/' {
 			log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
 			uiPath += "/"
 		}
+		debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 		http.HandleFunc(uiPath, Handler)
 		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
 		logoPath = uiPath + logoURI
@@ -479,6 +516,8 @@ func Serve(port int, debugpath string, uiPath string) {
 		// Use relative paths after that (in the html template):
 		logoPath = "./" + logoURI
 		chartJSPath = "./" + chartjsURI
+		fetchPath = uiPath + fetchURI
+		http.HandleFunc(fetchPath, FetcherHandler)
 	}
 	fhttp.Serve(port, debugpath)
 }

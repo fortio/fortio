@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
 	"runtime"
 
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 	"istio.io/fortio/ui"
@@ -80,6 +81,7 @@ var (
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
 	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 
 	headersFlags flagList
 	percList     []float64
@@ -117,11 +119,36 @@ func main() {
 
 }
 
+func fetchURL(url string) {
+	var client fhttp.Fetcher
+	if *stdClientFlag {
+		client = fhttp.NewStdClient(url, 1, false)
+	} else {
+		if *http10Flag {
+			client = fhttp.NewBasicClient(url, "1.0", false)
+		} else {
+			client = fhttp.NewBasicClient(url, "1.1", false)
+		}
+	}
+	if client == nil {
+		return // error logged already
+	}
+	code, data, _ := client.Fetch()
+	if code != http.StatusOK {
+		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
+	}
+	os.Stdout.Write(data)
+}
+
 func fortioLoad() {
 	if len(flag.Args()) != 1 {
 		usage("Error: fortio load needs a url or destination")
 	}
 	url := flag.Arg(0)
+	if *curlFlag {
+		fetchURL(url)
+		return
+	}
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs",

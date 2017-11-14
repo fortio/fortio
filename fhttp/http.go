@@ -48,7 +48,7 @@ var (
 	// Host is treated specially, remember that one separately.
 	hostOverride string
 	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 32k.
-	BufferSizeKb = 32
+	BufferSizeKb = 128
 	// CheckConnectionClosedHeader indicates whether to check for server side connection closed headers.
 	CheckConnectionClosedHeader = false
 	// case doesn't matter for those 3
