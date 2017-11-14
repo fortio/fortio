@@ -26,6 +26,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -40,7 +42,7 @@ var (
 	// UI and Debug prefix/paths (read in ui handler).
 	uiPath      string // absolute (base)
 	logoPath    string // relative
-	chartJSPath string // relative
+  chartJSPath string // relative
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
@@ -50,8 +52,6 @@ var (
 )
 
 const (
-	logoURI    = "logo.svg"
-	chartjsURI = "Chart.min.js"
 	fetchURI   = "fetch/"
 )
 
@@ -444,15 +444,6 @@ function updateChart() {
 	}
 }
 
-// LogoHandler is the handler for the logo
-func LogoHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r)
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
-	// nolint: errcheck, lll
-	w.Write([]byte(`<svg viewBox="0 0 424 650" xmlns="http://www.w3.org/2000/svg"><g fill="#fff"><path d="M422 561l-292 79-118-79 411 0Zm-282-350v280l-138 45 138-325ZM173 11l0 480 250 47-250-527Z"/></g></svg>`))
-}
-
 // LogRequest logs the incoming request, including headers when loglevel is verbose
 func LogRequest(r *http.Request) {
 	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
@@ -465,15 +456,12 @@ func LogRequest(r *http.Request) {
 	}
 }
 
-// ChartJSHandler is the handler for the Chart.js library
-func ChartJSHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r)
-	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
-	_, err := w.Write([]byte(chartjs))
-	if err != nil {
-		log.Errf("Error writing JS lib to %v: %v", r.RemoteAddr, err)
-	}
+// HTTP handler wrapper to add a Cache-Control header for static files.
+func AddCacheControl(h http.Handler) http.Handler {
+	return http.HandlerFunc (func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
+		h.ServeHTTP(w, r)
+	})
 }
 
 // FetcherHandler is the handler for the fetcher/proxy.
@@ -522,16 +510,23 @@ func Serve(port int, debugpath string, uipath string) {
 		debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 		http.HandleFunc(uiPath, Handler)
 		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
-		logoPath = uiPath + logoURI
-		http.HandleFunc(logoPath, LogoHandler)
-		chartJSPath = uiPath + chartjsURI
-		http.HandleFunc(chartJSPath, ChartJSHandler)
-		// Use relative paths after that (in the html template):
-		logoPath = "./" + logoURI
-		chartJSPath = "./" + chartjsURI
+
 		fetchPath = uiPath + fetchURI
 		http.HandleFunc(fetchPath, FetcherHandler)
 		fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 	}
+	logoPath = "../static/img/logo.svg"
+	chartJSPath = "../static/js/Chart.min.js"
+
+	// Serve static contents in the ui/static dir.
+	// We use directory relative to this file to find the static contents, so no matter where is the working dir, static dir could be found.
+	_, filename, _, ok := runtime.Caller(0)
+	if ok {
+		fs := http.FileServer(http.Dir(path.Join(path.Dir(filename), "static")))
+		http.Handle("/static/", AddCacheControl(http.StripPrefix("/static/", fs)))
+	} else {
+		log.Errf("No caller information. Failed to serve static contents.")
+	}
+
 	fhttp.Serve(port, debugpath)
 }
