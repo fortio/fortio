@@ -79,7 +79,7 @@ var (
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
-	uiPathFlag = flag.String("ui-path", "/fortio", "http server URI for UI, empty turns off that part (more secure)")
+	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
 
 	headersFlags flagList
 	percList     []float64
