@@ -137,7 +137,7 @@ func fetchURL(url string) {
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 	}
-	os.Stdout.Write(data)
+	os.Stdout.Write(data) //nolint: errcheck
 }
 
 func fortioLoad() {

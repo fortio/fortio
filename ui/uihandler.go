@@ -481,7 +481,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Don't forget to close the connection:
-	defer conn.Close()
+	defer conn.Close() // nolint: errcheck
 	url := r.URL.String()[len(fetchPath):]
 	client := fhttp.NewBasicClient("http://"+url, "1.1", false)
 	if client == nil {
