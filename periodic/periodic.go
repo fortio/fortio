@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.3.4"
+	Version = "0.3.5"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).

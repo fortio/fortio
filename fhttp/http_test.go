@@ -22,6 +22,36 @@ import (
 	"istio.io/fortio/log"
 )
 
+func TestGetHeaders(t *testing.T) {
+	AddAndValidateExtraHeader("FOo:baR")
+	h := GetHeaders()
+	if len(h) != 2 { // 1 above + user-agent
+		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
+	}
+	if h.Get("Foo") != "baR" {
+		t.Errorf("Foo header mismatch, got '%v'", h.Get("Foo"))
+	}
+	if h.Get("Host") != "" {
+		t.Errorf("Host header should be nil initially, got '%v'", h.Get("Host"))
+	}
+	AddAndValidateExtraHeader("hoSt:   aBc:123")
+	h = GetHeaders()
+	if h.Get("Host") != "aBc:123" {
+		t.Errorf("Host header mismatch, got '%v'", h.Get("Host"))
+	}
+	if len(h) != 3 { // 2 above + user-agent
+		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
+	}
+	ResetHeaders()
+	h = GetHeaders()
+	if h.Get("Host") != "" {
+		t.Errorf("After reset Host header should be nil, got '%v'", h.Get("Host"))
+	}
+	if len(h) != 0 {
+		t.Errorf("Header count mismatch after reset, got %d instead of 1", len(h))
+	}
+}
+
 func TestNewHTTPRequest(t *testing.T) {
 	var tests = []struct {
 		url string // input
