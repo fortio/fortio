@@ -73,11 +73,17 @@ const (
 // ResetHeaders resets all the headers, including the User-Agent one.
 func ResetHeaders() {
 	extraHeaders = make(http.Header)
+	hostOverride = ""
 }
 
 // GetHeaders returns the current set of headers.
 func GetHeaders() http.Header {
-	return extraHeaders
+	if hostOverride == "" {
+		return extraHeaders
+	}
+	cp := extraHeaders
+	cp.Add("Host", hostOverride)
+	return cp
 }
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
