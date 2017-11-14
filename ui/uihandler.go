@@ -47,6 +47,11 @@ var (
 	startTime time.Time
 )
 
+const (
+	logoURI    = "logo.svg"
+	chartjsURI = "Chart.min.js"
+)
+
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
@@ -454,18 +459,26 @@ func ChartJSHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
-// and paths (empty disables the feature).
+// and paths (empty disables the feature). uiPath should end with /
+// (be a 'directory' path)
 func Serve(port int, debugpath string, uiPath string) {
 	debugPath = debugpath
 	startTime = time.Now()
 	httpPort = port
 	if uiPath != "" {
+		if uiPath[len(uiPath)-1] != '/' {
+			log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
+			uiPath += "/"
+		}
 		http.HandleFunc(uiPath, Handler)
 		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
-		logoPath = uiPath + "/logo.svg"
+		logoPath = uiPath + logoURI
 		http.HandleFunc(logoPath, LogoHandler)
-		chartJSPath = uiPath + "/Chart.min.js"
+		chartJSPath = uiPath + chartjsURI
 		http.HandleFunc(chartJSPath, ChartJSHandler)
+		// Use relative paths after that (in the html template):
+		logoPath = "./" + logoURI
+		chartJSPath = "./" + chartjsURI
 	}
 	fhttp.Serve(port, debugpath)
 }
