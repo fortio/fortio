@@ -518,6 +518,7 @@ func Serve(port int, debugpath string, uipath string) {
 		chartJSPath = "./" + chartjsURI
 		fetchPath = uiPath + fetchURI
 		http.HandleFunc(fetchPath, FetcherHandler)
+		fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 	}
 	fhttp.Serve(port, debugpath)
 }
