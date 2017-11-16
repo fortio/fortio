@@ -138,7 +138,7 @@ type Client struct {
 // FetchURL fetches URL content and does error handling/logging.
 // Version not reusing the client.
 func FetchURL(url string) (int, []byte, int) {
-	client := NewStdClient(url, 1, true)
+	client := NewStdClient(url, 1, false, true)
 	if client == nil {
 		return http.StatusBadRequest, []byte("bad url"), 0
 	}
@@ -177,7 +177,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 // NewStdClient creates a client object that wraps the net/http standard client.
-func NewStdClient(url string, numConnections int, compression bool) Fetcher {
+func NewStdClient(url string, numConnections int, keepAlive bool, compression bool) Fetcher {
 	req := newHTTPRequest(url)
 	if req == nil {
 		return nil
@@ -191,6 +191,7 @@ func NewStdClient(url string, numConnections int, compression bool) Fetcher {
 				MaxIdleConns:        numConnections,
 				MaxIdleConnsPerHost: numConnections,
 				DisableCompression:  !compression,
+				DisableKeepAlives:   !keepAlive,
 				Dial: (&net.Dialer{
 					Timeout: 4 * time.Second,
 				}).Dial,
@@ -222,12 +223,13 @@ type BasicClient struct {
 	http10       bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
 	keepAlive    bool
 	parseHeaders bool // don't bother in http/1.0
+	halfClose    bool // allow/do half close when keepAlive is false
 }
 
 // NewBasicClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewBasicClient(urlStr string, proto string, keepAlive bool) Fetcher {
+func NewBasicClient(urlStr string, proto string, keepAlive bool, halfClose bool) Fetcher {
 	// Parse the url, extract components.
 	url, err := url.Parse(urlStr)
 	if err != nil {
@@ -239,7 +241,8 @@ func NewBasicClient(urlStr string, proto string, keepAlive bool) Fetcher {
 		return nil
 	}
 	// note: Host includes the port
-	bc := BasicClient{url: urlStr, host: url.Host, hostname: url.Hostname(), port: url.Port(), http10: (proto == "1.0")}
+	bc := BasicClient{url: urlStr, host: url.Host, hostname: url.Hostname(), port: url.Port(),
+		http10: (proto == "1.0"), halfClose: halfClose}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
 		bc.port = url.Scheme // ie http which turns into 80 later
@@ -493,11 +496,12 @@ func (c *BasicClient) Fetch() (int, []byte, int) {
 		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
 		return c.returnRes()
 	}
-	if !c.keepAlive {
+	if !c.keepAlive && c.halfClose {
 		if err = conn.CloseWrite(); err != nil {
 			log.Errf("Unable to close write to %v %v : %v", conn, c.dest, err)
 			return c.returnRes()
-		}
+		} // else:
+		log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
 	}
 	// Read the response:
 	c.readResponse(conn)

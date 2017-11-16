@@ -70,6 +70,7 @@ type HTTPRunnerOptions struct {
 	DisableFastClient bool   // defaults to fast client
 	HTTP10            bool   // defaults to http1.1
 	DisableKeepAlive  bool   // so default is keep alive
+	AllowHalfClose    bool   // if not keepalive, whether to half close after request
 	Profiler          string // file to save profiles to. defaults to no profiling
 }
 
@@ -93,12 +94,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		// Create a client (and transport) and connect once for each 'thread'
 		if o.DisableFastClient {
-			httpstate[i].client = NewStdClient(o.URL, 1, o.Compression)
+			httpstate[i].client = NewStdClient(o.URL, 1, !o.DisableKeepAlive, o.Compression)
 		} else {
 			if o.HTTP10 {
-				httpstate[i].client = NewBasicClient(o.URL, "1.0", !o.DisableKeepAlive)
+				httpstate[i].client = NewBasicClient(o.URL, "1.0", !o.DisableKeepAlive, o.AllowHalfClose)
 			} else {
-				httpstate[i].client = NewBasicClient(o.URL, "1.1", !o.DisableKeepAlive)
+				httpstate[i].client = NewBasicClient(o.URL, "1.1", !o.DisableKeepAlive, o.AllowHalfClose)
 			}
 		}
 		if httpstate[i].client == nil {

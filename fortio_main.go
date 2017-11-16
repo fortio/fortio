@@ -72,6 +72,7 @@ var (
 	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
+	halfCloseFlag   = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
 	stdClientFlag   = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag      = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
@@ -121,13 +122,16 @@ func main() {
 
 func fetchURL(url string) {
 	var client fhttp.Fetcher
+	// keepAlive could be just false when making 1 fetch but it helps debugging
+	// the http client when making a single request if using the flags
+	keepAlive := *keepAliveFlag
 	if *stdClientFlag {
-		client = fhttp.NewStdClient(url, 1, false)
+		client = fhttp.NewStdClient(url, 1, keepAlive, *compressionFlag)
 	} else {
 		if *http10Flag {
-			client = fhttp.NewBasicClient(url, "1.0", false)
+			client = fhttp.NewBasicClient(url, "1.0", keepAlive, *halfCloseFlag)
 		} else {
-			client = fhttp.NewBasicClient(url, "1.1", false)
+			client = fhttp.NewBasicClient(url, "1.1", keepAlive, *halfCloseFlag)
 		}
 	}
 	if client == nil {
@@ -185,6 +189,7 @@ func fortioLoad() {
 			HTTP10:            *http10Flag,
 			DisableFastClient: *stdClientFlag,
 			DisableKeepAlive:  !*keepAliveFlag,
+			AllowHalfClose:    *halfCloseFlag,
 			Profiler:          *profileFlag,
 			Compression:       *compressionFlag,
 		}
