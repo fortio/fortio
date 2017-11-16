@@ -5,6 +5,8 @@
 
 The name fortio comes from greek φορτίο which is load/burden.
 
+Fortio is a reusable, embeddable go library as well as a command line tool and server process.
+
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
@@ -20,13 +22,13 @@ docker run istio/fortio load http://$HOSTNAME:8080/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers with the `server` command or issue grpc ping messages using the `grpcping` command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers, as well as a basic web UI, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command.
 
 ```
 $ fortio
-Φορτίο 0.2.2 usage:
+Φορτίο 0.3.6 usage:
 	fortio command [flags] target
-where command is one of: load (load testing), server (starts grpc ping and http echo servers), grcping (grpc client)
+where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)
 where target is a url (http load tests) or host:port (grpc health test)
 and flags are:
   -H value
@@ -35,12 +37,18 @@ and flags are:
     	Number of connections/goroutine/threads (default 4)
   -compression
     	Enable http compression
+  -curl
+    	Just fetch the content once
+  -echo-debug-path string
+    	http echo server URI for debug, empty turns off that part (more secure) (default "/debug")
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
     	Use GRPC (health check) for load testing
   -grpc-port int
     	grpc port (default 8079)
+  -halfclose
+    	When not keepalive, whether to half close the connection (only for fast http)
   -health
     	client mode: use health instead of ping
   -healthservice string
@@ -50,9 +58,11 @@ and flags are:
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
-    	Size of the buffer (max data size) for the optimized http client in kbytes (default 32)
+    	Size of the buffer (max data size) for the optimized http client in kbytes (default 128)
   -httpccch
     	Check for Connection: Close Header
+  -json string
+    	Json output to provided file or '-' for stdout (empty = no json output)
   -keepalive
     	Keep connection alive (only for fast http 1.1) (default true)
   -logcaller
@@ -70,13 +80,15 @@ and flags are:
   -profile string
     	write .cpu and .mem profiles to file
   -qps float
-    	Queries Per Seconds or 0 for no wait (default 8)
+    	Queries Per Seconds or 0 for no wait/max qps (default 8)
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -stdclient
     	Use the slower net/http standard client (works for TLS)
   -t duration
-    	How long to run the test (default 5s)
+    	How long to run the test or 0 to run until ^C (default 5s)
+  -ui-path string
+    	http server URI for UI, empty turns off that part (more secure) (default "/fortio/")
 ```
 
 ## Example use and output
@@ -84,8 +96,10 @@ and flags are:
 * Start the internal servers:
 ```
 $ fortio server &
-Fortio 0.2.2 echo server listening on port 8080
-Fortio 0.2.2 grpc ping server listening on port 8079
+UI starting - visit:
+http://localhost:8080/fortio/
+Fortio 0.3.6 echo server listening on port 8080
+Fortio 0.3.6 grpc ping server listening on port 8079
 ```
 * Simple grpc ping:
 ```
@@ -104,37 +118,29 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 * Load (low default qps/threading) test:
 ```
 $ fortio load http://www.google.com
-Fortio running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
-20:27:53 I httprunner.go:75> Starting http test for http://www.google.com with 4 threads at 8.0 qps
+Fortio 0.3.6 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
-20:27:58 I periodic.go:253> T002 ended after 5.089296613s : 10 calls. qps=1.964908072847669
-20:27:58 I periodic.go:253> T001 ended after 5.089267291s : 10 calls. qps=1.9649193937375378
-20:27:58 I periodic.go:253> T000 ended after 5.091488477s : 10 calls. qps=1.964062188331257
-20:27:58 I periodic.go:253> T003 ended after 5.096503315s : 10 calls. qps=1.9621295978692013
-Ended after 5.09654226s : 40 calls. qps=7.8485
-Sleep times : count 36 avg 0.44925533 +/- 0.06566 min 0.304979917 max 0.510428143 sum 16.1731919
-Aggregated Function Time : count 40 avg 0.10259885 +/- 0.06195 min 0.044784609 max 0.246461646 sum 4.10395381
+19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
+19:10:39 I periodic.go:314> T001 ended after 5.058085991s : 10 calls. qps=1.9770324224999916
+19:10:39 I periodic.go:314> T000 ended after 5.058796046s : 10 calls. qps=1.9767549252963101
+19:10:39 I periodic.go:314> T003 ended after 5.059557593s : 10 calls. qps=1.9764573910247019
+Ended after 5.059691387s : 40 calls. qps=7.9056
+Sleep times : count 36 avg 0.49175757 +/- 0.007217 min 0.463508712 max 0.502087879 sum 17.7032725
+Aggregated Function Time : count 40 avg 0.060587641 +/- 0.006564 min 0.052549016 max 0.089893269 sum 2.42350566
 # range, mid point, percentile, count
->= 0.04 < 0.045 , 0.0425 , 2.50, 1
->= 0.045 < 0.05 , 0.0475 , 15.00, 5
->= 0.05 < 0.06 , 0.055 , 37.50, 9
->= 0.06 < 0.07 , 0.065 , 40.00, 1
->= 0.07 < 0.08 , 0.075 , 42.50, 1
->= 0.08 < 0.09 , 0.085 , 57.50, 6
->= 0.09 < 0.1 , 0.095 , 70.00, 5
->= 0.1 < 0.12 , 0.11 , 72.50, 1
->= 0.12 < 0.14 , 0.13 , 77.50, 2
->= 0.14 < 0.16 , 0.15 , 80.00, 1
->= 0.18 < 0.2 , 0.19 , 90.00, 4
->= 0.2 < 0.25 , 0.225 , 100.00, 4
-# target 50% 0.085
-# target 75% 0.13
-# target 99% 0.241815
-# target 99.9% 0.245997
+>= 0.052549 < 0.06 , 0.0562745 , 47.50, 19
+>= 0.06 < 0.07 , 0.065 , 92.50, 18
+>= 0.07 < 0.08 , 0.075 , 97.50, 2
+>= 0.08 <= 0.0898933 , 0.0849466 , 100.00, 1
+# target 50% 0.0605556
+# target 75% 0.0661111
+# target 99% 0.085936
+# target 99.9% 0.0894975
 Code 200 : 40
-Response Header Sizes : count 40 avg 5303.075 +/- 44.45 min 5199 max 5418 sum 212123
-Response Body/Total Sizes : count 40 avg 15804.05 +/- 383.6 min 15499 max 17026 sum 632162
-All done 40 calls (plus 4 warmup) 102.599 ms avg, 7.8 qps
+Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
+Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
+All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
 
 ## Implementation details
@@ -208,9 +214,16 @@ Code 200 : 300000
 Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 ```
 
-Or graphically:
+Or graphically (through the [http://localhost:8080/fortio/](http://localhost:8080/fortio/) web UI):
 
-![Chart](https://user-images.githubusercontent.com/3664595/27990803-490a618c-6417-11e7-9773-12e0d051128f.png)
+Simple form/UI:
+
+![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/32871761-c733f966-ca37-11e7-9d4e-8c31f98fcd4e.png)
+
+
+Run result:
+
+![Graphical result](https://user-images.githubusercontent.com/3664595/32871636-1e2531c8-ca37-11e7-8e2b-0aafe8d4305b.png)
 
 ## Contributing
 Contributions whether throuh issues, documentation, bug fixes, or new features
