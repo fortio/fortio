@@ -557,87 +557,87 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
 				n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
 		}
-		if !parsedHeaders && c.parseHeaders {
-			// enough to get the code?
-			if c.size >= retcodeOffset+3 {
-				// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
-				c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3])
-				// TODO handle 100 Continue
-				if c.code != http.StatusOK {
-					log.Warnf("Parsed non ok code %d (%v)", c.code, string(c.buffer[:retcodeOffset+3]))
-					break
-				}
-				if log.LogDebug() {
-					log.Debugf("Code %d, looking for end of headers at %d / %d, last CRLF %d",
-						c.code, endofHeadersStart, c.size, c.headerLen)
-				}
-				// TODO: keep track of list of newlines to efficiently search headers only there
-				idx := endofHeadersStart
-				for idx < c.size-1 {
-					if c.buffer[idx] == '\r' && c.buffer[idx+1] == '\n' {
-						if c.headerLen == idx-2 { // found end of headers
-							parsedHeaders = true
-							break
-						}
-						c.headerLen = idx
-						idx++
+		// Have not yet parsed the headers, need to parse the headers, and have enough data to
+		// at least parse the http retcode:
+		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
+			// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
+			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) //TODO do that only once...
+			// TODO handle 100 Continue
+			if c.code != http.StatusOK {
+				log.Warnf("Parsed non ok code %d (%v)", c.code, string(c.buffer[:retcodeOffset+3]))
+				break
+			}
+			if log.LogDebug() {
+				log.Debugf("Code %d, looking for end of headers at %d / %d, last CRLF %d",
+					c.code, endofHeadersStart, c.size, c.headerLen)
+			}
+			// TODO: keep track of list of newlines to efficiently search headers only there
+			idx := endofHeadersStart
+			for idx < c.size-1 {
+				if c.buffer[idx] == '\r' && c.buffer[idx+1] == '\n' {
+					if c.headerLen == idx-2 { // found end of headers
+						parsedHeaders = true
+						break
 					}
+					c.headerLen = idx
 					idx++
 				}
-				endofHeadersStart = c.size // start there next read
-				if parsedHeaders {
-					// We have headers !
-					c.headerLen += 4 // we use this and not endofHeadersStart so http/1.0 does return 0 and not the optimization for search start
-					if log.LogDebug() {
-						log.Debugf("headers are %d: %s", c.headerLen, c.buffer[:idx])
-					}
-					// Find the content length or chunked mode
-					if keepAlive {
-						var contentLength int
-						found, offset := FoldFind(c.buffer[:c.headerLen], contentLengthHeader)
-						if found {
-							// Content-Length mode:
-							contentLength = ParseDecimal(c.buffer[offset+len(contentLengthHeader) : c.headerLen])
-							if contentLength < 0 {
-								log.Warnf("Warning: content-length unparsable %s", string(c.buffer[offset+2:offset+len(contentLengthHeader)+4]))
-								keepAlive = false
-								break
-							}
-							max = c.headerLen + contentLength
-							if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
-								log.Debugf("found content length %d", contentLength)
-							}
-						} else {
-							// Chunked mode (or err/missing):
-							if found, _ := FoldFind(c.buffer[:c.headerLen], chunkedHeader); found {
-								chunkedMode = true
-								var dataStart int
-								dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:])
-								max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
-								log.Debugf("chunk-length is %d (%s) setting max to %d",
-									contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
-									max)
-							} else {
-								if log.LogVerbose() {
-									log.LogVf("Warning: content-length missing in %s", string(c.buffer[:c.headerLen]))
-								} else {
-									log.Warnf("Warning: content-length missing (%d bytes headers)", c.headerLen)
-								}
-								keepAlive = false // can't keep keepAlive
-								break
-							}
-						} // end of content-length section
-						if max > len(c.buffer) {
-							log.Warnf("Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
-								c.headerLen, contentLength, (c.headerLen+contentLength)/1024+1)
-							// TODO: just consume the extra instead
-							max = len(c.buffer)
+				idx++
+			}
+			endofHeadersStart = c.size // start there next read
+			if parsedHeaders {
+				// We have headers !
+				c.headerLen += 4 // we use this and not endofHeadersStart so http/1.0 does return 0 and not the optimization for search start
+				if log.LogDebug() {
+					log.Debugf("headers are %d: %s", c.headerLen, c.buffer[:idx])
+				}
+				// Find the content length or chunked mode
+				if keepAlive {
+					var contentLength int
+					found, offset := FoldFind(c.buffer[:c.headerLen], contentLengthHeader)
+					if found {
+						// Content-Length mode:
+						contentLength = ParseDecimal(c.buffer[offset+len(contentLengthHeader) : c.headerLen])
+						if contentLength < 0 {
+							log.Warnf("Warning: content-length unparsable %s", string(c.buffer[offset+2:offset+len(contentLengthHeader)+4]))
+							keepAlive = false
+							break
 						}
-						if checkConnectionClosedHeader {
-							if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
-								log.Infof("Server wants to close connection, no keep-alive!")
-								keepAlive = false
+						max = c.headerLen + contentLength
+						if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
+							log.Debugf("found content length %d", contentLength)
+						}
+					} else {
+						// Chunked mode (or err/missing):
+						if found, _ := FoldFind(c.buffer[:c.headerLen], chunkedHeader); found {
+							chunkedMode = true
+							var dataStart int
+							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:])
+							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
+							log.Debugf("chunk-length is %d (%s) setting max to %d",
+								contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
+								max)
+						} else {
+							if log.LogVerbose() {
+								log.LogVf("Warning: content-length missing in %s", string(c.buffer[:c.headerLen]))
+							} else {
+								log.Warnf("Warning: content-length missing (%d bytes headers)", c.headerLen)
 							}
+							keepAlive = false // can't keep keepAlive
+							break
+						}
+					} // end of content-length section
+					if max > len(c.buffer) {
+						log.Warnf("Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
+							c.headerLen, contentLength, (c.headerLen+contentLength)/1024+1)
+						// TODO: just consume the extra instead
+						max = len(c.buffer)
+					}
+					if checkConnectionClosedHeader {
+						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
+							log.Infof("Server wants to close connection, no keep-alive!")
+							keepAlive = false
+							max = len(c.buffer) // reset to read as much as available
 						}
 					}
 				}

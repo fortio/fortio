@@ -137,7 +137,8 @@ func fetchURL(url string) {
 	if client == nil {
 		return // error logged already
 	}
-	code, data, _ := client.Fetch()
+	code, data, header := client.Fetch()
+	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 	}
