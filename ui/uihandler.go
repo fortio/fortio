@@ -42,7 +42,7 @@ var (
 	// UI and Debug prefix/paths (read in ui handler).
 	uiPath      string // absolute (base)
 	logoPath    string // relative
-  chartJSPath string // relative
+	chartJSPath string // relative
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
