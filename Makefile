@@ -14,7 +14,7 @@ install: test
 	go install ./...
 
 test:
-	go test -timeout 30s -race ./...
+	go test -timeout 60s -race -coverprofile=coverage.txt ./...
 
 # Run once
 install-linters:
@@ -27,6 +27,9 @@ LINT_PACKAGES:=./...
 lint: install
 	gometalinter --deadline=180s --vendored-linters --enable-all --aggregate \
 			--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
+
+coverage:
+	bash <(curl -s https://codecov.io/bash)
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: lint docker-version docker-push-internal
@@ -49,4 +52,4 @@ docker-push-internal: docker-internal
 authorize:
 	gcloud docker --authorize-only --project istio-testing
 
-.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint install-linters
+.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint install-linters coverage
