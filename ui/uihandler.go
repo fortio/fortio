@@ -456,7 +456,7 @@ func LogRequest(r *http.Request) {
 	}
 }
 
-// HTTP handler wrapper to add a Cache-Control header for static files.
+// AddCacheControl wrapps an HTTP handler to add a Cache-Control header for static files.
 func AddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc (func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
@@ -519,7 +519,8 @@ func Serve(port int, debugpath string, uipath string) {
 	chartJSPath = "../static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir.
-	// We use directory relative to this file to find the static contents, so no matter where is the working dir, static dir could be found.
+	// We use directory relative to this file to find the static contents,
+	// so no matter where is the working dir, static dir could be found.
 	_, filename, _, ok := runtime.Caller(0)
 	if ok {
 		fs := http.FileServer(http.Dir(path.Join(path.Dir(filename), "static")))
