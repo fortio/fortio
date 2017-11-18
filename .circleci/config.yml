@@ -7,20 +7,11 @@ jobs:
     docker:
       # specify the version
       - image: circleci/golang:1.8
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
-    #### TEMPLATE_NOTE: go expects specific checkout path representing url
-    #### expecting it in the form of
-    ####   /go/src/github.com/circleci/go-tool
-    ####   /go/src/bitbucket.org/circleci/go-tool
     working_directory: /go/src/istio.io/fortio
     steps:
+      - setup_remote_docker
       - checkout
-
-      # specify any bash command here prefixed with `run: `
       - run: go get -v -t -d ./...
-      - run: make install-linters lint coverage webtest
+      - run: make install-linters lint
+      - run: make webtest
+      - run: make coverage
