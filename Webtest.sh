@@ -12,6 +12,8 @@ set -e
 set -o pipefail
 docker ps
 BASE_URL="http://localhost:8080"
+# Check https works (certs are in the image)
+docker exec fortio_server /usr/local/bin/fortio load -curl -stdclient https://istio.io/robots.txt
 # Needed for circleci docker environment
 CURL="docker run --network container:fortio_server appropriate/curl --retry 10 --retry-connrefused"
 # Check we can connect, and run a QPS test against ourselves through fetch
