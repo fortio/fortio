@@ -25,7 +25,7 @@ install-linters:
 LINT_PACKAGES:=./...
 # TODO: do something about cyclomatic complexity
 lint: install
-	gometalinter --vendored-linters --enable-all --aggregate \
+	gometalinter --deadline=60s --vendored-linters --enable-all --aggregate \
 			--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
 # Docker: Pushes the combo image and the smaller image(s)
