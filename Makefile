@@ -28,8 +28,11 @@ lint: install
 	gometalinter --deadline=180s --vendored-linters --enable-all --aggregate \
 			--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
+webtest:
+	./Webtest.sh
+
 coverage:
-	./.circleci/coverage.sh	
+	./.circleci/coverage.sh
 	curl -s https://codecov.io/bash | bash
 
 # Docker: Pushes the combo image and the smaller image(s)
@@ -53,4 +56,4 @@ docker-push-internal: docker-internal
 authorize:
 	gcloud docker --authorize-only --project istio-testing
 
-.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint install-linters coverage
+.PHONY: all docker-internal docker-push-internal docker-version authorize test install lint install-linters coverage weblint
