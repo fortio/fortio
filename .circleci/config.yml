@@ -23,4 +23,4 @@ jobs:
 
       # specify any bash command here prefixed with `run: `
       - run: go get -v -t -d ./...
-      - run: make test install-linters lint
+      - run: make install-linters lint
