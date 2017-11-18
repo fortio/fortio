@@ -520,7 +520,7 @@ func Serve(port int, debugpath string, uipath string) {
 
 	// Serve static contents in the ui/static dir.
 	// We use directory relative to this file to find the static contents,
-	// so no matter where is the working dir, static dir could be found.
+	// so no matter where the generate go binary is, the static dir could be found.
 	_, filename, _, ok := runtime.Caller(0)
 	if ok {
 		fs := http.FileServer(http.Dir(path.Join(path.Dir(filename), "static")))
