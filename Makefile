@@ -14,7 +14,7 @@ install: test
 	go install ./...
 
 test:
-	go test -timeout 60s -race -coverprofile=coverage.txt ./...
+	go test -timeout 45s -race ./...
 
 # Run once
 install-linters:
@@ -29,7 +29,8 @@ lint: install
 			--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
 coverage:
-	bash <(curl -s https://codecov.io/bash)
+	./.circleci/coverage.sh	
+	curl -s https://codecov.io/bash | bash
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: lint docker-version docker-push-internal
