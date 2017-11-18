@@ -9,7 +9,8 @@ function cleanup {
 trap cleanup EXIT
 set -e
 set -o pipefail
-sleep 3
+sleep 10
+docker ps
 BASE_URL="http://localhost:8088"
 # Check we can connect, and run a QPS test against ourselves through fetch
 curl -f "$BASE_URL/fortio/fetch/localhost:8080/fortio/?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
