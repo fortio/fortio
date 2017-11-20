@@ -19,8 +19,8 @@ Fortio is a reusable, embeddable go library as well as a command line tool and s
 Or use docker, for instance:
 
 ```shell
-docker run -p 8080:8080 -p 8079:8079 istio/fortio server &
-docker run istio/fortio load http://localhost:8080/
+docker run -p 8080:8080 -p 8079:8079 istio/fortio server & # For the server
+docker run istio/fortio load http://www.google.com/ # For a test run
 ```
 
 You can visit the new web UI at http://localhost:8080/fortio/
