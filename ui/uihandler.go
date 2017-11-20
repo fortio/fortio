@@ -52,7 +52,7 @@ var (
 )
 
 const (
-	fetchURI   = "fetch/"
+	fetchURI = "fetch/"
 )
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -458,7 +458,7 @@ func LogRequest(r *http.Request) {
 
 // AddCacheControl wrapps an HTTP handler to add a Cache-Control header for static files.
 func AddCacheControl(h http.Handler) http.Handler {
-	return http.HandlerFunc (func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 		h.ServeHTTP(w, r)
 	})
