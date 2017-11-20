@@ -8,7 +8,7 @@
 
 The name fortio comes from greek φορτίο which is load/burden.
 
-Fortio is a reusable, embeddable go library as well as a command line tool and server process.
+Fortio is a reusable, embeddable go library as well as a command line tool and server process, the server includes a simple web UI and graphical representation of the results.
 
 ## Installation
 
@@ -20,8 +20,10 @@ Or use docker, for instance:
 
 ```shell
 docker run -p 8080:8080 -p 8079:8079 istio/fortio server &
-docker run istio/fortio load http://$HOSTNAME:8080/
+docker run istio/fortio load http://localhost:8080/
 ```
+
+You can visit the new web UI at http://localhost:8080/fortio/
 
 ## Command line arguments
 
