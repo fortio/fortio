@@ -8,6 +8,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-s' -o fortio.bin istio.io/fo
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/istio.io/fortio.bin /usr/local/bin/fortio
+COPY --from=build /go/src/istio.io/fortio/ui/static /go/src/istio.io/fortio/ui/static
 EXPOSE 8079
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/fortio"]
