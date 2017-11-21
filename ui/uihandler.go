@@ -456,9 +456,10 @@ func LogRequest(r *http.Request) {
 	}
 }
 
-// AddCacheControl wrapps an HTTP handler to add a Cache-Control header for static files.
-func AddCacheControl(h http.Handler) http.Handler {
+// LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
+func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r)
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 		h.ServeHTTP(w, r)
 	})
@@ -515,8 +516,8 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 		http.HandleFunc(fetchPath, FetcherHandler)
 		fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-		logoPath = "../static/img/logo.svg"
-		chartJSPath = "../static/js/Chart.min.js"
+		logoPath = "./static/img/logo.svg"
+		chartJSPath = "./static/js/Chart.min.js"
 
 		// Serve static contents in the ui/static dir.
 		// We use directory relative to this file to find the static contents,
@@ -533,7 +534,7 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 
 		if servingPath != "" {
 			fs := http.FileServer(http.Dir(path.Dir(servingPath)))
-			http.Handle("/static/", AddCacheControl(fs))
+			http.Handle("/static/", LogAndAddCacheControl(http.StripPrefix("/fortio", fs)))
 		}
 		fhttp.Serve(port, debugpath)
 	}
