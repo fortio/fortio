@@ -82,6 +82,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
 		}
 	}
+	labels := r.FormValue("labels")
 	if !JSONOnly {
 		// Normal html mode
 		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
@@ -94,9 +95,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 <h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
 <p>Up for {{.UpTime}} (since {{.StartTime}}).
 {{if .DoLoad}}
-<p>Testing {{.TargetURL}}
+<p>{{.Labels}} {{.TargetURL}}
 <br />
-<div class="chart-container" style="position: relative; height:70vh; width:98vw">
+<div class="chart-container" style="position: relative; height:75vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
 </div>
 <div id="running">
@@ -119,9 +120,10 @@ Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart(
 {{else}}
 <form>
 <div>
+Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
 URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo" /> <br />
 QPS: <input type="text" name="qps" size="6" value="1000" />
-Duration: <input type="text" name="t" size="6" value="5s" /> <br />
+Duration: <input type="text" name="t" size="6" value="3s" /> <br />
 Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
 Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
 Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
@@ -162,13 +164,14 @@ Use with caution, will interrupt/end this server: <input type="submit" name="exi
 			ChartJSPath string
 			StartTime   string
 			TargetURL   string
+			Labels      string
 			UpTime      time.Duration
 			Port        int
 			DoExit      bool
 			DoLoad      bool
 		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.UnixDate), url, fhttp.RoundDuration(time.Since(startTime)),
-			httpPort, DoExit, DoLoad})
+			startTime.Format(time.ANSIC), url, labels,
+			fhttp.RoundDuration(time.Since(startTime)), httpPort, DoExit, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -217,6 +220,7 @@ Use with caution, will interrupt/end this server: <input type="submit" name="exi
 			NumThreads:  c,
 			Resolution:  resolution,
 			Percentiles: percList,
+			Labels:      labels,
 		}
 		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions: ro,
@@ -353,18 +357,23 @@ var chart = new Chart(ctx, {
    title: {
     display: true,
     fontStyle: 'normal',
-    text: ['Response time histogram at `))
+    text: [`))
+				if res.Labels != "" {
+					// nolint: errcheck
+					w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
+						res.Labels, res.URL, res.StartTime.Format(time.ANSIC)))) // TODO: escape single quote
+				}
 				percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
 				for _, p := range res.DurationHistogram.Percentiles {
 					percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
 				}
 				percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
 				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("%s target qps (%.1f actual) %d connections for %s (actual %v)','%s",
+				w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
 					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
 					percStr)))
 				// nolint: errcheck
-				w.Write([]byte(`'],
+				w.Write([]byte(`],
     },
     elements: {
      line: {

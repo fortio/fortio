@@ -83,6 +83,7 @@ var (
 	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
 	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
+	labelsFlag = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
 
 	headersFlags flagList
 	percList     []float64
@@ -165,16 +166,22 @@ func fortioLoad() {
 	} else {
 		fmt.Printf(", for %v: %s\n", *durationFlag, url)
 	}
-	if *qpsFlag <= 0 {
-		*qpsFlag = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
+	qps := *qpsFlag
+	if qps <= 0 {
+		qps = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
+	}
+	labels := *labelsFlag
+	if labels == "" {
+		labels, _ = os.Hostname()
 	}
 	ro := periodic.RunnerOptions{
-		QPS:         *qpsFlag,
+		QPS:         qps,
 		Duration:    *durationFlag,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
 		Out:         out,
+		Labels:      labels,
 	}
 	var res periodic.HasRunnerResult
 	if *grpcFlag {
