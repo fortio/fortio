@@ -498,7 +498,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(port int, debugpath string, uipath string) {
+func Serve(port int, debugpath, uipath, staticPath string) {
 	startTime = time.Now()
 	httpPort = port
 	if uipath != "" {
@@ -514,20 +514,27 @@ func Serve(port int, debugpath string, uipath string) {
 		fetchPath = uiPath + fetchURI
 		http.HandleFunc(fetchPath, FetcherHandler)
 		fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
-	}
-	logoPath = "../static/img/logo.svg"
-	chartJSPath = "../static/js/Chart.min.js"
 
-	// Serve static contents in the ui/static dir.
-	// We use directory relative to this file to find the static contents,
-	// so no matter where the generate go binary is, the static dir could be found.
-	_, filename, _, ok := runtime.Caller(0)
-	if ok {
-		fs := http.FileServer(http.Dir(path.Join(path.Dir(filename), "static")))
-		http.Handle("/static/", AddCacheControl(http.StripPrefix("/static/", fs)))
-	} else {
-		log.Errf("No caller information. Failed to serve static contents.")
-	}
+		logoPath = "../static/img/logo.svg"
+		chartJSPath = "../static/js/Chart.min.js"
 
-	fhttp.Serve(port, debugpath)
+		// Serve static contents in the ui/static dir.
+		// We use directory relative to this file to find the static contents,
+		// so no matter where the generate go binary is, the static dir could be found.
+		_, filename, _, ok := runtime.Caller(0)
+		var servingPath string
+		if staticPath != "" {
+			servingPath = staticPath
+		} else if ok {
+			servingPath = filename
+		} else {
+			log.Errf("Failed to serve static contents.")
+		}
+
+		if servingPath != "" {
+			fs := http.FileServer(http.Dir(path.Dir(servingPath)))
+			http.Handle("/static/", AddCacheControl(fs))
+		}
+		fhttp.Serve(port, debugpath)
+	}
 }

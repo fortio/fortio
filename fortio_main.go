@@ -80,10 +80,11 @@ var (
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
-	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
-	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
-	labelsFlag = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
+	jsonFlag       = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
+	uiPathFlag     = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
+	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
+	staticPathFlag = flag.String("static-path", "", "Absolute path to the dir containing the static files dir")
 
 	headersFlags flagList
 	percList     []float64
@@ -111,7 +112,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
