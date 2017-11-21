@@ -33,6 +33,7 @@ type DatastoreClient struct {
 	client *datastore.Client
 }
 
+// IstioPerfResult is the data structure for uploading a test run result to Google Cloud Datastore
 type IstioPerfResult struct {
 	TestType       string    `datastore:"test_type"`
 	TestTime       time.Time `datastore:"test_time"`
