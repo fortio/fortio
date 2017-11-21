@@ -527,14 +527,14 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 		if staticPath != "" {
 			servingPath = staticPath
 		} else if ok {
-			servingPath = filename
+			servingPath = path.Dir(filename)
 		} else {
 			log.Errf("Failed to serve static contents.")
 		}
 
 		if servingPath != "" {
-			fs := http.FileServer(http.Dir(path.Dir(servingPath)))
-			http.Handle("/static/", LogAndAddCacheControl(http.StripPrefix("/fortio", fs)))
+			fs := http.FileServer(http.Dir(servingPath))
+			http.Handle("/fortio/static/", LogAndAddCacheControl(http.StripPrefix("/fortio", fs)))
 		}
 		fhttp.Serve(port, debugpath)
 	}
