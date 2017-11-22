@@ -140,105 +140,111 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 		}
-		if DoLoad || DoExit {
-			flusher.Flush()
+		if !DoLoad && !DoExit {
+			return
+		}
+		flusher.Flush()
+	}
+	if DoExit {
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
+		return
+	}
+	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
+	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
+	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
+	durStr := r.FormValue("t")
+	dur, err := time.ParseDuration(durStr)
+	if err != nil {
+		log.Errf("Error parsing duration '%s': %v", durStr, err)
+	}
+	c, _ := strconv.Atoi(r.FormValue("c"))
+	firstHeader := true
+	for _, header := range r.Form["H"] {
+		if len(header) == 0 {
+			continue
+		}
+		log.LogVf("adding header %v", header)
+		if firstHeader {
+			// If there is at least 1 non empty H passed, reset the header list
+			fhttp.ResetHeaders()
+			firstHeader = false
+		}
+		err = fhttp.AddAndValidateExtraHeader(header)
+		if err != nil {
+			log.Errf("Error adding custom headers: %v", err)
 		}
 	}
-	if DoLoad {
-		resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
-		percList, _ := stats.ParsePercentiles(r.FormValue("p"))
-		qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
-		durStr := r.FormValue("t")
-		dur, err := time.ParseDuration(durStr)
+	out := io.Writer(w)
+	if JSONOnly {
+		out = os.Stderr
+	}
+	ro := periodic.RunnerOptions{
+		QPS:         qps,
+		Duration:    dur,
+		Out:         out,
+		NumThreads:  c,
+		Resolution:  resolution,
+		Percentiles: percList,
+		Labels:      labels,
+	}
+	o := fhttp.HTTPRunnerOptions{
+		RunnerOptions: ro,
+		URL:           url,
+	}
+	res, err := fhttp.RunHTTPTest(&o)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
+		return
+	}
+	if JSONOnly {
+		w.Header().Set("Content-Type", "application/json")
+		j, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
-			log.Errf("Error parsing duration '%s': %v", durStr, err)
+			log.Fatalf("Unable to json serialize result: %v", err)
 		}
-		c, _ := strconv.Atoi(r.FormValue("c"))
-		firstHeader := true
-		for _, header := range r.Form["H"] {
-			if len(header) == 0 {
-				continue
-			}
-			log.LogVf("adding header %v", header)
-			if firstHeader {
-				// If there is at least 1 non empty H passed, reset the header list
-				fhttp.ResetHeaders()
-				firstHeader = false
-			}
-			err = fhttp.AddAndValidateExtraHeader(header)
-			if err != nil {
-				log.Errf("Error adding custom headers: %v", err)
-			}
-		}
-		out := io.Writer(w)
-		if JSONOnly {
-			out = os.Stderr
-		}
-		ro := periodic.RunnerOptions{
-			QPS:         qps,
-			Duration:    dur,
-			Out:         out,
-			NumThreads:  c,
-			Resolution:  resolution,
-			Percentiles: percList,
-			Labels:      labels,
-		}
-		o := fhttp.HTTPRunnerOptions{
-			RunnerOptions: ro,
-			URL:           url,
-		}
-		res, err := fhttp.RunHTTPTest(&o)
+		_, err = w.Write(j)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
+			log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+		}
+		return
+	}
+	// nolint: errcheck
+	w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+		res.DurationHistogram.Count,
+		1000.*res.DurationHistogram.Avg,
+		res.ActualQPS)))
+	w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
+	for i, it := range res.DurationHistogram.Data {
+		var x float64
+		if i == 0 {
+			// Extra point, 1/N at min itself
+			x = 1000. * it.Start
+			// nolint: errcheck
+			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
+		}
+		if i == len(res.DurationHistogram.Data)-1 {
+			//last point we use the end part (max)
+			x = 1000. * it.End
 		} else {
-			if JSONOnly {
-				w.Header().Set("Content-Type", "application/json")
-				j, err := json.MarshalIndent(res, "", "  ")
-				if err != nil {
-					log.Fatalf("Unable to json serialize result: %v", err)
-				}
-				_, err = w.Write(j)
-				if err != nil {
-					log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
-				}
-			} else {
-				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-					res.DurationHistogram.Count,
-					1000.*res.DurationHistogram.Avg,
-					res.ActualQPS)))
-				w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
-				for i, it := range res.DurationHistogram.Data {
-					var x float64
-					if i == 0 {
-						// Extra point, 1/N at min itself
-						x = 1000. * it.Start
-						// nolint: errcheck
-						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
-					}
-					if i == len(res.DurationHistogram.Data)-1 {
-						//last point we use the end part (max)
-						x = 1000. * it.End
-					} else {
-						x = 1000. * (it.Start + it.End) / 2.
-					}
-					// nolint: errcheck
-					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
-				}
-				w.Write([]byte(`];var dataH = [`)) // nolint: errcheck
-				prev := 1000. * res.DurationHistogram.Data[0].Start
-				for _, it := range res.DurationHistogram.Data {
-					startX := 1000. * it.Start
-					endX := 1000. * it.End
-					if startX != prev {
-						w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX))) // nolint: errcheck
-					}
-					// nolint: errcheck
-					w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
-					prev = endX
-				}
-				// nolint: errcheck
-				w.Write([]byte(`];
+			x = 1000. * (it.Start + it.End) / 2.
+		}
+		// nolint: errcheck
+		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
+	}
+	w.Write([]byte(`];var dataH = [`)) // nolint: errcheck
+	prev := 1000. * res.DurationHistogram.Data[0].Start
+	for _, it := range res.DurationHistogram.Data {
+		startX := 1000. * it.Start
+		endX := 1000. * it.End
+		if startX != prev {
+			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX))) // nolint: errcheck
+		}
+		// nolint: errcheck
+		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
+		prev = endX
+	}
+	// nolint: errcheck
+	w.Write([]byte(`];
 document.getElementById('running').style.display='none';
 var chartEl = document.getElementById('chart1');
 chartEl.style.visibility='visible';
@@ -319,22 +325,22 @@ var chart = new Chart(ctx, {
     display: true,
     fontStyle: 'normal',
     text: [`))
-				if res.Labels != "" {
-					// nolint: errcheck
-					w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
-						res.Labels, res.URL, res.StartTime.Format(time.ANSIC)))) // TODO: escape single quote
-				}
-				percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
-				for _, p := range res.DurationHistogram.Percentiles {
-					percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
-				}
-				percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
-				// nolint: errcheck
-				w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
-					res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
-					percStr)))
-				// nolint: errcheck
-				w.Write([]byte(`],
+	if res.Labels != "" {
+		// nolint: errcheck
+		w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
+			res.Labels, res.URL, res.StartTime.Format(time.ANSIC)))) // TODO: escape single quote
+	}
+	percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
+	for _, p := range res.DurationHistogram.Percentiles {
+		percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
+	}
+	percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
+	// nolint: errcheck
+	w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
+		res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
+		percStr)))
+	// nolint: errcheck
+	w.Write([]byte(`],
     },
     elements: {
      line: {
@@ -397,12 +403,6 @@ function updateChart() {
 }
 </script>
 </body></html>`))
-			}
-		}
-	}
-	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
-	}
 }
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
