@@ -213,6 +213,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		res.DurationHistogram.Count,
 		1000.*res.DurationHistogram.Avg,
 		res.ActualQPS)))
+	ResultToJsData(w, res)
+	ResultToChart(w, res)
+	w.Write([]byte("</script></body></html>\n"))
+}
+
+// ResultToJsData converts a result object to chart data arrays.
+func ResultToJsData(w io.Writer, res *fhttp.HTTPRunnerResults) {
 	w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
 	for i, it := range res.DurationHistogram.Data {
 		var x float64
@@ -231,7 +238,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// nolint: errcheck
 		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
 	}
-	w.Write([]byte(`];var dataH = [`)) // nolint: errcheck
+	w.Write([]byte("]\nvar dataH = [")) // nolint: errcheck
 	prev := 1000. * res.DurationHistogram.Data[0].Start
 	for _, it := range res.DurationHistogram.Data {
 		startX := 1000. * it.Start
@@ -244,87 +251,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		prev = endX
 	}
 	// nolint: errcheck
-	w.Write([]byte(`];
-document.getElementById('running').style.display='none';
-var chartEl = document.getElementById('chart1');
-chartEl.style.visibility='visible';
-document.getElementById('update').style.visibility='visible';
-var ctx = chartEl.getContext('2d');
-var linearXAxe = {
- type: 'linear',
- scaleLabel : {
-  display: true,
-  labelString: 'Response time in ms',
-  ticks: {
-   min: 0,
-   beginAtZero: true,
-  },
- }
+	w.Write([]byte("]\n"))
 }
-var logXAxe = {
-  type: 'logarithmic',
-  scaleLabel : {
-   display: true,
-   labelString: 'Response time in ms (log scale)'
-  },
-  ticks: {
-    //min: dataH[0].x, // newer chart.js are ok with 0 on x axis too
-    callback: function(tick, index, ticks) {return tick.toLocaleString()}
-  }
-}
-var linearYAxe = {
-       id: 'H',
-       type: 'linear',
-       ticks: {
-        beginAtZero: true,
-       },
-       scaleLabel : {
-        display: true,
-        labelString: 'Count'
-       }
-      };
-var logYAxe = {
- id: 'H',
- type: 'logarithmic',
- display: true,
- ticks: {
- // min: 1, // log mode works even with 0s
- // Needed to not get scientific notation display:
- callback: function(tick, index, ticks) {return tick.toString()}
- },
- scaleLabel : {
- display: true,
- labelString: 'Count (log scale)'
- }
-}
-var chart = new Chart(ctx, {
-  type: 'line',
-  data: {datasets: [
-  {
-   label: 'Cumulative %',
-   data: dataP,
-   fill: false,
-   yAxisID: 'P',
-   stepped: true,
-   backgroundColor: 'rgba(134, 87, 167, 1)',
-   borderColor: 'rgba(134, 87, 167, 1)',
-  },
- {
-   label: 'Histogram: Count',
-   data: dataH,
-   yAxisID: 'H',
-   pointStyle: 'rect',
-   radius: 1,
-   borderColor: 'rgba(87, 167, 134, .9)',
-   backgroundColor: 'rgba(87, 167, 134, .75)'
- }]},
-  options: {
-  responsive: true,
-   maintainAspectRatio: false,
-   title: {
-    display: true,
-    fontStyle: 'normal',
-    text: [`))
+
+// ResultToChart creates a chart from the result object
+func ResultToChart(w io.Writer, res *fhttp.HTTPRunnerResults) {
+	// nolint: errcheck
+	w.Write([]byte("showChart(["))
 	if res.Labels != "" {
 		// nolint: errcheck
 		w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
@@ -339,70 +272,7 @@ var chart = new Chart(ctx, {
 	w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
 		res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
 		percStr)))
-	// nolint: errcheck
-	w.Write([]byte(`],
-    },
-    elements: {
-     line: {
-      tension: 0, // disables bezier curves
-     }
-    },
-    scales: {
-      xAxes: [
-       linearXAxe
-      ],
-      yAxes: [{
-       id: 'P',
-       position: 'right',
-       ticks: {
-        beginAtZero: true,
-       },
-       scaleLabel : {
-        display: true,
-        labelString: '%'
-       }
-       },
-      linearYAxe
-      ]
-    }
-  }
-});
-function updateChart() {
-	var form = document.getElementById('updtForm')
-	var formMin = form.xmin.value.trim()
-	var formMax = form.xmax.value.trim()
-	var scales = chart.config.options.scales
-	var newAxis
-	var newXMin = parseFloat(formMin)
-	if (form.xlog.checked) {
-		newXAxis = logXAxe
-		//if (formMin == "0") {
-		//	newXMin = dataH[0].x // log doesn't like 0 xaxis
-		//}
-	} else {
-		newXAxis = linearXAxe
-	}
-	if (form.ylog.checked) {
-		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], logYAxe]}
-	} else {
-		chart.config.options.scales = {xAxes: [newXAxis], yAxes: [scales.yAxes[0], linearYAxe]}
-	}
-	chart.update()
-	var newNewXAxis = chart.config.options.scales.xAxes[0]
-	if (formMin != "") {
-		newNewXAxis.ticks.min = newXMin
-	} else {
-		delete newNewXAxis.ticks.min
-	}
-	if (formMax != "" && formMax != "max") {
-		newNewXAxis.ticks.max = parseFloat(formMax)
-	} else {
-		delete newNewXAxis.ticks.max
-	}
-	chart.update()
-}
-</script>
-</body></html>`))
+	w.Write([]byte("])\n"))
 }
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
