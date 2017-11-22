@@ -83,9 +83,7 @@ func getDataDir(override string) string {
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
-// TODO: break down into functions to generate the x,y data that can be unit tested
-// and a function to process the result and produce the graph and one for the UI/form
-// and triggering the run separately.
+// TODO: unit tests, allow additional data sets.
 
 // Handler is the UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
