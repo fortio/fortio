@@ -502,40 +502,41 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 func Serve(port int, debugpath, uipath, staticPath string) {
 	startTime = time.Now()
 	httpPort = port
-	if uipath != "" {
-		uiPath = uipath
-		if uiPath[len(uiPath)-1] != '/' {
-			log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
-			uiPath += "/"
-		}
-		debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-		http.HandleFunc(uiPath, Handler)
-		fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
-
-		fetchPath = uiPath + fetchURI
-		http.HandleFunc(fetchPath, FetcherHandler)
-		fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
-
-		logoPath = "./static/img/logo.svg"
-		chartJSPath = "./static/js/Chart.min.js"
-
-		// Serve static contents in the ui/static dir.
-		// We use directory relative to this file to find the static contents,
-		// so no matter where the generate go binary is, the static dir could be found.
-		_, filename, _, ok := runtime.Caller(0)
-		var servingPath string
-		if staticPath != "" {
-			servingPath = staticPath
-		} else if ok {
-			servingPath = path.Dir(filename)
-		} else {
-			log.Errf("Failed to serve static contents.")
-		}
-
-		if servingPath != "" {
-			fs := http.FileServer(http.Dir(servingPath))
-			http.Handle("/fortio/static/", LogAndAddCacheControl(http.StripPrefix("/fortio", fs)))
-		}
-		fhttp.Serve(port, debugpath)
+	if uipath == "" {
+		fhttp.Serve(port, debugpath) // doesn't return until exit
+		return
 	}
+	uiPath = uipath
+	if uiPath[len(uiPath)-1] != '/' {
+		log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
+		uiPath += "/"
+	}
+	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
+	http.HandleFunc(uiPath, Handler)
+	fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
+
+	fetchPath = uiPath + fetchURI
+	http.HandleFunc(fetchPath, FetcherHandler)
+	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
+
+	logoPath = "./static/img/logo.svg"
+	chartJSPath = "./static/js/Chart.min.js"
+
+	// Serve static contents in the ui/static dir. If not otherwise specified
+	// by the function parameter staticPath,
+	// We use the directory relative to this file to find the static contents,
+	// so no matter where the generate go binary is, the static dir could be found.
+	if staticPath == "" {
+		_, filename, _, ok := runtime.Caller(0)
+		if ok {
+			staticPath = path.Dir(filename)
+		} else {
+			log.Errf("Unable to get source tree location. Failing to serve static contents.")
+		}
+	}
+	if staticPath != "" {
+		fs := http.FileServer(http.Dir(staticPath))
+		http.Handle(uiPath+"static/", LogAndAddCacheControl(http.StripPrefix(uiPath, fs)))
+	}
+	fhttp.Serve(port, debugpath)
 }
