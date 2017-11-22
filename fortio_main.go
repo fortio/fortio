@@ -141,10 +141,11 @@ func fetchURL(url string) {
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
+	os.Stdout.Write(data) //nolint: errcheck
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
+		os.Exit(1)
 	}
-	os.Stdout.Write(data) //nolint: errcheck
 }
 
 func fortioLoad() {

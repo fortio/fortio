@@ -54,6 +54,7 @@ var (
 	// but when fortio is installed with go get we use RunTime to find that directory.
 	// (see Dockerfile for how to set it)
 	dataDirectory string
+	mainTemplate  *template.Template
 )
 
 const (
@@ -109,77 +110,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	labels := r.FormValue("labels")
 	if !JSONOnly {
 		// Normal html mode
-		const templ = `<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
-<script src="{{.ChartJSPath}}"></script>
-</head>
-<body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
-<img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
-<img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
-<img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
-<h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
-<p>Up for {{.UpTime}} (since {{.StartTime}}).
-{{if .DoLoad}}
-<p>{{.Labels}} {{.TargetURL}}
-<br />
-<div class="chart-container" style="position: relative; height:75vh; width:98vw">
-<canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
-</div>
-<div id="running">
-<br/>
-Running load test... Results pending...
-</div>
-<div id="update" style="visibility: hidden">
-<form id="updtForm" action="javascript:updateChart()">
-<input type="submit" value="Update:" />
-Time axis min <input type="text" name="xmin" size="5" /> ms,
-max <input type="text" name="xmax" size="5" /> ms,
-logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
-Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
-</form>
-</div>
-<pre>
-{{else}}
-{{if .DoExit}}
-<p>Exiting server as per request.</p>
-{{else}}
-<form>
-<div>
-Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
-URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo" /> <br />
-QPS: <input type="text" name="qps" size="6" value="1000" />
-Duration: <input type="text" name="t" size="6" value="3s" /> <br />
-Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
-Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
-Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
-Headers: <br />
-{{ range $name, $vals := .Headers }}{{range $val := $vals}}
-<input type="text" name="H" size=40 value="{{$name}}: {{ $val }}" /> <br />
-{{end}}{{end}}
-<input type="text" name="H" size=40 value="" /> <br />
-JSON output: <input type="checkbox" name="json" /> <br />
-<input type="submit" name="load" value="Start"/>
-</div>
-</form>
-<p><i>Or</i></p>
-<form action="javascript:document.location += 'fetch/' + document.getElementById('uri').value">
-<div>
-Debug fetch http://<input type="text" id="uri" name="uri" value="" size=50/>
-</div>
-</form>
-<p><i>Or</i></p>
-<form method="POST">
-<div>
-Use with caution, will interrupt/end this server: <input type="submit" name="exit" value="Exit" />
-</div>
-</form>
-<p>See also <a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>.
-{{end}}
-</body>
-</html>
-{{end}}`
-		t := template.Must(template.New("htmlOut").Parse(templ))
+		if mainTemplate == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Critf("Nil template")
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-		err := t.Execute(w, &struct {
+		err := mainTemplate.Execute(w, &struct {
 			R           *http.Request
 			Headers     http.Header
 			Version     string
@@ -555,6 +492,11 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	if staticPath != "" {
 		fs := http.FileServer(http.Dir(staticPath))
 		http.Handle(uiPath+"static/", LogAndAddCacheControl(http.StripPrefix(uiPath, fs)))
+		var err error
+		mainTemplate, err = template.ParseFiles(path.Join(staticPath, "templates/main.html"))
+		if err != nil {
+			log.Critf("Unable to parse template: %v", err)
+		}
 	}
 	fhttp.Serve(port, debugpath)
 }
