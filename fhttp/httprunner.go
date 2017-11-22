@@ -42,6 +42,7 @@ type HTTPRunnerResults struct {
 	// exported result
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
+	URL         string
 }
 
 // Used globally / in TestHttp() TODO: change periodic.go to carry caller defined context
@@ -89,6 +90,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		RetCodes:    make(map[int]int64),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
+		URL:         o.URL,
 	}
 	httpstate = make([]HTTPRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {

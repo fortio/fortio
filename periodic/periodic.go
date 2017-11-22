@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.3.6"
+	Version = "0.3.8"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -66,7 +66,10 @@ type RunnerOptions struct {
 	NumThreads  int
 	Percentiles []float64
 	Resolution  float64
-	Out         io.Writer
+	// Where to write the textual version of the results, defaults to stdout
+	Out io.Writer
+	// Extra data to be copied back to the results (to be saved/JSON serialized)
+	Labels string
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -78,6 +81,8 @@ type RunnerResults struct {
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
+	StartTime         time.Time
+	Labels            string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -238,7 +243,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		}
 	}
 	result := RunnerResults{functionDuration.Export(r.Percentiles), requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version}
+		actualQPS, elapsed, r.NumThreads, Version, start, r.Labels}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	return result
 }

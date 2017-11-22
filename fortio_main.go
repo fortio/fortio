@@ -80,9 +80,11 @@ var (
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag   = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
-	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
-	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
+	jsonFlag       = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
+	uiPathFlag     = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
+	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
+	staticPathFlag = flag.String("static-path", "", "Absolute path to the dir containing the static files dir")
 
 	headersFlags flagList
 	percList     []float64
@@ -110,7 +112,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
@@ -165,16 +167,22 @@ func fortioLoad() {
 	} else {
 		fmt.Printf(", for %v: %s\n", *durationFlag, url)
 	}
-	if *qpsFlag <= 0 {
-		*qpsFlag = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
+	qps := *qpsFlag
+	if qps <= 0 {
+		qps = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
+	}
+	labels := *labelsFlag
+	if labels == "" {
+		labels, _ = os.Hostname()
 	}
 	ro := periodic.RunnerOptions{
-		QPS:         *qpsFlag,
+		QPS:         qps,
 		Duration:    *durationFlag,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
 		Out:         out,
+		Labels:      labels,
 	}
 	var res periodic.HasRunnerResult
 	if *grpcFlag {
