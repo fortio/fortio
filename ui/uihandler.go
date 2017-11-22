@@ -49,11 +49,35 @@ var (
 	httpPort int
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
+	// Directory where the static content and templates are to be loaded from.
+	// This is replaced at link time to the packaged directory (e.g /usr/local/lib/fortio/)
+	// but when fortio is installed with go get we use RunTime to find that directory.
+	// (see Dockerfile for how to set it)
+	dataDirectory string
 )
 
 const (
 	fetchURI = "fetch/"
 )
+
+// Gets the data directory from one of 3 sources:
+func getDataDir(override string) string {
+	if override != "" {
+		log.Infof("Using data directory from override: %s", override)
+		return override
+	}
+	if dataDirectory != "" {
+		log.Infof("Using data directory set at link time: %s", dataDirectory)
+		return dataDirectory
+	}
+	_, filename, _, ok := runtime.Caller(0)
+	log.Infof("Guessing data directory from runtime source location: %v - %s", ok, filename)
+	if ok {
+		return path.Dir(filename)
+	}
+	log.Errf("Unable to get source tree location. Failing to serve static contents.")
+	return ""
+}
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
@@ -523,17 +547,11 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	chartJSPath = "./static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
-	// by the function parameter staticPath,
-	// We use the directory relative to this file to find the static contents,
-	// so no matter where the generate go binary is, the static dir could be found.
-	if staticPath == "" {
-		_, filename, _, ok := runtime.Caller(0)
-		if ok {
-			staticPath = path.Dir(filename)
-		} else {
-			log.Errf("Unable to get source tree location. Failing to serve static contents.")
-		}
-	}
+	// by the function parameter staticPath, we use getDataDir which uses the
+	// link time value or the directory relative to this file to find the static
+	// contents, so no matter where or how the go binary is generated, the static
+	// dir should be found.
+	staticPath = getDataDir(staticPath)
 	if staticPath != "" {
 		fs := http.FileServer(http.Dir(staticPath))
 		http.Handle(uiPath+"static/", LogAndAddCacheControl(http.StripPrefix(uiPath, fs)))
