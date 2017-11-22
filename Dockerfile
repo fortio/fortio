@@ -10,6 +10,7 @@ FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/istio.io/fortio.bin /usr/local/bin/fortio
 COPY --from=build /go/src/istio.io/fortio/ui/static /usr/local/lib/fortio/static
+COPY --from=build /go/src/istio.io/fortio/ui/templates /usr/local/lib/fortio/templates
 EXPOSE 8079
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/fortio"]
