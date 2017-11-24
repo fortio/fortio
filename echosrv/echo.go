@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-// Adapted from istio/proxy/test/backend/echo with error handling and
+// Initially adapted from istio/proxy/test/backend/echo with error handling and
 // concurrency fixes and making it as low overhead as possible
 // (no std output by default)
 

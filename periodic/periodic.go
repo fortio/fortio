@@ -16,8 +16,8 @@
 // run a given task at a target rate (qps) and gather statistics - for instance
 // http requests.
 //
-// The main executable using the library is cmd/fortio but there
-// is also cmd/histogram to use the stats from the command line and cmd/echosrv
+// The main executable using the library is fortio but there
+// is also ../histogram to use the stats from the command line and ../echosrv
 // as a very light http server that can be used to test proxies etc like
 // the Istio components.
 package periodic // import "istio.io/fortio/periodic"
@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.3.8"
+	Version = "0.3.9"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).

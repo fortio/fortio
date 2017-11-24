@@ -26,7 +26,7 @@ logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
 Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
 </form>
 </div>
-<script src="static/js/fortio_chart.js"></script>
+<script src="{{.Version}}/static/js/fortio_chart.js"></script>
 <pre>{{else}}
 {{if .DoExit}}
 <p>Exiting server as per request.</p>

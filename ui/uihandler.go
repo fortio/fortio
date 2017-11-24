@@ -13,10 +13,6 @@
 // limitations under the License.
 //
 
-// Adapted from istio/proxy/test/backend/echo with error handling and
-// concurrency fixes and making it as low overhead as possible
-// (no std output by default)
-
 package ui // import "istio.io/fortio/ui"
 
 import (
@@ -218,59 +214,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // ResultToJsData converts a result object to chart data arrays.
 func ResultToJsData(w io.Writer, res *fhttp.HTTPRunnerResults) {
-	w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
-	for i, it := range res.DurationHistogram.Data {
-		var x float64
-		if i == 0 {
-			// Extra point, 1/N at min itself
-			x = 1000. * it.Start
-			// nolint: errcheck
-			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
-		}
-		if i == len(res.DurationHistogram.Data)-1 {
-			//last point we use the end part (max)
-			x = 1000. * it.End
-		} else {
-			x = 1000. * (it.Start + it.End) / 2.
-		}
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
+	j, err := json.MarshalIndent(res, "", "  ")
+	if err != nil {
+		log.Fatalf("Unable to json serialize result: %v", err)
 	}
-	w.Write([]byte("]\nvar dataH = [")) // nolint: errcheck
-	prev := 1000. * res.DurationHistogram.Data[0].Start
-	for _, it := range res.DurationHistogram.Data {
-		startX := 1000. * it.Start
-		endX := 1000. * it.End
-		if startX != prev {
-			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX))) // nolint: errcheck
-		}
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
-		prev = endX
-	}
-	// nolint: errcheck
-	w.Write([]byte("]\n"))
+	w.Write([]byte("var res = "))
+	w.Write(j)
+	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\n"))
 }
 
 // ResultToChart creates a chart from the result object
 func ResultToChart(w io.Writer, res *fhttp.HTTPRunnerResults) {
 	// nolint: errcheck
-	w.Write([]byte("showChart(["))
-	if res.Labels != "" {
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
-			res.Labels, res.URL, res.StartTime.Format(time.ANSIC)))) // TODO: escape single quote
-	}
-	percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
-	for _, p := range res.DurationHistogram.Percentiles {
-		percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
-	}
-	percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
-	// nolint: errcheck
-	w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
-		res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
-		percStr)))
-	w.Write([]byte("])\n"))
+	w.Write([]byte("showChart(data)\n"))
 }
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
@@ -348,8 +304,8 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	logoPath = "./static/img/logo.svg"
-	chartJSPath = "./static/js/Chart.min.js"
+	logoPath = periodic.Version + "/static/img/logo.svg"
+	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
 	// by the function parameter staticPath, we use getDataDir which uses the
@@ -359,7 +315,8 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	staticPath = getDataDir(staticPath)
 	if staticPath != "" {
 		fs := http.FileServer(http.Dir(staticPath))
-		http.Handle(uiPath+"static/", LogAndAddCacheControl(http.StripPrefix(uiPath, fs)))
+		prefix := uiPath + periodic.Version
+		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 		var err error
 		mainTemplate, err = template.ParseFiles(path.Join(staticPath, "templates/main.html"))
 		if err != nil {
