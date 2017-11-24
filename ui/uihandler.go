@@ -208,25 +208,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		1000.*res.DurationHistogram.Avg,
 		res.ActualQPS)))
 	ResultToJsData(w, res)
-	ResultToChart(w, res)
 	w.Write([]byte("</script></body></html>\n"))
 }
 
-// ResultToJsData converts a result object to chart data arrays.
+// ResultToJsData converts a result object to chart data arrays and title
+// and creates a chart from the result object
 func ResultToJsData(w io.Writer, res *fhttp.HTTPRunnerResults) {
 	j, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		log.Fatalf("Unable to json serialize result: %v", err)
 	}
-	w.Write([]byte("var res = "))
-	w.Write(j)
-	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\n"))
-}
-
-// ResultToChart creates a chart from the result object
-func ResultToChart(w io.Writer, res *fhttp.HTTPRunnerResults) {
 	// nolint: errcheck
-	w.Write([]byte("showChart(data)\n"))
+	w.Write([]byte("var res = "))
+	// nolint: errcheck
+	w.Write(j)
+	// nolint: errcheck
+	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
