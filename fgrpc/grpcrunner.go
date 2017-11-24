@@ -39,21 +39,16 @@ type GRPCRunnerResults struct {
 	RetCodes map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
 }
 
-// Used globally / in TestGRPC() TODO: change periodic.go to carry caller defined context
-var (
-	grpcstate []GRPCRunnerResults
-)
-
-// TestGRPC exercises GRPC health check at the target QPS.
+// Run exercises GRPC health check at the target QPS.
 // To be set as the Function in RunnerOptions.
-func TestGRPC(t int) {
+func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
-	res, err := grpcstate[t].client.Check(context.Background(), &grpcstate[t].req)
+	res, err := grpcstate.client.Check(context.Background(), &grpcstate.req)
 	log.Debugf("Got %v %v", res, err)
 	if err != nil {
 		log.Errf("Error making health check %v", err)
 	} else {
-		grpcstate[t].RetCodes[res.Status]++
+		grpcstate.RetCodes[res.Status]++
 	}
 }
 
@@ -68,18 +63,15 @@ type GRPCRunnerOptions struct {
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
-	// TODO lock
-	if o.Function == nil {
-		o.Function = TestGRPC
-	}
 	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
 	}
-	grpcstate = make([]GRPCRunnerResults, numThreads)
+	grpcstate := make([]GRPCRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
+		r.Options().Runners[i] = &grpcstate[i]
 		// TODO: option to use certs
 		conn, err := grpc.Dial(o.Destination, grpc.WithInsecure())
 		if err != nil {

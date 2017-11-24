@@ -52,12 +52,28 @@ var DefaultRunnerOptions = RunnerOptions{
 	Resolution:  0.001, // milliseconds
 }
 
-// Function to run periodically.
-type Function func(tid int)
+// Runnable are the function to run periodically.
+type Runnable interface {
+	Run(tid int)
+}
+
+// MakeRunners creates an array of NumThreads identical Runnable instances.
+// (for the (rare/test) cases where there is no unique state needed)
+func (ro *RunnerOptions) MakeRunners(r Runnable) {
+	log.Infof("Making %d clone of %+v", ro.NumThreads, r)
+	if len(ro.Runners) < ro.NumThreads {
+		log.Infof("Resizing runners from %d to %d", len(ro.Runners), ro.NumThreads)
+		ro.Runners = make([]Runnable, ro.NumThreads)
+	}
+	for i := 0; i < ro.NumThreads; i++ {
+		ro.Runners[i] = r
+	}
+}
 
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
-	Function Function
+	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
+	Runners  []Runnable
 	QPS      float64
 	Duration time.Duration
 	// Note that this actually maps to gorountines and not actual threads
@@ -140,6 +156,9 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.Duration == 0 {
 		r.Duration = DefaultRunnerOptions.Duration
 	}
+	if r.Runners == nil {
+		r.Runners = make([]Runnable, r.NumThreads)
+	}
 	return r
 }
 
@@ -172,8 +191,9 @@ func (r *periodicRunner) Run() RunnerResults {
 				r.NumThreads = 1
 			}
 			if int64(2*r.NumThreads) > numCalls {
-				r.NumThreads = int(numCalls / 2)
-				log.Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
+				newN := int(numCalls / 2)
+				log.Warnf("Lowering number of threads - total call %d -> lowering from %d to %d threads", numCalls, r.NumThreads, newN)
+				r.NumThreads = newN
 			}
 			numCalls /= int64(r.NumThreads)
 			totalCalls := numCalls * int64(r.NumThreads)
@@ -193,6 +213,14 @@ func (r *periodicRunner) Run() RunnerResults {
 		} else {
 			fmt.Fprintf(r.Out, "until interrupted\n")
 		}
+	}
+	runnersLen := len(r.Runners)
+	if runnersLen == 0 {
+		log.Fatalf("Empty runners array !")
+	}
+	if r.NumThreads > runnersLen {
+		r.MakeRunners(r.Runners[0])
+		log.Warnf("Context array was of %d len, replacing with %d clone of first one", runnersLen, len(r.Runners))
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
@@ -256,7 +284,7 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
 	hasDuration := (r.Duration > 0)
-	f := r.Function
+	f := r.Runners[id]
 
 	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
 	c := make(chan os.Signal, 1)
@@ -277,7 +305,7 @@ MainLoop:
 				break
 			}
 		}
-		f(id)
+		f.Run(id)
 		funcTimes.Record(time.Since(fStart).Seconds())
 		i++
 		// if using QPS / pre calc expected call # mode:

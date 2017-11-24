@@ -29,7 +29,6 @@ import (
 )
 
 func TestHTTPRunner(t *testing.T) {
-	log.SetLogLevel(log.Info)
 	http.HandleFunc("/foo/", EchoHandler)
 	port := DynamicHTTPServer(false)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
@@ -57,8 +56,32 @@ func TestHTTPRunner(t *testing.T) {
 	}
 }
 
+func TestHTTPRunnerClientRace(t *testing.T) {
+	http.HandleFunc("/echo1/", EchoHandler)
+	port := DynamicHTTPServer(false)
+	URL := fmt.Sprintf("http://localhost:%d/echo1/", port)
+
+	opts := HTTPRunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
+			QPS: 100,
+		},
+		URL: URL,
+	}
+	opts2 := opts
+	go RunHTTPTest(&opts2)
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq := res.DurationHistogram.Count
+	httpOk := res.RetCodes[http.StatusOK]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+}
+
 func TestHTTPRunnerBadServer(t *testing.T) {
-	log.SetLogLevel(log.Info)
 	// Using http to an https server (or the current 'close all' dummy https server)
 	// should fail:
 	port := DynamicHTTPServer(true)
