@@ -14,17 +14,21 @@ DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 install:
 	go install ./...
 
+# Local test
 test:
 	go test -timeout 45s -race ./...
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fortio/fhttp"
 LINT_PACKAGES:=./fortio/...
 # TODO: do something about cyclomatic complexity
-lint:
+test-and-lint:
 	docker run -v $(PWD):/go/src/istio.io/fortio $(LINTERS_IMAGE) bash -c \
-		"time go install $(LINT_PACKAGES) && time gometalinter \
+		"time go test -timeout 45s -race $(LINT_PACKAGES) && \
+		time go install $(LINT_PACKAGES) && time gometalinter \
 		--deadline=180s --enable-all --aggregate \
 		--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)"
+
+lint: test-and-lint
 
 webtest:
 	./Webtest.sh
@@ -61,3 +65,5 @@ authorize:
 .PHONY: all docker-internal docker-push-internal docker-version authorize test
 
 .PHONY: install lint install-linters coverage weblint update-build-image
+
+.PHONY: test-and-lint

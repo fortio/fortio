@@ -12,7 +12,6 @@ jobs:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
-      - run: make install test
-      - run: make lint
+      - run: make test-and-lint
       - run: make webtest
       - run: make coverage
