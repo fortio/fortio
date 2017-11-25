@@ -37,8 +37,8 @@ func TestHTTPRunner(t *testing.T) {
 		RunnerOptions: periodic.RunnerOptions{
 			QPS: 100,
 		},
-		URL: baseURL,
 	}
+	opts.Init(baseURL)
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
 		t.Error("Expecting an error but didn't get it when not using full url")
@@ -65,8 +65,8 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 		RunnerOptions: periodic.RunnerOptions{
 			QPS: 100,
 		},
-		URL: URL,
 	}
+	opts.Init(URL)
 	opts2 := opts
 	go RunHTTPTest(&opts2)
 	res, err := RunHTTPTest(&opts)
@@ -91,8 +91,8 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 		RunnerOptions: periodic.RunnerOptions{
 			QPS: 10,
 		},
-		URL: baseURL,
 	}
+	opts.Init(baseURL)
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
 		t.Fatal("Expecting an error but didn't get it when connecting to bad server")

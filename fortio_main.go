@@ -32,6 +32,12 @@ import (
 	"istio.io/fortio/ui"
 )
 
+var httpOpts fhttp.HTTPOptions
+
+func init() {
+	httpOpts.Init("")
+}
+
 // -- Support for multiple instances of -H flag on cmd line:
 type flagList struct {
 }
@@ -41,7 +47,7 @@ func (f *flagList) String() string {
 	return ""
 }
 func (f *flagList) Set(value string) error {
-	return fhttp.AddAndValidateExtraHeader(value)
+	return httpOpts.AddAndValidateExtraHeader(value)
 }
 
 // -- end of functions for -H support
@@ -119,23 +125,12 @@ func main() {
 	default:
 		usage("Error: unknown command ", command)
 	}
-
 }
 
-func fetchURL(url string) {
-	var client fhttp.Fetcher
+func fetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
-	keepAlive := *keepAliveFlag
-	if *stdClientFlag {
-		client = fhttp.NewStdClient(url, 1, keepAlive, *compressionFlag)
-	} else {
-		if *http10Flag {
-			client = fhttp.NewBasicClient(url, "1.0", keepAlive, *halfCloseFlag)
-		} else {
-			client = fhttp.NewBasicClient(url, "1.1", keepAlive, *halfCloseFlag)
-		}
-	}
+	client := fhttp.NewClient(o)
 	if client == nil {
 		return // error logged already
 	}
@@ -153,8 +148,14 @@ func fortioLoad() {
 		usage("Error: fortio load needs a url or destination")
 	}
 	url := flag.Arg(0)
+	httpOpts.URL = url
+	httpOpts.HTTP10 = *http10Flag
+	httpOpts.DisableFastClient = *stdClientFlag
+	httpOpts.DisableKeepAlive = !*keepAliveFlag
+	httpOpts.AllowHalfClose = *halfCloseFlag
+	httpOpts.Compression = *compressionFlag
 	if *curlFlag {
-		fetchURL(url)
+		fetchURL(&httpOpts)
 		return
 	}
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
@@ -194,14 +195,8 @@ func fortioLoad() {
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
-			RunnerOptions:     ro,
-			URL:               url,
-			HTTP10:            *http10Flag,
-			DisableFastClient: *stdClientFlag,
-			DisableKeepAlive:  !*keepAliveFlag,
-			AllowHalfClose:    *halfCloseFlag,
-			Profiler:          *profileFlag,
-			Compression:       *compressionFlag,
+			RunnerOptions: ro,
+			Profiler:      *profileFlag,
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}

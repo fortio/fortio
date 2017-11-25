@@ -61,13 +61,8 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 // options.
 type HTTPRunnerOptions struct {
 	periodic.RunnerOptions
-	URL               string
-	Compression       bool   // defaults to no compression, only used by std client
-	DisableFastClient bool   // defaults to fast client
-	HTTP10            bool   // defaults to http1.1
-	DisableKeepAlive  bool   // so default is keep alive
-	AllowHalfClose    bool   // if not keepalive, whether to half close after request
-	Profiler          string // file to save profiles to. defaults to no profiling
+	HTTPOptions        // Need to call Init() to initialize
+	Profiler    string // file to save profiles to. defaults to no profiling
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
@@ -87,15 +82,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
-		if o.DisableFastClient {
-			httpstate[i].client = NewStdClient(o.URL, 1, !o.DisableKeepAlive, o.Compression)
-		} else {
-			if o.HTTP10 {
-				httpstate[i].client = NewBasicClient(o.URL, "1.0", !o.DisableKeepAlive, o.AllowHalfClose)
-			} else {
-				httpstate[i].client = NewBasicClient(o.URL, "1.1", !o.DisableKeepAlive, o.AllowHalfClose)
-			}
-		}
+		httpstate[i].client = NewClient(&o.HTTPOptions)
 		if httpstate[i].client == nil {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.URL)
 		}

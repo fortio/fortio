@@ -102,6 +102,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	labels := r.FormValue("labels")
+	opts := fhttp.NewHTTPOptions(url)
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -124,7 +125,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			Port        int
 			DoExit      bool
 			DoLoad      bool
-		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
+		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels,
 			fhttp.RoundDuration(time.Since(startTime)), httpPort, DoExit, DoLoad})
 		if err != nil {
@@ -160,10 +161,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.LogVf("adding header %v", header)
 		if firstHeader {
 			// If there is at least 1 non empty H passed, reset the header list
-			fhttp.ResetHeaders()
+			opts.ResetHeaders()
 			firstHeader = false
 		}
-		err = fhttp.AddAndValidateExtraHeader(header)
+		err = opts.AddAndValidateExtraHeader(header)
 		if err != nil {
 			log.Errf("Error adding custom headers: %v", err)
 		}
@@ -183,7 +184,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	o := fhttp.HTTPRunnerOptions{
 		RunnerOptions: ro,
-		URL:           url,
+		HTTPOptions:   *opts,
 	}
 	res, err := fhttp.RunHTTPTest(&o)
 	if err != nil {
@@ -263,11 +264,9 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	// Don't forget to close the connection:
 	defer conn.Close() // nolint: errcheck
 	url := r.URL.String()[len(fetchPath):]
-	client := fhttp.NewBasicClient("http://"+url, "1.1",
-		/* keepalive: */
-		false,
-		/* halfclose: */
-		false)
+	opts := fhttp.NewHTTPOptions("http://" + url)
+	opts.DisableKeepAlive = true
+	client := fhttp.NewClient(opts)
 	if client == nil {
 		return // error logged already
 	}

@@ -23,8 +23,10 @@ import (
 )
 
 func TestGetHeaders(t *testing.T) {
-	AddAndValidateExtraHeader("FOo:baR")
-	h := GetHeaders()
+	o := NewHTTPOptions("")
+	o.AddAndValidateExtraHeader("FOo:baR")
+	oo := *o // check that copying works
+	h := oo.GetHeaders()
 	if len(h) != 2 { // 1 above + user-agent
 		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
 	}
@@ -34,16 +36,16 @@ func TestGetHeaders(t *testing.T) {
 	if h.Get("Host") != "" {
 		t.Errorf("Host header should be nil initially, got '%v'", h.Get("Host"))
 	}
-	AddAndValidateExtraHeader("hoSt:   aBc:123")
-	h = GetHeaders()
+	o.AddAndValidateExtraHeader("hoSt:   aBc:123")
+	h = o.GetHeaders()
 	if h.Get("Host") != "aBc:123" {
 		t.Errorf("Host header mismatch, got '%v'", h.Get("Host"))
 	}
 	if len(h) != 3 { // 2 above + user-agent
 		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
 	}
-	ResetHeaders()
-	h = GetHeaders()
+	o.ResetHeaders()
+	h = o.GetHeaders()
 	if h.Get("Host") != "" {
 		t.Errorf("After reset Host header should be nil, got '%v'", h.Get("Host"))
 	}
@@ -61,7 +63,7 @@ func TestNewHTTPRequest(t *testing.T) {
 		{"ht tp://www.google.com/", false},
 	}
 	for _, tst := range tests {
-		r := newHTTPRequest(tst.url)
+		r := newHTTPRequest(&HTTPOptions{URL: tst.url})
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
 		}
