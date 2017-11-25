@@ -57,8 +57,8 @@ const (
 	fetchURI = "fetch/"
 )
 
-// Gets the data directory from one of 3 sources:
-func getDataDir(override string) string {
+// Gets the resources directory from one of 3 sources:
+func getResourcesDir(override string) string {
 	if override != "" {
 		log.Infof("Using data directory from override: %s", override)
 		return override
@@ -304,11 +304,11 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
-	// by the function parameter staticPath, we use getDataDir which uses the
+	// by the function parameter staticPath, we use getResourcesDir which uses the
 	// link time value or the directory relative to this file to find the static
 	// contents, so no matter where or how the go binary is generated, the static
 	// dir should be found.
-	staticPath = getDataDir(staticPath)
+	staticPath = getResourcesDir(staticPath)
 	if staticPath != "" {
 		fs := http.FileServer(http.Dir(staticPath))
 		prefix := uiPath + periodic.Version
