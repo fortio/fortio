@@ -1,7 +1,6 @@
 # Build the binaries in larger image
-FROM golang:1.8.3 as build
+FROM fortio/fortio.build:v1 as build
 WORKDIR /go/src/istio.io
-RUN go get google.golang.org/grpc
 COPY . fortio
 # Demonstrate moving the static directory outside of the go source tree:
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-X istio.io/fortio/ui.dataDirectory=/usr/local/lib/fortio -s' -o fortio.bin istio.io/fortio

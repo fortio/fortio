@@ -12,7 +12,7 @@ jobs:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
-      - run: go get -v -t -d ./...
-      - run: make install-linters lint
+      - run: make test
+      - run: make lint
       - run: make webtest
       - run: make coverage

@@ -1,0 +1,6 @@
+# Dependencies and linters for build:
+FROM golang:1.8.3 as build
+WORKDIR /go/src/istio.io
+RUN go get -u google.golang.org/grpc
+RUN go get -u github.com/alecthomas/gometalinter
+RUN gometalinter -i -u
