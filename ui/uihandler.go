@@ -141,18 +141,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
 		return
 	}
-	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
-	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
-	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
+	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
+	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
+	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
 	dur, err := time.ParseDuration(durStr)
 	if err != nil {
 		log.Errf("Error parsing duration '%s': %v", durStr, err)
 	}
-	c, _ := strconv.Atoi(r.FormValue("c"))
+	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
 	firstHeader := true
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
@@ -188,7 +188,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := fhttp.RunHTTPTest(&o)
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
+		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck,gas
 		return
 	}
 	if JSONOnly {
@@ -203,13 +203,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// nolint: errcheck
+	// nolint: errcheck, gas
 	w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
 		res.DurationHistogram.Count,
 		1000.*res.DurationHistogram.Avg,
 		res.ActualQPS)))
 	ResultToJsData(w, res)
-	w.Write([]byte("</script></body></html>\n"))
+	w.Write([]byte("</script></body></html>\n")) // nolint: gas
 }
 
 // ResultToJsData converts a result object to chart data arrays and title
@@ -219,11 +219,11 @@ func ResultToJsData(w io.Writer, res *fhttp.HTTPRunnerResults) {
 	if err != nil {
 		log.Fatalf("Unable to json serialize result: %v", err)
 	}
-	// nolint: errcheck
+	// nolint: errcheck, gas
 	w.Write([]byte("var res = "))
-	// nolint: errcheck
+	// nolint: errcheck, gas
 	w.Write(j)
-	// nolint: errcheck
+	// nolint: errcheck, gas
 	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 

@@ -197,14 +197,17 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 			numCalls /= int64(r.NumThreads)
 			totalCalls := numCalls * int64(r.NumThreads)
+			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
 		} else {
+			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
 			numCalls = 0
 		}
 	} else {
+		// nolint: gas
 		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
 		if hasDuration {
@@ -253,6 +256,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
+	// nolint: gas
 	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
@@ -261,7 +265,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		// user.
 		if percentNegative > 5 {
 			sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
-			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative)
+			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative) // nolint: gas
 		} else {
 			if log.Log(log.Verbose) {
 				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})

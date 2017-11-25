@@ -54,15 +54,16 @@ func (f *flagList) Set(value string) error {
 
 // Prints usage
 func usage(msgs ...interface{}) {
+	// nolint: gas
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
-		"and flags are:") // nolint(gas)
+		"and flags are:")
 	flag.PrintDefaults()
-	fmt.Fprint(os.Stderr, msgs...)
-	os.Stderr.WriteString("\n") // nolint(gas)
+	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
+	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
 	os.Exit(1)
 }
 

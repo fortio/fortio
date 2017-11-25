@@ -523,7 +523,7 @@ func (c *BasicClient) Fetch() (int, []byte, int) {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("Closing dead socket %v (%v)", *conn, err)
-			conn.Close() // nolint: errcheck
+			conn.Close() // nolint: errcheck,gas
 			c.errorCount++
 			return c.Fetch() // recurse once
 		}
@@ -792,7 +792,7 @@ func closingServer(listener net.Listener) error {
 // DynamicHTTPServer listens on an available port, sets up an http or https
 // (when secure is true) server on it and returns the listening port.
 func DynamicHTTPServer(secure bool) int {
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", ":0") // nolint: gas
 	if err != nil {
 		log.Fatalf("Unable to listen to dynamic port: %v", err)
 	}
@@ -876,7 +876,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
-	hostname, _ := os.Hostname()
+	hostname, _ := os.Hostname() // nolint: gas
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
