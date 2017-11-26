@@ -16,7 +16,7 @@ install:
 
 # Local test
 test:
-	go test -timeout 45s -race ./...
+	go test -timeout 60s -race ./...
 
 # To debug linters, uncomment
 #DEBUG_LINTERS="--debug"

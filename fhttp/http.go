@@ -577,10 +577,11 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 	keepAlive := c.keepAlive
 	chunkedMode := false
 	checkConnectionClosedHeader := CheckConnectionClosedHeader
+	skipRead := false
 	for {
 		// Ugly way to cover the case where we get more than 1 chunk at the end
 		// TODO: need automated tests
-		if c.size < max {
+		if skipRead {
 			n, err := conn.Read(c.buffer[c.size:])
 			if err == io.EOF {
 				if c.size == 0 {
@@ -600,6 +601,7 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 					n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
 			}
 		}
+		skipRead = false
 		// Have not yet parsed the headers, need to parse the headers, and have enough data to
 		// at least parse the http retcode:
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
@@ -715,6 +717,10 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 					if max > len(c.buffer) {
 						log.Errf("Buffer too small for %d data", max)
 					} else {
+						if max <= c.size {
+							log.Debugf("Enough data to reach next chunk, skipping a read")
+							skipRead = true
+						}
 						continue
 					}
 				}
