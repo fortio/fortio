@@ -4,7 +4,7 @@
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
-LINTERS_IMAGE := docker.io/fortio/fortio.build:v2
+LINTERS_IMAGE := docker.io/fortio/fortio.build:v3
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
@@ -18,8 +18,11 @@ install:
 test:
 	go test -timeout 45s -race ./...
 
+# To debug linters, uncomment
+#DEBUG_LINTERS="--debug"
+
 local-lint:
-	gometalinter \
+	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate \
 	--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
