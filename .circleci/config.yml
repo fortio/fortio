@@ -13,6 +13,6 @@ jobs:
           version: 17.10.0-ce
       - checkout
       - run: make test
-      - run: make install local-lint
+      - run: CGO_ENABLED=0 make install local-lint
       - run: make webtest
       - run: make coverage
