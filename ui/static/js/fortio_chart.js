@@ -162,10 +162,18 @@ function fortioResultToJsChartData(res) {
 }
 
 function showChart(data) {
+    toggleVisibility()
+    makeChart(data)
+}
+
+function toggleVisibility() {
     document.getElementById('running').style.display = 'none';
+    document.getElementById('update').style.visibility = 'visible';
+}
+
+function makeChart(data) {
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
-    document.getElementById('update').style.visibility = 'visible';
     var ctx = chartEl.getContext('2d');
     chart = new Chart(ctx, {
         type: 'line',

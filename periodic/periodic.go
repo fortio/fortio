@@ -90,15 +90,15 @@ type RunnerOptions struct {
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
-	DurationHistogram *stats.HistogramData
+	Labels            string
+	StartTime         time.Time
 	RequestedQPS      string
 	RequestedDuration string
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
-	StartTime         time.Time
-	Labels            string
+	DurationHistogram *stats.HistogramData
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -274,8 +274,8 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 		}
 	}
-	result := RunnerResults{functionDuration.Export(r.Percentiles), requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, start, r.Labels}
+	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export(r.Percentiles)}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	return result
 }

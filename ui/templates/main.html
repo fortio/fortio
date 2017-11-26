@@ -43,12 +43,18 @@ Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br
 Headers: <br />
 {{ range $name, $vals := .Headers }}{{range $val := $vals}}
 <input type="text" name="H" size=40 value="{{$name}}: {{ $val }}" /> <br />
-{{end}}{{end}}
+{{end}}{{end}} <!-- 2 extra header lines, TODO: add a JS 'more headers' button -->
 <input type="text" name="H" size=40 value="" /> <br />
-JSON output: <input type="checkbox" name="json" /> <br />
+<input type="text" name="H" size=40 value="" /> <br />
+JSON output: <input type="checkbox" name="json" />,
+Save output: <input type="checkbox" name="save" checked /> <br />
 <input type="submit" name="load" value="Start"/>
 </div>
 </form>
+<p><i>Or</i></p>
+<div>
+Browse <a href='browse'>saved results</a> (or <a href="data/">raw JSON</a>)
+</div>
 <p><i>Or</i></p>
 <form action="javascript:document.location += 'fetch/' + document.getElementById('uri').value">
 <div>

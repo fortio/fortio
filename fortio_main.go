@@ -92,10 +92,10 @@ var (
 	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
 	staticPathFlag = flag.String("static-path", "", "Absolute path to the dir containing the static files dir")
-
-	headersFlags flagList
-	percList     []float64
-	err          error
+	dataPathFlag   = flag.String("data-path", "/var/lib/istio/fortio", "Directory where JSON results are stored")
+	headersFlags   flagList
+	percList       []float64
+	err            error
 )
 
 func main() {
@@ -119,7 +119,7 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag, *dataPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
