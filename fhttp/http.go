@@ -430,7 +430,9 @@ func ParseDecimal(inp []byte) int {
 // Returns the offset of the data and the size of the chunk,
 // 0, -1 when not found.
 func ParseChunkSize(inp []byte) (int, int) {
-	log.Debugf("ParseChunkSize(%s)", DebugSummary(inp, 128))
+	if log.LogDebug() {
+		log.Debugf("ParseChunkSize(%s)", DebugSummary(inp, 128))
+	}
 	res := -1
 	off := 0
 	end := len(inp)
@@ -581,7 +583,7 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 	for {
 		// Ugly way to cover the case where we get more than 1 chunk at the end
 		// TODO: need automated tests
-		if skipRead {
+		if !skipRead {
 			n, err := conn.Read(c.buffer[c.size:])
 			if err == io.EOF {
 				if c.size == 0 {
