@@ -1,6 +1,20 @@
 # Dependencies and linters for build:
-FROM golang:1.8.3 as build
-WORKDIR /go/src/istio.io
+FROM ubuntu:xenial
+RUN apt-get -y update && \
+  apt-get --no-install-recommends -y upgrade && \
+  apt-get --no-install-recommends -y install ca-certificates curl make git
+RUN curl https://storage.googleapis.com/golang/go1.8.5.linux-amd64.tar.gz | tar xfz - -C /usr/local
+ENV GOPATH /go
+ENV PATH /usr/local/go/bin:$PATH:$GOPATH/bin
 RUN go get -u google.golang.org/grpc
 RUN go get -u github.com/alecthomas/gometalinter
 RUN gometalinter -i -u
+WORKDIR /go/src/istio.io
+# Docker:
+RUN apt-get install --no-install-recommends -y apt-transport-https
+RUN curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | apt-key add
+RUN echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable" > /etc/apt/sources.list.d/docker.list
+RUN apt-get -y update
+RUN apt-get install --no-install-recommends -y docker-ce
+# No gcc installed so we need to disable cgo or linters for install will fail
+ENV CGO_ENABLED=0

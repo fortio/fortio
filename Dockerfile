@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM fortio/fortio.build:v1 as build
+FROM fortio/fortio.build:v2 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
 # Demonstrate moving the static directory outside of the go source tree:

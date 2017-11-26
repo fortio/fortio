@@ -6,12 +6,13 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: circleci/golang:1.8
+      - image: fortio/fortio.build:v2
     working_directory: /go/src/istio.io/fortio
     steps:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
-      - run: make test-and-lint
+      - run: make test
+      - run: make local-lint
       - run: make webtest
       - run: make coverage

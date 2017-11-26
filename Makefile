@@ -4,7 +4,7 @@
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
-LINTERS_IMAGE := docker.io/fortio/fortio.build:v1
+LINTERS_IMAGE := docker.io/fortio/fortio.build:v2
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
@@ -18,17 +18,20 @@ install:
 test:
 	go test -timeout 45s -race ./...
 
-# Lint everything by default but ok to "make lint LINT_PACKAGES=./fortio/fhttp"
-LINT_PACKAGES:=./fortio/...
-# TODO: do something about cyclomatic complexity
-test-and-lint:
-	docker run -v $(PWD):/go/src/istio.io/fortio $(LINTERS_IMAGE) bash -c \
-		"time go test -timeout 45s -race $(LINT_PACKAGES) && \
-		time go install $(LINT_PACKAGES) && time gometalinter \
-		--deadline=180s --enable-all --aggregate \
-		--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)"
+local-lint:
+	gometalinter \
+	--deadline=180s --enable-all --aggregate \
+	--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
-lint: test-and-lint
+# Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
+LINT_PACKAGES:=./...
+# TODO: do something about cyclomatic complexity
+# Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
+# build image
+lint:
+	docker run -v $(PWD):/go/src/istio.io/fortio $(LINTERS_IMAGE) bash -c \
+		"cd fortio && time go install $(LINT_PACKAGES) \
+		&& time make local-lint LINT_PACKAGES=$(LINT_PACKAGES)"
 
 webtest:
 	./Webtest.sh
@@ -66,4 +69,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: test-and-lint
+.PHONY: local-lint
