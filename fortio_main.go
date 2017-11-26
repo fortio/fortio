@@ -196,6 +196,7 @@ func fortioLoad() {
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
+			HTTPOptions:   httpOpts,
 			RunnerOptions: ro,
 			Profiler:      *profileFlag,
 		}

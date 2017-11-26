@@ -36,3 +36,7 @@ if [ "$SIZE" -lt 50000 ]; then
 fi
 # Check the main page
 $CURL $BASE_FORTIO
+# Do a small load using std client
+docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
+# and with normal
+docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
