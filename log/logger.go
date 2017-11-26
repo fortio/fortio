@@ -103,8 +103,10 @@ func SetLogLevel(lvl Level) Level {
 		log.Printf("SetLogLevel called with level %d higher than Critical!", lvl)
 		return -1
 	}
-	logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.ToString(), prev, prev.ToString())
-	level = lvl
+	if lvl != prev {
+		logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.ToString(), prev, prev.ToString())
+		level = lvl
+	}
 	return prev
 }
 

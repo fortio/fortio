@@ -430,6 +430,7 @@ func ParseDecimal(inp []byte) int {
 // Returns the offset of the data and the size of the chunk,
 // 0, -1 when not found.
 func ParseChunkSize(inp []byte) (int, int) {
+	log.Debugf("ParseChunkSize(%s)", DebugSummary(inp, 128))
 	res := -1
 	off := 0
 	end := len(inp)
@@ -577,23 +578,27 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 	chunkedMode := false
 	checkConnectionClosedHeader := CheckConnectionClosedHeader
 	for {
-		n, err := conn.Read(c.buffer[c.size:])
-		if err == io.EOF {
-			if c.size == 0 {
-				log.Errf("EOF before reading anything on %v %v", conn, c.dest)
-				c.code = -1
+		// Ugly way to cover the case where we get more than 1 chunk at the end
+		// TODO: need automated tests
+		if c.size < max {
+			n, err := conn.Read(c.buffer[c.size:])
+			if err == io.EOF {
+				if c.size == 0 {
+					log.Errf("EOF before reading anything on %v %v", conn, c.dest)
+					c.code = -1
+				}
+				break
 			}
-			break
-		}
-		if err != nil {
-			log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
-			c.code = -1
-			break
-		}
-		c.size += n
-		if log.LogDebug() {
-			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
-				n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
+			if err != nil {
+				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
+				c.code = -1
+				break
+			}
+			c.size += n
+			if log.LogDebug() {
+				log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
+					n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
+			}
 		}
 		// Have not yet parsed the headers, need to parse the headers, and have enough data to
 		// at least parse the http retcode:
@@ -650,7 +655,7 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], chunkedHeader); found {
 							chunkedMode = true
 							var dataStart int
-							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:])
+							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:c.size])
 							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("chunk-length is %d (%s) setting max to %d",
 								contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],

@@ -3,7 +3,9 @@ set -x
 # Check we can build the image
 make docker-internal TAG=webtest || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
-DOCKERID=$(docker run -d --name fortio_server istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX)
+#LOGLEVEL=debug
+LOGLEVEL=info
+DOCKERID=$(docker run -d --name fortio_server istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
 function cleanup {
   docker stop $DOCKERID
   docker rm fortio_server
@@ -14,13 +16,13 @@ set -o pipefail
 docker ps
 BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
-CURL="docker exec fortio_server /usr/local/bin/fortio load -curl"
+CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image)
 $CURL -stdclient https://istio.io/robots.txt
 # Check we can connect, and run a QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
-VERSION=$(bash -c "($CURL || true) 2>&1 | head -1 | awk '{print \$2}'")
+VERSION=$(bash -c "($CURL || true) 2>&1 | grep usage: | awk '{print \$2}'")
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
