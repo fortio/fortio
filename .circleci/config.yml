@@ -13,6 +13,7 @@ jobs:
           version: 17.10.0-ce
       - checkout
       - run: make test
-      - run: CGO_ENABLED=0 make install local-lint
+      # If ran with default we get random errors because OOM killer kills some linters
+      - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
       - run: make webtest
       - run: make coverage
