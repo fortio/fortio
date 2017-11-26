@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM fortio/fortio.build:v3 as build
+FROM fortio/fortio.build:v4 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-s' -o echosrv.bin istio.io/fortio/echosrv

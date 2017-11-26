@@ -4,7 +4,7 @@ FROM ubuntu:xenial
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
   apt-get --no-install-recommends -y install ca-certificates curl make git gcc \
-   libc6-dev apt-transport-https
+  libc6-dev apt-transport-https ssh
 RUN curl https://storage.googleapis.com/golang/go1.8.5.linux-amd64.tar.gz | tar xfz - -C /usr/local
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$PATH:$GOPATH/bin

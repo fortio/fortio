@@ -4,7 +4,7 @@
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
-LINTERS_IMAGE := docker.io/fortio/fortio.build:v3
+LINTERS_IMAGE := docker.io/fortio/fortio.build:v4
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
@@ -49,9 +49,13 @@ all: test install lint docker-version docker-push-internal
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
 
+FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv Dockerfile.test Makefile
 # Ran make update-build-image TAG=v1 DOCKER_PREFIX=fortio/fortio
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(TAG)
+
+update-build-image-tag:
+	sed -i .bak -e "s/fortio.build:v4/fortio.build:$(TAG)/g" $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -72,4 +76,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: local-lint
+.PHONY: local-lint update-build-image-tag
