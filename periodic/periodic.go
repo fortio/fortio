@@ -381,7 +381,7 @@ func (r *RunnerResults) ID() string {
 			last = rune
 		} else {
 			if last == '_' {
-				continue // only 1 _ seperator at a time
+				continue // only 1 _ separator at a time
 			}
 			last = '_'
 		}
