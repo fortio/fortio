@@ -58,12 +58,25 @@ func TestCounter(t *testing.T) {
 	log.SetFlags(0)
 	*log.LogFileAndLine = false
 	*log.LogPrefix = ""
-	c.Counter.Log("testLog")
-	expected += "I testLog" + finalExpected
+	c.Counter.Log("testLogC")
+	expected += "I testLogC" + finalExpected
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	if actual != expected {
-		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
+		t.Errorf("unexpected1:\n%s\nvs:\n%s\n", actual, expected)
+	}
+	b.Reset()
+	c.Log("testLogH", nil)
+	w.Flush() // nolint: errcheck
+	actual = b.String()
+	expected = "I testLogH" + finalExpected + `# range, mid point, percentile, count
+>= -977 < 22.1 , -477.45 , 16.67, 1
+>= 22.8 < 22.9 , 22.85 , 50.00, 2
+>= 23.1 < 23.2 , 23.15 , 83.33, 2
+>= 1022 <= 1023 , 1022.5 , 100.00, 1
+`
+	if actual != expected {
+		t.Errorf("unexpected2:\n%s\nvs:\n%s\n", actual, expected)
 	}
 }
 

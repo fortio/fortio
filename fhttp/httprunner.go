@@ -45,43 +45,29 @@ type HTTPRunnerResults struct {
 	URL         string
 }
 
-// Used globally / in TestHttp() TODO: change periodic.go to carry caller defined context
-var (
-	httpstate []HTTPRunnerResults
-)
-
-// TestHTTP http request fetching. Main call being run at the target QPS.
+// Run tests http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func TestHTTP(t int) {
+func (httpstate *HTTPRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
-	code, body, headerSize := httpstate[t].client.Fetch()
+	code, body, headerSize := httpstate.client.Fetch()
 	size := len(body)
 	log.Debugf("Got in %3d hsz %d sz %d", code, headerSize, size)
-	httpstate[t].RetCodes[code]++
-	httpstate[t].sizes.Record(float64(size))
-	httpstate[t].headerSizes.Record(float64(headerSize))
+	httpstate.RetCodes[code]++
+	httpstate.sizes.Record(float64(size))
+	httpstate.headerSizes.Record(float64(headerSize))
 }
 
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
 // options.
 type HTTPRunnerOptions struct {
 	periodic.RunnerOptions
-	URL               string
-	Compression       bool   // defaults to no compression, only used by std client
-	DisableFastClient bool   // defaults to fast client
-	HTTP10            bool   // defaults to http1.1
-	DisableKeepAlive  bool   // so default is keep alive
-	AllowHalfClose    bool   // if not keepalive, whether to half close after request
-	Profiler          string // file to save profiles to. defaults to no profiling
+	HTTPOptions        // Need to call Init() to initialize
+	Profiler    string // file to save profiles to. defaults to no profiling
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// TODO 1. use std client automatically when https url
-	// TODO 2. lock
-	if o.Function == nil {
-		o.Function = TestHTTP
-	}
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	numThreads := r.Options().NumThreads
@@ -92,18 +78,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		headerSizes: stats.NewHistogram(0, 5),
 		URL:         o.URL,
 	}
-	httpstate = make([]HTTPRunnerResults, numThreads)
+	httpstate := make([]HTTPRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
+		r.Options().Runners[i] = &httpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
-		if o.DisableFastClient {
-			httpstate[i].client = NewStdClient(o.URL, 1, !o.DisableKeepAlive, o.Compression)
-		} else {
-			if o.HTTP10 {
-				httpstate[i].client = NewBasicClient(o.URL, "1.0", !o.DisableKeepAlive, o.AllowHalfClose)
-			} else {
-				httpstate[i].client = NewBasicClient(o.URL, "1.1", !o.DisableKeepAlive, o.AllowHalfClose)
-			}
-		}
+		httpstate[i].client = NewClient(&o.HTTPOptions)
 		if httpstate[i].client == nil {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.URL)
 		}

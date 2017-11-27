@@ -20,7 +20,9 @@ import (
 	"time"
 )
 
-func noop(t int) {
+type Noop struct{}
+
+func (n *Noop) Run(t int) {
 }
 
 func TestNewPeriodicRunner(t *testing.T) {
@@ -43,10 +45,10 @@ func TestNewPeriodicRunner(t *testing.T) {
 	for _, tst := range tests {
 		o := RunnerOptions{
 			QPS:        tst.qps,
-			Function:   noop,
 			NumThreads: tst.numThreads,
 		}
 		r := newPeriodicRunner(&o)
+		r.MakeRunners(&Noop{})
 		if r.QPS != tst.expectedQPS {
 			t.Errorf("qps: got %f, not as expected %f", r.QPS, tst.expectedQPS)
 		}
@@ -57,27 +59,29 @@ func TestNewPeriodicRunner(t *testing.T) {
 	}
 }
 
-var lock sync.Mutex
+type TestCount struct {
+	count *int64
+	lock  *sync.Mutex
+}
 
-func sumTest(count *int64) {
-	lock.Lock()
-	(*count)++
-	lock.Unlock()
+func (c *TestCount) Run(i int) {
+	c.lock.Lock()
+	(*c.count)++
+	c.lock.Unlock()
 	time.Sleep(50 * time.Millisecond)
 }
 
 func TestStart(t *testing.T) {
 	var count int64
-	localF := func(t int) {
-		sumTest(&count)
-	}
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
 	o := RunnerOptions{
 		QPS:        11.4,
-		Function:   localF,
 		NumThreads: 1,
 		Duration:   1 * time.Second,
 	}
 	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
 	count = 0
 	r.Run()
 	if count != 11 {
@@ -104,20 +108,47 @@ func TestStart(t *testing.T) {
 
 func TestStartMaxQps(t *testing.T) {
 	var count int64
-	localF := func(t int) {
-		sumTest(&count)
-	}
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
 	o := RunnerOptions{
-		QPS:        -1,     // max speed (0 is default qps, not max)
-		Function:   localF, // 1ms sleep
+		QPS:        -1, // max speed (0 is default qps, not max)
 		NumThreads: 4,
 		Duration:   140 * time.Millisecond,
 	}
 	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
 	count = 0
 	r.Run()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	if count != expected {
 		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func TestID(t *testing.T) {
+	var tests = []struct {
+		labels string // input
+		id     string // expected suffix after the date
+	}{
+		{"", ""},
+		{"abcDEF123", "_abcDEF123"},
+		{"A!@#$%^&*()-+=/'B", "_A_B"},
+		// Ends with non alpha, skip last _
+		{"A  ", "_A"},
+		// truncated to fit 64 (17 from date/time + _ + 46 from labels)
+		{"123456789012345678901234567890123456789012345678901234567890", "_1234567890123456789012345678901234567890123456"},
+	}
+	startTime := time.Date(2001, time.January, 2, 3, 4, 5, 0, time.Local)
+	prefix := "2001-01-02-030405"
+	for _, tst := range tests {
+		o := RunnerResults{
+			StartTime: startTime,
+			Labels:    tst.labels,
+		}
+		id := o.ID()
+		expected := prefix + tst.id
+		if id != expected {
+			t.Errorf("id: got %s, not as expected %s", id, expected)
+		}
 	}
 }

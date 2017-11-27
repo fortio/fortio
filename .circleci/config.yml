@@ -6,13 +6,14 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: circleci/golang:1.8
+      - image: fortio/fortio.build:v4
     working_directory: /go/src/istio.io/fortio
     steps:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
-      - run: go get -v -t -d ./...
-      - run: make install-linters lint
+      - run: make test
+      # If ran with default we get random errors because OOM killer kills some linters
+      - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
       - run: make webtest
       - run: make coverage

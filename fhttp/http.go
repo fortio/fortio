@@ -40,18 +40,12 @@ type Fetcher interface {
 	Fetch() (int, []byte, int)
 }
 
-// TODO: make this usable simultaneously by multiple requests (for instance not share global state like extra headers)
-
 var (
-	// ExtraHeaders to be added to each request.
-	extraHeaders http.Header
-	// Host is treated specially, remember that one separately.
-	hostOverride string
 	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 32k.
 	BufferSizeKb = 128
 	// CheckConnectionClosedHeader indicates whether to check for server side connection closed headers.
 	CheckConnectionClosedHeader = false
-	// case doesn't matter for those 3
+	// 'constants', case doesn't matter for those 3
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
@@ -59,9 +53,19 @@ var (
 	startTime time.Time
 )
 
-func init() {
-	ResetHeaders()
-	extraHeaders.Add("User-Agent", userAgent)
+// NewHTTPOptions creates and initialize a HTTPOptions object.
+func NewHTTPOptions(url string) *HTTPOptions {
+	h := HTTPOptions{}
+	return h.Init(url)
+}
+
+// Init initializes the headers in an HTTPOptions (User-Agent).
+func (h *HTTPOptions) Init(url string) *HTTPOptions {
+	h.URL = url
+	h.NumConnections = 1
+	h.ResetHeaders()
+	h.extraHeaders.Add("User-Agent", userAgent)
+	return h
 }
 
 // Version is the fortio package version (TODO:auto gen/extract).
@@ -70,50 +74,65 @@ const (
 	retcodeOffset = len("HTTP/1.X ")
 )
 
+// HTTPOptions holds the common options of both http clients and the headers.
+type HTTPOptions struct {
+	URL               string
+	NumConnections    int  // num connections (for std client)
+	Compression       bool // defaults to no compression, only used by std client
+	DisableFastClient bool // defaults to fast client
+	HTTP10            bool // defaults to http1.1
+	DisableKeepAlive  bool // so default is keep alive
+	AllowHalfClose    bool // if not keepalive, whether to half close after request
+	// ExtraHeaders to be added to each request.
+	extraHeaders http.Header
+	// Host is treated specially, remember that one separately.
+	hostOverride string
+}
+
 // ResetHeaders resets all the headers, including the User-Agent one.
-func ResetHeaders() {
-	extraHeaders = make(http.Header)
-	hostOverride = ""
+func (h *HTTPOptions) ResetHeaders() {
+	h.extraHeaders = make(http.Header)
+	h.hostOverride = ""
 }
 
 // GetHeaders returns the current set of headers.
-func GetHeaders() http.Header {
-	if hostOverride == "" {
-		return extraHeaders
+func (h *HTTPOptions) GetHeaders() http.Header {
+	if h.hostOverride == "" {
+		return h.extraHeaders
 	}
-	cp := extraHeaders
-	cp.Add("Host", hostOverride)
+	cp := h.extraHeaders
+	cp.Add("Host", h.hostOverride)
 	return cp
 }
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
-func AddAndValidateExtraHeader(h string) error {
-	s := strings.SplitN(h, ":", 2)
+func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
+	s := strings.SplitN(hdr, ":", 2)
 	if len(s) != 2 {
-		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", h)
+		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
 	}
 	key := strings.TrimSpace(s[0])
 	value := strings.TrimSpace(s[1])
 	if strings.EqualFold(key, "host") {
 		log.Infof("Will be setting special Host header to %s", value)
-		hostOverride = value
+		h.hostOverride = value
 	} else {
 		log.Infof("Setting regular extra header %s: %s", key, value)
-		extraHeaders.Add(key, value)
+		h.extraHeaders.Add(key, value)
 	}
 	return nil
 }
 
 // newHttpRequest makes a new http GET request for url with User-Agent.
-func newHTTPRequest(url string) *http.Request {
-	req, err := http.NewRequest("GET", url, nil)
+func newHTTPRequest(o *HTTPOptions) *http.Request {
+	req, err := http.NewRequest("GET", o.URL, nil)
 	if err != nil {
-		log.Errf("Unable to make request for %s : %v", url, err)
+		log.Errf("Unable to make request for %s : %v", o.URL, err)
 		return nil
 	}
-	req.Header = extraHeaders
-	if hostOverride != "" {
-		req.Host = hostOverride
+	req.Header = o.extraHeaders
+	if o.hostOverride != "" {
+		req.Host = o.hostOverride
 	}
 	if !log.LogDebug() {
 		return req
@@ -122,7 +141,7 @@ func newHTTPRequest(url string) *http.Request {
 	if err != nil {
 		log.Errf("Unable to dump request %v", err)
 	} else {
-		log.Debugf("For URL %s, sending:\n%s", url, bytes)
+		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
 	}
 	return req
 }
@@ -138,7 +157,10 @@ type Client struct {
 // FetchURL fetches URL content and does error handling/logging.
 // Version not reusing the client.
 func FetchURL(url string) (int, []byte, int) {
-	client := NewStdClient(url, 1, false, true)
+	o := NewHTTPOptions(url)
+	o.DisableKeepAlive = true
+	o.Compression = true
+	client := NewStdClient(o)
 	if client == nil {
 		return http.StatusBadRequest, []byte("bad url"), 0
 	}
@@ -176,22 +198,34 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
+// NewClient creates either a standard or fast client (depending on
+// the DisableFastClient flag)
+func NewClient(o *HTTPOptions) Fetcher {
+	if o.DisableFastClient {
+		return NewStdClient(o)
+	}
+	return NewBasicClient(o)
+}
+
 // NewStdClient creates a client object that wraps the net/http standard client.
-func NewStdClient(url string, numConnections int, keepAlive bool, compression bool) Fetcher {
-	req := newHTTPRequest(url)
+func NewStdClient(o *HTTPOptions) Fetcher {
+	req := newHTTPRequest(o)
 	if req == nil {
 		return nil
 	}
+	if o.NumConnections < 1 {
+		o.NumConnections = 1
+	}
 	client := Client{
-		url,
+		o.URL,
 		req,
 		&http.Client{
 			Timeout: 3 * time.Second, // TODO: make configurable
 			Transport: &http.Transport{
-				MaxIdleConns:        numConnections,
-				MaxIdleConnsPerHost: numConnections,
-				DisableCompression:  !compression,
-				DisableKeepAlives:   !keepAlive,
+				MaxIdleConns:        o.NumConnections,
+				MaxIdleConnsPerHost: o.NumConnections,
+				DisableCompression:  !o.Compression,
+				DisableKeepAlives:   o.DisableKeepAlive,
 				Dial: (&net.Dialer{
 					Timeout: 4 * time.Second,
 				}).Dial,
@@ -229,20 +263,24 @@ type BasicClient struct {
 // NewBasicClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewBasicClient(urlStr string, proto string, keepAlive bool, halfClose bool) Fetcher {
+func NewBasicClient(o *HTTPOptions) Fetcher {
+	proto := "1.1"
+	if o.HTTP10 {
+		proto = "1.0"
+	}
 	// Parse the url, extract components.
-	url, err := url.Parse(urlStr)
+	url, err := url.Parse(o.URL)
 	if err != nil {
-		log.Errf("Bad url '%s' : %v", urlStr, err)
+		log.Errf("Bad url '%s' : %v", o.URL, err)
 		return nil
 	}
 	if url.Scheme != "http" {
-		log.Errf("Only http is supported with the optimized client, use -stdclient for url %s", urlStr)
+		log.Errf("Only http is supported with the optimized client, use -stdclient for url %s", o.URL)
 		return nil
 	}
 	// note: Host includes the port
-	bc := BasicClient{url: urlStr, host: url.Host, hostname: url.Hostname(), port: url.Port(),
-		http10: (proto == "1.0"), halfClose: halfClose}
+	bc := BasicClient{url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
+		http10: o.HTTP10, halfClose: o.AllowHalfClose}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
 		bc.port = url.Scheme // ie http which turns into 80 later
@@ -265,24 +303,24 @@ func NewBasicClient(urlStr string, proto string, keepAlive bool, halfClose bool)
 	}
 	// Create the bytes for the request:
 	host := bc.host
-	if hostOverride != "" {
-		host = hostOverride
+	if o.hostOverride != "" {
+		host = o.hostOverride
 	}
 	var buf bytes.Buffer
 	buf.WriteString("GET " + url.RequestURI() + " HTTP/" + proto + "\r\n")
 	if !bc.http10 {
 		buf.WriteString("Host: " + host + "\r\n")
 		bc.parseHeaders = true
-		if keepAlive {
+		if !o.DisableKeepAlive {
 			bc.keepAlive = true
 		} else {
 			buf.WriteString("Connection: close\r\n")
 		}
 	}
-	for h := range extraHeaders {
+	for h := range o.extraHeaders {
 		buf.WriteString(h)
 		buf.WriteString(": ")
-		buf.WriteString(extraHeaders.Get(h))
+		buf.WriteString(o.extraHeaders.Get(h))
 		buf.WriteString("\r\n")
 	}
 	buf.WriteString("\r\n")
@@ -392,6 +430,9 @@ func ParseDecimal(inp []byte) int {
 // Returns the offset of the data and the size of the chunk,
 // 0, -1 when not found.
 func ParseChunkSize(inp []byte) (int, int) {
+	if log.LogDebug() {
+		log.Debugf("ParseChunkSize(%s)", DebugSummary(inp, 128))
+	}
 	res := -1
 	off := 0
 	end := len(inp)
@@ -485,7 +526,7 @@ func (c *BasicClient) Fetch() (int, []byte, int) {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("Closing dead socket %v (%v)", *conn, err)
-			conn.Close() // nolint: errcheck
+			conn.Close() // nolint: errcheck,gas
 			c.errorCount++
 			return c.Fetch() // recurse once
 		}
@@ -538,25 +579,31 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 	keepAlive := c.keepAlive
 	chunkedMode := false
 	checkConnectionClosedHeader := CheckConnectionClosedHeader
+	skipRead := false
 	for {
-		n, err := conn.Read(c.buffer[c.size:])
-		if err == io.EOF {
-			if c.size == 0 {
-				log.Errf("EOF before reading anything on %v %v", conn, c.dest)
-				c.code = -1
+		// Ugly way to cover the case where we get more than 1 chunk at the end
+		// TODO: need automated tests
+		if !skipRead {
+			n, err := conn.Read(c.buffer[c.size:])
+			if err == io.EOF {
+				if c.size == 0 {
+					log.Errf("EOF before reading anything on %v %v", conn, c.dest)
+					c.code = -1
+				}
+				break
 			}
-			break
+			if err != nil {
+				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
+				c.code = -1
+				break
+			}
+			c.size += n
+			if log.LogDebug() {
+				log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
+					n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
+			}
 		}
-		if err != nil {
-			log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
-			c.code = -1
-			break
-		}
-		c.size += n
-		if log.LogDebug() {
-			log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
-				n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 128))
-		}
+		skipRead = false
 		// Have not yet parsed the headers, need to parse the headers, and have enough data to
 		// at least parse the http retcode:
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
@@ -612,7 +659,7 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], chunkedHeader); found {
 							chunkedMode = true
 							var dataStart int
-							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:])
+							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:c.size])
 							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("chunk-length is %d (%s) setting max to %d",
 								contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
@@ -672,6 +719,10 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 					if max > len(c.buffer) {
 						log.Errf("Buffer too small for %d data", max)
 					} else {
+						if max <= c.size {
+							log.Debugf("Enough data to reach next chunk, skipping a read")
+							skipRead = true
+						}
 						continue
 					}
 				}
@@ -754,7 +805,7 @@ func closingServer(listener net.Listener) error {
 // DynamicHTTPServer listens on an available port, sets up an http or https
 // (when secure is true) server on it and returns the listening port.
 func DynamicHTTPServer(secure bool) int {
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", ":0") // nolint: gas
 	if err != nil {
 		log.Fatalf("Unable to listen to dynamic port: %v", err)
 	}
@@ -838,7 +889,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
-	hostname, _ := os.Hostname()
+	hostname, _ := os.Hostname() // nolint: gas
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)

@@ -13,10 +13,6 @@
 // limitations under the License.
 //
 
-// Adapted from istio/proxy/test/backend/echo with error handling and
-// concurrency fixes and making it as low overhead as possible
-// (no std output by default)
-
 package ui // import "istio.io/fortio/ui"
 
 import (
@@ -24,6 +20,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -53,26 +50,29 @@ var (
 	// This is replaced at link time to the packaged directory (e.g /usr/local/lib/fortio/)
 	// but when fortio is installed with go get we use RunTime to find that directory.
 	// (see Dockerfile for how to set it)
-	dataDirectory string
-	mainTemplate  *template.Template
+	resourcesDir string
+	// Directory where results are written to/read from
+	dataDir        string
+	mainTemplate   *template.Template
+	browseTemplate *template.Template
 )
 
 const (
 	fetchURI = "fetch/"
 )
 
-// Gets the data directory from one of 3 sources:
-func getDataDir(override string) string {
+// Gets the resources directory from one of 3 sources:
+func getResourcesDir(override string) string {
 	if override != "" {
-		log.Infof("Using data directory from override: %s", override)
+		log.Infof("Using resources directory from override: %s", override)
 		return override
 	}
-	if dataDirectory != "" {
-		log.Infof("Using data directory set at link time: %s", dataDirectory)
-		return dataDirectory
+	if resourcesDir != "" {
+		log.Infof("Using resources directory set at link time: %s", resourcesDir)
+		return resourcesDir
 	}
 	_, filename, _, ok := runtime.Caller(0)
-	log.Infof("Guessing data directory from runtime source location: %v - %s", ok, filename)
+	log.Infof("Guessing resources directory from runtime source location: %v - %s", ok, filename)
 	if ok {
 		return path.Dir(filename)
 	}
@@ -85,9 +85,9 @@ func getDataDir(override string) string {
 
 // TODO: unit tests, allow additional data sets.
 
-// Handler is the UI handler creating the web forms and processing them.
+// Handler is the main UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r)
+	LogRequest(r, "UI")
 	DoExit := false
 	if r.FormValue("exit") == "Exit" {
 		log.Critf("Exit request from %v", r.RemoteAddr)
@@ -95,6 +95,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	DoLoad := false
 	JSONOnly := false
+	DoSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	if r.FormValue("load") == "Start" {
 		DoLoad = true
@@ -106,6 +107,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	labels := r.FormValue("labels")
+	opts := fhttp.NewHTTPOptions(url)
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -128,7 +130,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			Port        int
 			DoExit      bool
 			DoLoad      bool
-		}{r, fhttp.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
+		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels,
 			fhttp.RoundDuration(time.Since(startTime)), httpPort, DoExit, DoLoad})
 		if err != nil {
@@ -144,18 +146,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
 		return
 	}
-	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
-	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
-	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
+	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
+	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
+	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
 	dur, err := time.ParseDuration(durStr)
 	if err != nil {
 		log.Errf("Error parsing duration '%s': %v", durStr, err)
 	}
-	c, _ := strconv.Atoi(r.FormValue("c"))
+	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
 	firstHeader := true
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
@@ -164,10 +166,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.LogVf("adding header %v", header)
 		if firstHeader {
 			// If there is at least 1 non empty H passed, reset the header list
-			fhttp.ResetHeaders()
+			opts.ResetHeaders()
 			firstHeader = false
 		}
-		err = fhttp.AddAndValidateExtraHeader(header)
+		err = opts.AddAndValidateExtraHeader(header)
 		if err != nil {
 			log.Errf("Error adding custom headers: %v", err)
 		}
@@ -187,95 +189,105 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	o := fhttp.HTTPRunnerOptions{
 		RunnerOptions: ro,
-		URL:           url,
+		HTTPOptions:   *opts,
 	}
 	res, err := fhttp.RunHTTPTest(&o)
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck
+		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck,gas
 		return
+	}
+	json, err := json.MarshalIndent(res, "", "  ")
+	if err != nil {
+		log.Fatalf("Unable to json serialize result: %v", err)
 	}
 	if JSONOnly {
 		w.Header().Set("Content-Type", "application/json")
-		j, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		_, err = w.Write(j)
+		_, err = w.Write(json)
 		if err != nil {
 			log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 		}
 		return
 	}
-	// nolint: errcheck
+	if DoSave {
+		res := SaveJSON(res.ID(), json)
+		if res != "" {
+			// nolint: errcheck, gas
+			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", res, res)))
+		}
+	}
+	// nolint: errcheck, gas
 	w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
 		res.DurationHistogram.Count,
 		1000.*res.DurationHistogram.Avg,
 		res.ActualQPS)))
-	ResultToJsData(w, res)
-	ResultToChart(w, res)
-	w.Write([]byte("</script></body></html>\n"))
+	ResultToJsData(w, json)
+	w.Write([]byte("</script></body></html>\n")) // nolint: gas
 }
 
-// ResultToJsData converts a result object to chart data arrays.
-func ResultToJsData(w io.Writer, res *fhttp.HTTPRunnerResults) {
-	w.Write([]byte(`var dataP = [{x: 0.0, y: 0.0}, `)) // nolint: errcheck
-	for i, it := range res.DurationHistogram.Data {
-		var x float64
-		if i == 0 {
-			// Extra point, 1/N at min itself
-			x = 1000. * it.Start
-			// nolint: errcheck
-			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, 100./float64(res.DurationHistogram.Count))))
-		}
-		if i == len(res.DurationHistogram.Data)-1 {
-			//last point we use the end part (max)
-			x = 1000. * it.End
-		} else {
-			x = 1000. * (it.Start + it.End) / 2.
-		}
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %.3f},\n", x, it.Percent)))
-	}
-	w.Write([]byte("]\nvar dataH = [")) // nolint: errcheck
-	prev := 1000. * res.DurationHistogram.Data[0].Start
-	for _, it := range res.DurationHistogram.Data {
-		startX := 1000. * it.Start
-		endX := 1000. * it.End
-		if startX != prev {
-			w.Write([]byte(fmt.Sprintf("{x: %.12g, y: 0},{x: %.12g, y: 0},\n", prev, startX))) // nolint: errcheck
-		}
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("{x: %.12g, y: %d},{x: %.12g, y: %d},\n", startX, it.Count, endX, it.Count)))
-		prev = endX
-	}
-	// nolint: errcheck
-	w.Write([]byte("]\n"))
+// ResultToJsData converts a result object to chart data arrays and title
+// and creates a chart from the result object
+func ResultToJsData(w io.Writer, json []byte) {
+	// nolint: errcheck, gas
+	w.Write([]byte("var res = "))
+	// nolint: errcheck, gas
+	w.Write(json)
+	// nolint: errcheck, gas
+	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 
-// ResultToChart creates a chart from the result object
-func ResultToChart(w io.Writer, res *fhttp.HTTPRunnerResults) {
-	// nolint: errcheck
-	w.Write([]byte("showChart(["))
-	if res.Labels != "" {
-		// nolint: errcheck
-		w.Write([]byte(fmt.Sprintf("'%s - %s - %s',",
-			res.Labels, res.URL, res.StartTime.Format(time.ANSIC)))) // TODO: escape single quote
+// SaveJSON save Json bytes to give file name (.json) in data-path dir.
+func SaveJSON(name string, json []byte) string {
+	if dataDir == "" {
+		log.Infof("Not saving because data-path is unset")
+		return ""
 	}
-	percStr := fmt.Sprintf("min %.3f ms, average %.3f ms", 1000.*res.DurationHistogram.Min, 1000.*res.DurationHistogram.Avg)
-	for _, p := range res.DurationHistogram.Percentiles {
-		percStr += fmt.Sprintf(", p%g %.2f ms", p.Percentile, 1000*p.Value)
+	name += ".json"
+	log.Infof("Saving %s in %s", name, dataDir)
+	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0644)
+	if err != nil {
+		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
+		return ""
 	}
-	percStr += fmt.Sprintf(", max %.3f ms", 1000.*res.DurationHistogram.Max)
-	// nolint: errcheck
-	w.Write([]byte(fmt.Sprintf("'Response time histogram at %s target qps (%.1f actual) %d connections for %s (actual %v)','%s'",
-		res.RequestedQPS, res.ActualQPS, res.NumThreads, res.RequestedDuration, fhttp.RoundDuration(res.ActualDuration),
-		percStr)))
-	w.Write([]byte("])\n"))
+	// Return the relative path from the /fortio/ UI
+	return "data/" + name
+}
+
+// BrowseHandler handles listing and rendering the JSON results.
+func BrowseHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Browse")
+	url := r.FormValue("url")
+	doRender := (url != "")
+	files, err := ioutil.ReadDir(dataDir)
+	if err != nil {
+		log.Critf("Can list directory %s: %v", dataDir, err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	var dataList []string
+	for _, f := range files {
+		dataList = append(dataList, f.Name())
+	}
+	log.Infof("data list is %v", dataList)
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	err = browseTemplate.Execute(w, &struct {
+		R           *http.Request
+		Version     string
+		LogoPath    string
+		ChartJSPath string
+		URL         string
+		DataList    []string
+		Port        int
+		DoRender    bool
+	}{r, periodic.Version, logoPath, chartJSPath,
+		url, dataList, httpPort, doRender})
+	if err != nil {
+		log.Critf("Template execution failed: %v", err)
+	}
 }
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
-func LogRequest(r *http.Request) {
-	log.Infof("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+func LogRequest(r *http.Request, msg string) {
+	log.Infof("%s: %v %v %v %v", msg, r.Method, r.URL, r.Proto, r.RemoteAddr)
 	if log.LogVerbose() {
 		for name, headers := range r.Header {
 			for _, h := range headers {
@@ -288,15 +300,23 @@ func LogRequest(r *http.Request) {
 // LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r)
+		LogRequest(r, "Static")
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
+		h.ServeHTTP(w, r)
+	})
+}
+
+// LogDataRequest logs the data request.
+func LogDataRequest(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r, "Data")
 		h.ServeHTTP(w, r)
 	})
 }
 
 // FetcherHandler is the handler for the fetcher/proxy.
 func FetcherHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r)
+	LogRequest(r, "Fetch")
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		log.Critf("hijacking not supported")
@@ -310,11 +330,9 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	// Don't forget to close the connection:
 	defer conn.Close() // nolint: errcheck
 	url := r.URL.String()[len(fetchPath):]
-	client := fhttp.NewBasicClient("http://"+url, "1.1",
-		/* keepalive: */
-		false,
-		/* halfclose: */
-		false)
+	opts := fhttp.NewHTTPOptions("http://" + url)
+	opts.DisableKeepAlive = true
+	client := fhttp.NewClient(opts)
 	if client == nil {
 		return // error logged already
 	}
@@ -328,7 +346,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(port int, debugpath, uipath, staticPath string) {
+func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	startTime = time.Now()
 	httpPort = port
 	if uipath == "" {
@@ -336,6 +354,7 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 		return
 	}
 	uiPath = uipath
+	dataDir = datadir
 	if uiPath[len(uiPath)-1] != '/' {
 		log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
 		uiPath += "/"
@@ -348,23 +367,34 @@ func Serve(port int, debugpath, uipath, staticPath string) {
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	logoPath = "./static/img/logo.svg"
-	chartJSPath = "./static/js/Chart.min.js"
+	logoPath = periodic.Version + "/static/img/logo.svg"
+	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
-	// by the function parameter staticPath, we use getDataDir which uses the
+	// by the function parameter staticPath, we use getResourcesDir which uses the
 	// link time value or the directory relative to this file to find the static
 	// contents, so no matter where or how the go binary is generated, the static
 	// dir should be found.
-	staticPath = getDataDir(staticPath)
-	if staticPath != "" {
-		fs := http.FileServer(http.Dir(staticPath))
-		http.Handle(uiPath+"static/", LogAndAddCacheControl(http.StripPrefix(uiPath, fs)))
+	staticRsrcDir = getResourcesDir(staticRsrcDir)
+	if staticRsrcDir != "" {
+		fs := http.FileServer(http.Dir(staticRsrcDir))
+		prefix := uiPath + periodic.Version
+		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 		var err error
-		mainTemplate, err = template.ParseFiles(path.Join(staticPath, "templates/main.html"))
+		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"))
 		if err != nil {
-			log.Critf("Unable to parse template: %v", err)
+			log.Critf("Unable to parse main template: %v", err)
 		}
+		browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
+		if err != nil {
+			log.Critf("Unable to parse browse template: %v", err)
+		} else {
+			http.HandleFunc(uiPath+"browse", BrowseHandler)
+		}
+	}
+	if dataDir != "" {
+		fs := http.FileServer(http.Dir(dataDir))
+		http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
 	fhttp.Serve(port, debugpath)
 }
