@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
 )
 
 func TestHTTPRunner(t *testing.T) {
@@ -33,11 +32,8 @@ func TestHTTPRunner(t *testing.T) {
 	port := DynamicHTTPServer(false)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
-	opts := HTTPRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS: 100,
-		},
-	}
+	opts := HTTPRunnerOptions{}
+	opts.QPS = 100
 	opts.Init(baseURL)
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
@@ -61,12 +57,9 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 	port := DynamicHTTPServer(false)
 	URL := fmt.Sprintf("http://localhost:%d/echo1/", port)
 
-	opts := HTTPRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS: 100,
-		},
-	}
+	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
+	opts.QPS = 100
 	opts2 := opts
 	go RunHTTPTest(&opts2)
 	res, err := RunHTTPTest(&opts)
@@ -87,11 +80,8 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 	port := DynamicHTTPServer(true)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
-	opts := HTTPRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS: 10,
-		},
-	}
+	opts := HTTPRunnerOptions{}
+	opts.QPS = 10
 	opts.Init(baseURL)
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
