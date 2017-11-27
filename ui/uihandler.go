@@ -209,7 +209,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if DoSave {
-		res := SaveJSON(formatDate(&res.StartTime), json)
+		res := SaveJSON(res.ID(), json)
 		if res != "" {
 			// nolint: errcheck, gas
 			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", res, res)))
@@ -233,11 +233,6 @@ func ResultToJsData(w io.Writer, json []byte) {
 	w.Write(json)
 	// nolint: errcheck, gas
 	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
-}
-
-func formatDate(d *time.Time) string {
-	return fmt.Sprintf("%d-%02d-%02d-%02d%02d%02d", d.Year(), d.Month(), d.Day(),
-		d.Hour(), d.Minute(), d.Second())
 }
 
 // SaveJSON save Json bytes to give file name (.json) in data-path dir.
