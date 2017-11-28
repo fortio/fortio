@@ -8,6 +8,8 @@
 
 - Create the binary tgz: `make release` (from/in the toplevel directory)
 
+- Upload the release/fortio-\*.tgz to GitHub
+
 
 ## How to change the build image
 
@@ -28,4 +30,4 @@ make update-build-image-tag TAG=v5
 ```
 with same TAG as before
 
-Check the diff/make a PR
+Check the diff and make lint, webtest, etc and PR
