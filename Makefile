@@ -49,13 +49,15 @@ all: test install lint docker-version docker-push-internal
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
 
-FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv Dockerfile.test Makefile
+FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
+	Dockerfile.test Makefile release/Dockerfile
 # Ran make update-build-image TAG=v1 DOCKER_PREFIX=fortio/fortio
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(TAG)
 
+# Change . to .. when getting to v10 and up...
 update-build-image-tag:
-	sed -i .bak -e "s/fortio.build:v4/fortio.build:$(TAG)/g" $(FILES_WITH_IMAGE)
+	sed -i .bak -e "s/fortio.build:v./fortio.build:$(TAG)/g" $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -69,6 +71,9 @@ docker-push-internal: docker-internal
 	@echo "### Now pushing $(DOCKER_TAG)"
 	docker push $(DOCKER_TAG)
 
+release:
+	release/release.sh
+
 authorize:
 	gcloud docker --authorize-only --project istio-testing
 
@@ -76,4 +81,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: local-lint update-build-image-tag
+.PHONY: local-lint update-build-image-tag release
