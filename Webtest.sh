@@ -22,7 +22,7 @@ $CURL -stdclient https://istio.io/robots.txt
 # Check we can connect, and run a QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
-VERSION=$(bash -c "($CURL || true) 2>&1 | grep usage: | awk '{print \$2}'")
+VERSION=$(docker exec fortio_server /usr/local/bin/fortio -version)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
