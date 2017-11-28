@@ -23,6 +23,13 @@ docker run -p 8080:8080 -p 8079:8079 istio/fortio server & # For the server
 docker run istio/fortio load http://www.google.com/ # For a test run
 ```
 
+Or download the binary distribution, for instance:
+
+```shell
+curl -L https://github.com/istio/fortio/releases/download/0.4.0/fortio-linux_x64-0.4.0.tgz \
+ | sudo tar -C / -xvzpf -
+```
+
 You can visit the new web UI at http://localhost:8080/fortio/
 
 ## Command line arguments
