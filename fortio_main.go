@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
@@ -104,8 +105,8 @@ func main() {
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
-	// Special case so `fortio -version` works.
-	if len(os.Args) == 2 && os.Args[1] == "-version" {
+	// Special case so `fortio -version` (and `--version` and `version` and ... works.)
+	if len(os.Args) == 2 && strings.Contains(os.Args[1], "version") {
 		fmt.Println(periodic.Version)
 		os.Exit(0)
 	}
