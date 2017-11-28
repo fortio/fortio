@@ -49,7 +49,8 @@ all: test install lint docker-version docker-push-internal
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
 
-FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv Dockerfile.test Makefile
+FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
+	Dockerfile.test Makefile release/Dockerfile
 # Ran make update-build-image TAG=v1 DOCKER_PREFIX=fortio/fortio
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(TAG)
