@@ -13,6 +13,6 @@ RUN mkdir -p var/lib/istio/fortio
 # So fortio ran as whoever can write there:
 RUN chmod 1777 var/lib/istio/fortio # /tmp like perms
 RUN mkdir /tgz
-RUN tar cvfz /tgz/fortio-$(/go/src/istio.io/fortio.bin -version).tgz *
+RUN tar cvf - * | gzip --best > /tgz/fortio-linux_x64-$(/go/src/istio.io/fortio.bin -version).tgz
 FROM scratch
 COPY --from=build /tgz/ /tgz/
