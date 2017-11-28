@@ -348,6 +348,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		if i == len(e.Data)-1 {
 			sep = "<=" // last interval is inclusive (of max value)
 		}
+		// nolint: gas
 		fmt.Fprintf(out, ">= %.6g %s %.6g , %.6g , %.2f, %d\n", b.Start, sep, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
 

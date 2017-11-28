@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
@@ -31,6 +32,12 @@ import (
 	"istio.io/fortio/stats"
 	"istio.io/fortio/ui"
 )
+
+var httpOpts fhttp.HTTPOptions
+
+func init() {
+	httpOpts.Init("")
+}
 
 // -- Support for multiple instances of -H flag on cmd line:
 type flagList struct {
@@ -41,22 +48,23 @@ func (f *flagList) String() string {
 	return ""
 }
 func (f *flagList) Set(value string) error {
-	return fhttp.AddAndValidateExtraHeader(value)
+	return httpOpts.AddAndValidateExtraHeader(value)
 }
 
 // -- end of functions for -H support
 
 // Prints usage
 func usage(msgs ...interface{}) {
+	// nolint: gas
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
 		"where target is a url (http load tests) or host:port (grpc health test)",
-		"and flags are:") // nolint(gas)
+		"and flags are:")
 	flag.PrintDefaults()
-	fmt.Fprint(os.Stderr, msgs...)
-	os.Stderr.WriteString("\n") // nolint(gas)
+	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
+	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
 	os.Exit(1)
 }
 
@@ -85,10 +93,10 @@ var (
 	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
 	staticPathFlag = flag.String("static-path", "", "Absolute path to the dir containing the static files dir")
-
-	headersFlags flagList
-	percList     []float64
-	err          error
+	dataPathFlag   = flag.String("data-path", "/var/lib/istio/fortio", "Directory where JSON results are stored")
+	headersFlags   flagList
+	percList       []float64
+	err            error
 )
 
 func main() {
@@ -97,6 +105,11 @@ func main() {
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
+	// Special case so `fortio -version` and `--version` and `version` and ... work
+	if len(os.Args) == 2 && strings.Contains(os.Args[1], "version") {
+		fmt.Println(periodic.Version)
+		os.Exit(0)
+	}
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
 	}
@@ -112,39 +125,29 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "server":
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag)
+		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticPathFlag, *dataPathFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
 	default:
 		usage("Error: unknown command ", command)
 	}
-
 }
 
-func fetchURL(url string) {
-	var client fhttp.Fetcher
+func fetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
-	keepAlive := *keepAliveFlag
-	if *stdClientFlag {
-		client = fhttp.NewStdClient(url, 1, keepAlive, *compressionFlag)
-	} else {
-		if *http10Flag {
-			client = fhttp.NewBasicClient(url, "1.0", keepAlive, *halfCloseFlag)
-		} else {
-			client = fhttp.NewBasicClient(url, "1.1", keepAlive, *halfCloseFlag)
-		}
-	}
+	client := fhttp.NewClient(o)
 	if client == nil {
 		return // error logged already
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
+	os.Stdout.Write(data) //nolint: errcheck
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
+		os.Exit(1)
 	}
-	os.Stdout.Write(data) //nolint: errcheck
 }
 
 func fortioLoad() {
@@ -152,8 +155,14 @@ func fortioLoad() {
 		usage("Error: fortio load needs a url or destination")
 	}
 	url := flag.Arg(0)
+	httpOpts.URL = url
+	httpOpts.HTTP10 = *http10Flag
+	httpOpts.DisableFastClient = *stdClientFlag
+	httpOpts.DisableKeepAlive = !*keepAliveFlag
+	httpOpts.AllowHalfClose = *halfCloseFlag
+	httpOpts.Compression = *compressionFlag
 	if *curlFlag {
-		fetchURL(url)
+		fetchURL(&httpOpts)
 		return
 	}
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
@@ -193,14 +202,9 @@ func fortioLoad() {
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
-			RunnerOptions:     ro,
-			URL:               url,
-			HTTP10:            *http10Flag,
-			DisableFastClient: *stdClientFlag,
-			DisableKeepAlive:  !*keepAliveFlag,
-			AllowHalfClose:    *halfCloseFlag,
-			Profiler:          *profileFlag,
-			Compression:       *compressionFlag,
+			HTTPOptions:   httpOpts,
+			RunnerOptions: ro,
+			Profiler:      *profileFlag,
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}

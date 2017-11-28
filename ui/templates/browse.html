@@ -1,0 +1,45 @@
+<!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
+<script src="{{.ChartJSPath}}"></script>
+</head>
+<body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
+<img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
+<img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
+<img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
+<h1>Φορτίο (fortio) v{{.Version}}</h1>
+{{if .DoRender}}
+<p>{{.URL}}
+<p><!-- TODO: find a way to flush/not need two p to get the form visible! -->
+<br />
+<div class="chart-container" style="position: relative; height:75vh; width:98vw">
+<canvas style="background-color: #fff" id="chart1"></canvas>
+</div>
+<div id="update">
+<form id="updtForm" action="javascript:updateChart()">
+<input type="submit" value="Update:" />
+Time axis min <input type="text" name="xmin" size="5" /> ms,
+max <input type="text" name="xmax" size="5" /> ms,
+logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
+Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
+</form>
+</div>
+<script src="{{.Version}}/static/js/fortio_chart.js"></script>
+<script>
+var res
+var data
+fetch("data/"+{{.URL}}).then(doc => doc.json())
+.then((out) => {
+  res = out
+  data = fortioResultToJsChartData(res)
+  makeChart(data)
+}).catch(err => { throw err });
+</script>
+{{else}}
+<p>List of saved results</p>
+<ul>
+{{range $f := .DataList}}
+<li><a href="browse?url={{$f}}">{{$f}}<a></li>
+{{end}}
+</ul>
+{{end}}
+</body>
+</html>

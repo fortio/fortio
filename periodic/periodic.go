@@ -16,8 +16,8 @@
 // run a given task at a target rate (qps) and gather statistics - for instance
 // http requests.
 //
-// The main executable using the library is cmd/fortio but there
-// is also cmd/histogram to use the stats from the command line and cmd/echosrv
+// The main executable using the library is fortio but there
+// is also ../histogram to use the stats from the command line and ../echosrv
 // as a very light http server that can be used to test proxies etc like
 // the Istio components.
 package periodic // import "istio.io/fortio/periodic"
@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.3.8"
+	Version = "0.4.0"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -52,12 +52,28 @@ var DefaultRunnerOptions = RunnerOptions{
 	Resolution:  0.001, // milliseconds
 }
 
-// Function to run periodically.
-type Function func(tid int)
+// Runnable are the function to run periodically.
+type Runnable interface {
+	Run(tid int)
+}
+
+// MakeRunners creates an array of NumThreads identical Runnable instances.
+// (for the (rare/test) cases where there is no unique state needed)
+func (ro *RunnerOptions) MakeRunners(r Runnable) {
+	log.Infof("Making %d clone of %+v", ro.NumThreads, r)
+	if len(ro.Runners) < ro.NumThreads {
+		log.Infof("Resizing runners from %d to %d", len(ro.Runners), ro.NumThreads)
+		ro.Runners = make([]Runnable, ro.NumThreads)
+	}
+	for i := 0; i < ro.NumThreads; i++ {
+		ro.Runners[i] = r
+	}
+}
 
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
-	Function Function
+	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
+	Runners  []Runnable
 	QPS      float64
 	Duration time.Duration
 	// Note that this actually maps to gorountines and not actual threads
@@ -74,15 +90,15 @@ type RunnerOptions struct {
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
-	DurationHistogram *stats.HistogramData
+	Labels            string
+	StartTime         time.Time
 	RequestedQPS      string
 	RequestedDuration string
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
-	StartTime         time.Time
-	Labels            string
+	DurationHistogram *stats.HistogramData
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -140,6 +156,9 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	if r.Duration == 0 {
 		r.Duration = DefaultRunnerOptions.Duration
 	}
+	if r.Runners == nil {
+		r.Runners = make([]Runnable, r.NumThreads)
+	}
 	return r
 }
 
@@ -172,19 +191,23 @@ func (r *periodicRunner) Run() RunnerResults {
 				r.NumThreads = 1
 			}
 			if int64(2*r.NumThreads) > numCalls {
-				r.NumThreads = int(numCalls / 2)
-				log.Warnf("Lowering number of threads - total call %d -> lowering to %d threads", numCalls, r.NumThreads)
+				newN := int(numCalls / 2)
+				log.Warnf("Lowering number of threads - total call %d -> lowering from %d to %d threads", numCalls, r.NumThreads, newN)
+				r.NumThreads = newN
 			}
 			numCalls /= int64(r.NumThreads)
 			totalCalls := numCalls * int64(r.NumThreads)
+			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
 		} else {
+			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
 			numCalls = 0
 		}
 	} else {
+		// nolint: gas
 		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
 		if hasDuration {
@@ -193,6 +216,14 @@ func (r *periodicRunner) Run() RunnerResults {
 		} else {
 			fmt.Fprintf(r.Out, "until interrupted\n")
 		}
+	}
+	runnersLen := len(r.Runners)
+	if runnersLen == 0 {
+		log.Fatalf("Empty runners array !")
+	}
+	if r.NumThreads > runnersLen {
+		r.MakeRunners(r.Runners[0])
+		log.Warnf("Context array was of %d len, replacing with %d clone of first one", runnersLen, len(r.Runners))
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
@@ -225,6 +256,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
+	// nolint: gas
 	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
@@ -233,7 +265,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		// user.
 		if percentNegative > 5 {
 			sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
-			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative)
+			fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative) // nolint: gas
 		} else {
 			if log.Log(log.Verbose) {
 				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
@@ -242,8 +274,8 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 		}
 	}
-	result := RunnerResults{functionDuration.Export(r.Percentiles), requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, start, r.Labels}
+	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export(r.Percentiles)}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	return result
 }
@@ -256,7 +288,7 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
 	hasDuration := (r.Duration > 0)
-	f := r.Function
+	f := r.Runners[id]
 
 	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
 	c := make(chan os.Signal, 1)
@@ -277,7 +309,7 @@ MainLoop:
 				break
 			}
 		}
-		f(id)
+		f.Run(id)
 		funcTimes.Record(time.Since(fStart).Seconds())
 		i++
 		// if using QPS / pre calc expected call # mode:
@@ -327,4 +359,39 @@ MainLoop:
 	}
 	// Put back default handling of ^C (for UI server mode)
 	signal.Reset(os.Interrupt)
+}
+
+func formatDate(d *time.Time) string {
+	return fmt.Sprintf("%d-%02d-%02d-%02d%02d%02d", d.Year(), d.Month(), d.Day(),
+		d.Hour(), d.Minute(), d.Second())
+}
+
+// ID Returns an id for the result: 64 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
+// where alpha_labels is the filtered labels with only alphanumeric characters
+// and all non alpha num replaced by _; truncated to 64 bytes.
+func (r *RunnerResults) ID() string {
+	base := formatDate(&r.StartTime)
+	if r.Labels == "" {
+		return base
+	}
+	last := '_'
+	base += string(last)
+	for _, rune := range r.Labels {
+		if (rune >= 'a' && rune <= 'z') || (rune >= 'A' && rune <= 'Z') || (rune >= '0' && rune <= '9') {
+			last = rune
+		} else {
+			if last == '_' {
+				continue // only 1 _ separator at a time
+			}
+			last = '_'
+		}
+		base += string(last)
+	}
+	if last == '_' {
+		base = base[:len(base)-1]
+	}
+	if len(base) > 64 {
+		return base[:64]
+	}
+	return base
 }
