@@ -175,7 +175,9 @@ function makeChart(data) {
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
     var ctx = chartEl.getContext('2d');
-    chart = new Chart(ctx, {
+    if (typeof chart == 'undefined') {
+      // First time
+      chart = new Chart(ctx, {
         type: 'line',
         data: {
             datasets: [{
@@ -230,8 +232,14 @@ function makeChart(data) {
                 ]
             }
         }
-    })
-    updateChart() // TODO: should be able to set vs update options
+      })
+      // TODO may need updateChart() if we persist settings even the first time
+    } else {
+      chart.data.datasets[0].data = data.dataP
+      chart.data.datasets[1].data = data.dataH
+      chart.options.title.text = data.title
+      updateChart()
+    }
 }
 
 function setChartOptions() {
