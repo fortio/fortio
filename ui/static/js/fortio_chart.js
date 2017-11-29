@@ -231,9 +231,10 @@ function makeChart(data) {
             }
         }
     })
+    updateChart() // TODO: should be able to set vs update options
 }
 
-function updateChart() {
+function setChartOptions() {
     var form = document.getElementById('updtForm')
     var formMin = form.xmin.value.trim()
     var formMax = form.xmax.value.trim()
@@ -259,7 +260,7 @@ function updateChart() {
             yAxes: [scales.yAxes[0], linearYAxe]
         }
     }
-    chart.update()
+    chart.update() // needed for scales.xAxes[0] to exist
     var newNewXAxis = chart.config.options.scales.xAxes[0]
     if (formMin != "") {
         newNewXAxis.ticks.min = newXMin
@@ -271,5 +272,9 @@ function updateChart() {
     } else {
         delete newNewXAxis.ticks.max
     }
+}
+
+function updateChart() {
+    setChartOptions()
     chart.update()
 }

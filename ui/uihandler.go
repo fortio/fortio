@@ -26,6 +26,7 @@ import (
 	"path"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -264,8 +265,15 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var dataList []string
-	for _, f := range files {
-		dataList = append(dataList, f.Name())
+	// Newest files at the top:
+	for i := len(files) - 1; i >= 0; i-- {
+		name := files[i].Name()
+		ext := ".json"
+		if !strings.HasSuffix(name, ext) {
+			log.Infof("Skipping non %s file: %s", ext, name)
+			continue
+		}
+		dataList = append(dataList, name[:len(name)-len(ext)])
 	}
 	log.Infof("data list is %v", dataList)
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
