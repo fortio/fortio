@@ -175,10 +175,10 @@ function toggleVisibility() {
 function makeChart(data) {
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
-    var ctx = chartEl.getContext('2d');
     if (Object.keys(chart).length == 0) {
       deleteMultiChart()
-      // First time
+      // Creation (first or switch) time
+      var ctx = chartEl.getContext('2d');
       chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -190,6 +190,7 @@ function makeChart(data) {
                     stepped: true,
                     backgroundColor: 'rgba(134, 87, 167, 1)',
                     borderColor: 'rgba(134, 87, 167, 1)',
+                    cubicInterpolationMode: 'monotone'
                 },
                 {
                     label: 'Histogram: Count',
@@ -198,7 +199,8 @@ function makeChart(data) {
                     pointStyle: 'rect',
                     radius: 1,
                     borderColor: 'rgba(87, 167, 134, .9)',
-                    backgroundColor: 'rgba(87, 167, 134, .75)'
+                    backgroundColor: 'rgba(87, 167, 134, .75)',
+                    lineTension: 0
                 }
             ]
         },
@@ -209,11 +211,6 @@ function makeChart(data) {
                 display: true,
                 fontStyle: 'normal',
                 text: data.title,
-            },
-            elements: {
-                line: {
-                    tension: 0, // disables bezier curves
-                }
             },
             scales: {
                 xAxes: [
@@ -298,11 +295,28 @@ function multiLabel(res) {
   return l
 }
 
+function findData(slot, idx, res, p) {
+  // Not very efficient but there are only a handful of percentiles
+  var pA = res.DurationHistogram.Percentiles
+  for (var i=0; i<pA.length; i++) {
+    if (pA[i].Percentile == p) {
+      mchart.data.datasets[slot].data[idx] = 1000. * pA[i].Value
+      return
+    }
+  }
+  console.log("Not Found", p, pA)
+  // not found, not set
+}
+
 function fortioAddToMultiResult(i, res) {
   mchart.data.labels[i] = multiLabel(res)
   mchart.data.datasets[0].data[i] = 1000.*res.DurationHistogram.Min
-  mchart.data.datasets[1].data[i] = 1000.*res.DurationHistogram.Avg
-  mchart.data.datasets[2].data[i] = 1000.*res.DurationHistogram.Max
+  findData(1, i, res, "50")
+  mchart.data.datasets[2].data[i] = 1000.*res.DurationHistogram.Avg
+  findData(3, i, res, "75")
+  findData(4, i, res, "99")
+  findData(5, i, res, "99.9")
+  mchart.data.datasets[6].data[i] = 1000.*res.DurationHistogram.Max
 }
 
 function endMultiChart(len) {
@@ -310,7 +324,6 @@ function endMultiChart(len) {
   for (var i = 0; i< mchart.data.datasets.length; i++) {
     mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
   }
-  deleteSingleChart()
   mchart.update()
 }
 
@@ -338,6 +351,7 @@ function makeMultiChart(data) {
     if (Object.keys(mchart).length != 0) {
       return
     }
+    deleteSingleChart()
     var ctx = chartEl.getContext('2d');
     mchart = new Chart(ctx, {
         type: 'line',
@@ -347,30 +361,53 @@ function makeMultiChart(data) {
               {
                   label: 'Min',
                   fill: false,
-                  data: [],
-                  yAxisID: 'ms',
                   stepped: true,
-                  borderColor: 'hsla(90, 90%, 40%, 1)',
-                  backgroundColor: 'hsla(90, 90%, 40%, 1)'
+                  borderColor: 'hsla(111, 100%, 40%, .8)',
+                  backgroundColor: 'hsla(111, 100%, 40%, .8)'
+              },
+              {
+                  label: 'Median',
+                  fill: false,
+                  stepped: true,
+                  borderDash: [5, 5],
+                  borderColor: 'hsla(220, 100%, 40%, .8)',
+                  backgroundColor: 'hsla(220, 100%, 40%, .8)'
               },
                 {
                     label: 'Avg',
                     fill: false,
-                    data: [],
-                    yAxisID: 'ms',
                     stepped: true,
-                    backgroundColor: 'hsla(220, 90%, 40%, 1)',
-                    borderColor: 'hsla(220, 90%, 40%, 1)',
+                    backgroundColor: 'hsla(266, 100%, 40%, .8)',
+                    borderColor: 'hsla(266, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p75',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(55, 100%, 40%, .8)',
+                    borderColor: 'hsla(55, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p99',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(40, 100%, 40%, .8)',
+                    borderColor: 'hsla(40, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p99.9',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(20, 100%, 40%, .8)',
+                    borderColor: 'hsla(20, 100%, 40%, .8)',
                 },
                 {
                     label: 'Max',
                     fill: false,
-                    data: [],
-                    yAxisID: 'ms',
                     stepped: true,
-                    borderColor: 'hsla(357, 90%, 40%, 1)',
-                    backgroundColor: 'hsla(6, 90%, 40%, 1)'
-                }
+                    borderColor: 'hsla(0, 100%, 40%, .8)',
+                    backgroundColor: 'hsla(0, 100%, 40%, .8)'
+                },
             ]
         },
         options: {

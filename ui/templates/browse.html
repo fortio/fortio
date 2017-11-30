@@ -11,7 +11,11 @@
 var res
 var data
 function fortio_load(url) {
-  var list = document.getElementById("files").selectedOptions
+  var multi = document.getElementById("files")
+  var list = [url]
+  if (multi && multi.selectedOptions !== undefined) {
+    list = multi.selectedOptions
+  }
   if (list.length == 0) {
     return
   }
