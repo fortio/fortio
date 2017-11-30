@@ -286,3 +286,102 @@ function updateChart() {
     setChartOptions()
     chart.update()
 }
+
+
+function multiLabel(res) {
+  l = formatDate(res.StartTime)
+  if (res.Labels != "") {
+     l += " - " + res.Labels
+  }
+  return l
+}
+
+var mchart
+
+function fortioAddToMultiResult(i, res) {
+  mchart.data.labels[i] = multiLabel(res)
+  mchart.data.datasets[0].data[i] = res.DurationHistogram.Min
+  mchart.data.datasets[1].data[i] = res.DurationHistogram.Avg
+  mchart.data.datasets[2].data[i] = res.DurationHistogram.Max
+}
+
+function endMultiChart(len) {
+  mchart.data.labels = mchart.data.labels.slice(0,len)
+  for (var i = 0; i< mchart.data.datasets.length; i++) {
+    mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
+  }
+  mchart.update()
+}
+
+function makeMultiChart(data) {
+    document.getElementById('running').style.display = 'none';
+    document.getElementById('update').style.visibility = 'hidden';
+    var chartEl = document.getElementById('chart1');
+    chartEl.style.visibility = 'visible';
+    if (typeof mchart != 'undefined') {
+      return
+    }
+    var ctx = chartEl.getContext('2d');
+    mchart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+              {
+                  label: 'Min',
+                  fill: false,
+                  data: [],
+                  yAxisID: 'ms',
+                  stepped: true,
+                  borderColor: 'hsla(90, 90%, 40%, 1)',
+                  backgroundColor: 'hsla(90, 90%, 40%, 1)'
+              },
+                {
+                    label: 'Avg',
+                    fill: false,
+                    data: [],
+                    yAxisID: 'ms',
+                    stepped: true,
+                    backgroundColor: 'hsla(220, 90%, 40%, 1)',
+                    borderColor: 'hsla(220, 90%, 40%, 1)',
+                },
+                {
+                    label: 'Max',
+                    fill: false,
+                    data: [],
+                    yAxisID: 'ms',
+                    stepped: true,
+                    borderColor: 'hsla(357, 90%, 40%, 1)',
+                    backgroundColor: 'hsla(6, 90%, 40%, 1)'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            title: {
+                display: true,
+                fontStyle: 'normal',
+                text: ["Latency in milliseconds"],
+            },
+            elements: {
+                line: {
+                    tension: 0, // disables bezier curves
+                }
+            },
+            scales: {
+                yAxes: [{
+                        id: 'ms',
+                        ticks: {
+                            beginAtZero: true,
+                        },
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'ms'
+                        }
+                    }
+                ]
+            }
+        }
+      })
+}
