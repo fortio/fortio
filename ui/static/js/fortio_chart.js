@@ -66,7 +66,8 @@ var logYAxe = {
     }
 }
 
-var chart
+var chart = {}
+var mchart = {}
 
 function myRound(v, digits = 6) {
     p = Math.pow(10, digits)
@@ -174,8 +175,11 @@ function toggleVisibility() {
 function makeChart(data) {
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
-    var ctx = chartEl.getContext('2d');
-    chart = new Chart(ctx, {
+    if (Object.keys(chart).length == 0) {
+      deleteMultiChart()
+      // Creation (first or switch) time
+      var ctx = chartEl.getContext('2d');
+      chart = new Chart(ctx, {
         type: 'line',
         data: {
             datasets: [{
@@ -186,6 +190,7 @@ function makeChart(data) {
                     stepped: true,
                     backgroundColor: 'rgba(134, 87, 167, 1)',
                     borderColor: 'rgba(134, 87, 167, 1)',
+                    cubicInterpolationMode: 'monotone'
                 },
                 {
                     label: 'Histogram: Count',
@@ -194,7 +199,8 @@ function makeChart(data) {
                     pointStyle: 'rect',
                     radius: 1,
                     borderColor: 'rgba(87, 167, 134, .9)',
-                    backgroundColor: 'rgba(87, 167, 134, .75)'
+                    backgroundColor: 'rgba(87, 167, 134, .75)',
+                    lineTension: 0
                 }
             ]
         },
@@ -205,11 +211,6 @@ function makeChart(data) {
                 display: true,
                 fontStyle: 'normal',
                 text: data.title,
-            },
-            elements: {
-                line: {
-                    tension: 0, // disables bezier curves
-                }
             },
             scales: {
                 xAxes: [
@@ -230,10 +231,17 @@ function makeChart(data) {
                 ]
             }
         }
-    })
+      })
+      // TODO may need updateChart() if we persist settings even the first time
+    } else {
+      chart.data.datasets[0].data = data.dataP
+      chart.data.datasets[1].data = data.dataH
+      chart.options.title.text = data.title
+      updateChart()
+    }
 }
 
-function updateChart() {
+function setChartOptions() {
     var form = document.getElementById('updtForm')
     var formMin = form.xmin.value.trim()
     var formMax = form.xmax.value.trim()
@@ -259,7 +267,7 @@ function updateChart() {
             yAxes: [scales.yAxes[0], linearYAxe]
         }
     }
-    chart.update()
+    chart.update() // needed for scales.xAxes[0] to exist
     var newNewXAxis = chart.config.options.scales.xAxes[0]
     if (formMin != "") {
         newNewXAxis.ticks.min = newXMin
@@ -271,5 +279,163 @@ function updateChart() {
     } else {
         delete newNewXAxis.ticks.max
     }
+}
+
+function updateChart() {
+    setChartOptions()
     chart.update()
+}
+
+
+function multiLabel(res) {
+  l = formatDate(res.StartTime)
+  if (res.Labels != "") {
+     l += " - " + res.Labels
+  }
+  return l
+}
+
+function findData(slot, idx, res, p) {
+  // Not very efficient but there are only a handful of percentiles
+  var pA = res.DurationHistogram.Percentiles
+  for (var i=0; i<pA.length; i++) {
+    if (pA[i].Percentile == p) {
+      mchart.data.datasets[slot].data[idx] = 1000. * pA[i].Value
+      return
+    }
+  }
+  console.log("Not Found", p, pA)
+  // not found, not set
+}
+
+function fortioAddToMultiResult(i, res) {
+  mchart.data.labels[i] = multiLabel(res)
+  mchart.data.datasets[0].data[i] = 1000.*res.DurationHistogram.Min
+  findData(1, i, res, "50")
+  mchart.data.datasets[2].data[i] = 1000.*res.DurationHistogram.Avg
+  findData(3, i, res, "75")
+  findData(4, i, res, "99")
+  findData(5, i, res, "99.9")
+  mchart.data.datasets[6].data[i] = 1000.*res.DurationHistogram.Max
+}
+
+function endMultiChart(len) {
+  mchart.data.labels = mchart.data.labels.slice(0,len)
+  for (var i = 0; i< mchart.data.datasets.length; i++) {
+    mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
+  }
+  mchart.update()
+}
+
+function deleteMultiChart() {
+  if (Object.keys(mchart).length == 0) {
+    return
+  }
+  mchart.destroy()
+  mchart = {}
+}
+
+function deleteSingleChart() {
+  if (Object.keys(chart).length == 0) {
+    return
+  }
+  chart.destroy()
+  chart = {}
+}
+
+function makeMultiChart(data) {
+    document.getElementById('running').style.display = 'none';
+    document.getElementById('update').style.visibility = 'hidden';
+    var chartEl = document.getElementById('chart1');
+    chartEl.style.visibility = 'visible';
+    if (Object.keys(mchart).length != 0) {
+      return
+    }
+    deleteSingleChart()
+    var ctx = chartEl.getContext('2d');
+    mchart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+              {
+                  label: 'Min',
+                  fill: false,
+                  stepped: true,
+                  borderColor: 'hsla(111, 100%, 40%, .8)',
+                  backgroundColor: 'hsla(111, 100%, 40%, .8)'
+              },
+              {
+                  label: 'Median',
+                  fill: false,
+                  stepped: true,
+                  borderDash: [5, 5],
+                  borderColor: 'hsla(220, 100%, 40%, .8)',
+                  backgroundColor: 'hsla(220, 100%, 40%, .8)'
+              },
+                {
+                    label: 'Avg',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(266, 100%, 40%, .8)',
+                    borderColor: 'hsla(266, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p75',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(55, 100%, 40%, .8)',
+                    borderColor: 'hsla(55, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p99',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(40, 100%, 40%, .8)',
+                    borderColor: 'hsla(40, 100%, 40%, .8)',
+                },
+                {
+                    label: 'p99.9',
+                    fill: false,
+                    stepped: true,
+                    backgroundColor: 'hsla(20, 100%, 40%, .8)',
+                    borderColor: 'hsla(20, 100%, 40%, .8)',
+                },
+                {
+                    label: 'Max',
+                    fill: false,
+                    stepped: true,
+                    borderColor: 'hsla(0, 100%, 40%, .8)',
+                    backgroundColor: 'hsla(0, 100%, 40%, .8)'
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            title: {
+                display: true,
+                fontStyle: 'normal',
+                text: ["Latency in milliseconds"],
+            },
+            elements: {
+                line: {
+                    tension: 0, // disables bezier curves
+                }
+            },
+            scales: {
+                yAxes: [{
+                        id: 'ms',
+                        ticks: {
+                            beginAtZero: true,
+                        },
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'ms'
+                        }
+                    }
+                ]
+            }
+        }
+      })
 }
