@@ -29,7 +29,7 @@ function fortio_load(url) {
     makeMultiChart()
     var promises = []
     for (var i = 0, len = list.length; i < len; i++) {
-      var v = list[i].value;
+      var v = list[len-i-1].value;
       (function (idx, u) {
         promises.push(fetch("data/"+u).then(doc => doc.json()).then((out) => {
           fortioAddToMultiResult(idx, out)

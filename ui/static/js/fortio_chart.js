@@ -300,9 +300,9 @@ var mchart
 
 function fortioAddToMultiResult(i, res) {
   mchart.data.labels[i] = multiLabel(res)
-  mchart.data.datasets[0].data[i] = res.DurationHistogram.Min
-  mchart.data.datasets[1].data[i] = res.DurationHistogram.Avg
-  mchart.data.datasets[2].data[i] = res.DurationHistogram.Max
+  mchart.data.datasets[0].data[i] = 1000.*res.DurationHistogram.Min
+  mchart.data.datasets[1].data[i] = 1000.*res.DurationHistogram.Avg
+  mchart.data.datasets[2].data[i] = 1000.*res.DurationHistogram.Max
 }
 
 function endMultiChart(len) {
