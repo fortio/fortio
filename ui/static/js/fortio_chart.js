@@ -66,7 +66,8 @@ var logYAxe = {
     }
 }
 
-var chart
+var chart = {}
+var mchart = {}
 
 function myRound(v, digits = 6) {
     p = Math.pow(10, digits)
@@ -175,7 +176,8 @@ function makeChart(data) {
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
     var ctx = chartEl.getContext('2d');
-    if (typeof chart == 'undefined') {
+    if (Object.keys(chart).length == 0) {
+      deleteMultiChart()
       // First time
       chart = new Chart(ctx, {
         type: 'line',
@@ -296,8 +298,6 @@ function multiLabel(res) {
   return l
 }
 
-var mchart
-
 function fortioAddToMultiResult(i, res) {
   mchart.data.labels[i] = multiLabel(res)
   mchart.data.datasets[0].data[i] = 1000.*res.DurationHistogram.Min
@@ -310,7 +310,24 @@ function endMultiChart(len) {
   for (var i = 0; i< mchart.data.datasets.length; i++) {
     mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
   }
+  deleteSingleChart()
   mchart.update()
+}
+
+function deleteMultiChart() {
+  if (Object.keys(mchart).length == 0) {
+    return
+  }
+  mchart.destroy()
+  mchart = {}
+}
+
+function deleteSingleChart() {
+  if (Object.keys(chart).length == 0) {
+    return
+  }
+  chart.destroy()
+  chart = {}
 }
 
 function makeMultiChart(data) {
@@ -318,7 +335,7 @@ function makeMultiChart(data) {
     document.getElementById('update').style.visibility = 'hidden';
     var chartEl = document.getElementById('chart1');
     chartEl.style.visibility = 'visible';
-    if (typeof mchart != 'undefined') {
+    if (Object.keys(mchart).length != 0) {
       return
     }
     var ctx = chartEl.getContext('2d');
