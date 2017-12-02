@@ -270,7 +270,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		name := files[i].Name()
 		ext := ".json"
 		if !strings.HasSuffix(name, ext) {
-			log.Infof("Skipping non %s file: %s", ext, name)
+			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])

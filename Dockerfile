@@ -2,11 +2,15 @@
 FROM fortio/fortio.build:v4 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
-# Demonstrate moving the static directory outside of the go source tree:
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -s' -o fortio.bin istio.io/fortio
+# NOTE: changes to this file should be propagated to release/Dockerfile.in too
+# (wtb docker include)
+# Demonstrate moving the static directory outside of the go source tree and
+# the default data directory to a /var/lib/... volume
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags \
+  '-X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -X main.defaultDataDir=/var/lib/istio/fortio -s' \
+  -o fortio.bin istio.io/fortio
 # Minimal image with just the binary and certs
-# NOTE: changes to this file should be propagated to release/Dockerfile too
-FROM scratch
+FROM scratch as release
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/istio.io/fortio/ui/static /usr/local/lib/fortio/static
 COPY --from=build /go/src/istio.io/fortio/ui/templates /usr/local/lib/fortio/templates
