@@ -1,14 +1,15 @@
 #! /bin/bash
 # To be run by ../Makefile as release/release.sh
 set -x
-# Check we can build the image
-docker build -f release/Dockerfile -t istio/fortio:release . || exit 1
+set -e
+# Release tgz Dockerfile is based on the normal docker one
+cat Dockerfile release/Dockerfile.in > release/Dockerfile
+docker build -f release/Dockerfile -t istio/fortio:release .
 DOCKERID=$(docker create --name fortio_release istio/fortio:release x)
 function cleanup {
   docker rm fortio_release
 }
 trap cleanup EXIT
-set -e
 set -o pipefail
 # docker cp will create 2 level of dir if first one exists, make sure it doesnt
 rm -f release/tgz/*.tgz

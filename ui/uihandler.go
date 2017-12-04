@@ -18,6 +18,7 @@ package ui // import "istio.io/fortio/ui"
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -79,6 +80,16 @@ func getResourcesDir(override string) string {
 	}
 	log.Errf("Unable to get source tree location. Failing to serve static contents.")
 	return ""
+}
+
+// HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
+type HTMLEscapeWriter struct {
+	NextWriter io.Writer
+}
+
+func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
+	template.HTMLEscape(w.NextWriter, p)
+	return len(p), nil
 }
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -175,7 +186,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Error adding custom headers: %v", err)
 		}
 	}
-	out := io.Writer(w)
+	out := io.Writer(&HTMLEscapeWriter{NextWriter: w})
 	if JSONOnly {
 		out = os.Stderr
 	}
@@ -194,7 +205,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := fhttp.RunHTTPTest(&o)
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Aborting because %v\n", err))) // nolint: errcheck,gas
+		w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
 		return
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
@@ -270,7 +281,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		name := files[i].Name()
 		ext := ".json"
 		if !strings.HasSuffix(name, ext) {
-			log.Infof("Skipping non %s file: %s", ext, name)
+			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])
