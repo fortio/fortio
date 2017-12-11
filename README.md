@@ -243,7 +243,7 @@ Run result:
 Contributions whether throuh issues, documentation, bug fixes, or new features
 are most welcome !
 
-Please also see [Istio's guidelines](https://github.com/istio/istio#contributing-to-the-project)
+Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
 
 And make sure to run those commands successfully before sending your PRs:
 ```
