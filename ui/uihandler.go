@@ -119,48 +119,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	labels := r.FormValue("labels")
-	opts := fhttp.NewHTTPOptions(url)
-	if !JSONOnly {
-		// Normal html mode
-		if mainTemplate == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Critf("Nil template")
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-		err := mainTemplate.Execute(w, &struct {
-			R           *http.Request
-			Headers     http.Header
-			Version     string
-			LogoPath    string
-			DebugPath   string
-			ChartJSPath string
-			StartTime   string
-			TargetURL   string
-			Labels      string
-			UpTime      time.Duration
-			Port        int
-			DoExit      bool
-			DoLoad      bool
-		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.ANSIC), url, labels,
-			fhttp.RoundDuration(time.Since(startTime)), httpPort, DoExit, DoLoad})
-		if err != nil {
-			log.Critf("Template execution failed: %v", err)
-		}
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
-		}
-		if !DoLoad && !DoExit {
-			return
-		}
-		flusher.Flush()
-	}
-	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
-		return
-	}
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
@@ -170,6 +128,52 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Errf("Error parsing duration '%s': %v", durStr, err)
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
+
+	opts := fhttp.NewHTTPOptions(url)
+	if !JSONOnly {
+		// Normal html mode
+		if mainTemplate == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Critf("Nil template")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		err = mainTemplate.Execute(w, &struct {
+			R                           *http.Request
+			Headers                     http.Header
+			Version                     string
+			LogoPath                    string
+			DebugPath                   string
+			ChartJSPath                 string
+			StartTime                   string
+			TargetURL                   string
+			Labels                      string
+			UpTime                      time.Duration
+			TestExpectedDurationSeconds float64
+			Port                        int
+			DoExit                      bool
+			DoLoad                      bool
+		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
+			startTime.Format(time.ANSIC), url, labels,
+			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoExit, DoLoad})
+		if err != nil {
+			log.Critf("Template execution failed: %v", err)
+		}
+
+		if !DoLoad && !DoExit {
+			return
+		}
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+		}
+		flusher.Flush()
+	}
+	if DoExit {
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
+		return
+	}
 	firstHeader := true
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
@@ -203,6 +207,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		RunnerOptions: ro,
 		HTTPOptions:   *opts,
 	}
+
 	res, err := fhttp.RunHTTPTest(&o)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
