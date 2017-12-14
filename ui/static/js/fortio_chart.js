@@ -443,7 +443,6 @@ function makeMultiChart(data) {
 
 function runTestForDuration(durationInSeconds) {
     var progressBar = document.getElementById('progressBar')
-    //    progressBarDiv.style.backgroundColor = '#386ABB'
     var startTimeMillis = Date.now()
     var updatePercentage = function() {
         var barPercentage = 0
@@ -455,7 +454,7 @@ function runTestForDuration(durationInSeconds) {
 
         progressBar.value = barPercentage
         if (barPercentage < 100) {
-            setTimeout(updatePercentage, 10 /* milliseconds */ )
+            setTimeout(updatePercentage, 50 /* milliseconds */ ) // 20fps
         }
     }
 
