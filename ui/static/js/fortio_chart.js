@@ -443,20 +443,18 @@ function makeMultiChart(data) {
 
 function runTestForDuration(durationInSeconds) {
     var progressBar = document.getElementById('progressBar')
+    if (durationInSeconds <= 0) {
+      // infinite case
+      progressBar.removeAttribute("value")
+      return
+    }
     var startTimeMillis = Date.now()
     var updatePercentage = function() {
-        var barPercentage = 0
-        if (durationInSeconds < 0) { // infinite
-            barPercentage = ((Date.now() - startTimeMillis) / 20) % 100 // 2 seconds
-        } else {
-            barPercentage = Math.min(100, (Date.now() - startTimeMillis) / (10 * durationInSeconds))
-        }
-
+        var barPercentage = Math.min(100, (Date.now() - startTimeMillis) / (10 * durationInSeconds))
         progressBar.value = barPercentage
         if (barPercentage < 100) {
             setTimeout(updatePercentage, 50 /* milliseconds */ ) // 20fps
         }
     }
-
     updatePercentage()
 }
