@@ -169,7 +169,6 @@ function showChart(data) {
 
 function toggleVisibility() {
     document.getElementById('running').style.display = 'none';
-    document.getElementById('progressBarDiv').style.display = 'none';
     document.getElementById('update').style.visibility = 'visible';
 }
 
@@ -442,25 +441,19 @@ function makeMultiChart(data) {
 }
 
 function runTestForDuration(durationInSeconds) {
-    var progressBarDiv = document.getElementById('progressBarDiv')
-    progressBarDiv.style.height = '1em'
-    progressBarDiv.style.backgroundColor = '#386ABB'
-    var startTimeMillis = Date.now()
-    var updatePercentage = null
-
-    updatePercentage = function () {
-	var barPercentage = 0
-	if (durationInSeconds < 0) { // infinite
-	    barPercentage = ((Date.now() - startTimeMillis)/20) % 100 // 2 seconds
-	} else {
-	    barPercentage = Math.min(100, (Date.now() - startTimeMillis)/(10*durationInSeconds))
-	}
-
-	document.getElementById('progressBarDiv').style.width = barPercentage + "%"
-	if (barPercentage < 100) {
-	    setTimeout(updatePercentage, 10 /* milliseconds */ )
-	}
+    var progressBar = document.getElementById('progressBar')
+    if (durationInSeconds <= 0) {
+      // infinite case
+      progressBar.removeAttribute("value")
+      return
     }
-
+    var startTimeMillis = Date.now()
+    var updatePercentage = function() {
+        var barPercentage = Math.min(100, (Date.now() - startTimeMillis) / (10 * durationInSeconds))
+        progressBar.value = barPercentage
+        if (barPercentage < 100) {
+            setTimeout(updatePercentage, 50 /* milliseconds */ ) // 20fps
+        }
+    }
     updatePercentage()
 }

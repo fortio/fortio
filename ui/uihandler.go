@@ -124,7 +124,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
 	dur, err := time.ParseDuration(durStr)
-	if err != nil {
+	if DoLoad && err != nil {
 		log.Errf("Error parsing duration '%s': %v", durStr, err)
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
