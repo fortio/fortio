@@ -169,7 +169,6 @@ function showChart(data) {
 
 function toggleVisibility() {
     document.getElementById('running').style.display = 'none';
-    document.getElementById('progressBar').style.display = 'none';
     document.getElementById('update').style.visibility = 'visible';
 }
 

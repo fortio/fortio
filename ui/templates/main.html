@@ -12,15 +12,16 @@
 <p>Up for {{.UpTime}} (since {{.StartTime}}).
 {{if .DoLoad}}
 <p>{{.Labels}} {{.TargetURL}}
-<progress id="progressBar" max="100" value="0" style="width: 100%"></progress>
-<script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
+<div id="running">
+Running load test... Results pending...
 <br />
+<progress id="progressBar" max="100" value="0" style="width: 100%"></progress>
+<br />
+<button type="submit" onclick='javascript:fetch("./?exit=Exit");'>Interrupt</button>
+</div>
+<script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
 <div class="chart-container" style="position: relative; height:75vh; width:98vw">
 <canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
-</div>
-<div id="running">
-<br/>
-Running load test... Results pending...
 </div>
 <div id="update" style="visibility: hidden">
 <form id="updtForm" action="javascript:updateChart()">
