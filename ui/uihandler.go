@@ -123,9 +123,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
-	dur, err := time.ParseDuration(durStr)
-	if DoLoad && err != nil {
-		log.Errf("Error parsing duration '%s': %v", durStr, err)
+	var dur time.Duration
+	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
+		dur = -1
+	} else {
+		var err error
+		dur, err = time.ParseDuration(durStr)
+		if DoLoad && err != nil {
+			log.Errf("Error parsing duration '%s': %v", durStr, err)
+		}
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
 
@@ -138,7 +144,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-		err = mainTemplate.Execute(w, &struct {
+		err := mainTemplate.Execute(w, &struct {
 			R                           *http.Request
 			Headers                     http.Header
 			Version                     string
@@ -185,7 +191,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			opts.ResetHeaders()
 			firstHeader = false
 		}
-		err = opts.AddAndValidateExtraHeader(header)
+		err := opts.AddAndValidateExtraHeader(header)
 		if err != nil {
 			log.Errf("Error adding custom headers: %v", err)
 		}

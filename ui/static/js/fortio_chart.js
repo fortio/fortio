@@ -89,15 +89,22 @@ function makeTitle(res) {
     if (res.Labels != "") {
         title.push(res.Labels + " - " + res.URL + " - " + formatDate(res.StartTime))
     }
-    percStr = "min " + myRound(1000. * res.DurationHistogram.Min, 3) + " ms, average " + myRound(1000. * res.DurationHistogram.Avg, 3) + " ms"
+    var percStr = "min " + myRound(1000. * res.DurationHistogram.Min, 3) + " ms, average " + myRound(1000. * res.DurationHistogram.Avg, 3) + " ms"
     for (var i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
         var p = res.DurationHistogram.Percentiles[i]
         percStr += ", p" + p.Percentile + " " + myRound(1000 * p.Value, 2) + " ms"
     }
     percStr += ", max " + myRound(1000. * res.DurationHistogram.Max, 3) + " ms"
+    var httpOk = res.RetCodes[200]
+    var total = res.DurationHistogram.Count
+    var errStr = "no error"
+    if (httpOk != total) {
+      errStr = myRound(100.*(total-httpOk)/total, 2) + '% errors'
+    }
     title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
         myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-        res.RequestedDuration + ' (actual ' + myRound(res.ActualDuration / 1e9, 1) + 's)')
+        res.RequestedDuration + ' (actual ' + myRound(res.ActualDuration / 1e9, 1) + 's), ' +
+        errStr)
     title.push(percStr)
     return title
 }
@@ -456,4 +463,16 @@ function runTestForDuration(durationInSeconds) {
         }
     }
     updatePercentage()
+}
+
+var lastDuration = ""
+
+function toggleDuration(el) {
+  d = document.getElementById("duration")
+  if (el.checked) {
+    lastDuration = d.value
+    d.value = ""
+  } else {
+    d.value = lastDuration
+  }
 }

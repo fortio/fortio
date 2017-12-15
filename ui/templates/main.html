@@ -1,8 +1,6 @@
 <!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
-{{if .DoLoad}}
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
-{{end}}
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
 <img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
@@ -41,7 +39,8 @@ Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart(
 Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
 URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo" /> <br />
 QPS: <input type="text" name="qps" size="6" value="1000" />
-Duration: <input type="text" name="t" size="6" value="3s" /> <br />
+Duration: <input id="duration" type="text" name="t" size="6" value="3s" />
+or run until interrupted: <input type="checkbox" name="t" onchange="toggleDuration(this)" /><br />
 Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
 Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
 Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
