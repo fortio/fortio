@@ -753,6 +753,21 @@ var (
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	durStr := r.FormValue("delay")
+	if durStr != "" {
+		dur, err := time.ParseDuration(durStr)
+		if err != nil {
+			log.Warnf("Error parsing duration '%s': %v", durStr, err)
+		} else {
+			if dur > 1*time.Second {
+				log.Warnf("Duration %v > 1s, using 1s instead", dur)
+				dur = 1 * time.Second
+			}
+			log.LogVf("Sleeping for %v", dur)
+			time.Sleep(dur)
+		}
+	}
+
 	if log.LogDebug() {
 		for name, headers := range r.Header {
 			for _, h := range headers {
