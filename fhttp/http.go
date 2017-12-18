@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -750,6 +752,57 @@ var (
 	EchoRequests int64
 )
 
+// Format: status=503 for 100% 503s
+// status=503:20,404:10 for 20% 503s, 10% 404s, 70% 200s
+func parseStatus(status string) int {
+	lst := strings.Split(status, ",")
+	log.Debugf("Parsing status %s -> %v", status, lst)
+	// Simple non probabilistic status case:
+	if len(lst) == 1 && !strings.ContainsRune(status, ':') {
+		s, err := strconv.Atoi(status)
+		if err != nil {
+			log.Warnf("Bad input status %v, not a number nor coma and colon seperated % list", status)
+			return http.StatusBadRequest
+		}
+		log.Debugf("Parsed status %s -> %d", status, s)
+		return s
+	}
+	probTable := make([]int, 100)
+	for i := len(probTable) - 1; i >= 0; i-- {
+		probTable[i] = http.StatusOK
+	}
+	lastPercent := 0
+	for _, entry := range lst {
+		l2 := strings.Split(entry, ":")
+		if len(l2) != 2 {
+			log.Warnf("Should have exactly 1 : in status list %s -> %v", status, entry)
+			return http.StatusBadRequest
+		}
+		s, err := strconv.Atoi(l2[0])
+		if err != nil {
+			log.Warnf("Bad input status %v -> %v, not a number before colon", status, l2[0])
+			return http.StatusBadRequest
+		}
+		percStr := l2[1]
+		p, err := strconv.Atoi(percStr)
+		if err != nil || p < 0 || p > 100 {
+			log.Warnf("Percentage is not a [0 - 100] number in %v -> %v : %v %d", status, percStr, err, p)
+			return http.StatusBadRequest
+		}
+		if lastPercent+p > 100 {
+			log.Warnf("Sum of percentage is greater than 100 in %v %d %d", status, lastPercent, p)
+			return http.StatusBadRequest
+		}
+		for i := 0; i < p; i++ {
+			probTable[lastPercent+i] = s
+		}
+		lastPercent += p
+	}
+	res := rand.Intn(100)
+	log.Debugf("[0-100[ for %s roll got %d -> %d", status, res, probTable[res])
+	return probTable[res]
+}
+
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
@@ -767,7 +820,13 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(dur)
 		}
 	}
-
+	statusStr := r.FormValue("status")
+	var status int
+	if statusStr != "" {
+		status = parseStatus(statusStr)
+	} else {
+		status = http.StatusOK
+	}
 	if log.LogDebug() {
 		for name, headers := range r.Header {
 			for _, h := range headers {
@@ -787,7 +846,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(k, v)
 		}
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 	if _, err = w.Write(data); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
 	}
