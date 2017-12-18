@@ -248,6 +248,57 @@ func TestDebugSummary(t *testing.T) {
 	}
 }
 
+func TestParseStatus1(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected int
+	}{
+		// Error cases
+		{"x", 400},
+		{"1::", 400},
+		{"x:10", 400},
+		{"555:-1", 400},
+		{"555:101", 400},
+		{"551:45,551:56", 400},
+		// Good cases
+		{"555", 555},
+		{"555:100", 555},
+		{"555:0", 200},
+		{"551:45,551:55", 551},
+	}
+	for _, tst := range tests {
+		if actual := parseStatus(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for parseStatus(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+// Round down to the nearest hundred
+func roundhundred(x int) int {
+	return int(float64(x)+50.) / 100
+}
+
+func TestParseStatus2(t *testing.T) {
+	str := "501:20,502:30"
+	m := make(map[int]int)
+	for i := 0; i < 1000; i++ {
+		m[parseStatus(str)]++
+	}
+	if len(m) != 3 {
+		t.Errorf("Unexpected result, expecting 3 status, got %+v", m)
+	}
+	if m[200]+m[501]+m[502] != 1000 {
+		t.Errorf("Unexpected result, expecting 3 status summing to 1000 got %+v", m)
+	}
+	// Round the data
+	f01 := roundhundred(m[501]) // 20% -> 2
+	f02 := roundhundred(m[502]) // 30% -> 3
+	fok := roundhundred(m[200]) // rest is 50% -> 5
+	if f01 != 2 || f02 != 3 || fok != 5 {
+		t.Errorf("Unexpected distribution for %+v - wanted 2 3 5, got %d %d %d", m, f01, f02, fok)
+	}
+}
+
 func TestRoundDuration(t *testing.T) {
 	var tests = []struct {
 		input    time.Duration
