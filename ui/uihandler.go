@@ -210,8 +210,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Labels:      labels,
 	}
 	o := fhttp.HTTPRunnerOptions{
-		RunnerOptions: ro,
-		HTTPOptions:   *opts,
+		RunnerOptions:      ro,
+		HTTPOptions:        *opts,
+		AllowInitialErrors: true,
 	}
 
 	res, err := fhttp.RunHTTPTest(&o)

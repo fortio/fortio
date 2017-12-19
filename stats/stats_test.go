@@ -485,3 +485,28 @@ func TestParsePercentiles(t *testing.T) {
 		}
 	}
 }
+
+func TestRound(t *testing.T) {
+	var tests = []struct {
+		input    float64
+		expected float64
+	}{
+		{100.00001, 100},
+		{100.0001, 100.0001},
+		{99.9999999999, 100},
+		{100, 100},
+		{0.1234499, 0.1234},
+		{0.1234567, 0.1235},
+		{-0.0000049, 0},
+		{-0.499999, -0.5},
+		{-0.500001, -0.5},
+		{-0.999999, -1},
+		{-0.123449, -0.1234},
+		{-0.123450, -0.1234}, // should be -0.1235 but we don't deal with <0 specially
+	}
+	for _, tst := range tests {
+		if actual := Round(tst.input); actual != tst.expected {
+			t.Errorf("Got %f, expected %f for Round(%.10f)", actual, tst.expected, tst.input)
+		}
+	}
+}

@@ -61,8 +61,9 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 // options.
 type HTTPRunnerOptions struct {
 	periodic.RunnerOptions
-	HTTPOptions        // Need to call Init() to initialize
-	Profiler    string // file to save profiles to. defaults to no profiling
+	HTTPOptions               // Need to call Init() to initialize
+	Profiler           string // file to save profiles to. defaults to no profiling
+	AllowInitialErrors bool   // whether initial errors don't cause an abort
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
@@ -87,7 +88,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.URL)
 		}
 		code, data, headerSize := httpstate[i].client.Fetch()
-		if code != http.StatusOK {
+		if !o.AllowInitialErrors && code != http.StatusOK {
 			return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
 		}
 		if i == 0 && log.LogVerbose() {
@@ -135,8 +136,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
 	sort.Ints(keys)
+	totalCount := float64(total.DurationHistogram.Count)
 	for _, k := range keys {
-		fmt.Fprintf(out, "Code %3d : %d\n", k, total.RetCodes[k])
+		fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
 	total.HeaderSizes = total.headerSizes.Export([]float64{50})
 	total.Sizes = total.sizes.Export([]float64{50})

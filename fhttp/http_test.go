@@ -248,6 +248,102 @@ func TestDebugSummary(t *testing.T) {
 	}
 }
 
+func TestParseStatus(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected int
+	}{
+		// Error cases
+		{"x", 400},
+		{"1::", 400},
+		{"x:10", 400},
+		{"555:-1", 400},
+		{"555:101", 400},
+		{"551:45,551:56", 400},
+		// Good cases
+		{"555", 555},
+		{"555:100", 555},
+		{"555:0", 200},
+		{"551:45,551:55", 551},
+	}
+	for _, tst := range tests {
+		if actual := generateStatus(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for generateStatus(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+func TestGenerateStatusBasic(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected int
+	}{
+		// Error cases
+		{"x", 400},
+		{"1::", 400},
+		{"x:10", 400},
+		{"555:x", 400},
+		{"555:-1", 400},
+		{"555:101", 400},
+		{"551:45,551:56", 400},
+		// Good cases
+		{"555", 555},
+		{"555:100", 555},
+		{"555:0", 200},
+		{"551:45,551:55", 551},
+	}
+	for _, tst := range tests {
+		if actual := generateStatus(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for generateStatus(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+func TestGenerateStatusEdgeSum(t *testing.T) {
+	st := "503:99.0,503:1.00001"
+	// Gets 400 without rounding as it exceeds 100, another corner case is if you
+	// add 0.1 1000 times you get 0.99999... so you may get stray 200s without Rounding
+	if actual := generateStatus(st); actual != 503 {
+		t.Errorf("Got %d for generateStatus(%q)", actual, st)
+	}
+	st += ",500:0.0001"
+	if actual := generateStatus(st); actual != 400 {
+		t.Errorf("Got %d for long generateStatus(%q) when expecting 400 for > 100", actual, st)
+	}
+}
+
+// Round down to the nearest thousand
+func roundthousand(x int) int {
+	return int(float64(x)+500.) / 1000
+}
+
+func TestGenerateStatusDistribution(t *testing.T) {
+	log.SetLogLevel(log.Info)
+	str := "501:20,502:30,503:0.5"
+	m := make(map[int]int)
+	for i := 0; i < 10000; i++ {
+		m[generateStatus(str)]++
+	}
+	if len(m) != 4 {
+		t.Errorf("Unexpected result, expecting 4 statuses, got %+v", m)
+	}
+	if m[200]+m[501]+m[502]+m[503] != 10000 {
+		t.Errorf("Unexpected result, expecting 4 statuses summing to 10000 got %+v", m)
+	}
+	if m[503] <= 10 {
+		t.Errorf("Unexpected result, expecting at least 10 count for 0.5%% probability over 10000 got %+v", m)
+	}
+	// Round the data
+	f01 := roundthousand(m[501]) // 20% -> 2
+	f02 := roundthousand(m[502]) // 30% -> 3
+	fok := roundthousand(m[200]) // rest is 50% -> 5
+	f03 := roundthousand(m[503]) // 0.5% -> rounds down to 0 10s of %
+
+	if f01 != 2 || f02 != 3 || fok != 5 || (f03 != 0) {
+		t.Errorf("Unexpected distribution for %+v - wanted 2 3 5, got %d %d %d", m, f01, f02, fok)
+	}
+}
+
 func TestRoundDuration(t *testing.T) {
 	var tests = []struct {
 		input    time.Duration

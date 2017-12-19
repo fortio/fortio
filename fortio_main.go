@@ -98,6 +98,8 @@ var (
 	percList       []float64
 	err            error
 	defaultDataDir = "."
+
+	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 )
 
 func main() {
@@ -203,9 +205,10 @@ func fortioLoad() {
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
-			HTTPOptions:   httpOpts,
-			RunnerOptions: ro,
-			Profiler:      *profileFlag,
+			HTTPOptions:        httpOpts,
+			RunnerOptions:      ro,
+			Profiler:           *profileFlag,
+			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}

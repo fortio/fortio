@@ -444,3 +444,15 @@ func ParsePercentiles(percentiles string) ([]float64, error) {
 	log.LogVf("Will use %v for percentiles", res)
 	return res, nil
 }
+
+// RoundToDigits rounds the input to digits number of digits after decimal point.
+// Note this incorrectly rounds the last digit of negative numbers.
+func RoundToDigits(v float64, digits int) float64 {
+	p := math.Pow(10, float64(digits))
+	return math.Floor(v*p+0.5) / p
+}
+
+// Round rounds to 4 digits after the decimal point.
+func Round(v float64) float64 {
+	return RoundToDigits(v, 4)
+}
