@@ -301,7 +301,8 @@ func TestGenerateStatusBasic(t *testing.T) {
 
 func TestGenerateStatusEdgeSum(t *testing.T) {
 	st := "503:99.0,503:1.00001"
-	// Gets 400 without rounding as it exceeds 100
+	// Gets 400 without rounding as it exceeds 100, another corner case is if you
+	// add 0.1 1000 times you get 0.99999... so you may get stray 200s without Rounding
 	if actual := generateStatus(st); actual != 503 {
 		t.Errorf("Got %d for generateStatus(%q)", actual, st)
 	}
@@ -336,7 +337,7 @@ func TestGenerateStatusDistribution(t *testing.T) {
 	f01 := roundthousand(m[501]) // 20% -> 2
 	f02 := roundthousand(m[502]) // 30% -> 3
 	fok := roundthousand(m[200]) // rest is 50% -> 5
-	f03 := roundthousand(m[503]) // 0.5% -> 5
+	f03 := roundthousand(m[503]) // 0.5% -> rounds down to 0 10s of %
 
 	if f01 != 2 || f02 != 3 || fok != 5 || (f03 != 0) {
 		t.Errorf("Unexpected distribution for %+v - wanted 2 3 5, got %d %d %d", m, f01, f02, fok)
