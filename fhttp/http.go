@@ -790,9 +790,10 @@ func generateStatus(status string) int {
 			return http.StatusBadRequest
 		}
 		lastPercent += p
+		// Round() needed to cover 'exactly' 100% and not more or less because of rounding errors
 		p32 := float32(stats.Round(lastPercent))
-		if p32 > 100.0 {
-			log.Warnf("Sum of percentage is greater than 100 in %v %f %f", status, lastPercent, p)
+		if p32 > 100. {
+			log.Warnf("Sum of percentage is greater than 100 in %v %f %f %f", status, lastPercent, p, p32)
 			return http.StatusBadRequest
 		}
 		weights[i] = p32
@@ -802,7 +803,7 @@ func generateStatus(status string) int {
 	res := 100. * rand.Float32()
 	for i, v := range weights {
 		if res <= v {
-			log.Debugf("[0.-100.[ for %s roll %f got #%d %f -> %d", status, res, i, codes[i])
+			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", status, res, i, codes[i])
 			return codes[i]
 		}
 	}

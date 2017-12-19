@@ -282,6 +282,7 @@ func TestGenerateStatusBasic(t *testing.T) {
 		{"x", 400},
 		{"1::", 400},
 		{"x:10", 400},
+		{"555:x", 400},
 		{"555:-1", 400},
 		{"555:101", 400},
 		{"551:45,551:56", 400},
@@ -299,14 +300,14 @@ func TestGenerateStatusBasic(t *testing.T) {
 }
 
 func TestGenerateStatusEdgeSum(t *testing.T) {
-	st := "503:1.0000001,503:99.0"
+	st := "503:99.0,503:1.00001"
 	// Gets 400 without rounding as it exceeds 100
 	if actual := generateStatus(st); actual != 503 {
-		t.Errorf("Got %d for long generateStatus()", actual)
+		t.Errorf("Got %d for generateStatus(%q)", actual, st)
 	}
-	st += "500:0.000001"
+	st += ",500:0.0001"
 	if actual := generateStatus(st); actual != 400 {
-		t.Errorf("Got %d for long generateStatus() when expecting 400 for > 100", actual)
+		t.Errorf("Got %d for long generateStatus(%q) when expecting 400 for > 100", actual, st)
 	}
 }
 

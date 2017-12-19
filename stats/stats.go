@@ -452,7 +452,7 @@ func RoundToDigits(v float64, digits int) float64 {
 	return math.Floor(v*p+0.5) / p
 }
 
-// Round rounds to 6 digits after the decimal point.
+// Round rounds to 4 digits after the decimal point.
 func Round(v float64) float64 {
-	return RoundToDigits(v, 6)
+	return RoundToDigits(v, 4)
 }
