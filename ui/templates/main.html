@@ -37,7 +37,7 @@ Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart(
 <form>
 <div>
 Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
-URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo" /> <br />
+URL: <input type="text" name="url" size="60" value="http://localhost:{{.Port}}/echo?delay=250us&status=503:0.5,429:1.5" /> <br />
 QPS: <input type="text" name="qps" size="6" value="1000" />
 Duration: <input id="duration" type="text" name="t" size="6" value="3s" />
 or run until interrupted: <input type="checkbox" name="t" onchange="toggleDuration(this)" /><br />
