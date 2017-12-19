@@ -273,28 +273,34 @@ func TestParseStatus(t *testing.T) {
 	}
 }
 
-// Round down to the nearest hundred
-func roundhundred(x int) int {
-	return int(float64(x)+50.) / 100
+// Round down to the nearest thousand
+func roundthousand(x int) int {
+	return int(float64(x)+500.) / 1000
 }
 
 func TestStatusDistribution(t *testing.T) {
-	str := "501:20,502:30"
+	log.SetLogLevel(log.Info)
+	str := "501:20,502:30,503:0.5"
 	m := make(map[int]int)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		m[parseStatus(str)]++
 	}
-	if len(m) != 3 {
-		t.Errorf("Unexpected result, expecting 3 status, got %+v", m)
+	if len(m) != 4 {
+		t.Errorf("Unexpected result, expecting 4 statuses, got %+v", m)
 	}
-	if m[200]+m[501]+m[502] != 1000 {
-		t.Errorf("Unexpected result, expecting 3 status summing to 1000 got %+v", m)
+	if m[200]+m[501]+m[502]+m[503] != 10000 {
+		t.Errorf("Unexpected result, expecting 4 statuses summing to 10000 got %+v", m)
+	}
+	if m[503] <= 10 {
+		t.Errorf("Unexpected result, expecting at least 10 count for 0.5%% probability over 10000 got %+v", m)
 	}
 	// Round the data
-	f01 := roundhundred(m[501]) // 20% -> 2
-	f02 := roundhundred(m[502]) // 30% -> 3
-	fok := roundhundred(m[200]) // rest is 50% -> 5
-	if f01 != 2 || f02 != 3 || fok != 5 {
+	f01 := roundthousand(m[501]) // 20% -> 2
+	f02 := roundthousand(m[502]) // 30% -> 3
+	fok := roundthousand(m[200]) // rest is 50% -> 5
+	f03 := roundthousand(m[503]) // 0.5% -> 5
+
+	if f01 != 2 || f02 != 3 || fok != 5 || (f03 != 0) {
 		t.Errorf("Unexpected distribution for %+v - wanted 2 3 5, got %d %d %d", m, f01, f02, fok)
 	}
 }

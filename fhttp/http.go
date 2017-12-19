@@ -33,6 +33,7 @@ import (
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
+	"istio.io/fortio/stats"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -753,7 +754,7 @@ var (
 )
 
 // Format: status=503 for 100% 503s
-// status=503:20,404:10 for 20% 503s, 10% 404s, 70% 200s
+// status=503:20,404:10,403:0.5 for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
 func parseStatus(status string) int {
 	lst := strings.Split(status, ",")
 	log.Debugf("Parsing status %s -> %v", status, lst)
@@ -767,11 +768,10 @@ func parseStatus(status string) int {
 		log.Debugf("Parsed status %s -> %d", status, s)
 		return s
 	}
-	probTable := make([]int, 100)
-	for i := len(probTable) - 1; i >= 0; i-- {
-		probTable[i] = http.StatusOK
-	}
-	lastPercent := 0
+	weights := make([]float32, len(lst))
+	codes := make([]int, len(lst))
+	lastPercent := float32(0)
+	i := 0
 	for _, entry := range lst {
 		l2 := strings.Split(entry, ":")
 		if len(l2) != 2 {
@@ -784,23 +784,29 @@ func parseStatus(status string) int {
 			return http.StatusBadRequest
 		}
 		percStr := l2[1]
-		p, err := strconv.Atoi(percStr)
+		p, err := strconv.ParseFloat(percStr, 32)
 		if err != nil || p < 0 || p > 100 {
-			log.Warnf("Percentage is not a [0 - 100] number in %v -> %v : %v %d", status, percStr, err, p)
+			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", status, percStr, err, p)
 			return http.StatusBadRequest
 		}
-		if lastPercent+p > 100 {
+		p32 := float32(p)
+		if stats.Round(float64(lastPercent+p32)) > 100 {
 			log.Warnf("Sum of percentage is greater than 100 in %v %d %d", status, lastPercent, p)
 			return http.StatusBadRequest
 		}
-		for i := 0; i < p; i++ {
-			probTable[lastPercent+i] = s
-		}
-		lastPercent += p
+		lastPercent += p32
+		weights[i] = lastPercent
+		codes[i] = s
+		i++
 	}
-	res := rand.Intn(100)
-	log.Debugf("[0-100[ for %s roll got %d -> %d", status, res, probTable[res])
-	return probTable[res]
+	res := 100. * rand.Float32()
+	for i, v := range weights {
+		if res <= v {
+			log.Debugf("[0.-100.[ for %s roll %f got #%d %f -> %d", status, res, i, codes[i])
+			return codes[i]
+		}
+	}
+	return http.StatusOK // default/reminder of probability table
 }
 
 // EchoHandler is an http server handler echoing back the input.
