@@ -761,7 +761,7 @@ func parseStatus(status string) int {
 	if len(lst) == 1 && !strings.ContainsRune(status, ':') {
 		s, err := strconv.Atoi(status)
 		if err != nil {
-			log.Warnf("Bad input status %v, not a number nor coma and colon separated %% list", status)
+			log.Warnf("Bad input status %v, not a number nor comma and colon separated %% list", status)
 			return http.StatusBadRequest
 		}
 		log.Debugf("Parsed status %s -> %d", status, s)

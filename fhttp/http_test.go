@@ -248,7 +248,7 @@ func TestDebugSummary(t *testing.T) {
 	}
 }
 
-func TestParseStatus1(t *testing.T) {
+func TestParseStatus(t *testing.T) {
 	var tests = []struct {
 		input    string
 		expected int
@@ -278,7 +278,7 @@ func roundhundred(x int) int {
 	return int(float64(x)+50.) / 100
 }
 
-func TestParseStatus2(t *testing.T) {
+func TestStatusDistribution(t *testing.T) {
 	str := "501:20,502:30"
 	m := make(map[int]int)
 	for i := 0; i < 1000; i++ {
