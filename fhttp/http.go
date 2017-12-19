@@ -753,9 +753,9 @@ var (
 	EchoRequests int64
 )
 
-// Format: status=503 for 100% 503s
-// status=503:20,404:10,403:0.5 for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
-func parseStatus(status string) int {
+// generateStatus from string, format: status="503" for 100% 503s
+// status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
+func generateStatus(status string) int {
 	lst := strings.Split(status, ",")
 	log.Debugf("Parsing status %s -> %v", status, lst)
 	// Simple non probabilistic status case:
@@ -770,7 +770,7 @@ func parseStatus(status string) int {
 	}
 	weights := make([]float32, len(lst))
 	codes := make([]int, len(lst))
-	lastPercent := float32(0)
+	lastPercent := float64(0)
 	i := 0
 	for _, entry := range lst {
 		l2 := strings.Split(entry, ":")
@@ -789,13 +789,13 @@ func parseStatus(status string) int {
 			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", status, percStr, err, p)
 			return http.StatusBadRequest
 		}
-		p32 := float32(p)
-		if stats.Round(float64(lastPercent+p32)) > 100 {
-			log.Warnf("Sum of percentage is greater than 100 in %v %d %d", status, lastPercent, p)
+		lastPercent += p
+		p32 := float32(stats.Round(lastPercent))
+		if p32 > 100.0 {
+			log.Warnf("Sum of percentage is greater than 100 in %v %f %f", status, lastPercent, p)
 			return http.StatusBadRequest
 		}
-		lastPercent += p32
-		weights[i] = lastPercent
+		weights[i] = p32
 		codes[i] = s
 		i++
 	}
@@ -829,7 +829,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	statusStr := r.FormValue("status")
 	var status int
 	if statusStr != "" {
-		status = parseStatus(statusStr)
+		status = generateStatus(statusStr)
 	} else {
 		status = http.StatusOK
 	}

@@ -267,9 +267,46 @@ func TestParseStatus(t *testing.T) {
 		{"551:45,551:55", 551},
 	}
 	for _, tst := range tests {
-		if actual := parseStatus(tst.input); actual != tst.expected {
-			t.Errorf("Got %d, expected %d for parseStatus(%q)", actual, tst.expected, tst.input)
+		if actual := generateStatus(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for generateStatus(%q)", actual, tst.expected, tst.input)
 		}
+	}
+}
+
+func TestGenerateStatusBasic(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected int
+	}{
+		// Error cases
+		{"x", 400},
+		{"1::", 400},
+		{"x:10", 400},
+		{"555:-1", 400},
+		{"555:101", 400},
+		{"551:45,551:56", 400},
+		// Good cases
+		{"555", 555},
+		{"555:100", 555},
+		{"555:0", 200},
+		{"551:45,551:55", 551},
+	}
+	for _, tst := range tests {
+		if actual := generateStatus(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for generateStatus(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+func TestGenerateStatusEdgeSum(t *testing.T) {
+	st := "503:1.0000001,503:99.0"
+	// Gets 400 without rounding as it exceeds 100
+	if actual := generateStatus(st); actual != 503 {
+		t.Errorf("Got %d for long generateStatus()", actual)
+	}
+	st += "500:0.000001"
+	if actual := generateStatus(st); actual != 400 {
+		t.Errorf("Got %d for long generateStatus() when expecting 400 for > 100", actual)
 	}
 }
 
@@ -278,12 +315,12 @@ func roundthousand(x int) int {
 	return int(float64(x)+500.) / 1000
 }
 
-func TestStatusDistribution(t *testing.T) {
+func TestGenerateStatusDistribution(t *testing.T) {
 	log.SetLogLevel(log.Info)
 	str := "501:20,502:30,503:0.5"
 	m := make(map[int]int)
 	for i := 0; i < 10000; i++ {
-		m[parseStatus(str)]++
+		m[generateStatus(str)]++
 	}
 	if len(m) != 4 {
 		t.Errorf("Unexpected result, expecting 4 statuses, got %+v", m)
