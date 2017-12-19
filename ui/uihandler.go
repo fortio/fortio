@@ -429,3 +429,32 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	}
 	fhttp.Serve(port, debugpath)
 }
+
+// Report starts the browsing only UI server on the given port
+func Report(port int, staticRsrcDir string, datadir string) {
+	startTime = time.Now()
+	httpPort = port
+	uiPath = "/"
+	dataDir = datadir
+	fmt.Printf("Browse only UI starting - visit:\nhttp://localhost:%d/\n", port)
+
+	logoPath = periodic.Version + "/static/img/logo.svg"
+	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
+
+	staticRsrcDir = getResourcesDir(staticRsrcDir)
+	fs := http.FileServer(http.Dir(staticRsrcDir))
+	prefix := uiPath + periodic.Version
+	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	var err error
+	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
+	if err != nil {
+		log.Critf("Unable to parse browse template: %v", err)
+	} else {
+		http.HandleFunc(uiPath, BrowseHandler)
+	}
+	fsd := http.FileServer(http.Dir(dataDir))
+	http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+		log.Critf("Error starting server: %v", err)
+	}
+}

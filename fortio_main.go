@@ -60,7 +60,7 @@ func usage(msgs ...interface{}) {
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
-		"where target is a url (http load tests) or host:port (grpc health test)",
+		"or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
@@ -127,6 +127,8 @@ func main() {
 	switch command {
 	case "load":
 		fortioLoad()
+	case "report":
+		ui.Report(*echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
