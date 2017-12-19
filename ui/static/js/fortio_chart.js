@@ -99,7 +99,11 @@ function makeTitle(res) {
     var total = res.DurationHistogram.Count
     var errStr = "no error"
     if (httpOk != total) {
-      errStr = myRound(100.*(total-httpOk)/total, 2) + '% errors'
+      if (httpOk) {
+        errStr = myRound(100.*(total-httpOk)/total, 2) + '% errors'
+      } else {
+        errStr = "100% errors!"
+      }
     }
     title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
         myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
