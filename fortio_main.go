@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 
@@ -60,7 +61,7 @@ func usage(msgs ...interface{}) {
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
-		"where target is a url (http load tests) or host:port (grpc health test)",
+		"or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
@@ -88,10 +89,12 @@ var (
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag       = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output)")
-	uiPathFlag     = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
-	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
-	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to hostname")
+	jsonFlag = flag.String("json", "",
+		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
+	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
+	labelsFlag = flag.String("labels", "",
+		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
 	staticDirFlag  = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
 	dataDirFlag    = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
 	headersFlags   flagList
@@ -100,6 +103,7 @@ var (
 	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
+	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels and timestamp")
 )
 
 func main() {
@@ -127,6 +131,8 @@ func main() {
 	switch command {
 	case "load":
 		fortioLoad()
+	case "report":
+		ui.Report(*echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
@@ -185,7 +191,16 @@ func fortioLoad() {
 	}
 	labels := *labelsFlag
 	if labels == "" {
-		labels, _ = os.Hostname()
+		hname, _ := os.Hostname()
+		shortURL := url
+		for _, p := range []string{"https://", "http://"} {
+			if strings.HasPrefix(url, p) {
+				shortURL = url[len(p):]
+				break
+			}
+		}
+		labels = shortURL + " , " + strings.SplitN(hname, ".", 2)[0]
+		log.LogVf("Generated Labels: %s", labels)
 	}
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
@@ -216,13 +231,14 @@ func fortioLoad() {
 		fmt.Fprintf(out, "Aborting because %v\n", err)
 		os.Exit(1)
 	}
+	rr := res.Result()
 	fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
-		res.Result().DurationHistogram.Count,
+		rr.DurationHistogram.Count,
 		*numThreadsFlag,
-		1000.*res.Result().DurationHistogram.Avg,
-		res.Result().ActualQPS)
+		1000.*rr.DurationHistogram.Avg,
+		rr.ActualQPS)
 	jsonFileName := *jsonFlag
-	if len(jsonFileName) > 0 {
+	if *autoSaveFlag || len(jsonFileName) > 0 {
 		j, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
 			log.Fatalf("Unable to json serialize result: %v", err)
@@ -232,6 +248,9 @@ func fortioLoad() {
 			f = os.Stdout
 			jsonFileName = "stdout"
 		} else {
+			if len(jsonFileName) == 0 {
+				jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
+			}
 			f, err = os.Create(jsonFileName)
 			if err != nil {
 				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
