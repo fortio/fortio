@@ -250,12 +250,19 @@ Or graphically (through the [http://localhost:8080/fortio/](http://localhost:808
 
 Simple form/UI:
 
+Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors.
+
 ![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/34192808-1983be12-e505-11e7-9c16-2ee9f101f2ce.png)
 
 Run result:
 
 ![Graphical result](https://user-images.githubusercontent.com/3664595/34192806-16f1740a-e505-11e7-9534-3e703222c1d3.png)
 
+```
+Code 200 : 2939 (98.0 %)
+Code 429 : 47 (1.6 %)
+Code 503 : 14 (0.5 %)
+```
 ## Contributing
 Contributions whether throuh issues, documentation, bug fixes, or new features
 are most welcome !
