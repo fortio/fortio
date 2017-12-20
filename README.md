@@ -38,19 +38,23 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.3.6 usage:
+Φορτίο 0.5.1 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)
-where target is a url (http load tests) or host:port (grpc health test)
+or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)
 and flags are:
   -H value
     	Additional Header(s)
+  -allow-initial-errors
+    	Allow and don't abort on initial warmup errors
   -c int
     	Number of connections/goroutine/threads (default 4)
   -compression
     	Enable http compression
   -curl
     	Just fetch the content once
+  -data-dir string
+    	Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
     	http echo server URI for debug, empty turns off that part (more secure) (default "/debug")
   -gomaxprocs int
@@ -77,6 +81,8 @@ and flags are:
     	Json output to provided file or '-' for stdout (empty = no json output)
   -keepalive
     	Keep connection alive (only for fast http 1.1) (default true)
+  -labels string
+    	Additional config data/labels to add to the resulting JSON, defaults to hostname
   -logcaller
     	Logs filename and line number of callers to log (default true)
   -loglevel value
@@ -95,6 +101,8 @@ and flags are:
     	Queries Per Seconds or 0 for no wait/max qps (default 8)
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
+  -static-dir string
+    	Absolute path to the dir containing the static files dir
   -stdclient
     	Use the slower net/http standard client (works for TLS)
   -t duration
@@ -153,6 +161,16 @@ Code 200 : 40
 Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
 Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
+```
+
+* Report only UI
+
+If you have json files saved from running the full UI, you can serve just the reports:
+
+```
+$ fortio report
+Browse only UI starting - visit:
+http://localhost:8080/
 ```
 
 ## Implementation details
@@ -232,12 +250,11 @@ Or graphically (through the [http://localhost:8080/fortio/](http://localhost:808
 
 Simple form/UI:
 
-![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/32871761-c733f966-ca37-11e7-9d4e-8c31f98fcd4e.png)
-
+![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/34192808-1983be12-e505-11e7-9c16-2ee9f101f2ce.png)
 
 Run result:
 
-![Graphical result](https://user-images.githubusercontent.com/3664595/32871636-1e2531c8-ca37-11e7-8e2b-0aafe8d4305b.png)
+![Graphical result](https://user-images.githubusercontent.com/3664595/34192806-16f1740a-e505-11e7-9534-3e703222c1d3.png)
 
 ## Contributing
 Contributions whether throuh issues, documentation, bug fixes, or new features
@@ -245,8 +262,9 @@ are most welcome !
 
 Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
 
-And make sure to run those commands successfully before sending your PRs:
+And make sure to go format and run those commands successfully before sending your PRs:
 ```
 make test
 make lint
+make webtest
 ```
