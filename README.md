@@ -45,6 +45,7 @@ or report (report only UI server), where target is a url (http load tests) or ho
 and flags are:
   -H value
     	Additional Header(s)
+  -a	Automatically save JSON result with filename based on labels and timestamp
   -allow-initial-errors
     	Allow and don't abort on initial warmup errors
   -c int
@@ -78,11 +79,11 @@ and flags are:
   -httpccch
     	Check for Connection: Close Header
   -json string
-    	Json output to provided file or '-' for stdout (empty = no json output)
+    	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
   -keepalive
     	Keep connection alive (only for fast http 1.1) (default true)
   -labels string
-    	Additional config data/labels to add to the resulting JSON, defaults to hostname
+    	Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname
   -logcaller
     	Logs filename and line number of callers to log (default true)
   -loglevel value
