@@ -1,11 +1,22 @@
 <!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
+<style>
+a:link {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+h1 {
+  font-size: 120%;
+}
+</style>
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
-<img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
+<a href="http://fortio.org/"><img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" /></a>
 <img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
 <img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
-<h1>Φορτίο (fortio) v{{.Version}}</h1>
+<h1>Φορτίο (fortio) v{{.Version}}{{.Extra}}</h1>
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
 <script>
 var res
@@ -47,23 +58,24 @@ function fortio_load(url) {
 }
 </script>
 {{if .DoRender}}
-<p><div id="url">Loading {{.URL}}...</div>
-<p><!-- TODO: find a way to flush/not need two p to get the form visible! -->
+<p><div id="url">Loading {{.URL}}...</div></p>
+<p /><!-- TODO: find a way to flush/not need two p to get the form visible! -->
+<br />
+<p />
 <br />
 <script>
 fortio_load('{{.URL}}')
 </script>
 {{else}}
-<table><tr><td>
-List of saved results:<br />
-<select id="files" size=6 onchange="fortio_load(value);" multiple>
+<table><tr><td valign="top">
+List of<br />saved<br />results:</td><td>
+<select id="files" size=7 onchange="fortio_load(value);" multiple>
 {{range $f := .DataList}}
   <option value="{{$f}}.json">{{$f}}</option>
 {{end}}
 </select>
-</td><td valign="bottom">Graph link: <div id="url">...</div>
+</td><td valign="top">Graph link: <div id="url">...</div>
 </tr></table>
-<p>
 {{end}}
 <div class="chart-container" style="position: relative; height:75vh; width:98vw; visibility: hidden">
 <canvas style="background-color: #fff" id="chart1"></canvas>

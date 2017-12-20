@@ -52,7 +52,8 @@ var (
 	// This is replaced at link time to the packaged directory (e.g /usr/local/lib/fortio/)
 	// but when fortio is installed with go get we use RunTime to find that directory.
 	// (see Dockerfile for how to set it)
-	resourcesDir string
+	resourcesDir     string
+	extraBrowseLabel string // Extra label for report only
 	// Directory where results are written to/read from
 	dataDir        string
 	mainTemplate   *template.Template
@@ -302,6 +303,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	err = browseTemplate.Execute(w, &struct {
 		R           *http.Request
+		Extra       string
 		Version     string
 		LogoPath    string
 		ChartJSPath string
@@ -309,7 +311,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		DataList    []string
 		Port        int
 		DoRender    bool
-	}{r, periodic.Version, logoPath, chartJSPath,
+	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
 		url, dataList, httpPort, doRender})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
@@ -430,17 +432,16 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	fhttp.Serve(port, debugpath)
 }
 
-// Report starts the browsing only UI server on the given port
+// Report starts the browsing only UI server on the given port.
+// Similar to Serve with only the read only part.
 func Report(port int, staticRsrcDir string, datadir string) {
-	startTime = time.Now()
+	extraBrowseLabel = ", report only limited UI"
 	httpPort = port
 	uiPath = "/"
 	dataDir = datadir
 	fmt.Printf("Browse only UI starting - visit:\nhttp://localhost:%d/\n", port)
-
 	logoPath = periodic.Version + "/static/img/logo.svg"
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
-
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
 	fs := http.FileServer(http.Dir(staticRsrcDir))
 	prefix := uiPath + periodic.Version

@@ -3,7 +3,7 @@
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
-<img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" />
+<a href="http://fortio.org/"><img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" /></a>
 <img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
 <img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
 <h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
@@ -66,12 +66,13 @@ Debug fetch http://<input type="text" id="uri" name="uri" value="" size=50/>
 </div>
 </form>
 <p><i>Or</i></p>
+<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>
+<p><i>Or</i></p>
 <form method="POST">
 <div>
 Use with caution, will interrupt/end this server: <input type="submit" name="exit" value="Exit" />
 </div>
 </form>
-<p>See also <a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>.
 {{end}}
 </body>
 </html>
