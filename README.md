@@ -34,7 +34,7 @@ You can visit the new web UI at http://localhost:8080/fortio/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` command, or start simple http and grpc ping servers, as well as a basic web UI, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI and result graphing, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
 $ fortio
