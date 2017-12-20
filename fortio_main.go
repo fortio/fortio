@@ -89,10 +89,12 @@ var (
 	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
-	jsonFlag       = flag.String("json", "", "Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
-	uiPathFlag     = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
-	curlFlag       = flag.Bool("curl", false, "Just fetch the content once")
-	labelsFlag     = flag.String("labels", "", "Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
+	jsonFlag = flag.String("json", "",
+		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
+	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
+	labelsFlag = flag.String("labels", "",
+		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
 	staticDirFlag  = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
 	dataDirFlag    = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
 	headersFlags   flagList
