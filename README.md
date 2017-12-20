@@ -275,3 +275,7 @@ make test
 make lint
 make webtest
 ```
+
+## See also
+
+Our wiki and the [Fortio FAQ](https://github.com/istio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
