@@ -177,6 +177,10 @@ type HistogramData struct {
 func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
 	h.Offset = Offset
+	if Divider == 0 {
+		log.Fatalf("Divider can not be %f",Divider)
+		return nil
+	}
 	h.Divider = Divider
 	h.Hdata = make([]int32, numBuckets+1)
 	return h
@@ -206,14 +210,7 @@ func init() {
 func (h *Histogram) Record(v float64) {
 	h.Counter.Record(v)
 	// Scaled value to bucketize:
-	scaledVal := (v - h.Offset) / h.Divider
-	idx := 0
-	if scaledVal >= lastValue {
-		idx = numBuckets
-	} else if scaledVal >= firstValue {
-		idx = val2Bucket[int(scaledVal)]
-	} // else it's <  and idx 0
-	h.Hdata[idx]++
+	h.appendRecordToHistogram(v)
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -393,21 +390,56 @@ func (h *Histogram) Clone() *Histogram {
 // CopyFrom sets the content of this object to a copy of the src.
 func (h *Histogram) CopyFrom(src *Histogram) {
 	h.Counter = src.Counter
-	// we don't copy offset/divider as this assumes compatible src/dest
-	for i := 0; i < len(h.Hdata); i++ {
-		h.Hdata[i] += src.Hdata[i]
+	h.CopyHDataFrom(src)
+}
+
+func (h *Histogram) CopyHDataFrom(src * Histogram)  {
+	if h.Divider == src.Divider && h.Offset == src.Offset {
+		for i := 0; i < len(h.Hdata); i++ {
+			h.Hdata[i] += src.Hdata[i]
+		}
+		return;
+	}
+	//Scale values are not equal for histograms.
+	//Need to receive record values from src and add them to h according to h's offset and divider
+	var scaledValue float64
+	for i := 0; i < len(src.Hdata); i++ {
+		if src.Hdata[i] == 0 {
+			continue
+		}
+		scaledValue = -1
+		//Find scaleValue in val2Bucket
+		for j := 0; j<numBuckets; j++ {
+			if val2Bucket[j] == i {
+				scaledValue = float64(j)
+			}
+		}
+		if scaledValue == -1{
+			continue
+		}
+		v := scaledValue * src.Divider + src.Offset
+		for src.Hdata[i] != 0{
+			h.appendRecordToHistogram(v)
+			src.Hdata[i] -= 1
+		}
 	}
 }
 
+func (h*Histogram) appendRecordToHistogram(v float64)  {
+	// Scaled value to bucketize:
+	scaledVal := (v - h.Offset) / h.Divider
+	idx := 0
+	if scaledVal >= lastValue {
+		idx = numBuckets
+	} else if scaledVal >= firstValue {
+		idx = val2Bucket[int(scaledVal)]
+	} // else it's <  and idx 0
+	h.Hdata[idx]++
+}
+
+
 // Transfer merges the data from src into this Histogram and clears src.
 func (h *Histogram) Transfer(src *Histogram) {
-	// TODO potentially merge despite different offset/scale
-	if src.Offset != h.Offset {
-		log.Fatalf("Incompatible offsets in Histogram Transfer %f %f", src.Offset, h.Offset)
-	}
-	if src.Divider != h.Divider {
-		log.Fatalf("Incompatible scale in Histogram Transfer %f %f", src.Divider, h.Divider)
-	}
 	if src.Count == 0 {
 		return
 	}
@@ -417,9 +449,7 @@ func (h *Histogram) Transfer(src *Histogram) {
 		return
 	}
 	h.Counter.Transfer(&src.Counter)
-	for i := 0; i < len(h.Hdata); i++ {
-		h.Hdata[i] += src.Hdata[i]
-	}
+	h.CopyHDataFrom(src)
 	src.Reset()
 }
 

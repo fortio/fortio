@@ -380,8 +380,51 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	}
 }
 
+func TestTransferHistogramWithDifferentScales(t *testing.T)  {
+	tP := []float64{75.}
+	var b bytes.Buffer
+	w := bufio.NewWriter(&b)
+	h1 := NewHistogram(2, 15)
+	h1.Record(30)
+	h1.Record(40)
+	h1.Record(50)
+	h2 := NewHistogram(0, 10)
+	h2.Record(20)
+	h2.Record(90)
+	h1.Print(w, "h1 before merge", tP)
+	h2.Print(w, "h2 before merge", tP)
+	h1.Transfer(h2)
+	h1.Print(w, "merged h2 -> h1", tP)
+	h2.Print(w, "h2 should now be empty", tP)
+	w.Flush()
+	actual := b.String()
+	expected := `h1 before merge : count 3 avg 40 +/- 8.165 min 30 max 50 sum 120
+# range, mid point, percentile, count
+>= 30 < 32 , 31 , 33.33, 1
+>= 32 < 47 , 39.5 , 66.67, 1
+>= 47 <= 50 , 48.5 , 100.00, 1
+# target 75% 47.75
+h2 before merge : count 2 avg 55 +/- 35 min 20 max 90 sum 110
+# range, mid point, percentile, count
+>= 20 < 30 , 25 , 50.00, 1
+>= 90 <= 90 , 90 , 100.00, 1
+# target 75% 90
+merged h2 -> h1 : count 5 avg 46 +/- 24.17 min 20 max 90 sum 230
+# range, mid point, percentile, count
+>= 20 < 32 , 26 , 40.00, 2
+>= 32 < 47 , 39.5 , 60.00, 1
+>= 47 < 62 , 54.5 , 80.00, 1
+>= 77 <= 90 , 83.5 , 100.00, 1
+# target 75% 58.25
+h2 should now be empty : no data
+`
+	if actual != expected {
+		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
+	}
+}
+
 func TestTransferHistogram(t *testing.T) {
-	tP := []float64{100.} // TODO: use 75 and fix bug
+	tP := []float64{75.}
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h1 := NewHistogram(0, 10)
@@ -415,19 +458,19 @@ func TestTransferHistogram(t *testing.T) {
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 50.00, 1
 >= 20 <= 20 , 20 , 100.00, 1
-# target 100% 20
+# target 75% 20
 h2 before merge : count 2 avg 85 +/- 5 min 80 max 90 sum 170
 # range, mid point, percentile, count
 >= 80 < 90 , 85 , 50.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
+# target 75% 90
 merged h2 -> h1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
+# target 75% 90
 h2 after merge : no data
 merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
 # range, mid point, percentile, count
@@ -436,7 +479,7 @@ merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
 >= 50 < 60 , 55 , 60.00, 1
 >= 80 < 90 , 85 , 80.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
+# target 75% 87.5
 h1 should now be empty : no data
 h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
@@ -444,14 +487,14 @@ h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
+# target 75% 90
 h3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
+# target 75% 90
 `
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
