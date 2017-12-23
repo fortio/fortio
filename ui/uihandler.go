@@ -16,8 +16,8 @@
 package ui // import "istio.io/fortio/ui"
 
 import (
-	// nolint: gas (md5 is mandated, not our choice)
-	"crypto/md5"
+	// md5 is mandated, not our choice
+	"crypto/md5" // nolint: gas
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -364,7 +364,7 @@ func sendHTMLDataIndex(w http.ResponseWriter) {
 // TODO: this is somewhat expensive to create, cache it ?
 func sendTsvDataIndex(urlPrefix string, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	w.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck
+	w.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
 	for _, e := range GetDataList() {
 		fname := e + ".json"
 		f, err := os.Open(path.Join(dataDir, fname))
