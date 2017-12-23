@@ -16,6 +16,9 @@
 package ui // import "istio.io/fortio/ui"
 
 import (
+	// nolint: gas (md5 is mandated, not our choice)
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -277,31 +280,35 @@ func SaveJSON(name string, json []byte) string {
 	return "data/" + name
 }
 
-// BrowseHandler handles listing and rendering the JSON results.
-func BrowseHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Browse")
-	url := r.FormValue("url")
-	doRender := (url != "")
+// GetDataList returns the .json files/entries in data dir.
+func GetDataList() (dataList []string) {
 	files, err := ioutil.ReadDir(dataDir)
 	if err != nil {
 		log.Critf("Can list directory %s: %v", dataDir, err)
-		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	var dataList []string
 	// Newest files at the top:
 	for i := len(files) - 1; i >= 0; i-- {
 		name := files[i].Name()
 		ext := ".json"
-		if !strings.HasSuffix(name, ext) {
+		if !strings.HasSuffix(name, ext) || files[i].IsDir() {
 			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])
 	}
-	log.Infof("data list is %v", dataList)
+	log.LogVf("data list is %v", dataList)
+	return dataList
+}
+
+// BrowseHandler handles listing and rendering the JSON results.
+func BrowseHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Browse")
+	url := r.FormValue("url")
+	doRender := (url != "")
+	dataList := GetDataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	err = browseTemplate.Execute(w, &struct {
+	err := browseTemplate.Execute(w, &struct {
 		R           *http.Request
 		Extra       string
 		Version     string
@@ -339,10 +346,73 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 	})
 }
 
-// LogDataRequest logs the data request.
-func LogDataRequest(h http.Handler) http.Handler {
+func sendHTMLDataIndex(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.Write([]byte("<html><body><ul>\n")) // nolint: errcheck, gas
+	for _, e := range GetDataList() {
+		w.Write([]byte("<li><a href=\"")) // nolint: errcheck, gas
+		w.Write([]byte(e))                // nolint: errcheck, gas
+		w.Write([]byte(".json\">"))       // nolint: errcheck, gas
+		w.Write([]byte(e))                // nolint: errcheck, gas
+		w.Write([]byte("</a>\n"))         // nolint: errcheck, gas
+	}
+	w.Write([]byte("</ul></body></html>")) // nolint: errcheck, gas
+}
+
+// format for gcloud transfer
+// https://cloud.google.com/storage/transfer/create-url-list
+// TODO: this is somewhat expensive to create, cache it ?
+func sendTsvDataIndex(urlPrefix string, w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck
+	for _, e := range GetDataList() {
+		fname := e + ".json"
+		f, err := os.Open(path.Join(dataDir, fname))
+		if err != nil {
+			log.Errf("Open error for %s: %v", fname, err)
+			continue
+		}
+		// This isn't a crypto hash, more like a checksum - and mandated by the
+		// spec above, not our choice
+		h := md5.New() // nolint: gas
+		var sz int64
+		if sz, err = io.Copy(h, f); err != nil {
+			f.Close() // nolint: errcheck, gas
+			log.Errf("Copy/read error for %s: %v", fname, err)
+			continue
+		}
+		w.Write([]byte(urlPrefix))                                     // nolint: errcheck, gas
+		w.Write([]byte(fname))                                         // nolint: errcheck, gas
+		w.Write([]byte("\t"))                                          // nolint: errcheck, gas
+		w.Write([]byte(strconv.FormatInt(sz, 10)))                     // nolint: errcheck, gas
+		w.Write([]byte("\t"))                                          // nolint: errcheck, gas
+		w.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
+		w.Write([]byte("\n"))                                          // nolint: errcheck, gas
+	}
+}
+
+// LogAndFilterDataRequest logs the data request.
+func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, "Data")
+		path := r.URL.Path
+		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
+			sendHTMLDataIndex(w)
+			return
+		}
+		ext := "/index.tsv"
+		if strings.HasSuffix(path, ext) {
+			// TODO: what if we are reached through https ingress? or a different port
+			urlPrefix := "http://" + r.Host + path[:len(path)-len(ext)+1]
+			log.LogVf("Prefix is '%s'", urlPrefix)
+			sendTsvDataIndex(urlPrefix, w)
+			return
+		}
+		if !strings.HasSuffix(path, ".json") {
+			log.Warnf("Filtering request for non .json '%s'", path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		h.ServeHTTP(w, r)
 	})
 }
@@ -427,7 +497,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))
-		http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fs)))
+		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
 	fhttp.Serve(port, debugpath)
 }
@@ -454,7 +524,7 @@ func Report(port int, staticRsrcDir string, datadir string) {
 		http.HandleFunc(uiPath, BrowseHandler)
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
-	http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Critf("Error starting server: %v", err)
 	}
