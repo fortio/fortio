@@ -380,7 +380,7 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	}
 }
 
-func TestTransferHistogramWithDifferentScales(t *testing.T)  {
+func TestTransferHistogramWithDifferentScales(t *testing.T) {
 	tP := []float64{75.}
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)

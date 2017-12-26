@@ -178,7 +178,7 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
 	h.Offset = Offset
 	if Divider == 0 {
-		log.Fatalf("Divider can not be %f",Divider)
+		log.Fatalf("Divider can not be zero")
 		return nil
 	}
 	h.Divider = Divider
@@ -209,8 +209,19 @@ func init() {
 // Record records a data point.
 func (h *Histogram) Record(v float64) {
 	h.Counter.Record(v)
-	// Scaled value to bucketize:
 	h.appendRecordToHistogram(v)
+}
+
+func (h *Histogram) appendRecordToHistogram(v float64) {
+	// Scaled value to bucketize:
+	scaledVal := (v - h.Offset) / h.Divider
+	idx := 0
+	if scaledVal >= lastValue {
+		idx = numBuckets
+	} else if scaledVal >= firstValue {
+		idx = val2Bucket[int(scaledVal)]
+	} // else it's <  and idx 0
+	h.Hdata[idx]++
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -393,50 +404,29 @@ func (h *Histogram) CopyFrom(src *Histogram) {
 	h.CopyHDataFrom(src)
 }
 
-func (h *Histogram) CopyHDataFrom(src * Histogram)  {
+// CopyHDataFrom appends histogram data values to this object from the src.
+// Src histogram data values will be appended according to this object's
+// offset and divider
+func (h *Histogram) CopyHDataFrom(src *Histogram) {
 	if h.Divider == src.Divider && h.Offset == src.Offset {
 		for i := 0; i < len(h.Hdata); i++ {
 			h.Hdata[i] += src.Hdata[i]
 		}
-		return;
+		return
 	}
-	//Scale values are not equal for histograms.
-	//Need to receive record values from src and add them to h according to h's offset and divider
-	var scaledValue float64
-	for i := 0; i < len(src.Hdata); i++ {
-		if src.Hdata[i] == 0 {
+
+	hData := src.Export([]float64{})
+	for _, v := range hData.Data {
+		if v.Count == 1 {
+			h.appendRecordToHistogram(v.Start)
 			continue
 		}
-		scaledValue = -1
-		//Find scaleValue in val2Bucket
-		for j := 0; j<numBuckets; j++ {
-			if val2Bucket[j] == i {
-				scaledValue = float64(j)
-			}
-		}
-		if scaledValue == -1{
-			continue
-		}
-		v := scaledValue * src.Divider + src.Offset
-		for src.Hdata[i] != 0{
-			h.appendRecordToHistogram(v)
-			src.Hdata[i] -= 1
+		for v.Count != 0 {
+			h.appendRecordToHistogram((v.Start + v.End) / 2)
+			v.Count--
 		}
 	}
 }
-
-func (h*Histogram) appendRecordToHistogram(v float64)  {
-	// Scaled value to bucketize:
-	scaledVal := (v - h.Offset) / h.Divider
-	idx := 0
-	if scaledVal >= lastValue {
-		idx = numBuckets
-	} else if scaledVal >= firstValue {
-		idx = val2Bucket[int(scaledVal)]
-	} // else it's <  and idx 0
-	h.Hdata[idx]++
-}
-
 
 // Transfer merges the data from src into this Histogram and clears src.
 func (h *Histogram) Transfer(src *Histogram) {
@@ -448,8 +438,8 @@ func (h *Histogram) Transfer(src *Histogram) {
 		src.Reset()
 		return
 	}
-	h.Counter.Transfer(&src.Counter)
 	h.CopyHDataFrom(src)
+	h.Counter.Transfer(&src.Counter)
 	src.Reset()
 }
 
