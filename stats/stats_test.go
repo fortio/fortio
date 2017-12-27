@@ -424,7 +424,7 @@ h2 should now be empty : no data
 }
 
 func TestTransferHistogram(t *testing.T) {
-	tP := []float64{100.}
+	tP := []float64{100.} // TODO: use 75 and fix bug
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h1 := NewHistogram(0, 10)
