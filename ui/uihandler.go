@@ -105,7 +105,7 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "UI")
 	DoStop := false
-	runid, _ := strconv.Atoi(r.FormValue("runid")) // nolint: gas
+	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64) // nolint: gas
 	if r.FormValue("stop") == "Stop" {
 		log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
 		DoStop = true
@@ -139,8 +139,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
-
+	out := io.Writer(os.Stderr)
+	if !JSONOnly {
+		out = io.Writer(&HTMLEscapeWriter{NextWriter: w})
+	}
 	opts := fhttp.NewHTTPOptions(url)
+	ro := periodic.RunnerOptions{
+		QPS:         qps,
+		Duration:    dur,
+		Out:         out,
+		NumThreads:  c,
+		Resolution:  resolution,
+		Percentiles: percList,
+		Labels:      labels,
+	}
+	thisID := int64(0)
+	if DoLoad {
+		ro.Normalize()
+		mutex.Lock()
+		id++ // start at 1 as 0 means interrupt all
+		thisID = id
+		runs[thisID] = ro.Stop
+		mutex.Unlock()
+		log.Infof("New run id %d", thisID)
+	}
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -159,13 +181,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			StartTime                   string
 			TargetURL                   string
 			Labels                      string
+			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
 			Port                        int
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.ANSIC), url, labels,
+			startTime.Format(time.ANSIC), url, labels, thisID,
 			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoStop, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
@@ -182,16 +205,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 	if DoStop {
-		i := 0
-		mutex.Lock()
-		for _, v := range runs {
-			close(v)
-			i++
+		if runid <= 0 { // Stop all
+			i := 0
+			mutex.Lock()
+			for _, v := range runs {
+				close(v)
+				i++
+			}
+			mutex.Unlock()
+			log.Infof("Interrupted %d runs", i)
+		} else { // Stop one
+			mutex.Lock()
+			c := runs[runid]
+			if c != nil {
+				close(runs[runid])
+			}
+			mutex.Unlock()
 		}
-		mutex.Unlock()
-		log.Infof("Interrupted %d runs", i)
+
 		return
 	}
+	// DoLoad case:
 	firstHeader := true
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
@@ -208,30 +242,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Error adding custom headers: %v", err)
 		}
 	}
-	out := io.Writer(&HTMLEscapeWriter{NextWriter: w})
-	if JSONOnly {
-		out = os.Stderr
-	}
-	ro := periodic.NewPeriodicRunner(&periodic.RunnerOptions{
-		QPS:         qps,
-		Duration:    dur,
-		Out:         out,
-		NumThreads:  c,
-		Resolution:  resolution,
-		Percentiles: percList,
-		Labels:      labels,
-	}).Options() // to get the channel initialized - TODO make this more natural
 	o := fhttp.HTTPRunnerOptions{
-		RunnerOptions:      *ro,
+		RunnerOptions:      ro,
 		HTTPOptions:        *opts,
 		AllowInitialErrors: true,
 	}
-	mutex.Lock()
-	id++ // start at 1 as 0 means interrupt all
-	thisID := id
-	runs[thisID] = ro.Stop
-	mutex.Unlock()
-	log.LogVf("Run %d", thisID)
 	res, err := fhttp.RunHTTPTest(&o)
 	mutex.Lock()
 	delete(runs, thisID)

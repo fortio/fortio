@@ -15,7 +15,7 @@ Running load test... Results pending...
 <br />
 <progress id="progressBar" max="100" value="0" style="width: 100%"></progress>
 <br />
-<button type="submit" onclick='javascript:fetch("./?stop=Stop");'>Interrupt</button>
+<button type="submit" onclick='javascript:fetch("./?stop=Stop&runid={{.RunID}}");'>Interrupt</button>
 </div>
 <script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
 <div class="chart-container" style="position: relative; height:75vh; width:98vw">

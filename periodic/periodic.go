@@ -59,14 +59,14 @@ type Runnable interface {
 
 // MakeRunners creates an array of NumThreads identical Runnable instances.
 // (for the (rare/test) cases where there is no unique state needed)
-func (ro *RunnerOptions) MakeRunners(r Runnable) {
-	log.Infof("Making %d clone of %+v", ro.NumThreads, r)
-	if len(ro.Runners) < ro.NumThreads {
-		log.Infof("Resizing runners from %d to %d", len(ro.Runners), ro.NumThreads)
-		ro.Runners = make([]Runnable, ro.NumThreads)
+func (r *RunnerOptions) MakeRunners(rr Runnable) {
+	log.Infof("Making %d clone of %+v", r.NumThreads, rr)
+	if len(r.Runners) < r.NumThreads {
+		log.Infof("Resizing runners from %d to %d", len(r.Runners), r.NumThreads)
+		r.Runners = make([]Runnable, r.NumThreads)
 	}
-	for i := 0; i < ro.NumThreads; i++ {
-		ro.Runners[i] = r
+	for i := 0; i < r.NumThreads; i++ {
+		r.Runners[i] = rr
 	}
 }
 
@@ -130,9 +130,9 @@ type periodicRunner struct {
 	RunnerOptions
 }
 
-// internal version, returning the concrete implementation.
-func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
-	r := &periodicRunner{*opts} // by default just copy the input params
+// Normalize initializes and normalizes the runner options. In particular it sets
+// up the channel that can be used to interrupt the run later.
+func (r *RunnerOptions) Normalize() {
 	if r.QPS == 0 {
 		r.QPS = DefaultRunnerOptions.QPS
 	} else if r.QPS < 0 {
@@ -168,11 +168,18 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 		signal.Notify(c, os.Interrupt)
 		// TODO: for long running server this slowly leaks go rountines... do better
 		go func() {
-			defer recover() // in case the signal happens after r.Stop was already closed
+			// in case the signal happens after r.Stop was already closed
+			defer recover() // nolint: errcheck
 			<-c
 			close(r.Stop)
 		}()
 	}
+}
+
+// internal version, returning the concrete implementation.
+func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
+	r := &periodicRunner{*opts} // by default just copy the input params
+	r.Normalize()
 	return r
 }
 
