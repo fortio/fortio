@@ -417,7 +417,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	startTime = time.Now()
 	httpPort = port
 	if uipath == "" {
-		fhttp.Serve(port, debugpath) // doesn't return until stop
+		fhttp.Serve(port, debugpath) // doesn't return until exit
 		return
 	}
 	uiPath = uipath
