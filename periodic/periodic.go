@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.5.1"
+	Version = "0.5.2"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -86,6 +86,8 @@ type RunnerOptions struct {
 	Out io.Writer
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
+	// Channel to interrupt a run
+	Stop chan struct{}
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -158,6 +160,18 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	}
 	if r.Runners == nil {
 		r.Runners = make([]Runnable, r.NumThreads)
+	}
+	if r.Stop == nil {
+		r.Stop = make(chan struct{}, 1)
+		// Catch SIGINT signals from the OS and close the channel to terminate the run loops
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		// TODO: for long running server this slowly leaks go rountines... do better
+		go func() {
+			defer recover() // in case the signal happens after r.Stop was already closed
+			<-c
+			close(r.Stop)
+		}()
 	}
 	return r
 }
@@ -290,10 +304,6 @@ func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, num
 	hasDuration := (r.Duration > 0)
 	f := r.Runners[id]
 
-	// Catch SIGINT signals from the OS and raise a flag to terminate the run loop
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
 MainLoop:
 	for {
 		fStart := time.Now()
@@ -332,14 +342,14 @@ MainLoop:
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
 			select {
-			case <-c:
+			case <-r.Stop:
 				break MainLoop
 			case <-time.After(sleepDuration):
 				// continue normal execution
 			}
 		} else { // Not using QPS
 			select {
-			case <-c:
+			case <-r.Stop:
 				break MainLoop
 			default:
 				// continue to the next iteration

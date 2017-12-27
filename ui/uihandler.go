@@ -28,7 +28,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	"istio.io/fortio/fhttp"
@@ -58,6 +58,9 @@ var (
 	dataDir        string
 	mainTemplate   *template.Template
 	browseTemplate *template.Template
+	mutex          = &sync.Mutex{}
+	id             int64
+	runs           = make(map[int64]chan struct{})
 )
 
 const (
@@ -101,10 +104,11 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 // Handler is the main UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "UI")
-	DoExit := false
-	if r.FormValue("exit") == "Exit" {
-		log.Critf("Exit request from %v", r.RemoteAddr)
-		DoExit = true
+	DoStop := false
+	runid, _ := strconv.Atoi(r.FormValue("runid")) // nolint: gas
+	if r.FormValue("stop") == "Stop" {
+		log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
+		DoStop = true
 	}
 	DoLoad := false
 	JSONOnly := false
@@ -158,16 +162,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
 			Port                        int
-			DoExit                      bool
+			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels,
-			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoExit, DoLoad})
+			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoStop, DoLoad})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
 
-		if !DoLoad && !DoExit {
+		if !DoLoad && !DoStop {
 			return
 		}
 
@@ -177,19 +181,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		flusher.Flush()
 	}
-	if DoExit {
-		selfPid := syscall.Getpid()
-		p, err := os.FindProcess(selfPid)
-		if err != nil {
-			log.Critf("Unable to find self process by pid %d: %v", selfPid, err)
-			return
+	if DoStop {
+		i := 0
+		mutex.Lock()
+		for _, v := range runs {
+			close(v)
+			i++
 		}
-		log.Infof("Found process %v for pid %d", p, selfPid)
-		// TODO: Issue #63, this now compiles (unlike syscall.Kill()) but still doesn't work on windows :(
-		err = p.Signal(os.Interrupt)
-		if err != nil {
-			log.Critf("Unable to interrupt self, pid %d: %v", selfPid, err)
-		}
+		mutex.Unlock()
+		log.Infof("Interrupted %d runs", i)
 		return
 	}
 	firstHeader := true
@@ -212,7 +212,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if JSONOnly {
 		out = os.Stderr
 	}
-	ro := periodic.RunnerOptions{
+	ro := periodic.NewPeriodicRunner(&periodic.RunnerOptions{
 		QPS:         qps,
 		Duration:    dur,
 		Out:         out,
@@ -220,14 +220,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Resolution:  resolution,
 		Percentiles: percList,
 		Labels:      labels,
-	}
+	}).Options() // to get the channel initialized - TODO make this more natural
 	o := fhttp.HTTPRunnerOptions{
-		RunnerOptions:      ro,
+		RunnerOptions:      *ro,
 		HTTPOptions:        *opts,
 		AllowInitialErrors: true,
 	}
-
+	mutex.Lock()
+	id++ // start at 1 as 0 means interrupt all
+	thisID := id
+	runs[thisID] = ro.Stop
+	mutex.Unlock()
+	log.LogVf("Run %d", thisID)
 	res, err := fhttp.RunHTTPTest(&o)
+	mutex.Lock()
+	delete(runs, thisID)
+	mutex.Unlock()
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
 		return
@@ -394,7 +402,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	startTime = time.Now()
 	httpPort = port
 	if uipath == "" {
-		fhttp.Serve(port, debugpath) // doesn't return until exit
+		fhttp.Serve(port, debugpath) // doesn't return until stop
 		return
 	}
 	uiPath = uipath
