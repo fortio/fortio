@@ -185,7 +185,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Infof("Found process %v for pid %d", p, selfPid)
-		p.Signal(os.Interrupt) //Compiles (unlike syscall.Kill()) but doesn't work on windows :(
+		// TODO: Issue #63, this now compiles (unlike syscall.Kill()) but still doesn't work on windows :(
+		err = p.Signal(os.Interrupt)
+		if err != nil {
+			log.Critf("Unable to interrupt self, pid %d: %v", selfPid, err)
+		}
 		return
 	}
 	firstHeader := true
