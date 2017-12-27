@@ -424,7 +424,7 @@ h2 should now be empty : no data
 }
 
 func TestTransferHistogram(t *testing.T) {
-	tP := []float64{75.}
+	tP := []float64{100.}
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h1 := NewHistogram(0, 10)
@@ -458,19 +458,19 @@ func TestTransferHistogram(t *testing.T) {
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 50.00, 1
 >= 20 <= 20 , 20 , 100.00, 1
-# target 75% 20
+# target 100% 20
 h2 before merge : count 2 avg 85 +/- 5 min 80 max 90 sum 170
 # range, mid point, percentile, count
 >= 80 < 90 , 85 , 50.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 75% 90
+# target 100% 90
 merged h2 -> h1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 75% 90
+# target 100% 90
 h2 after merge : no data
 merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
 # range, mid point, percentile, count
@@ -479,7 +479,7 @@ merged h1a -> h2a : count 5 avg 50 +/- 31.62 min 10 max 90 sum 250
 >= 50 < 60 , 55 , 60.00, 1
 >= 80 < 90 , 85 , 80.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 75% 87.5
+# target 100% 90
 h1 should now be empty : no data
 h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
@@ -487,14 +487,14 @@ h3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 75% 90
+# target 100% 90
 h3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 # range, mid point, percentile, count
 >= 10 < 20 , 15 , 25.00, 1
 >= 20 < 30 , 25 , 50.00, 1
 >= 80 < 90 , 85 , 75.00, 1
 >= 90 <= 90 , 90 , 100.00, 1
-# target 75% 90
+# target 100% 90
 `
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
