@@ -130,6 +130,11 @@ type periodicRunner struct {
 	RunnerOptions
 }
 
+var (
+	globalAbort chan os.Signal
+	abortMutex  sync.Mutex
+)
+
 // Normalize initializes and normalizes the runner options. In particular it sets
 // up the channel that can be used to interrupt the run later.
 func (r *RunnerOptions) Normalize() {
@@ -163,15 +168,39 @@ func (r *RunnerOptions) Normalize() {
 	}
 	if r.Stop == nil {
 		r.Stop = make(chan struct{}, 1)
-		// Catch SIGINT signals from the OS and close the channel to terminate the run loops
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
 		// TODO: for long running server this slowly leaks go rountines... do better
 		go func() {
-			// in case the signal happens after r.Stop was already closed
-			defer recover() // nolint: errcheck
-			<-c
-			close(r.Stop)
+			abortMutex.Lock()
+			runnerChan := r.Stop
+			if globalAbort == nil {
+				log.Infof("First outstanding run starting, catching signal")
+				globalAbort = make(chan os.Signal, 1)
+				signal.Notify(globalAbort, os.Interrupt)
+			}
+			abortMutex.Unlock()
+			log.LogVf("WATCHER starting new watcher for signal! %d", runtime.NumGoroutine())
+			select {
+			case _, ok := <-globalAbort:
+				log.LogVf("WATCHER Got interrupt signal! %v", ok)
+				abortMutex.Lock()
+				if r.Stop != nil {
+					close(r.Stop)
+					r.Stop = nil
+				}
+				if ok {
+					log.Infof("Closing to notify all and resetting signal handler")
+					if globalAbort != nil {
+						close(globalAbort)
+						globalAbort = nil
+					}
+					signal.Reset(os.Interrupt)
+				}
+				abortMutex.Unlock()
+			case <-runnerChan:
+				log.LogVf("WATCHER r.Stop readable")
+				// nothing to do, stop happened
+			}
+			log.LogVf("WATCHER End of go routine")
 		}()
 	}
 }
@@ -298,6 +327,19 @@ func (r *periodicRunner) Run() RunnerResults {
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export(r.Percentiles)}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+
+	select {
+	case <-r.Stop: // nothing
+		log.LogVf("RUNNER r.Stop already closed")
+	default:
+		log.LogVf("RUNNER r.Stop not already closed, closing")
+		abortMutex.Lock()
+		if r.Stop != nil {
+			close(r.Stop)
+			r.Stop = nil
+		}
+		abortMutex.Unlock()
+	}
 	return result
 }
 
@@ -374,8 +416,6 @@ MainLoop:
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
 		}
 	}
-	// Put back default handling of ^C (for UI server mode)
-	signal.Reset(os.Interrupt)
 }
 
 func formatDate(d *time.Time) string {

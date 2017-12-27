@@ -101,28 +101,42 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 
 // TODO: unit tests, allow additional data sets.
 
+type mode int
+
+// The main html has 3 principal modes:
+const (
+	// Default: renders the forms/menus
+	menu mode = iota
+	// Trigger a run
+	run
+	// Request abort
+	stop
+)
+
 // Handler is the main UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "UI")
-	DoStop := false
-	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64) // nolint: gas
-	if r.FormValue("stop") == "Stop" {
-		log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
-		DoStop = true
-	}
-	DoLoad := false
+	mode := menu
 	JSONOnly := false
 	DoSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
+	runid := int64(0)
 	if r.FormValue("load") == "Start" {
-		DoLoad = true
+		mode = run
 		if r.FormValue("json") == "on" {
 			JSONOnly = true
 			log.Infof("Starting JSON only load request from %v for %s", r.RemoteAddr, url)
 		} else {
 			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
 		}
+	} else {
+		if r.FormValue("stop") == "Stop" {
+			runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64) // nolint: gas
+			log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
+			mode = stop
+		}
 	}
+	// Those only exist/make sense on run mode but go variable declaration...
 	labels := r.FormValue("labels")
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
@@ -134,7 +148,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var err error
 		dur, err = time.ParseDuration(durStr)
-		if DoLoad && err != nil {
+		if mode == run && err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
 		}
 	}
@@ -153,15 +167,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Percentiles: percList,
 		Labels:      labels,
 	}
-	thisID := int64(0)
-	if DoLoad {
+	if mode == run {
 		ro.Normalize()
 		mutex.Lock()
 		id++ // start at 1 as 0 means interrupt all
-		thisID = id
-		runs[thisID] = ro.Stop
+		runid = id
+		runs[runid] = ro.Stop
 		mutex.Unlock()
-		log.Infof("New run id %d", thisID)
+		log.Infof("New run id %d", runid)
 	}
 	if !JSONOnly {
 		// Normal html mode
@@ -188,23 +201,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.ANSIC), url, labels, thisID,
-			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoStop, DoLoad})
+			startTime.Format(time.ANSIC), url, labels, runid,
+			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
-
-		if !DoLoad && !DoStop {
-			return
-		}
-
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
-		}
-		flusher.Flush()
 	}
-	if DoStop {
+	switch mode {
+	case menu:
+		// nothing more to do
+	case stop:
 		if runid <= 0 { // Stop all
 			i := 0
 			mutex.Lock()
@@ -222,67 +228,72 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			mutex.Unlock()
 		}
-		return
-	}
-	// DoLoad case:
-	firstHeader := true
-	for _, header := range r.Form["H"] {
-		if len(header) == 0 {
-			continue
+	case run:
+		// mode == run case:
+		firstHeader := true
+		for _, header := range r.Form["H"] {
+			if len(header) == 0 {
+				continue
+			}
+			log.LogVf("adding header %v", header)
+			if firstHeader {
+				// If there is at least 1 non empty H passed, reset the header list
+				opts.ResetHeaders()
+				firstHeader = false
+			}
+			err := opts.AddAndValidateExtraHeader(header)
+			if err != nil {
+				log.Errf("Error adding custom headers: %v", err)
+			}
 		}
-		log.LogVf("adding header %v", header)
-		if firstHeader {
-			// If there is at least 1 non empty H passed, reset the header list
-			opts.ResetHeaders()
-			firstHeader = false
+		o := fhttp.HTTPRunnerOptions{
+			RunnerOptions:      ro,
+			HTTPOptions:        *opts,
+			AllowInitialErrors: true,
 		}
-		err := opts.AddAndValidateExtraHeader(header)
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+		}
+		if !JSONOnly {
+			flusher.Flush()
+		}
+		res, err := fhttp.RunHTTPTest(&o)
+		mutex.Lock()
+		delete(runs, runid)
+		mutex.Unlock()
 		if err != nil {
-			log.Errf("Error adding custom headers: %v", err)
+			w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
+			return
 		}
-	}
-	o := fhttp.HTTPRunnerOptions{
-		RunnerOptions:      ro,
-		HTTPOptions:        *opts,
-		AllowInitialErrors: true,
-	}
-	res, err := fhttp.RunHTTPTest(&o)
-	mutex.Lock()
-	delete(runs, thisID)
-	mutex.Unlock()
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
-		return
-	}
-	json, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err)
-	}
-	if JSONOnly {
-		w.Header().Set("Content-Type", "application/json")
-		_, err = w.Write(json)
+		json, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
-			log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+			log.Fatalf("Unable to json serialize result: %v", err)
 		}
+		savedAs := ""
 		if DoSave {
-			SaveJSON(res.ID(), json)
+			savedAs = SaveJSON(res.ID(), json)
 		}
-		return
-	}
-	if DoSave {
-		res := SaveJSON(res.ID(), json)
-		if res != "" {
+		if JSONOnly {
+			w.Header().Set("Content-Type", "application/json")
+			_, err = w.Write(json)
+			if err != nil {
+				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+			}
+			return
+		}
+		if savedAs != "" {
 			// nolint: errcheck, gas
-			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", res, res)))
+			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", savedAs, savedAs)))
 		}
+		// nolint: errcheck, gas
+		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+			res.DurationHistogram.Count,
+			1000.*res.DurationHistogram.Avg,
+			res.ActualQPS)))
+		ResultToJsData(w, json)
+		w.Write([]byte("</script></body></html>\n")) // nolint: gas
 	}
-	// nolint: errcheck, gas
-	w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-		res.DurationHistogram.Count,
-		1000.*res.DurationHistogram.Avg,
-		res.ActualQPS)))
-	ResultToJsData(w, json)
-	w.Write([]byte("</script></body></html>\n")) // nolint: gas
 }
 
 // ResultToJsData converts a result object to chart data arrays and title
