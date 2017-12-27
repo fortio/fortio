@@ -218,7 +218,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			mutex.Lock()
 			c := runs[runid]
 			if c != nil {
-				close(runs[runid])
+				close(c)
 			}
 			mutex.Unlock()
 		}
