@@ -222,7 +222,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			mutex.Unlock()
 		}
-
 		return
 	}
 	// DoLoad case:
@@ -264,6 +263,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write(json)
 		if err != nil {
 			log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+		}
+		if DoSave {
+			SaveJSON(res.ID(), json)
 		}
 		return
 	}
