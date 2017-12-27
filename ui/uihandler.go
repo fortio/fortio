@@ -178,7 +178,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
+		selfPid := syscall.Getpid()
+		p, err := os.FindProcess(selfPid)
+		if err != nil {
+			log.Critf("Unable to find self process by pid %d: %v", selfPid, err)
+			return
+		}
+		log.Infof("Found process %v for pid %d", p, selfPid)
+		p.Signal(os.Interrupt) //Compiles (unlike syscall.Kill()) but doesn't work on windows :(
 		return
 	}
 	firstHeader := true
