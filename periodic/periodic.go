@@ -168,7 +168,6 @@ func (r *RunnerOptions) Normalize() {
 	}
 	if r.Stop == nil {
 		r.Stop = make(chan struct{}, 1)
-		// TODO: for long running server this slowly leaks go rountines... do better
 		go func() {
 			abortMutex.Lock()
 			runnerChan := r.Stop
