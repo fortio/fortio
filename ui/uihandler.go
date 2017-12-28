@@ -58,9 +58,9 @@ var (
 	dataDir        string
 	mainTemplate   *template.Template
 	browseTemplate *template.Template
-	mutex          = &sync.Mutex{}
+	uiRunMapMutex  = &sync.Mutex{}
 	id             int64
-	runs           = make(map[int64]chan struct{})
+	runs           = make(map[int64]*periodic.RunnerOptions)
 )
 
 const (
@@ -169,11 +169,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if mode == run {
 		ro.Normalize()
-		mutex.Lock()
+		uiRunMapMutex.Lock()
 		id++ // start at 1 as 0 means interrupt all
 		runid = id
-		runs[runid] = ro.Stop
-		mutex.Unlock()
+		runs[runid] = &ro
+		uiRunMapMutex.Unlock()
 		log.Infof("New run id %d", runid)
 	}
 	if !JSONOnly {
@@ -213,20 +213,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case stop:
 		if runid <= 0 { // Stop all
 			i := 0
-			mutex.Lock()
+			uiRunMapMutex.Lock()
 			for _, v := range runs {
-				close(v)
+				v.Abort()
 				i++
 			}
-			mutex.Unlock()
+			uiRunMapMutex.Unlock()
 			log.Infof("Interrupted %d runs", i)
 		} else { // Stop one
-			mutex.Lock()
-			c := runs[runid]
-			if c != nil {
-				close(c)
+			uiRunMapMutex.Lock()
+			v := runs[runid]
+			if v != nil {
+				v.Abort()
 			}
-			mutex.Unlock()
+			uiRunMapMutex.Unlock()
 		}
 	case run:
 		// mode == run case:
@@ -259,9 +259,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 		res, err := fhttp.RunHTTPTest(&o)
-		mutex.Lock()
+		uiRunMapMutex.Lock()
 		delete(runs, runid)
-		mutex.Unlock()
+		uiRunMapMutex.Unlock()
 		if err != nil {
 			w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
 			return

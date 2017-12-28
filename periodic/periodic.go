@@ -86,7 +86,9 @@ type RunnerOptions struct {
 	Out io.Writer
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
-	// Channel to interrupt a run
+	// Channel to interrupt a run. If given non nil, will get closed and nil'ed
+	// by the end of Run(). To abort a run call Runner.Abort(), don't close channel
+	// directly (or risk a panic that it's already closed).
 	Stop chan struct{}
 }
 
@@ -131,8 +133,9 @@ type periodicRunner struct {
 }
 
 var (
-	globalAbort chan os.Signal
-	abortMutex  sync.Mutex
+	globalAbort     chan os.Signal
+	outstandingRuns int64
+	abortMutex      sync.Mutex
 )
 
 // Normalize initializes and normalizes the runner options. In particular it sets
@@ -170,7 +173,9 @@ func (r *RunnerOptions) Normalize() {
 		r.Stop = make(chan struct{}, 1)
 		go func() {
 			abortMutex.Lock()
-			runnerChan := r.Stop
+			outstandingRuns++
+			runnerChan := r.Stop // need a copy to not race with assignement to nil
+			abortChan := globalAbort
 			if globalAbort == nil {
 				log.Infof("First outstanding run starting, catching signal")
 				globalAbort = make(chan os.Signal, 1)
@@ -179,29 +184,42 @@ func (r *RunnerOptions) Normalize() {
 			abortMutex.Unlock()
 			log.LogVf("WATCHER starting new watcher for signal! %d", runtime.NumGoroutine())
 			select {
-			case _, ok := <-globalAbort:
+			case _, ok := <-abortChan:
 				log.LogVf("WATCHER Got interrupt signal! %v", ok)
-				abortMutex.Lock()
-				if r.Stop != nil {
-					close(r.Stop)
-					r.Stop = nil
-				}
+				r.Abort()
 				if ok {
-					log.Infof("Closing to notify all and resetting signal handler")
+					abortMutex.Lock()
 					if globalAbort != nil {
+						log.Infof("Closing to notify all")
 						close(globalAbort)
 						globalAbort = nil
 					}
-					signal.Reset(os.Interrupt)
+					abortMutex.Unlock()
 				}
-				abortMutex.Unlock()
 			case <-runnerChan:
 				log.LogVf("WATCHER r.Stop readable")
 				// nothing to do, stop happened
 			}
 			log.LogVf("WATCHER End of go routine")
+			abortMutex.Lock()
+			outstandingRuns--
+			if outstandingRuns == 0 {
+				log.Infof("Last watcher: resetting signal handler")
+				globalAbort = nil
+				signal.Reset(os.Interrupt)
+			}
+			abortMutex.Unlock()
 		}()
 	}
+}
+
+func (r *RunnerOptions) Abort() {
+	abortMutex.Lock()
+	if r.Stop != nil {
+		close(r.Stop)
+		r.Stop = nil
+	}
+	abortMutex.Unlock()
 }
 
 // internal version, returning the concrete implementation.
@@ -223,6 +241,9 @@ func (r *periodicRunner) Options() *RunnerOptions {
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
+	abortMutex.Lock()
+	runnerChan := r.Stop // need a copy to not race with assignement to nil
+	abortMutex.Unlock()
 	useQPS := (r.QPS > 0)
 	hasDuration := (r.Duration > 0)
 	var numCalls int64
@@ -281,7 +302,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
 		log.Infof("Running single threaded")
-		runOne(0, functionDuration, sleepTime, numCalls, start, r)
+		runOne(0, runnerChan, functionDuration, sleepTime, numCalls, start, r)
 	} else {
 		var wg sync.WaitGroup
 		var fDs []*stats.Histogram
@@ -293,7 +314,7 @@ func (r *periodicRunner) Run() RunnerResults {
 			sDs = append(sDs, sleepP)
 			wg.Add(1)
 			go func(t int, durP *stats.Histogram, sleepP *stats.Histogram) {
-				runOne(t, durP, sleepP, numCalls, start, r)
+				runOne(t, runnerChan, durP, sleepP, numCalls, start, r)
 				wg.Done()
 			}(t, durP, sleepP)
 		}
@@ -328,22 +349,17 @@ func (r *periodicRunner) Run() RunnerResults {
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 
 	select {
-	case <-r.Stop: // nothing
+	case <-runnerChan: // nothing
 		log.LogVf("RUNNER r.Stop already closed")
 	default:
 		log.LogVf("RUNNER r.Stop not already closed, closing")
-		abortMutex.Lock()
-		if r.Stop != nil {
-			close(r.Stop)
-			r.Stop = nil
-		}
-		abortMutex.Unlock()
+		r.Abort()
 	}
 	return result
 }
 
 // runOne runs in 1 go routine.
-func runOne(id int, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
+func runOne(id int, runnerChan chan struct{}, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
 	var i int64
 	endTime := start.Add(r.Duration)
 	tIDStr := fmt.Sprintf("T%03d", id)
@@ -390,14 +406,14 @@ MainLoop:
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
 			select {
-			case <-r.Stop:
+			case <-runnerChan:
 				break MainLoop
 			case <-time.After(sleepDuration):
 				// continue normal execution
 			}
 		} else { // Not using QPS
 			select {
-			case <-r.Stop:
+			case <-runnerChan:
 				break MainLoop
 			default:
 				// continue to the next iteration
