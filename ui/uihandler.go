@@ -16,6 +16,7 @@
 package ui // import "istio.io/fortio/ui"
 
 import (
+	"bytes"
 	// md5 is mandated, not our choice
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
@@ -406,36 +407,62 @@ func sendHTMLDataIndex(w http.ResponseWriter) {
 	w.Write([]byte("</ul></body></html>")) // nolint: errcheck, gas
 }
 
+type tsvCache struct {
+	cachedDirTime time.Time
+	cachedResult  []byte
+}
+
+var (
+	gTsvCache      tsvCache
+	gTsvCacheMutex = &sync.Mutex{}
+)
+
 // format for gcloud transfer
 // https://cloud.google.com/storage/transfer/create-url-list
-// TODO: this is somewhat expensive to create, cache it ?
 func sendTsvDataIndex(urlPrefix string, w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	w.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
-	for _, e := range GetDataList() {
-		fname := e + ".json"
-		f, err := os.Open(path.Join(dataDir, fname))
-		if err != nil {
-			log.Errf("Open error for %s: %v", fname, err)
-			continue
-		}
-		// This isn't a crypto hash, more like a checksum - and mandated by the
-		// spec above, not our choice
-		h := md5.New() // nolint: gas
-		var sz int64
-		if sz, err = io.Copy(h, f); err != nil {
-			f.Close() // nolint: errcheck, gas
-			log.Errf("Copy/read error for %s: %v", fname, err)
-			continue
-		}
-		w.Write([]byte(urlPrefix))                                     // nolint: errcheck, gas
-		w.Write([]byte(fname))                                         // nolint: errcheck, gas
-		w.Write([]byte("\t"))                                          // nolint: errcheck, gas
-		w.Write([]byte(strconv.FormatInt(sz, 10)))                     // nolint: errcheck, gas
-		w.Write([]byte("\t"))                                          // nolint: errcheck, gas
-		w.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
-		w.Write([]byte("\n"))                                          // nolint: errcheck, gas
+	info, err := os.Stat(dataDir)
+	if err != nil {
+		log.Errf("Unable to stat %s: %v", dataDir, err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
 	}
+	gTsvCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
+	useCache := (info.ModTime() == gTsvCache.cachedDirTime) && (len(gTsvCache.cachedResult) > 0)
+	if !useCache {
+		var b bytes.Buffer
+		b.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
+		for _, e := range GetDataList() {
+			fname := e + ".json"
+			f, err := os.Open(path.Join(dataDir, fname))
+			if err != nil {
+				log.Errf("Open error for %s: %v", fname, err)
+				continue
+			}
+			// This isn't a crypto hash, more like a checksum - and mandated by the
+			// spec above, not our choice
+			h := md5.New() // nolint: gas
+			var sz int64
+			if sz, err = io.Copy(h, f); err != nil {
+				f.Close() // nolint: errcheck, gas
+				log.Errf("Copy/read error for %s: %v", fname, err)
+				continue
+			}
+			b.Write([]byte(urlPrefix))                                     // nolint: errcheck, gas
+			b.Write([]byte(fname))                                         // nolint: errcheck, gas
+			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
+			b.Write([]byte(strconv.FormatInt(sz, 10)))                     // nolint: errcheck, gas
+			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
+			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
+			b.Write([]byte("\n"))                                          // nolint: errcheck, gas
+		}
+		gTsvCache.cachedDirTime = info.ModTime()
+		gTsvCache.cachedResult = b.Bytes()
+	}
+	result := gTsvCache.cachedResult
+	gTsvCacheMutex.Unlock()
+	log.Infof("Used cached %v to serve %d bytes tsv", useCache, len(result))
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.Write(result) // nolint: errcheck, gas
 }
 
 // LogAndFilterDataRequest logs the data request.
