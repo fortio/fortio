@@ -15,7 +15,7 @@ Running load test... Results pending...
 <br />
 <progress id="progressBar" max="100" value="0" style="width: 100%"></progress>
 <br />
-<button type="submit" onclick='javascript:fetch("./?exit=Exit");'>Interrupt</button>
+<button type="submit" onclick='javascript:fetch("./?stop=Stop&runid={{.RunID}}");'>Interrupt</button>
 </div>
 <script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
 <div class="chart-container" style="position: relative; height:75vh; width:98vw">
@@ -31,8 +31,8 @@ Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart(
 </form>
 </div>
 <pre>{{else}}
-{{if .DoExit}}
-<p>Exiting server as per request.</p>
+{{if .DoStop}}
+<p>Stoping runs as per request.</p>
 {{else}}
 <form>
 <div>
@@ -70,7 +70,7 @@ Debug fetch http://<input type="text" id="uri" name="uri" value="" size=50/>
 <p><i>Or</i></p>
 <form method="POST">
 <div>
-Use with caution, will interrupt/end this server: <input type="submit" name="exit" value="Exit" />
+Interrupt runs from this server: <input type="submit" name="stop" value="Stop" />
 </div>
 </form>
 {{end}}
