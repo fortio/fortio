@@ -222,8 +222,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Infof("Interrupted %d runs", i)
 		} else { // Stop one
 			uiRunMapMutex.Lock()
-			v := runs[runid]
-			if v != nil {
+			v, found := runs[runid]
+			if found {
 				v.Abort()
 			}
 			uiRunMapMutex.Unlock()

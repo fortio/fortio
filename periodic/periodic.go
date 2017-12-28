@@ -133,9 +133,9 @@ type periodicRunner struct {
 }
 
 var (
-	globalAbort     chan os.Signal
-	outstandingRuns int64
-	abortMutex      sync.Mutex
+	gAbortChan       chan os.Signal
+	gOutstandingRuns int64
+	gAbortMutex      sync.Mutex
 )
 
 // Normalize initializes and normalizes the runner options. In particular it sets
@@ -172,54 +172,57 @@ func (r *RunnerOptions) Normalize() {
 	if r.Stop == nil {
 		r.Stop = make(chan struct{}, 1)
 		go func() {
-			abortMutex.Lock()
-			outstandingRuns++
+			gAbortMutex.Lock()
+			gOutstandingRuns++
 			runnerChan := r.Stop // need a copy to not race with assignement to nil
-			abortChan := globalAbort
-			if globalAbort == nil {
+			abortChan := gAbortChan
+			if gAbortChan == nil {
 				log.Infof("First outstanding run starting, catching signal")
-				globalAbort = make(chan os.Signal, 1)
-				signal.Notify(globalAbort, os.Interrupt)
+				gAbortChan = make(chan os.Signal, 1)
+				signal.Notify(gAbortChan, os.Interrupt)
 			}
-			abortMutex.Unlock()
+			gAbortMutex.Unlock()
 			log.LogVf("WATCHER starting new watcher for signal! %d", runtime.NumGoroutine())
 			select {
 			case _, ok := <-abortChan:
 				log.LogVf("WATCHER Got interrupt signal! %v", ok)
 				r.Abort()
 				if ok {
-					abortMutex.Lock()
-					if globalAbort != nil {
+					gAbortMutex.Lock()
+					if gAbortChan != nil {
 						log.Infof("Closing to notify all")
-						close(globalAbort)
-						globalAbort = nil
+						close(gAbortChan)
+						gAbortChan = nil
 					}
-					abortMutex.Unlock()
+					gAbortMutex.Unlock()
 				}
 			case <-runnerChan:
 				log.LogVf("WATCHER r.Stop readable")
 				// nothing to do, stop happened
 			}
 			log.LogVf("WATCHER End of go routine")
-			abortMutex.Lock()
-			outstandingRuns--
-			if outstandingRuns == 0 {
+			gAbortMutex.Lock()
+			gOutstandingRuns--
+			if gOutstandingRuns == 0 {
 				log.Infof("Last watcher: resetting signal handler")
-				globalAbort = nil
+				gAbortChan = nil
 				signal.Reset(os.Interrupt)
 			}
-			abortMutex.Unlock()
+			gAbortMutex.Unlock()
 		}()
 	}
 }
 
+// Abort safely aborts the run by closing the channel and resetting that channel
+// to nil under lock so it can be called multiple times and not create panic for
+// already closed channel.
 func (r *RunnerOptions) Abort() {
-	abortMutex.Lock()
+	gAbortMutex.Lock()
 	if r.Stop != nil {
 		close(r.Stop)
 		r.Stop = nil
 	}
-	abortMutex.Unlock()
+	gAbortMutex.Unlock()
 }
 
 // internal version, returning the concrete implementation.
@@ -241,9 +244,9 @@ func (r *periodicRunner) Options() *RunnerOptions {
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
-	abortMutex.Lock()
+	gAbortMutex.Lock()
 	runnerChan := r.Stop // need a copy to not race with assignement to nil
-	abortMutex.Unlock()
+	gAbortMutex.Unlock()
 	useQPS := (r.QPS > 0)
 	hasDuration := (r.Duration > 0)
 	var numCalls int64
@@ -359,7 +362,8 @@ func (r *periodicRunner) Run() RunnerResults {
 }
 
 // runOne runs in 1 go routine.
-func runOne(id int, runnerChan chan struct{}, funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
+func runOne(id int, runnerChan chan struct{},
+	funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
 	var i int64
 	endTime := start.Add(r.Duration)
 	tIDStr := fmt.Sprintf("T%03d", id)
