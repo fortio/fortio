@@ -416,14 +416,10 @@ func (h *Histogram) CopyHDataFrom(src *Histogram) {
 	}
 
 	hData := src.Export([]float64{})
-	for _, v := range hData.Data {
-		if v.Count == 1 {
-			h.appendRecordToHistogram(v.Start)
-			continue
-		}
-		for v.Count != 0 {
-			h.appendRecordToHistogram((v.Start + v.End) / 2)
-			v.Count--
+	for _, data := range hData.Data {
+		if data.Count != 0 {
+			v := float64(data.Count) * (data.Start + data.End) / 2
+			h.appendRecordToHistogram(v)
 		}
 	}
 }
