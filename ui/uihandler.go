@@ -31,7 +31,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	"istio.io/fortio/fhttp"
@@ -61,6 +61,9 @@ var (
 	dataDir        string
 	mainTemplate   *template.Template
 	browseTemplate *template.Template
+	uiRunMapMutex  = &sync.Mutex{}
+	id             int64
+	runs           = make(map[int64]*periodic.RunnerOptions)
 )
 
 const (
@@ -101,27 +104,42 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 
 // TODO: unit tests, allow additional data sets.
 
+type mode int
+
+// The main html has 3 principal modes:
+const (
+	// Default: renders the forms/menus
+	menu mode = iota
+	// Trigger a run
+	run
+	// Request abort
+	stop
+)
+
 // Handler is the main UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "UI")
-	DoExit := false
-	if r.FormValue("exit") == "Exit" {
-		log.Critf("Exit request from %v", r.RemoteAddr)
-		DoExit = true
-	}
-	DoLoad := false
+	mode := menu
 	JSONOnly := false
 	DoSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
+	runid := int64(0)
 	if r.FormValue("load") == "Start" {
-		DoLoad = true
+		mode = run
 		if r.FormValue("json") == "on" {
 			JSONOnly = true
 			log.Infof("Starting JSON only load request from %v for %s", r.RemoteAddr, url)
 		} else {
 			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
 		}
+	} else {
+		if r.FormValue("stop") == "Stop" {
+			runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64) // nolint: gas
+			log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
+			mode = stop
+		}
 	}
+	// Those only exist/make sense on run mode but go variable declaration...
 	labels := r.FormValue("labels")
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
@@ -133,13 +151,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var err error
 		dur, err = time.ParseDuration(durStr)
-		if DoLoad && err != nil {
+		if mode == run && err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
 		}
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
-
+	out := io.Writer(os.Stderr)
+	if !JSONOnly {
+		out = io.Writer(&HTMLEscapeWriter{NextWriter: w})
+	}
 	opts := fhttp.NewHTTPOptions(url)
+	ro := periodic.RunnerOptions{
+		QPS:         qps,
+		Duration:    dur,
+		Out:         out,
+		NumThreads:  c,
+		Resolution:  resolution,
+		Percentiles: percList,
+		Labels:      labels,
+	}
+	if mode == run {
+		ro.Normalize()
+		uiRunMapMutex.Lock()
+		id++ // start at 1 as 0 means interrupt all
+		runid = id
+		runs[runid] = &ro
+		uiRunMapMutex.Unlock()
+		log.Infof("New run id %d", runid)
+	}
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -158,98 +197,106 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			StartTime                   string
 			TargetURL                   string
 			Labels                      string
+			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
 			Port                        int
-			DoExit                      bool
+			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
-			startTime.Format(time.ANSIC), url, labels,
-			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, DoExit, DoLoad})
+			startTime.Format(time.ANSIC), url, labels, runid,
+			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
-
-		if !DoLoad && !DoExit {
-			return
+	}
+	switch mode {
+	case menu:
+		// nothing more to do
+	case stop:
+		if runid <= 0 { // Stop all
+			i := 0
+			uiRunMapMutex.Lock()
+			for _, v := range runs {
+				v.Abort()
+				i++
+			}
+			uiRunMapMutex.Unlock()
+			log.Infof("Interrupted %d runs", i)
+		} else { // Stop one
+			uiRunMapMutex.Lock()
+			v, found := runs[runid]
+			if found {
+				v.Abort()
+			}
+			uiRunMapMutex.Unlock()
 		}
-
+	case run:
+		// mode == run case:
+		firstHeader := true
+		for _, header := range r.Form["H"] {
+			if len(header) == 0 {
+				continue
+			}
+			log.LogVf("adding header %v", header)
+			if firstHeader {
+				// If there is at least 1 non empty H passed, reset the header list
+				opts.ResetHeaders()
+				firstHeader = false
+			}
+			err := opts.AddAndValidateExtraHeader(header)
+			if err != nil {
+				log.Errf("Error adding custom headers: %v", err)
+			}
+		}
+		o := fhttp.HTTPRunnerOptions{
+			RunnerOptions:      ro,
+			HTTPOptions:        *opts,
+			AllowInitialErrors: true,
+		}
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 		}
-		flusher.Flush()
-	}
-	if DoExit {
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT) // nolint: errcheck,gas
-		return
-	}
-	firstHeader := true
-	for _, header := range r.Form["H"] {
-		if len(header) == 0 {
-			continue
+		if !JSONOnly {
+			flusher.Flush()
 		}
-		log.LogVf("adding header %v", header)
-		if firstHeader {
-			// If there is at least 1 non empty H passed, reset the header list
-			opts.ResetHeaders()
-			firstHeader = false
-		}
-		err := opts.AddAndValidateExtraHeader(header)
+		res, err := fhttp.RunHTTPTest(&o)
+		uiRunMapMutex.Lock()
+		delete(runs, runid)
+		uiRunMapMutex.Unlock()
 		if err != nil {
-			log.Errf("Error adding custom headers: %v", err)
+			w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
+			return
 		}
-	}
-	out := io.Writer(&HTMLEscapeWriter{NextWriter: w})
-	if JSONOnly {
-		out = os.Stderr
-	}
-	ro := periodic.RunnerOptions{
-		QPS:         qps,
-		Duration:    dur,
-		Out:         out,
-		NumThreads:  c,
-		Resolution:  resolution,
-		Percentiles: percList,
-		Labels:      labels,
-	}
-	o := fhttp.HTTPRunnerOptions{
-		RunnerOptions:      ro,
-		HTTPOptions:        *opts,
-		AllowInitialErrors: true,
-	}
-
-	res, err := fhttp.RunHTTPTest(&o)
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
-		return
-	}
-	json, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err)
-	}
-	if JSONOnly {
-		w.Header().Set("Content-Type", "application/json")
-		_, err = w.Write(json)
+		json, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
-			log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+			log.Fatalf("Unable to json serialize result: %v", err)
 		}
-		return
-	}
-	if DoSave {
-		res := SaveJSON(res.ID(), json)
-		if res != "" {
+		savedAs := ""
+		if DoSave {
+			savedAs = SaveJSON(res.ID(), json)
+		}
+		if JSONOnly {
+			w.Header().Set("Content-Type", "application/json")
+			_, err = w.Write(json)
+			if err != nil {
+				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
+			}
+			return
+		}
+		if savedAs != "" {
 			// nolint: errcheck, gas
-			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", res, res)))
+			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", savedAs, savedAs)))
 		}
+		// nolint: errcheck, gas
+		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+			res.DurationHistogram.Count,
+			1000.*res.DurationHistogram.Avg,
+			res.ActualQPS)))
+		ResultToJsData(w, json)
+		w.Write([]byte("</script></body></html>\n")) // nolint: gas
 	}
-	// nolint: errcheck, gas
-	w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-		res.DurationHistogram.Count,
-		1000.*res.DurationHistogram.Avg,
-		res.ActualQPS)))
-	ResultToJsData(w, json)
-	w.Write([]byte("</script></body></html>\n")) // nolint: gas
 }
 
 // ResultToJsData converts a result object to chart data arrays and title
