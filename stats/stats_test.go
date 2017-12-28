@@ -380,6 +380,50 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	}
 }
 
+func TestTransferHistogramWithDifferentScales(t *testing.T) {
+	tP := []float64{75.}
+	var b bytes.Buffer
+	w := bufio.NewWriter(&b)
+	h1 := NewHistogram(2, 15)
+	h1.Record(30)
+	h1.Record(40)
+	h1.Record(50)
+	h2 := NewHistogram(0, 10)
+	h2.Record(20)
+	h2.Record(23)
+	h2.Record(90)
+	h1.Print(w, "h1 before merge", tP)
+	h2.Print(w, "h2 before merge", tP)
+	h1.Transfer(h2)
+	h1.Print(w, "merged h2 -> h1", tP)
+	h2.Print(w, "h2 should now be empty", tP)
+	w.Flush()
+	actual := b.String()
+	expected := `h1 before merge : count 3 avg 40 +/- 8.165 min 30 max 50 sum 120
+# range, mid point, percentile, count
+>= 30 < 32 , 31 , 33.33, 1
+>= 32 < 47 , 39.5 , 66.67, 1
+>= 47 <= 50 , 48.5 , 100.00, 1
+# target 75% 47.75
+h2 before merge : count 3 avg 44.333333 +/- 32.31 min 20 max 90 sum 133
+# range, mid point, percentile, count
+>= 20 < 30 , 25 , 66.67, 2
+>= 90 <= 90 , 90 , 100.00, 1
+# target 75% 90
+merged h2 -> h1 : count 6 avg 42.166667 +/- 23.67 min 20 max 90 sum 253
+# range, mid point, percentile, count
+>= 20 < 32 , 26 , 50.00, 3
+>= 32 < 47 , 39.5 , 66.67, 1
+>= 47 < 62 , 54.5 , 83.33, 1
+>= 77 <= 90 , 83.5 , 100.00, 1
+# target 75% 54.5
+h2 should now be empty : no data
+`
+	if actual != expected {
+		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
+	}
+}
+
 func TestTransferHistogram(t *testing.T) {
 	tP := []float64{100.} // TODO: use 75 and fix bug
 	var b bytes.Buffer

@@ -177,6 +177,10 @@ type HistogramData struct {
 func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
 	h.Offset = Offset
+	if Divider == 0 {
+		log.Fatalf("Divider can not be zero")
+		return nil
+	}
 	h.Divider = Divider
 	h.Hdata = make([]int32, numBuckets+1)
 	return h
@@ -205,6 +209,11 @@ func init() {
 // Record records a data point.
 func (h *Histogram) Record(v float64) {
 	h.Counter.Record(v)
+	h.record(v, 1)
+}
+
+// Records v value to count times
+func (h *Histogram) record(v float64, count int32) {
 	// Scaled value to bucketize:
 	scaledVal := (v - h.Offset) / h.Divider
 	idx := 0
@@ -213,7 +222,7 @@ func (h *Histogram) Record(v float64) {
 	} else if scaledVal >= firstValue {
 		idx = val2Bucket[int(scaledVal)]
 	} // else it's <  and idx 0
-	h.Hdata[idx]++
+	h.Hdata[idx] += count
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -393,21 +402,28 @@ func (h *Histogram) Clone() *Histogram {
 // CopyFrom sets the content of this object to a copy of the src.
 func (h *Histogram) CopyFrom(src *Histogram) {
 	h.Counter = src.Counter
-	// we don't copy offset/divider as this assumes compatible src/dest
-	for i := 0; i < len(h.Hdata); i++ {
-		h.Hdata[i] += src.Hdata[i]
+	h.copyHDataFrom(src)
+}
+
+// copyHDataFrom appends histogram data values to this object from the src.
+// Src histogram data values will be appended according to this object's
+// offset and divider
+func (h *Histogram) copyHDataFrom(src *Histogram) {
+	if h.Divider == src.Divider && h.Offset == src.Offset {
+		for i := 0; i < len(h.Hdata); i++ {
+			h.Hdata[i] += src.Hdata[i]
+		}
+		return
+	}
+
+	hData := src.Export([]float64{})
+	for _, data := range hData.Data {
+		h.record((data.Start+data.End)/2, int32(data.Count))
 	}
 }
 
 // Transfer merges the data from src into this Histogram and clears src.
 func (h *Histogram) Transfer(src *Histogram) {
-	// TODO potentially merge despite different offset/scale
-	if src.Offset != h.Offset {
-		log.Fatalf("Incompatible offsets in Histogram Transfer %f %f", src.Offset, h.Offset)
-	}
-	if src.Divider != h.Divider {
-		log.Fatalf("Incompatible scale in Histogram Transfer %f %f", src.Divider, h.Divider)
-	}
 	if src.Count == 0 {
 		return
 	}
@@ -416,10 +432,8 @@ func (h *Histogram) Transfer(src *Histogram) {
 		src.Reset()
 		return
 	}
+	h.copyHDataFrom(src)
 	h.Counter.Transfer(&src.Counter)
-	for i := 0; i < len(h.Hdata); i++ {
-		h.Hdata[i] += src.Hdata[i]
-	}
 	src.Reset()
 }
 
