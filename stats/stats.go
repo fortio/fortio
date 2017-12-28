@@ -209,10 +209,11 @@ func init() {
 // Record records a data point.
 func (h *Histogram) Record(v float64) {
 	h.Counter.Record(v)
-	h.appendRecordToHistogram(v)
+	h.record(v, 1)
 }
 
-func (h *Histogram) appendRecordToHistogram(v float64) {
+// Records v value to count times
+func (h *Histogram) record(v float64, count int32) {
 	// Scaled value to bucketize:
 	scaledVal := (v - h.Offset) / h.Divider
 	idx := 0
@@ -221,7 +222,7 @@ func (h *Histogram) appendRecordToHistogram(v float64) {
 	} else if scaledVal >= firstValue {
 		idx = val2Bucket[int(scaledVal)]
 	} // else it's <  and idx 0
-	h.Hdata[idx]++
+	h.Hdata[idx] += count
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -401,13 +402,13 @@ func (h *Histogram) Clone() *Histogram {
 // CopyFrom sets the content of this object to a copy of the src.
 func (h *Histogram) CopyFrom(src *Histogram) {
 	h.Counter = src.Counter
-	h.CopyHDataFrom(src)
+	h.copyHDataFrom(src)
 }
 
-// CopyHDataFrom appends histogram data values to this object from the src.
+// copyHDataFrom appends histogram data values to this object from the src.
 // Src histogram data values will be appended according to this object's
 // offset and divider
-func (h *Histogram) CopyHDataFrom(src *Histogram) {
+func (h *Histogram) copyHDataFrom(src *Histogram) {
 	if h.Divider == src.Divider && h.Offset == src.Offset {
 		for i := 0; i < len(h.Hdata); i++ {
 			h.Hdata[i] += src.Hdata[i]
@@ -417,8 +418,7 @@ func (h *Histogram) CopyHDataFrom(src *Histogram) {
 
 	hData := src.Export([]float64{})
 	for _, data := range hData.Data {
-		v := float64(data.Count) * (data.Start + data.End) / 2
-		h.appendRecordToHistogram(v)
+		h.record((data.Start+data.End)/2, int32(data.Count))
 	}
 }
 
@@ -432,7 +432,7 @@ func (h *Histogram) Transfer(src *Histogram) {
 		src.Reset()
 		return
 	}
-	h.CopyHDataFrom(src)
+	h.copyHDataFrom(src)
 	h.Counter.Transfer(&src.Counter)
 	src.Reset()
 }

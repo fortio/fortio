@@ -390,6 +390,7 @@ func TestTransferHistogramWithDifferentScales(t *testing.T) {
 	h1.Record(50)
 	h2 := NewHistogram(0, 10)
 	h2.Record(20)
+	h2.Record(23)
 	h2.Record(90)
 	h1.Print(w, "h1 before merge", tP)
 	h2.Print(w, "h2 before merge", tP)
@@ -404,18 +405,18 @@ func TestTransferHistogramWithDifferentScales(t *testing.T) {
 >= 32 < 47 , 39.5 , 66.67, 1
 >= 47 <= 50 , 48.5 , 100.00, 1
 # target 75% 47.75
-h2 before merge : count 2 avg 55 +/- 35 min 20 max 90 sum 110
+h2 before merge : count 3 avg 44.333333 +/- 32.31 min 20 max 90 sum 133
 # range, mid point, percentile, count
->= 20 < 30 , 25 , 50.00, 1
+>= 20 < 30 , 25 , 66.67, 2
 >= 90 <= 90 , 90 , 100.00, 1
 # target 75% 90
-merged h2 -> h1 : count 5 avg 46 +/- 24.17 min 20 max 90 sum 230
+merged h2 -> h1 : count 6 avg 42.166667 +/- 23.67 min 20 max 90 sum 253
 # range, mid point, percentile, count
->= 20 < 32 , 26 , 40.00, 2
->= 32 < 47 , 39.5 , 60.00, 1
->= 47 < 62 , 54.5 , 80.00, 1
+>= 20 < 32 , 26 , 50.00, 3
+>= 32 < 47 , 39.5 , 66.67, 1
+>= 47 < 62 , 54.5 , 83.33, 1
 >= 77 <= 90 , 83.5 , 100.00, 1
-# target 75% 58.25
+# target 75% 54.5
 h2 should now be empty : no data
 `
 	if actual != expected {
