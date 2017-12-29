@@ -82,6 +82,7 @@ var (
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
 	halfCloseFlag   = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
+	timeoutFlag     = flag.Int64("timeout", fhttp.DefaultTimeOutValue, "Http request timeout interval value in terms of second")
 	stdClientFlag   = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag      = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
@@ -170,6 +171,7 @@ func fortioLoad() {
 	httpOpts.DisableKeepAlive = !*keepAliveFlag
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
+	httpOpts.Timeout = *timeoutFlag
 	if *curlFlag {
 		fetchURL(&httpOpts)
 		return

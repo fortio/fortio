@@ -422,6 +422,20 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
+// Merge two different histogram with different scale parameters
+// Highest offset and divider value will be selected on new Histogram to maximize scope
+func Merge(h1 *Histogram, h2 *Histogram) *Histogram {
+	newH := h1.Clone()
+	if h2.Divider > newH.Divider {
+		newH.Divider = h2.Divider
+	}
+	if h2.Offset > newH.Offset {
+		newH.Offset = h2.Offset
+	}
+	newH.Transfer(h2)
+	return newH
+}
+
 // Transfer merges the data from src into this Histogram and clears src.
 func (h *Histogram) Transfer(src *Histogram) {
 	if src.Count == 0 {

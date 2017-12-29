@@ -66,6 +66,9 @@ func NewHTTPOptions(url string) *HTTPOptions {
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	h.URL = url
 	h.NumConnections = 1
+	if h.Timeout == 0 {
+		h.Timeout = DefaultTimeOutValue
+	}
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
 	return h
@@ -73,8 +76,9 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 
 // Version is the fortio package version (TODO:auto gen/extract).
 const (
-	userAgent     = "istio/fortio-" + periodic.Version
-	retcodeOffset = len("HTTP/1.X ")
+	userAgent           = "istio/fortio-" + periodic.Version
+	retcodeOffset       = len("HTTP/1.X ")
+	DefaultTimeOutValue = 3
 )
 
 // HTTPOptions holds the common options of both http clients and the headers.
@@ -90,6 +94,7 @@ type HTTPOptions struct {
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
 	hostOverride string
+	Timeout      int64 // timeout value for http request in terms of second
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -223,7 +228,7 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 		o.URL,
 		req,
 		&http.Client{
-			Timeout: 3 * time.Second, // TODO: make configurable
+			Timeout: time.Duration(o.Timeout) * time.Second,
 			Transport: &http.Transport{
 				MaxIdleConns:        o.NumConnections,
 				MaxIdleConnsPerHost: o.NumConnections,

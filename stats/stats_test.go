@@ -380,6 +380,44 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	}
 }
 
+func TestMergeHistogramsWithDifferentScales(t *testing.T) {
+	tP := []float64{100.}
+	var b bytes.Buffer
+	w := bufio.NewWriter(&b)
+	h1 := NewHistogram(2, 100)
+	h1.Record(30)
+	h1.Record(40)
+	h1.Record(50)
+	h2 := NewHistogram(0, 10)
+	h2.Record(20)
+	h2.Record(50)
+	h2.Record(90)
+	h1.Print(w, "h1 values", tP)
+	h2.Print(w, "h2 values", tP)
+	newH := Merge(h1, h2)
+	newH.Print(w, "h1 and h2 merged", tP)
+	w.Flush()
+	actual := b.String()
+	expected := `h1 values : count 3 avg 40 +/- 8.165 min 30 max 50 sum 120
+# range, mid point, percentile, count
+>= 30 <= 50 , 40 , 100.00, 3
+# target 100% 50
+h2 values : count 3 avg 53.333333 +/- 28.67 min 20 max 90 sum 160
+# range, mid point, percentile, count
+>= 20 < 30 , 25 , 33.33, 1
+>= 50 < 60 , 55 , 66.67, 1
+>= 90 <= 90 , 90 , 100.00, 1
+# target 100% 90
+h1 and h2 merged : count 6 avg 46.666667 +/- 22.11 min 20 max 90 sum 280
+# range, mid point, percentile, count
+>= 20 <= 90 , 55 , 100.00, 6
+# target 100% 90
+`
+	if actual != expected {
+		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
+	}
+}
+
 func TestTransferHistogramWithDifferentScales(t *testing.T) {
 	tP := []float64{75.}
 	var b bytes.Buffer
