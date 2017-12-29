@@ -72,23 +72,23 @@ func usage(msgs ...interface{}) {
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
-	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
-	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
-	percentilesFlag = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
-	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
-	compressionFlag = flag.Bool("compression", false, "Enable http compression")
-	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
-	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to file")
-	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
-	halfCloseFlag   = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
-	timeoutFlag     = flag.Int64("timeout", fhttp.DefaultTimeOutValue, "Http request timeout interval value in terms of second")
-	stdClientFlag   = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
-	http10Flag      = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
-	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
-	echoPortFlag    = flag.Int("http-port", 8080, "http echo server port")
-	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
-	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
+	qpsFlag            = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
+	numThreadsFlag     = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
+	durationFlag       = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	percentilesFlag    = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
+	resolutionFlag     = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
+	compressionFlag    = flag.Bool("compression", false, "Enable http compression")
+	goMaxProcsFlag     = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
+	profileFlag        = flag.String("profile", "", "write .cpu and .mem profiles to file")
+	keepAliveFlag      = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
+	halfCloseFlag      = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
+	httpReqTimeoutFlag = flag.Duration("httpreqtimeout", fhttp.HTTPReqTimeOutDefaultValue, "Http request timeout value")
+	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
+	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
+	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	echoPortFlag       = flag.Int("http-port", 8080, "http echo server port")
+	grpcPortFlag       = flag.Int("grpc-port", 8079, "grpc port")
+	echoDbgPathFlag    = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
 		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
@@ -171,7 +171,7 @@ func fortioLoad() {
 	httpOpts.DisableKeepAlive = !*keepAliveFlag
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
-	httpOpts.Timeout = *timeoutFlag
+	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	if *curlFlag {
 		fetchURL(&httpOpts)
 		return
