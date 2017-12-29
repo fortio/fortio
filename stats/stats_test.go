@@ -123,6 +123,13 @@ c3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 	}
 }
 
+func TestZeroDivider(t *testing.T) {
+	h := NewHistogram(0, 0)
+	if h != nil {
+		t.Errorf("Histogram can not be created when divider is zero")
+	}
+}
+
 func TestHistogram(t *testing.T) {
 	h := NewHistogram(0, 10)
 	h.Record(1)
@@ -384,35 +391,61 @@ func TestMergeHistogramsWithDifferentScales(t *testing.T) {
 	tP := []float64{100.}
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
-	h1 := NewHistogram(2, 100)
-	h1.Record(30)
-	h1.Record(40)
+	h1 := NewHistogram(0, 10)
+	h1.Record(20)
 	h1.Record(50)
-	h2 := NewHistogram(0, 10)
-	h2.Record(20)
+	h1.Record(90)
+	h2 := NewHistogram(2, 100)
+	h2.Record(30)
+	h2.Record(40)
 	h2.Record(50)
-	h2.Record(90)
-	h1.Print(w, "h1 values", tP)
-	h2.Print(w, "h2 values", tP)
 	newH := Merge(h1, h2)
 	newH.Print(w, "h1 and h2 merged", tP)
 	w.Flush()
 	actual := b.String()
-	expected := `h1 values : count 3 avg 40 +/- 8.165 min 30 max 50 sum 120
-# range, mid point, percentile, count
->= 30 <= 50 , 40 , 100.00, 3
-# target 100% 50
-h2 values : count 3 avg 53.333333 +/- 28.67 min 20 max 90 sum 160
-# range, mid point, percentile, count
->= 20 < 30 , 25 , 33.33, 1
->= 50 < 60 , 55 , 66.67, 1
->= 90 <= 90 , 90 , 100.00, 1
-# target 100% 90
-h1 and h2 merged : count 6 avg 46.666667 +/- 22.11 min 20 max 90 sum 280
+	expected := `h1 and h2 merged : count 6 avg 46.666667 +/- 22.11 min 20 max 90 sum 280
 # range, mid point, percentile, count
 >= 20 <= 90 , 55 , 100.00, 6
 # target 100% 90
 `
+	if newH.Divider != h2.Divider {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Divider, h2.Divider)
+	}
+	if newH.Offset != h2.Offset {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h2.Offset)
+	}
+	if actual != expected {
+		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
+	}
+
+	b.Reset()
+	h3 := NewHistogram(5, 200)
+	h3.Record(10000)
+	h3.Record(5000)
+	h3.Record(9000)
+	h4 := NewHistogram(2, 100)
+	h4.Record(300)
+	h4.Record(400)
+	h4.Record(50)
+	newH = Merge(h3, h4)
+	newH.Print(w, "h3 and h4 merged", tP)
+	w.Flush()
+	actual = b.String()
+	expected = `h3 and h4 merged : count 6 avg 4125 +/- 4167 min 50 max 10000 sum 24750
+# range, mid point, percentile, count
+>= 50 < 205 , 127.5 , 16.67, 1
+>= 205 < 405 , 305 , 50.00, 2
+>= 4005 < 5005 , 4505 , 66.67, 1
+>= 8005 < 9005 , 8505 , 83.33, 1
+>= 9005 <= 10000 , 9502.5 , 100.00, 1
+# target 100% 10000
+`
+	if newH.Divider != h3.Divider {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Divider, h3.Divider)
+	}
+	if newH.Offset != h3.Offset {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h3.Offset)
+	}
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
 	}
