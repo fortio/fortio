@@ -267,7 +267,6 @@ type BasicClient struct {
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
 	reqTimeout   time.Duration
-	reqStartTime time.Time
 }
 
 // NewBasicClient makes a basic, efficient http 1.0/1.1 client.
@@ -531,10 +530,10 @@ func (c *BasicClient) Fetch() (int, []byte, int) {
 		log.Debugf("Reusing socket %v", *conn)
 	}
 	c.socket = nil // because of error returns
-	c.reqStartTime = time.Now()
+	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	n, err := conn.Write(c.req)
-	if err != nil {
+	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("Closing dead socket %v (%v)", *conn, err)
@@ -593,16 +592,8 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 	checkConnectionClosedHeader := CheckConnectionClosedHeader
 	skipRead := false
 	for {
-		connStartTime := c.reqStartTime.Add(c.reqTimeout)
-		currentTime := time.Now()
 		// Ugly way to cover the case where we get more than 1 chunk at the end
 		// TODO: need automated tests
-
-		if currentTime.After(connStartTime) {
-			c.code = -1
-			log.Errf("Connection time out")
-			break
-		}
 		if !skipRead {
 			n, err := conn.Read(c.buffer[c.size:])
 			if err == io.EOF {
