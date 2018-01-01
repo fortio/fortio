@@ -90,9 +90,11 @@ function makeTitle (res) {
     title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
   }
   var percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
-  for (var i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
-    var p = res.DurationHistogram.Percentiles[i]
-    percStr += ', p' + p.Percentile + ' ' + myRound(1000 * p.Value, 2) + ' ms'
+  if (res.DurationHistogram.Percentiles) {
+    for (var i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
+      var p = res.DurationHistogram.Percentiles[i]
+      percStr += ', p' + p.Percentile + ' ' + myRound(1000 * p.Value, 2) + ' ms'
+    }
   }
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
   var httpOk = res.RetCodes[200]
@@ -305,6 +307,10 @@ function multiLabel (res) {
 function findData (slot, idx, res, p) {
   // Not very efficient but there are only a handful of percentiles
   var pA = res.DurationHistogram.Percentiles
+  if (!pA) {
+//    console.log('No percentiles in res', res)
+    return
+  }
   var pN = Number(p)
   for (var i = 0; i < pA.length; i++) {
     if (pA[i].Percentile === pN) {
@@ -312,7 +318,7 @@ function findData (slot, idx, res, p) {
       return
     }
   }
-  console.log('Not Found', p, pA)
+  console.log('Not Found', p, pN, pA)
   // not found, not set
 }
 
