@@ -279,6 +279,11 @@ make lint
 make webtest
 ```
 
+When modifying Javascript:
+```
+standard --fix fortio_chart.js
+```
+
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/istio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
