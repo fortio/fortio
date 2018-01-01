@@ -32,7 +32,7 @@ LINT_PACKAGES:=./...
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
 lint:
-	docker run -v $(PWD):/go/src/istio.io/fortio $(LINTERS_IMAGE) bash -c \
+	docker run -v $(shell pwd):/go/src/istio.io/fortio $(LINTERS_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=$(LINT_PACKAGES)"
 
