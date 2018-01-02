@@ -108,8 +108,8 @@ and flags are:
     	Use the slower net/http standard client (works for TLS)
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
-  -timeout int
-      	Http request timeout interval value in terms of second (default 3)
+  -httpreqtimeout int
+      	Http request timeout value (default 15s)
   -ui-path string
     	http server URI for UI, empty turns off that part (more secure) (default "/fortio/")
 ```

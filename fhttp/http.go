@@ -78,7 +78,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 const (
 	userAgent                  = "istio/fortio-" + periodic.Version
 	retcodeOffset              = len("HTTP/1.X ")
-	HTTPReqTimeOutDefaultValue = 3 * time.Second
+	HTTPReqTimeOutDefaultValue = 15 * time.Second
 )
 
 // HTTPOptions holds the common options of both http clients and the headers.

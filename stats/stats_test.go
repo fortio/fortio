@@ -411,8 +411,8 @@ func TestMergeHistogramsWithDifferentScales(t *testing.T) {
 	if newH.Divider != h2.Divider {
 		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Divider, h2.Divider)
 	}
-	if newH.Offset != h2.Offset {
-		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h2.Offset)
+	if newH.Offset != h1.Offset {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h1.Offset)
 	}
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
@@ -433,18 +433,18 @@ func TestMergeHistogramsWithDifferentScales(t *testing.T) {
 	actual = b.String()
 	expected = `h3 and h4 merged : count 6 avg 4125 +/- 4167 min 50 max 10000 sum 24750
 # range, mid point, percentile, count
->= 50 < 205 , 127.5 , 16.67, 1
->= 205 < 405 , 305 , 50.00, 2
->= 4005 < 5005 , 4505 , 66.67, 1
->= 8005 < 9005 , 8505 , 83.33, 1
->= 9005 <= 10000 , 9502.5 , 100.00, 1
+>= 50 < 202 , 126 , 16.67, 1
+>= 202 < 402 , 302 , 50.00, 2
+>= 5002 < 6002 , 5502 , 66.67, 1
+>= 8002 < 9002 , 8502 , 83.33, 1
+>= 9002 <= 10000 , 9501 , 100.00, 1
 # target 100% 10000
 `
 	if newH.Divider != h3.Divider {
 		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Divider, h3.Divider)
 	}
-	if newH.Offset != h3.Offset {
-		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h3.Offset)
+	if newH.Offset != h4.Offset {
+		t.Errorf("unexpected:\n%f\tvs:\n%f", newH.Offset, h4.Offset)
 	}
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
