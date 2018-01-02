@@ -78,6 +78,8 @@ and flags are:
     	Size of the buffer (max data size) for the optimized http client in kbytes (default 128)
   -httpccch
     	Check for Connection: Close Header
+  -httpreqtimeout duration
+      	Http request timeout value (default 15s)
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
   -keepalive
@@ -108,8 +110,6 @@ and flags are:
     	Use the slower net/http standard client (works for TLS)
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
-  -httpreqtimeout int
-      	Http request timeout value (default 15s)
   -ui-path string
     	http server URI for UI, empty turns off that part (more secure) (default "/fortio/")
 ```
