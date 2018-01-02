@@ -244,6 +244,8 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	var prevPerc float64
 	var perc float64
 	found := false
+	prevLowest := float64(0)
+	currentPercLowest := float64(0)
 	cur := h.Offset
 	// last bucket is virtual/special - we'll use max if we reach it
 	// we also use max if the bucket is past the max for better accuracy
@@ -254,6 +256,10 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 		cur = float64(histogramBuckets[i])*h.Divider + h.Offset
 		total += int64(h.Hdata[i])
 		perc = 100. * float64(total) / ctrTotal
+		if prevPerc != perc {
+			prevLowest = currentPercLowest
+			currentPercLowest = prev
+		}
 		if cur > h.Max {
 			break
 		}
@@ -271,9 +277,13 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	}
 	// Improve accuracy near p0 too
 	if prev < h.Min {
-		prev = h.Min
+		currentPercLowest = h.Min
 	}
-	return (prev + (percentile-prevPerc)*(cur-prev)/(perc-prevPerc))
+
+	if perc == percentile {
+		return currentPercLowest
+	}
+	return (prevLowest + (percentile-prevPerc)*(currentPercLowest-prevLowest)/(perc-prevPerc))
 }
 
 // Export translate the internal representation of the histogram data in
