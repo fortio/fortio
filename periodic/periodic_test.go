@@ -118,8 +118,15 @@ func TestStartMaxQps(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	r.Run()
+	var res1 HasRunnerResult // test that interface
+	res := r.Run()
+	res1 = res.Result()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	// Check the count both from the histogram and from our own test counter:
+	actual := res1.Result().DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", actual, expected)
+	}
 	if count != expected {
 		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", count, expected)
 	}
@@ -135,6 +142,7 @@ func TestID(t *testing.T) {
 		{"A!@#$%^&*()-+=/'B", "_A_B"},
 		// Ends with non alpha, skip last _
 		{"A  ", "_A"},
+		{" ", ""},
 		// truncated to fit 64 (17 from date/time + _ + 46 from labels)
 		{"123456789012345678901234567890123456789012345678901234567890", "_1234567890123456789012345678901234567890123456"},
 	}
@@ -150,5 +158,51 @@ func TestID(t *testing.T) {
 		if id != expected {
 			t.Errorf("id: got %s, not as expected %s", id, expected)
 		}
+	}
+}
+
+func TestInfiniteDurationAndAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        10,
+		NumThreads: 1,
+		Duration:   -1, // infinite but we'll abort after 1sec
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	go func() {
+		time.Sleep(1 * time.Second)
+		r.Options().Abort()
+	}()
+	r.Run()
+	if count != 11 { // aborts during sleep so + 1 - may be brittle?
+		t.Errorf("Test executed unexpected number of times %d instead %d", count, 11)
+	}
+}
+
+func TestSleepFallingBehind(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        1000000, // similar to max qps but with sleep falling behind
+		NumThreads: 4,
+		Duration:   140 * time.Millisecond,
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", count, expected)
 	}
 }
