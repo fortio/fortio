@@ -78,6 +78,8 @@ and flags are:
     	Size of the buffer (max data size) for the optimized http client in kbytes (default 128)
   -httpccch
     	Check for Connection: Close Header
+  -httpreqtimeout duration
+      	Http request timeout value (default 15s)
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
   -keepalive

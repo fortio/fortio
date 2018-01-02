@@ -66,6 +66,9 @@ func NewHTTPOptions(url string) *HTTPOptions {
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	h.URL = url
 	h.NumConnections = 1
+	if h.HTTPReqTimeOut == 0 {
+		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
+	}
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
 	return h
@@ -73,8 +76,9 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 
 // Version is the fortio package version (TODO:auto gen/extract).
 const (
-	userAgent     = "istio/fortio-" + periodic.Version
-	retcodeOffset = len("HTTP/1.X ")
+	userAgent                  = "istio/fortio-" + periodic.Version
+	retcodeOffset              = len("HTTP/1.X ")
+	HTTPReqTimeOutDefaultValue = 15 * time.Second
 )
 
 // HTTPOptions holds the common options of both http clients and the headers.
@@ -89,7 +93,8 @@ type HTTPOptions struct {
 	// ExtraHeaders to be added to each request.
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
-	hostOverride string
+	hostOverride   string
+	HTTPReqTimeOut time.Duration // timeout value for http request in terms of second
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -223,7 +228,7 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 		o.URL,
 		req,
 		&http.Client{
-			Timeout: 3 * time.Second, // TODO: make configurable
+			Timeout: o.HTTPReqTimeOut,
 			Transport: &http.Transport{
 				MaxIdleConns:        o.NumConnections,
 				MaxIdleConnsPerHost: o.NumConnections,
@@ -261,6 +266,7 @@ type BasicClient struct {
 	keepAlive    bool
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
+	reqTimeout   time.Duration
 }
 
 // NewBasicClient makes a basic, efficient http 1.0/1.1 client.
@@ -320,6 +326,7 @@ func NewBasicClient(o *HTTPOptions) Fetcher {
 			buf.WriteString("Connection: close\r\n")
 		}
 	}
+	bc.reqTimeout = o.HTTPReqTimeOut
 	for h := range o.extraHeaders {
 		buf.WriteString(h)
 		buf.WriteString(": ")
@@ -523,9 +530,10 @@ func (c *BasicClient) Fetch() (int, []byte, int) {
 		log.Debugf("Reusing socket %v", *conn)
 	}
 	c.socket = nil // because of error returns
+	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	n, err := conn.Write(c.req)
-	if err != nil {
+	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("Closing dead socket %v (%v)", *conn, err)

@@ -174,11 +174,11 @@ type HistogramData struct {
 }
 
 // NewHistogram creates a new histogram (sets up the buckets).
+// Divider value can not be zero, otherwise returns zero
 func NewHistogram(Offset float64, Divider float64) *Histogram {
 	h := new(Histogram)
 	h.Offset = Offset
 	if Divider == 0 {
-		log.Fatalf("Divider can not be zero")
 		return nil
 	}
 	h.Divider = Divider
@@ -420,6 +420,23 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	for _, data := range hData.Data {
 		h.record((data.Start+data.End)/2, int32(data.Count))
 	}
+}
+
+// Merge two different histogram with different scale parameters
+// Lowest offset and highest divider value will be selected on new Histogram as scale parameters
+func Merge(h1 *Histogram, h2 *Histogram) *Histogram {
+	divider := h1.Divider
+	offset := h1.Offset
+	if h2.Divider > h1.Divider {
+		divider = h2.Divider
+	}
+	if h2.Offset < h1.Offset {
+		offset = h2.Offset
+	}
+	newH := NewHistogram(offset, divider)
+	newH.Transfer(h1)
+	newH.Transfer(h2)
+	return newH
 }
 
 // Transfer merges the data from src into this Histogram and clears src.
