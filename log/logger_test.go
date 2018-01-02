@@ -103,7 +103,6 @@ func TestLogger1(t *testing.T) {
 	expected += "I Log level is now 5 Critical (was 0 Debug)\n"
 	Critf("testing crit %d", i) // should show
 	expected += "C testing crit 6\n"
-	i++
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	if actual != expected {
