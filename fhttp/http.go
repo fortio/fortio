@@ -1015,6 +1015,8 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve starts a debug / echo http server on the given port.
+// TODO: make it work for port 0 and return the port found and also
+// add a non blocking mode that makes sure the socket exists before returning
 func Serve(port int, debugPath string) {
 	startTime = time.Now()
 	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)

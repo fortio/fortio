@@ -33,7 +33,9 @@ type Noop struct{}
 func (n *Noop) Run(t int) {
 }
 
-var bogusTestChan = make(chan struct{}, 1) // WIP - something not right yet
+// used for when we don't actually run periodic test/want to initialize
+// watchers
+var bogusTestChan = make(chan struct{}, 1)
 
 func TestNewPeriodicRunner(t *testing.T) {
 	var tests = []struct {
@@ -234,25 +236,24 @@ func TestSleepFallingBehind(t *testing.T) {
 }
 
 func Test2Watchers(t *testing.T) {
+	// Wait for previous test to cleanup watchers
 	time.Sleep(200 * time.Millisecond)
-	{
-		o1 := RunnerOptions{}
-		r1 := newPeriodicRunner(&o1)
-		o2 := RunnerOptions{}
-		r2 := newPeriodicRunner(&o2)
-		time.Sleep(200 * time.Millisecond)
-		gAbortMutex.Lock()
-		if gOutstandingRuns != 2 {
-			t.Errorf("expecting 2 watches, found %d for (%v %v)", gOutstandingRuns, r1, r2)
-		}
-		gAbortMutex.Unlock()
-		gAbortChan <- os.Interrupt
+	o1 := RunnerOptions{}
+	r1 := newPeriodicRunner(&o1)
+	o2 := RunnerOptions{}
+	r2 := newPeriodicRunner(&o2)
+	time.Sleep(200 * time.Millisecond)
+	gAbortMutex.Lock()
+	if gOutstandingRuns != 2 {
+		t.Errorf("found %d watches while expecting 2 for (%v %v)", gOutstandingRuns, r1, r2)
 	}
+	gAbortMutex.Unlock()
+	gAbortChan <- os.Interrupt
+	// wait for interrupt to propagate
 	time.Sleep(200 * time.Millisecond)
-	// once out of scope
 	gAbortMutex.Lock()
 	if gOutstandingRuns != 0 {
-		t.Errorf("expecting 0 watches, found %d", gOutstandingRuns)
+		t.Errorf("found %d watches while expecting 0", gOutstandingRuns)
 	}
 	gAbortMutex.Unlock()
 }
