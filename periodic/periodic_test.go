@@ -178,7 +178,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 		r.Options().Abort()
 	}()
 	r.Run()
-	if count != 11 { // aborts during sleep so + 1 - may be brittle?
+	if count < 9 || count > 12 {
 		t.Errorf("Test executed unexpected number of times %d instead %d", count, 11)
 	}
 }
