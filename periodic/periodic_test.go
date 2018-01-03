@@ -15,9 +15,12 @@
 package periodic
 
 import (
+	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"istio.io/fortio/log"
 )
 
 type Noop struct{}
@@ -179,7 +182,20 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	}()
 	r.Run()
 	if count < 9 || count > 12 {
-		t.Errorf("Test executed unexpected number of times %d instead %d", count, 11)
+		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	}
+	// Same with infinite qps
+	count = 0
+	o.QPS = -1 // infinite qps
+	r = NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	go func() {
+		time.Sleep(140 * time.Millisecond)
+		gAbortChan <- os.Interrupt
+	}()
+	r.Run()
+	if count != 3 { // should get 3 in 140ms
+		t.Errorf("Test executed unexpected number of times %d instead of %d", count, 3)
 	}
 }
 
@@ -195,6 +211,7 @@ func TestSleepFallingBehind(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
+	log.SetLogLevel(log.Verbose)
 	res := r.Run()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
