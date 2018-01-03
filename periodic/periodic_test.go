@@ -23,10 +23,17 @@ import (
 	"istio.io/fortio/log"
 )
 
+// in init to avoid data race
+func init() {
+	log.SetLogLevel(log.Verbose)
+}
+
 type Noop struct{}
 
 func (n *Noop) Run(t int) {
 }
+
+// var bogusTestChan = make(chan struct{}, 1) // WIP - something not right yet
 
 func TestNewPeriodicRunner(t *testing.T) {
 	var tests = []struct {
@@ -49,6 +56,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
+			Stop:       nil, //TODO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})
@@ -211,7 +219,6 @@ func TestSleepFallingBehind(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	log.SetLogLevel(log.Verbose)
 	res := r.Run()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
