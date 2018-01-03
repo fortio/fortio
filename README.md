@@ -1,4 +1,4 @@
-[![Awesome Go](docs/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
+[![Awesome Go](docs/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
 [![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
