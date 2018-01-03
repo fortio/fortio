@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"istio.io/fortio/log"
 )
@@ -109,6 +110,7 @@ func TestServe(t *testing.T) {
 	go func() {
 		Serve(port, "/debugx1")
 	}()
+	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
 	code, data, _ := NewClient(o).Fetch()
 	if code != http.StatusOK {
