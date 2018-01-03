@@ -174,39 +174,42 @@ func (r *RunnerOptions) Normalize() {
 		go func() {
 			gAbortMutex.Lock()
 			gOutstandingRuns++
+			n := gOutstandingRuns
 			runnerChan := r.Stop // need a copy to not race with assignement to nil
-			abortChan := gAbortChan
 			if gAbortChan == nil {
-				log.Infof("First outstanding run starting, catching signal")
+				log.Infof("WATCHER %d First outstanding run starting, catching signal", n)
 				gAbortChan = make(chan os.Signal, 1)
 				signal.Notify(gAbortChan, os.Interrupt)
 			}
+			abortChan := gAbortChan
 			gAbortMutex.Unlock()
-			log.LogVf("WATCHER starting new watcher for signal! %d", runtime.NumGoroutine())
+			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, gAbortChan, runnerChan, runtime.NumGoroutine())
 			select {
 			case _, ok := <-abortChan:
-				log.LogVf("WATCHER Got interrupt signal! %v", ok)
-				r.Abort()
+				log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
 				if ok {
 					gAbortMutex.Lock()
 					if gAbortChan != nil {
-						log.Infof("Closing to notify all")
+						log.Infof("WATCHER %d closing %v to notify all", n, gAbortChan)
 						close(gAbortChan)
 						gAbortChan = nil
 					}
 					gAbortMutex.Unlock()
 				}
+				r.Abort()
 			case <-runnerChan:
-				log.LogVf("WATCHER r.Stop readable")
+				log.LogVf("WATCHER %d r.Stop readable", n)
 				// nothing to do, stop happened
 			}
-			log.LogVf("WATCHER End of go routine")
+			log.LogVf("WATCHER %d End of go routine", n)
 			gAbortMutex.Lock()
 			gOutstandingRuns--
 			if gOutstandingRuns == 0 {
-				log.Infof("Last watcher: resetting signal handler")
+				log.Infof("WATCHER %d Last watcher: resetting signal handler", n)
 				gAbortChan = nil
 				signal.Reset(os.Interrupt)
+			} else {
+				log.LogVf("WATCHER %d isn't the last one, %d left", n, gOutstandingRuns)
 			}
 			gAbortMutex.Unlock()
 		}()

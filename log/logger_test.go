@@ -21,6 +21,44 @@ import (
 	"testing"
 )
 
+// leave this test first as it relies on line number not changing
+func TestLoggerFilenameLine(t *testing.T) {
+	SetLogLevel(Debug) // make sure it's already debug when we capture
+	on := true
+	LogFileAndLine = &on
+	*LogPrefix = "-prefix-"
+	var b bytes.Buffer
+	w := bufio.NewWriter(&b)
+	SetOutput(w)
+	SetFlags(0)
+	SetLogLevel(Debug)
+	if LogDebug() {
+		Debugf("test") // line 36
+	}
+	w.Flush()
+	actual := b.String()
+	expected := "D logger_test.go:36-prefix-test\n"
+	if actual != expected {
+		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
+	}
+}
+
+func TestSetLevel(t *testing.T) {
+	prev := SetLogLevel(Info)
+	err := prev.Set("debug")
+	if err != nil {
+		t.Errorf("unexpected error for valid level %v", err)
+	}
+	prev = SetLogLevel(Info)
+	if prev != Debug {
+		t.Errorf("unexpected level after setting debug %v", prev)
+	}
+	err = prev.Set("bogus")
+	if err == nil {
+		t.Errorf("Didn't get an error setting bogus level")
+	}
+}
+
 func TestLogger1(t *testing.T) {
 	// Setup
 	var b bytes.Buffer
@@ -34,7 +72,9 @@ func TestLogger1(t *testing.T) {
 	SetLogLevel(LevelByName("Verbose"))
 	expected := "I Log level is now 1 Verbose (was 2 Info)\n"
 	i := 0
-	LogVf("test Va %d", i) // Should show
+	if LogVerbose() {
+		LogVf("test Va %d", i) // Should show
+	}
 	i++
 	expected += "V test Va 0\n"
 	Warnf("test Wa %d", i) // Should show
@@ -42,7 +82,8 @@ func TestLogger1(t *testing.T) {
 	expected += "W test Wa 1\n"
 	prevLevel := SetLogLevel(LevelByName("error")) // works with lowercase too
 	expected += "I Log level is now 4 Error (was 1 Verbose)\n"
-	LogVf("test Vb %d", i) // Should not show
+	LogVf("test Vb %d", i)                       // Should not show
+	Infof("test info when level is error %d", i) // Should not show
 	i++
 	Warnf("test Wb %d", i) // Should not show
 	i++
@@ -52,6 +93,7 @@ func TestLogger1(t *testing.T) {
 	// test the rest of the api
 	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().ToString())
 	expected += "C test 5 level str Verbose, cur Error\n"
+	i++
 	SetLogLevel(Debug) // should be fine and invisible change
 	SetLogLevel(Debug - 1)
 	expected += "SetLogLevel called with level -1 lower than Debug!\n"
@@ -59,11 +101,22 @@ func TestLogger1(t *testing.T) {
 	expected += "SetLogLevel called with level 6 higher than Critical!\n"
 	SetLogLevel(Critical) // should be fine
 	expected += "I Log level is now 5 Critical (was 0 Debug)\n"
+	Critf("testing crit %d", i) // should show
+	expected += "C testing crit 6\n"
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
 	}
+}
+
+func TestLogFatal(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic from log.Fatalf, didn't get one")
+		}
+	}()
+	Fatalf("test of log fatal")
 }
 
 func BenchmarkLogDirect1(b *testing.B) {
