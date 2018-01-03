@@ -33,7 +33,7 @@ type Noop struct{}
 func (n *Noop) Run(t int) {
 }
 
-// var bogusTestChan = make(chan struct{}, 1) // WIP - something not right yet
+var bogusTestChan = make(chan struct{}, 1) // WIP - something not right yet
 
 func TestNewPeriodicRunner(t *testing.T) {
 	var tests = []struct {
@@ -56,7 +56,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
-			Stop:       nil, //TODO: use bogusTestChan so gOutstandingRuns does reach 0
+			Stop:       bogusTestChan, //TODO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})
@@ -186,6 +186,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	count = 0
 	go func() {
 		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort after 1 sec")
 		r.Options().Abort()
 	}()
 	r.Run()
@@ -199,6 +200,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	r.Options().MakeRunners(&c)
 	go func() {
 		time.Sleep(140 * time.Millisecond)
+		log.LogVf("Sending global interrupt after 0.14 sec")
 		gAbortChan <- os.Interrupt
 	}()
 	r.Run()
@@ -229,4 +231,28 @@ func TestSleepFallingBehind(t *testing.T) {
 	if count != expected {
 		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", count, expected)
 	}
+}
+
+func Test2Watchers(t *testing.T) {
+	time.Sleep(200 * time.Millisecond)
+	{
+		o1 := RunnerOptions{}
+		r1 := newPeriodicRunner(&o1)
+		o2 := RunnerOptions{}
+		r2 := newPeriodicRunner(&o2)
+		time.Sleep(200 * time.Millisecond)
+		gAbortMutex.Lock()
+		if gOutstandingRuns != 2 {
+			t.Errorf("expecting 2 watches, found %d for (%v %v)", gOutstandingRuns, r1, r2)
+		}
+		gAbortMutex.Unlock()
+		gAbortChan <- os.Interrupt
+	}
+	time.Sleep(200 * time.Millisecond)
+	// once out of scope
+	gAbortMutex.Lock()
+	if gOutstandingRuns != 0 {
+		t.Errorf("expecting 0 watches, found %d", gOutstandingRuns)
+	}
+	gAbortMutex.Unlock()
 }
