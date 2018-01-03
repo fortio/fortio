@@ -1,7 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
-[![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=svg)](https://circleci.com/gh/istio/fortio)
 [![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
+[![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=svg)](https://circleci.com/gh/istio/fortio)
 
 # Φορτίο
 <img src="https://github.com/istio/fortio/blob/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
