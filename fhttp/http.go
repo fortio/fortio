@@ -162,19 +162,6 @@ type Client struct {
 	client *http.Client
 }
 
-// FetchURL fetches URL content and does error handling/logging.
-// Version not reusing the client.
-func FetchURL(url string) (int, []byte, int) {
-	o := NewHTTPOptions(url)
-	o.DisableKeepAlive = true
-	o.Compression = true
-	client := NewStdClient(o)
-	if client == nil {
-		return http.StatusBadRequest, []byte("bad url"), 0
-	}
-	return client.Fetch()
-}
-
 // Fetch fetches the byte and code for pre created client
 func (c *Client) Fetch() (int, []byte, int) {
 	resp, err := c.client.Do(c.req)
