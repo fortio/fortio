@@ -328,8 +328,8 @@ func SaveJSON(name string, json []byte) string {
 	return "data/" + name
 }
 
-// GetDataList returns the .json files/entries in data dir.
-func GetDataList() (dataList []string) {
+// DataList returns the .json files/entries in data dir.
+func DataList() (dataList []string) {
 	files, err := ioutil.ReadDir(dataDir)
 	if err != nil {
 		log.Critf("Can list directory %s: %v", dataDir, err)
@@ -354,7 +354,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Browse")
 	url := r.FormValue("url")
 	doRender := (url != "")
-	dataList := GetDataList()
+	dataList := DataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	err := browseTemplate.Execute(w, &struct {
 		R           *http.Request
@@ -397,7 +397,7 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 func sendHTMLDataIndex(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.Write([]byte("<html><body><ul>\n")) // nolint: errcheck, gas
-	for _, e := range GetDataList() {
+	for _, e := range DataList() {
 		w.Write([]byte("<li><a href=\"")) // nolint: errcheck, gas
 		w.Write([]byte(e))                // nolint: errcheck, gas
 		w.Write([]byte(".json\">"))       // nolint: errcheck, gas
@@ -413,25 +413,25 @@ type tsvCache struct {
 }
 
 var (
-	gTsvCache      tsvCache
-	gTsvCacheMutex = &sync.Mutex{}
+	gTSVCache      tsvCache
+	gTSVCacheMutex = &sync.Mutex{}
 )
 
 // format for gcloud transfer
 // https://cloud.google.com/storage/transfer/create-url-list
-func sendTsvDataIndex(urlPrefix string, w http.ResponseWriter) {
+func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	info, err := os.Stat(dataDir)
 	if err != nil {
 		log.Errf("Unable to stat %s: %v", dataDir, err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	gTsvCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
-	useCache := (info.ModTime() == gTsvCache.cachedDirTime) && (len(gTsvCache.cachedResult) > 0)
+	gTSVCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
+	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
 	if !useCache {
 		var b bytes.Buffer
 		b.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
-		for _, e := range GetDataList() {
+		for _, e := range DataList() {
 			fname := e + ".json"
 			f, err := os.Open(path.Join(dataDir, fname))
 			if err != nil {
@@ -455,12 +455,12 @@ func sendTsvDataIndex(urlPrefix string, w http.ResponseWriter) {
 			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
 			b.Write([]byte("\n"))                                          // nolint: errcheck, gas
 		}
-		gTsvCache.cachedDirTime = info.ModTime()
-		gTsvCache.cachedResult = b.Bytes()
+		gTSVCache.cachedDirTime = info.ModTime()
+		gTSVCache.cachedResult = b.Bytes()
 	}
-	result := gTsvCache.cachedResult
-	gTsvCacheMutex.Unlock()
-	log.Infof("Used cached %v to serve %d bytes tsv", useCache, len(result))
+	result := gTSVCache.cachedResult
+	gTSVCacheMutex.Unlock()
+	log.Infof("Used cached %v to serve %d bytes TSV", useCache, len(result))
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	w.Write(result) // nolint: errcheck, gas
 }
@@ -479,7 +479,7 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 			// TODO: what if we are reached through https ingress? or a different port
 			urlPrefix := "http://" + r.Host + path[:len(path)-len(ext)+1]
 			log.LogVf("Prefix is '%s'", urlPrefix)
-			sendTsvDataIndex(urlPrefix, w)
+			sendTSVDataIndex(urlPrefix, w)
 			return
 		}
 		if !strings.HasSuffix(path, ".json") {
