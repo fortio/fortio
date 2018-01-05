@@ -121,28 +121,33 @@ function fortioResultToJsChartData (res) {
     y: 0.0
   }]
   var len = res.DurationHistogram.Data.length
+  var prevX = 0.0
+  var prevY = 0.0
   for (var i = 0; i < len; i++) {
     var it = res.DurationHistogram.Data[i]
-    var x = 0.0
+    var x = myRound(1000.0 * it.Start)
     if (i === 0) {
-            // Extra point, 1/N at min itself
-      x = 1000.0 * it.Start
-            // nolint: errcheck
+      // Extra point, 1/N at min itself
       dataP.push({
-        x: myRound(x),
+        x: x,
         y: myRound(100.0 / res.DurationHistogram.Count, 3)
       })
-    }
-    if (i === len - 1) {
-            // last point we use the end part (max)
-      x = 1000.0 * it.End
     } else {
-      x = 1000.0 * (it.Start + it.End) / 2.0
+      if (prevX !== x) {
+        dataP.push({
+          x: x,
+          y: prevY
+        })
+      }
     }
+    x = myRound(1000.0 * it.End)
+    var y = myRound(it.Percent, 3)
     dataP.push({
-      x: myRound(x),
-      y: myRound(it.Percent, 3)
+      x: x,
+      y: y
     })
+    prevX = x
+    prevY = y
   }
   var dataH = []
   var prev = 1000.0 * res.DurationHistogram.Data[0].Start
@@ -233,7 +238,8 @@ function makeChart (data) {
             id: 'P',
             position: 'right',
             ticks: {
-              beginAtZero: true
+              beginAtZero: true,
+              max: 100
             },
             scaleLabel: {
               display: true,
