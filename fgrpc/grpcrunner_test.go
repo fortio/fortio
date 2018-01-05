@@ -64,6 +64,7 @@ func TestGRPCRunner(t *testing.T) {
 			Resolution: 0.00001,
 		},
 		Destination: destination,
+		Profiler:    "test.profile",
 	}
 	res, err := RunGRPCTest(&opts)
 	if err != nil {

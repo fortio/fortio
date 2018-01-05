@@ -1,6 +1,9 @@
+[![Awesome Go](docs/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
+[![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
 [![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=svg)](https://circleci.com/gh/istio/fortio)
+
 # Φορτίο
 <img src="https://github.com/istio/fortio/blob/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
 
@@ -78,6 +81,8 @@ and flags are:
     	Size of the buffer (max data size) for the optimized http client in kbytes (default 128)
   -httpccch
     	Check for Connection: Close Header
+  -httpreqtimeout duration
+      	Http request timeout value (default 15s)
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
   -keepalive

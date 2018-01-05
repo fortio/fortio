@@ -508,7 +508,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close() // nolint: errcheck
 	url := r.URL.String()[len(fetchPath):]
 	opts := fhttp.NewHTTPOptions("http://" + url)
-	opts.DisableKeepAlive = true
+	opts.HTTPReqTimeOut = 5 * time.Minute
 	client := fhttp.NewClient(opts)
 	if client == nil {
 		return // error logged already

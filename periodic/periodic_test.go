@@ -15,15 +15,27 @@
 package periodic
 
 import (
+	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"istio.io/fortio/log"
 )
+
+// in init to avoid data race
+func init() {
+	log.SetLogLevel(log.Verbose)
+}
 
 type Noop struct{}
 
 func (n *Noop) Run(t int) {
 }
+
+// used for when we don't actually run periodic test/want to initialize
+// watchers
+var bogusTestChan = make(chan struct{}, 1)
 
 func TestNewPeriodicRunner(t *testing.T) {
 	var tests = []struct {
@@ -46,6 +58,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
+			Stop:       bogusTestChan, //TODO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})
@@ -118,8 +131,15 @@ func TestStartMaxQps(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	r.Run()
+	var res1 HasRunnerResult // test that interface
+	res := r.Run()
+	res1 = res.Result()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	// Check the count both from the histogram and from our own test counter:
+	actual := res1.Result().DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", actual, expected)
+	}
 	if count != expected {
 		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", count, expected)
 	}
@@ -135,6 +155,7 @@ func TestID(t *testing.T) {
 		{"A!@#$%^&*()-+=/'B", "_A_B"},
 		// Ends with non alpha, skip last _
 		{"A  ", "_A"},
+		{" ", ""},
 		// truncated to fit 64 (17 from date/time + _ + 46 from labels)
 		{"123456789012345678901234567890123456789012345678901234567890", "_1234567890123456789012345678901234567890123456"},
 	}
@@ -151,4 +172,88 @@ func TestID(t *testing.T) {
 			t.Errorf("id: got %s, not as expected %s", id, expected)
 		}
 	}
+}
+
+func TestInfiniteDurationAndAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        10,
+		NumThreads: 1,
+		Duration:   -1, // infinite but we'll abort after 1sec
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort after 1 sec")
+		r.Options().Abort()
+	}()
+	r.Run()
+	if count < 9 || count > 12 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	}
+	// Same with infinite qps
+	count = 0
+	o.QPS = -1 // infinite qps
+	r = NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	go func() {
+		time.Sleep(140 * time.Millisecond)
+		log.LogVf("Sending global interrupt after 0.14 sec")
+		gAbortChan <- os.Interrupt
+	}()
+	r.Run()
+	if count != 3 { // should get 3 in 140ms
+		t.Errorf("Test executed unexpected number of times %d instead of %d", count, 3)
+	}
+}
+
+func TestSleepFallingBehind(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        1000000, // similar to max qps but with sleep falling behind
+		NumThreads: 4,
+		Duration:   140 * time.Millisecond,
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func Test2Watchers(t *testing.T) {
+	// Wait for previous test to cleanup watchers
+	time.Sleep(200 * time.Millisecond)
+	o1 := RunnerOptions{}
+	r1 := newPeriodicRunner(&o1)
+	o2 := RunnerOptions{}
+	r2 := newPeriodicRunner(&o2)
+	time.Sleep(200 * time.Millisecond)
+	gAbortMutex.Lock()
+	if gOutstandingRuns != 2 {
+		t.Errorf("found %d watches while expecting 2 for (%v %v)", gOutstandingRuns, r1, r2)
+	}
+	gAbortMutex.Unlock()
+	gAbortChan <- os.Interrupt
+	// wait for interrupt to propagate
+	time.Sleep(200 * time.Millisecond)
+	gAbortMutex.Lock()
+	if gOutstandingRuns != 0 {
+		t.Errorf("found %d watches while expecting 0", gOutstandingRuns)
+	}
+	gAbortMutex.Unlock()
 }

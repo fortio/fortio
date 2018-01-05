@@ -21,8 +21,10 @@ package fhttp
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"istio.io/fortio/log"
 )
@@ -35,11 +37,14 @@ func TestHTTPRunner(t *testing.T) {
 	opts := HTTPRunnerOptions{}
 	opts.QPS = 100
 	opts.Init(baseURL)
+	opts.DisableFastClient = true
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
 		t.Error("Expecting an error but didn't get it when not using full url")
 	}
+	opts.DisableFastClient = false
 	opts.URL = baseURL + "foo/bar?delay=2s&status=200:100"
+	opts.Profiler = "test.profile"
 	res, err := RunHTTPTest(&opts)
 	if err != nil {
 		t.Error(err)
@@ -88,4 +93,30 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 		t.Fatal("Expecting an error but didn't get it when connecting to bad server")
 	}
 	log.Infof("Got expected error from mismatch/bad server: %v", err)
+}
+
+// need to be the last test as it installs Serve() which would make
+// the error test for / url above fail:
+
+func TestServe(t *testing.T) {
+	listener, err := net.Listen("tcp", ":0") // nolint: gas
+	if err != nil {
+		log.Fatalf("Unable to listen to dynamic port: %v", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	log.Infof("Using port: %d", port)
+	listener.Close()
+	url := fmt.Sprintf("http://localhost:%d/debugx1", port)
+	go func() {
+		Serve(port, "/debugx1")
+	}()
+	time.Sleep(100 * time.Millisecond)
+	o := NewHTTPOptions(url)
+	code, data, _ := NewClient(o).Fetch()
+	if code != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
+	}
+	if len(data) <= 100 {
+		t.Errorf("Unexpected short data for debug url %s : %s", url, DebugSummary(data, 101))
+	}
 }

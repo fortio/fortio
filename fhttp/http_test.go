@@ -22,6 +22,10 @@ import (
 	"istio.io/fortio/log"
 )
 
+func init() {
+	log.SetLogLevel(log.Debug)
+}
+
 func TestGetHeaders(t *testing.T) {
 	o := NewHTTPOptions("")
 	o.AddAndValidateExtraHeader("FOo:baR")
@@ -44,6 +48,10 @@ func TestGetHeaders(t *testing.T) {
 	if len(h) != 3 { // 2 above + user-agent
 		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
 	}
+	err := o.AddAndValidateExtraHeader("foo") // missing : value
+	if err == nil {
+		t.Errorf("Expected error for header without value, did not get one")
+	}
 	o.ResetHeaders()
 	h = o.GetHeaders()
 	if h.Get("Host") != "" {
@@ -63,7 +71,9 @@ func TestNewHTTPRequest(t *testing.T) {
 		{"ht tp://www.google.com/", false},
 	}
 	for _, tst := range tests {
-		r := newHTTPRequest(&HTTPOptions{URL: tst.url})
+		o := NewHTTPOptions(tst.url)
+		o.AddAndValidateExtraHeader("Host: www.google.com")
+		r := newHTTPRequest(o)
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
 		}
@@ -422,6 +432,8 @@ func FoldFind0(haystack []byte, needle []byte) (bool, int) {
 	found := (offset >= 0)
 	return found, offset
 }
+
+// -- benchmarks --
 
 func BenchmarkFoldFind0(b *testing.B) {
 	needle := []byte("VARY")
