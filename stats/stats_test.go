@@ -78,6 +78,7 @@ func TestCounter(t *testing.T) {
 	if actual != expected {
 		t.Errorf("unexpected2:\n%s\nvs:\n%s\n", actual, expected)
 	}
+	log.SetOutput(os.Stderr)
 }
 
 func TestTransferCounter(t *testing.T) {
@@ -166,6 +167,34 @@ func TestHistogram(t *testing.T) {
 			t.Errorf("%s: got %g, not as expected %g", tst.msg, tst.actual, tst.expected)
 		}
 	}
+}
+
+func XTestHistogramData(t *testing.T) {
+	h := NewHistogram(0, 1)
+	h.RecordN(0, 4)
+	h.Record(1)
+	h.Record(2)
+	h.Record(3)
+	h.Record(4)
+	h.RecordN(5, 2)
+	percs := []float64{0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100}
+	e := h.Export(percs)
+	CheckEquals(t, int64(10), e.Count, "10 data points")
+	CheckEquals(t, 2.0, e.Avg, "avg should be 2")
+	CheckEquals(t, Percentile{0, 0}, e.Percentiles[0], "p0 should be 0")
+	CheckEquals(t, Percentile{1, 0}, e.Percentiles[1], "p1 should be 0")
+	CheckEquals(t, Percentile{10, 0}, e.Percentiles[2], "p10 should be 0")
+	CheckEquals(t, Percentile{20, 0}, e.Percentiles[3], "p20 should be 0")
+	CheckEquals(t, Percentile{30, 0}, e.Percentiles[4], "p30 should be 0")
+	CheckEquals(t, Percentile{40, 0}, e.Percentiles[5], "p40 should still be 0 (4/10 data pts at 0)")
+	CheckEquals(t, Percentile{50, 1}, e.Percentiles[6], "p50 should 1 (5th/10 point is 1)")
+	CheckEquals(t, Percentile{60, 2}, e.Percentiles[7], "p60 should 2 (6th/10 point is 2)")
+	CheckEquals(t, Percentile{70, 3}, e.Percentiles[8], "p70 should 3 (7th/10 point is 3)")
+	CheckEquals(t, Percentile{80, 4}, e.Percentiles[9], "p80 should 4 (8th/10 point is 4)")
+	CheckEquals(t, Percentile{90, 5}, e.Percentiles[10], "p90 should 5 (9th/10 point is 5)")
+	CheckEquals(t, Percentile{99, 5}, e.Percentiles[10], "p99 should 5 (as 9th/10 point is already 5 and max is 5)")
+	CheckEquals(t, Percentile{100, 5}, e.Percentiles[10], "p100 should 5 (10th/10 point is 5 and max is 5)")
+	h.Log("test multi count", percs)
 }
 
 // CheckEquals checks if actual == expect and fails the test and logs

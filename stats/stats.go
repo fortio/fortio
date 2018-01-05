@@ -39,8 +39,14 @@ type Counter struct {
 
 // Record records a data point.
 func (c *Counter) Record(v float64) {
-	c.Count++
-	if c.Count == 1 {
+	c.RecordN(v, 1)
+}
+
+// Records the same value N times
+func (c *Counter) RecordN(v float64, n int) {
+	isFirst := (c.Count == 0)
+	c.Count += int64(n)
+	if isFirst {
 		c.Min = v
 		c.Max = v
 	} else if v < c.Min {
@@ -48,8 +54,9 @@ func (c *Counter) Record(v float64) {
 	} else if v > c.Max {
 		c.Max = v
 	}
-	c.Sum += v
-	c.sumOfSquares += (v * v)
+	s := v * float64(n)
+	c.Sum += s
+	c.sumOfSquares += (s * s)
 }
 
 // Avg returns the average.
@@ -208,12 +215,17 @@ func init() {
 
 // Record records a data point.
 func (h *Histogram) Record(v float64) {
-	h.Counter.Record(v)
-	h.record(v, 1)
+	h.RecordN(v, 1)
+}
+
+// Record records a data point N times.
+func (h *Histogram) RecordN(v float64, n int) {
+	h.Counter.RecordN(v, n)
+	h.record(v, n)
 }
 
 // Records v value to count times
-func (h *Histogram) record(v float64, count int32) {
+func (h *Histogram) record(v float64, count int) {
 	// Scaled value to bucketize:
 	scaledVal := (v - h.Offset) / h.Divider
 	idx := 0
@@ -222,7 +234,7 @@ func (h *Histogram) record(v float64, count int32) {
 	} else if scaledVal >= firstValue {
 		idx = val2Bucket[int(scaledVal)]
 	} // else it's <  and idx 0
-	h.Hdata[idx] += count
+	h.Hdata[idx] += int32(count)
 }
 
 // CalcPercentile returns the value for an input percentile
@@ -418,7 +430,7 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 
 	hData := src.Export([]float64{})
 	for _, data := range hData.Data {
-		h.record((data.Start+data.End)/2, int32(data.Count))
+		h.record((data.Start+data.End)/2, int(data.Count))
 	}
 }
 
