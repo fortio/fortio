@@ -42,7 +42,7 @@ func (c *Counter) Record(v float64) {
 	c.RecordN(v, 1)
 }
 
-// Records the same value N times
+// RecordN efficiently records the same value N times
 func (c *Counter) RecordN(v float64, n int) {
 	isFirst := (c.Count == 0)
 	c.Count += int64(n)
@@ -113,9 +113,13 @@ func (c *Counter) Transfer(src *Counter) {
 
 // Histogram - written in go with inspiration from https://github.com/facebook/wdt/blob/master/util/Stats.h
 
+// The intervals are ]prev,current] so for "90" (previous is 80) the values in that bucket are >80 and <=90
+// that way a cumulative % up to that bucket means X% of the data <= 90 (or 100-X% > 90), works well for max too
+// There are 2 special buckets - the first one is from min to and including 0,
+// one after the last for value > last and up to max
 var (
-	histogramBuckets = []int32{
-		1, 2, 3, 4, 5, 6,
+	histogramBucketValues = []int32{
+		0, 1, 2, 3, 4, 5, 6,
 		7, 8, 9, 10, 11, // initially increment buckets by 1, my amp goes to 11 !
 		12, 14, 16, 18, 20, // then by 2
 		25, 30, 35, 40, 45, 50, // then by 5
@@ -126,9 +130,10 @@ var (
 		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsly covered
 		20000, 30000, 40000, 50000, 75000, 100000, // ditto, the end
 	}
-	numBuckets = len(histogramBuckets)
-	firstValue = float64(histogramBuckets[0])
-	lastValue  = float64(histogramBuckets[numBuckets-1])
+	numValues  = len(histogramBucketValues)
+	numBuckets = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
+	firstValue = float64(histogramBucketValues[0])
+	lastValue  = float64(histogramBucketValues[numValues-1])
 	val2Bucket []int
 )
 
@@ -140,7 +145,7 @@ type Histogram struct {
 	Offset  float64 // offset applied to data before fitting into buckets
 	Divider float64 // divider applied to data before fitting into buckets
 	// Don't access directly (outside of this package):
-	Hdata []int32 // n+1 buckets (for last one)
+	Hdata []int32 // numValues buckets (one more than values, for last one)
 }
 
 // For export of the data:
@@ -189,7 +194,7 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 		return nil
 	}
 	h.Divider = Divider
-	h.Hdata = make([]int32, numBuckets+1)
+	h.Hdata = make([]int32, numBuckets)
 	return h
 }
 
@@ -198,17 +203,17 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 // TODO: consider using an interval search for the last N big buckets
 func init() {
 	lastV := int32(lastValue)
-	val2Bucket = make([]int, lastV)
+	val2Bucket = make([]int, lastV+1)
 	idx := 0
-	for i := int32(0); i < lastV; i++ {
-		if i >= histogramBuckets[idx] {
+	for i := int32(0); i <= lastV; i++ {
+		if i >= histogramBucketValues[idx] {
 			idx++
 		}
 		val2Bucket[i] = idx
 	}
 	// coding bug detection (aka impossible if it works once)
-	if idx != numBuckets-1 {
-		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numBuckets, lastV)
+	if idx != numValues {
+		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numValues, lastV)
 	}
 
 }
@@ -218,7 +223,7 @@ func (h *Histogram) Record(v float64) {
 	h.RecordN(v, 1)
 }
 
-// Record records a data point N times.
+// RecordN efficiently records a data point N times.
 func (h *Histogram) RecordN(v float64, n int) {
 	h.Counter.RecordN(v, n)
 	h.record(v, n)
@@ -227,19 +232,27 @@ func (h *Histogram) RecordN(v float64, n int) {
 // Records v value to count times
 func (h *Histogram) record(v float64, count int) {
 	// Scaled value to bucketize:
-	scaledVal := (v - h.Offset) / h.Divider
-	idx := 0
-	if scaledVal >= lastValue {
-		idx = numBuckets
-	} else if scaledVal >= firstValue {
+	scaledVal := (v-h.Offset)/h.Divider - 0.0001 // TODO add a boundary test
+	var idx int
+	if scaledVal <= firstValue {
+		idx = 0
+	} else if scaledVal > lastValue {
+		idx = numBuckets - 1 // last bucket is for > last value
+	} else {
+		// else we look it up
 		idx = val2Bucket[int(scaledVal)]
-	} // else it's <  and idx 0
+	}
 	h.Hdata[idx] += int32(count)
 }
 
 // CalcPercentile returns the value for an input percentile
 // e.g. for 90. as input returns an estimate of the original value threshold
 // where 90.0% of the data is below said threshold.
+// with 3 data points 10, 20, 30; p0-p33.33 == 10, p 66.666 = 20, p100 = 30
+// p33.333 - p66.666 = linear between 10 and 20; so p50 = 15
+// TODO: consider spreading the count of the bucket evenly from start to end
+// so the % grows by at least to 1/N on start of range, and for last range
+// when start == end we should get to that % faster
 func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	if percentile >= 100 {
 		return h.Max
@@ -247,10 +260,7 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	if percentile <= 0 {
 		return h.Min
 	}
-	// Initial value of prev should in theory be offset_
-	// but if the data is wrong (smaller than offset - eg 'negative') that
-	// yields to strangeness (see one bucket test)
-	prev := float64(0)
+	prev := h.Offset
 	var total int64
 	ctrTotal := float64(h.Count)
 	var prevPerc float64
@@ -262,8 +272,8 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	// and the property that target = 100 will always return max
 	// (+/- rouding issues) and value close to 100 (99.9...) will be close to max
 	// if the data is not sampled in several buckets
-	for i := 0; i < numBuckets; i++ {
-		cur = float64(histogramBuckets[i])*h.Divider + h.Offset
+	for i := 0; i < numValues; i++ {
+		cur = float64(histogramBucketValues[i])*h.Divider + h.Offset
 		total += int64(h.Hdata[i])
 		perc = 100. * float64(total) / ctrTotal
 		if cur > h.Max {
@@ -302,7 +312,7 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 
 	// calculate the last bucket index
 	lastIdx := -1
-	for i := numBuckets; i >= 0; i-- {
+	for i := numBuckets - 1; i >= 0; i-- {
 		if h.Hdata[i] > 0 {
 			lastIdx = i
 			break
@@ -313,15 +323,15 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 	}
 
 	// previous bucket value:
-	prev := histogramBuckets[0]
+	prev := histogramBucketValues[0]
 	var total int64
 	ctrTotal := float64(h.Count)
 	// export the data of each bucket of the histogram
 	for i := 0; i <= lastIdx; i++ {
 		if h.Hdata[i] == 0 {
 			// empty bucket: skip it but update prev which is needed for next iter
-			if i < numBuckets {
-				prev = histogramBuckets[i]
+			if i < numValues {
+				prev = histogramBucketValues[i]
 			}
 			continue
 		}
@@ -334,8 +344,8 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 			b.Start = multiplier*float64(prev) + h.Offset
 		}
 		b.Percent = 100. * float64(total) / ctrTotal
-		if i < numBuckets {
-			cur := histogramBuckets[i]
+		if i < numValues {
+			cur := histogramBucketValues[i]
 			b.End = multiplier*float64(cur) + h.Offset
 			prev = cur
 		} else {
@@ -364,13 +374,13 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 	fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", // nolint(errorcheck)
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
 	fmt.Fprintln(out, "# range, mid point, percentile, count") // nolint: gas
-	sep := "<"
+	sep := ">="
 	for i, b := range e.Data {
-		if i == len(e.Data)-1 {
-			sep = "<=" // last interval is inclusive (of max value)
+		if i > 0 {
+			sep = ">" // last interval is inclusive (of max value)
 		}
 		// nolint: gas
-		fmt.Fprintf(out, ">= %.6g %s %.6g , %.6g , %.2f, %d\n", b.Start, sep, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
+		fmt.Fprintf(out, "%s %.6g <= %.6g , %.6g , %.2f, %d\n", sep, b.Start, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
 
 	// print the information of target percentiles
