@@ -805,22 +805,83 @@ func generateStatus(status string) int {
 	return http.StatusOK // default/reminder of probability table
 }
 
+// MaxDelay is the maximum delay allowed for the echoserver responses.
+const MaxDelay = 1 * time.Second
+
+// generateDelay from string, format: delay="100ms" for 100% 100ms delay
+// delay="10ms:20,20ms:10,1s:0.5" for 20% 10ms, 10% 20ms, 0.5% 1s and 69.5% 0
+// TODO: very similar with generateStatus - refactor?
+func generateDelay(delay string) time.Duration {
+	if len(delay) == 0 {
+		return -1
+	}
+	lst := strings.Split(delay, ",")
+	log.Debugf("Parsing delay %s -> %v", delay, lst)
+	// Simple non probabilistic status case:
+	if len(lst) == 1 && !strings.ContainsRune(delay, ':') {
+		d, err := time.ParseDuration(delay)
+		if err != nil {
+			log.Warnf("Bad input delay %v, not a duration nor comma and colon separated %% list", delay)
+			return -1
+		}
+		log.Debugf("Parsed delay %s -> %d", delay, d)
+		if d > MaxDelay {
+			d = MaxDelay
+		}
+		return d
+	}
+	weights := make([]float32, len(lst))
+	delays := make([]time.Duration, len(lst))
+	lastPercent := float64(0)
+	i := 0
+	for _, entry := range lst {
+		l2 := strings.Split(entry, ":")
+		if len(l2) != 2 {
+			log.Warnf("Should have exactly 1 : in delay list %s -> %v", delay, entry)
+			return -1
+		}
+		d, err := time.ParseDuration(l2[0])
+		if err != nil {
+			log.Warnf("Bad input delay %v -> %v, not a number before colon", delay, l2[0])
+			return -1
+		}
+		if d > MaxDelay {
+			d = MaxDelay
+		}
+		percStr := l2[1]
+		p, err := strconv.ParseFloat(percStr, 32)
+		if err != nil || p < 0 || p > 100 {
+			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", delay, percStr, err, p)
+			return -1
+		}
+		lastPercent += p
+		// Round() needed to cover 'exactly' 100% and not more or less because of rounding errors
+		p32 := float32(stats.Round(lastPercent))
+		if p32 > 100. {
+			log.Warnf("Sum of percentage is greater than 100 in %v %f %f %f", delay, lastPercent, p, p32)
+			return -1
+		}
+		weights[i] = p32
+		delays[i] = d
+		i++
+	}
+	res := 100. * rand.Float32()
+	for i, v := range weights {
+		if res <= v {
+			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", delay, res, i, delays[i])
+			return delays[i]
+		}
+	}
+	return 0
+}
+
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
-	durStr := r.FormValue("delay")
-	if durStr != "" {
-		dur, err := time.ParseDuration(durStr)
-		if err != nil {
-			log.Warnf("Error parsing duration '%s': %v", durStr, err)
-		} else {
-			if dur > 1*time.Second {
-				log.Warnf("Duration %v > 1s, using 1s instead", dur)
-				dur = 1 * time.Second
-			}
-			log.LogVf("Sleeping for %v", dur)
-			time.Sleep(dur)
-		}
+	dur := generateDelay(r.FormValue("delay"))
+	if dur > 0 {
+		log.LogVf("Sleeping for %v", dur)
+		time.Sleep(dur)
 	}
 	statusStr := r.FormValue("status")
 	var status int
