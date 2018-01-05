@@ -701,3 +701,8 @@ func TestRound(t *testing.T) {
 		}
 	}
 }
+
+// TODO: add test with data 1.0 1.0001 1.999 2.0 2.5
+// should get 3 buckets 0-1 with count 1
+// 1-2 with count 3
+// 2-2.5 with count 1
