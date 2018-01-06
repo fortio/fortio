@@ -19,6 +19,8 @@ BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
 CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image)
 $CURL -stdclient https://istio.io/robots.txt
+# Check that browse doesn't 404s
+$CURL ${BASE_FORTIO}browse
 # Check we can connect, and run a QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
@@ -40,3 +42,4 @@ $CURL $BASE_FORTIO
 docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal
 docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
+# TODO: check report mode

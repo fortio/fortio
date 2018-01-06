@@ -353,9 +353,14 @@ func DataList() (dataList []string) {
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Browse")
 	path := r.URL.Path
-	if (path != "/") && (path != "/browse") && (path != "/fortio") {
-		w.WriteHeader(http.StatusNotFound)
-		log.Infof("Illegal browse path '%s'", path)
+	if (path != uiPath) && (path != (uiPath + "browse")) {
+		if strings.HasPrefix(path, "/fortio") {
+			log.Infof("Redirecting /fortio in browse only path '%s'", path)
+			http.Redirect(w, r, uiPath, http.StatusSeeOther)
+		} else {
+			log.Infof("Illegal browse path '%s'", path)
+			w.WriteHeader(http.StatusNotFound)
+		}
 		return
 	}
 	url := r.FormValue("url")
