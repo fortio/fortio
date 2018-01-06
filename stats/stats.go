@@ -260,6 +260,9 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	if percentile <= 0 {
 		return h.Min
 	}
+	multiplier := h.Divider
+	offset := h.Offset
+
 	prev := h.Offset
 	var total int64
 	ctrTotal := float64(h.Count)
@@ -273,7 +276,7 @@ func (h *Histogram) CalcPercentile(percentile float64) float64 {
 	// (+/- rouding issues) and value close to 100 (99.9...) will be close to max
 	// if the data is not sampled in several buckets
 	for i := 0; i < numValues; i++ {
-		cur = float64(histogramBucketValues[i])*h.Divider + h.Offset
+		cur = float64(histogramBucketValues[i])*multiplier + offset
 		total += int64(h.Hdata[i])
 		perc = 100. * float64(total) / ctrTotal
 		if cur > h.Max {
@@ -309,7 +312,7 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 	res.Avg = h.Counter.Avg()
 	res.StdDev = h.Counter.StdDev()
 	multiplier := h.Divider
-
+	offset := h.Offset
 	// calculate the last bucket index
 	lastIdx := -1
 	for i := numBuckets - 1; i >= 0; i-- {
@@ -341,16 +344,16 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 			// First entry, start is min
 			b.Start = h.Min
 		} else {
-			b.Start = multiplier*float64(prev) + h.Offset
+			b.Start = multiplier*float64(prev) + offset
 		}
 		b.Percent = 100. * float64(total) / ctrTotal
 		if i < numValues {
 			cur := histogramBucketValues[i]
-			b.End = multiplier*float64(cur) + h.Offset
+			b.End = multiplier*float64(cur) + offset
 			prev = cur
 		} else {
 			// Last Entry
-			b.Start = multiplier*float64(prev) + h.Offset
+			b.Start = multiplier*float64(prev) + offset
 			b.End = h.Max
 		}
 		b.Count = int64(h.Hdata[i])
