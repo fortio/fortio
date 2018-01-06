@@ -264,16 +264,15 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 		return e.Max
 	}
 	// We assume Min is at least a single point so at least covers 1/Count %
-	if percentile <= 100./float64(e.Count) {
+	pp := 100. / float64(e.Count) // previous percentile
+	if percentile <= pp {
 		return e.Min
 	}
 	for _, cur := range e.Data {
-		if percentile < cur.Percent {
-			return cur.Start
+		if percentile <= cur.Percent {
+			return cur.Start + (percentile-pp)/(cur.Percent-pp)*(cur.End-cur.Start)
 		}
-		if percentile == cur.Percent {
-			return cur.End
-		}
+		pp = cur.Percent
 	}
 	return e.Max // not reached
 }

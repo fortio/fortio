@@ -143,7 +143,7 @@ func TestHistogram(t *testing.T) {
 	h.Record(501)
 	h.Record(751)
 	h.Record(1001)
-	h.Print(os.Stdout, "testHistogram1", []float64{50})
+	h.Print(os.Stdout, "TestHistogram", []float64{50})
 	e := h.Export()
 	for i := 25; i <= 100; i += 25 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
@@ -158,8 +158,10 @@ func TestHistogram(t *testing.T) {
 		{e.CalcPercentile(0), 1, "p0"},
 		{e.CalcPercentile(0.1), 1, "p0.1"},
 		{e.CalcPercentile(1), 1, "p1"},
-		{e.CalcPercentile(20), 10, "p20"},         // 20% = first point, 1st bucket is 1-10
-		{e.CalcPercentile(20.1), 250.25, "p20.1"}, // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(20), 1, "p20"},             // 20% = first point, 1st bucket is 1-10
+		{e.CalcPercentile(20.01), 250.025, "p20.01"}, // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(39.99), 299.975, "p39.99"},
+		{e.CalcPercentile(40), 300, "p40"},
 		{e.CalcPercentile(50), 550, "p50"},
 		{e.CalcPercentile(75), 775, "p75"},
 		{e.CalcPercentile(90), 1000.5, "p90"},
@@ -180,7 +182,7 @@ func TestPercentiles1(t *testing.T) {
 	h.Record(10)
 	h.Record(20)
 	h.Record(30)
-	h.Print(os.Stdout, "testHistogram1", []float64{50})
+	h.Print(os.Stdout, "TestPercentiles1", []float64{50})
 	e := h.Export()
 	for i := 0; i <= 100; i += 10 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
@@ -201,7 +203,7 @@ func TestPercentiles1(t *testing.T) {
 		{e.CalcPercentile(33.34), 10.002, "p33.34"}, // near beginning of bucket of 2nd pt
 		{e.CalcPercentile(50), 15, "p50"},
 		{e.CalcPercentile(66.66), 19.998, "p66.66"},
-		{e.CalcPercentile(100 * 2 / 3), 20, "p100*2/3"},
+		{e.CalcPercentile(100. * 2 / 3), 20, "p100*2/3"},
 		{e.CalcPercentile(66.67), 20.001, "p66.67"},
 		{e.CalcPercentile(75), 22.5, "p75"},
 		{e.CalcPercentile(99), 29.7, "p99"},
@@ -226,23 +228,23 @@ func TestHistogramData(t *testing.T) {
 	h.Record(3)
 	h.Record(4)
 	h.RecordN(5, 2)
-	percs := []float64{0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100}
+	percs := []float64{0, 1, 10, 25, 40, 50, 60, 70, 80, 90, 99, 100}
 	e := h.Export().CalcPercentiles(percs)
+	e.Print(os.Stdout, "TestHistogramData")
 	CheckEquals(t, int64(10), e.Count, "10 data points")
 	CheckEquals(t, 1.9, e.Avg, "avg should be 2")
-	CheckEquals(t, Percentile{0, -1}, e.Percentiles[0], "p0 should be 0")
-	CheckEquals(t, Percentile{1, 0}, e.Percentiles[1], "p1 should be 0")
-	CheckEquals(t, Percentile{10, 0}, e.Percentiles[2], "p10 should be 0")
-	CheckEquals(t, Percentile{20, 0}, e.Percentiles[3], "p20 should be 0")
-	CheckEquals(t, Percentile{30, 0}, e.Percentiles[4], "p30 should be 0")
-	CheckEquals(t, Percentile{40, 0}, e.Percentiles[5], "p40 should still be 0 (4/10 data pts at 0)")
-	CheckEquals(t, Percentile{50, 1}, e.Percentiles[6], "p50 should 1 (5th/10 point is 1)")
-	CheckEquals(t, Percentile{60, 2}, e.Percentiles[7], "p60 should 2 (6th/10 point is 2)")
-	CheckEquals(t, Percentile{70, 3}, e.Percentiles[8], "p70 should 3 (7th/10 point is 3)")
-	CheckEquals(t, Percentile{80, 4}, e.Percentiles[9], "p80 should 4 (8th/10 point is 4)")
-	CheckEquals(t, Percentile{90, 5}, e.Percentiles[10], "p90 should 5 (9th/10 point is 5)")
-	CheckEquals(t, Percentile{99, 5}, e.Percentiles[11], "p99 should 5 (as 9th/10 point is already 5 and max is 5)")
-	CheckEquals(t, Percentile{100, 5}, e.Percentiles[12], "p100 should 5 (10th/10 point is 5 and max is 5)")
+	CheckEquals(t, e.Percentiles[0], Percentile{0, -1}, "p0 should be -1 (min)")
+	CheckEquals(t, e.Percentiles[1], Percentile{1, -1}, "p1 should be -1 (min)")
+	CheckEquals(t, e.Percentiles[2], Percentile{10, -1}, "p10 should be 1 (1/10 at min)")
+	CheckEquals(t, e.Percentiles[3], Percentile{25, -0.5}, "p25 should be half between -1 and 0")
+	CheckEquals(t, e.Percentiles[4], Percentile{40, 0}, "p40 should still be 0 (4/10 data pts at 0)")
+	CheckEquals(t, e.Percentiles[5], Percentile{50, 1}, "p50 should 1 (5th/10 point is 1)")
+	CheckEquals(t, e.Percentiles[6], Percentile{60, 2}, "p60 should 2 (6th/10 point is 2)")
+	CheckEquals(t, e.Percentiles[7], Percentile{70, 3}, "p70 should 3 (7th/10 point is 3)")
+	CheckEquals(t, e.Percentiles[8], Percentile{80, 4}, "p80 should 4 (8th/10 point is 4)")
+	CheckEquals(t, e.Percentiles[9], Percentile{90, 4.5}, "p90 should between 4 and 5 (2 points in bucket)")
+	CheckEquals(t, e.Percentiles[10], Percentile{99, 4.95}, "p99")
+	CheckEquals(t, e.Percentiles[11], Percentile{100, 5}, "p100 should 5 (10th/10 point is 5 and max is 5)")
 	h.Log("test multi count", percs)
 }
 
@@ -459,7 +461,7 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 > 8 <= 10 , 9 , 100.00, 1
 # target 1% -10
 # target 50% -10
-# target 75% 0
+# target 75% 9
 `
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
