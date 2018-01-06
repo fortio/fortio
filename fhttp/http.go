@@ -748,6 +748,13 @@ var (
 	EchoRequests int64
 )
 
+func removeTrailingPercent(s string) string {
+	if strings.HasSuffix(s, "%") {
+		return s[:len(s)-1]
+	}
+	return s
+}
+
 // generateStatus from string, format: status="503" for 100% 503s
 // status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
 func generateStatus(status string) int {
@@ -778,7 +785,7 @@ func generateStatus(status string) int {
 			log.Warnf("Bad input status %v -> %v, not a number before colon", status, l2[0])
 			return http.StatusBadRequest
 		}
-		percStr := l2[1]
+		percStr := removeTrailingPercent(l2[1])
 		p, err := strconv.ParseFloat(percStr, 32)
 		if err != nil || p < 0 || p > 100 {
 			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", status, percStr, err, p)
@@ -848,7 +855,7 @@ func generateDelay(delay string) time.Duration {
 		if d > MaxDelay {
 			d = MaxDelay
 		}
-		percStr := l2[1]
+		percStr := removeTrailingPercent(l2[1])
 		p, err := strconv.ParseFloat(percStr, 32)
 		if err != nil || p < 0 || p > 100 {
 			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", delay, percStr, err, p)

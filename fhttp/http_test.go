@@ -273,8 +273,11 @@ func TestParseStatus(t *testing.T) {
 		// Good cases
 		{"555", 555},
 		{"555:100", 555},
+		{"555:100%", 555},
 		{"555:0", 200},
+		{"555:0%", 200},
 		{"551:45,551:55", 551},
+		{"551:45%,551:55%", 551},
 	}
 	for _, tst := range tests {
 		if actual := generateStatus(tst.input); actual != tst.expected {
@@ -295,14 +298,18 @@ func TestParseDelay(t *testing.T) {
 		{"x:10", -1},
 		{"10ms:-1", -1},
 		{"20ms:101", -1},
+		{"20ms:101%", -1},
 		{"10ms:45,100ms:56", -1},
 		// Max delay case:
 		{"10s:45,10s:55", 1 * time.Second},
 		// Good cases
 		{"100ms", 100 * time.Millisecond},
 		{"100ms:100", 100 * time.Millisecond},
+		{"100ms:100%", 100 * time.Millisecond},
 		{"100ms:0", 0},
+		{"100ms:0%", 0},
 		{"10ms:45,10ms:55", 10 * time.Millisecond},
+		{"10ms:45%,10ms:55%", 10 * time.Millisecond},
 	}
 	for _, tst := range tests {
 		if actual := generateDelay(tst.input); actual != tst.expected {
