@@ -57,14 +57,19 @@ var (
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
+// It replaces plain % to %25 in the url. If you already have properly
+// escaped URLs use o.URL = to set it.
 func NewHTTPOptions(url string) *HTTPOptions {
 	h := HTTPOptions{}
 	return h.Init(url)
 }
 
 // Init initializes the headers in an HTTPOptions (User-Agent).
+// It replaces plain % to %25 in the url. If you already have properly
+// escaped URLs use o.URL = to set it.
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
-	h.URL = url
+	// unescape then rescape % to %25 (so if it was already %25 it stays)
+	h.URL = strings.Replace(strings.Replace(url, "%25", "%", -1), "%", "%25", -1)
 	h.NumConnections = 1
 	if h.HTTPReqTimeOut == 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
@@ -809,6 +814,7 @@ func generateStatus(status string) int {
 			return codes[i]
 		}
 	}
+	log.Debugf("[0.-100.[ for %s roll %f no hit, defaulting to OK", status, res)
 	return http.StatusOK // default/reminder of probability table
 }
 
@@ -819,11 +825,11 @@ const MaxDelay = 1 * time.Second
 // delay="10ms:20,20ms:10,1s:0.5" for 20% 10ms, 10% 20ms, 0.5% 1s and 69.5% 0
 // TODO: very similar with generateStatus - refactor?
 func generateDelay(delay string) time.Duration {
+	lst := strings.Split(delay, ",")
+	log.Debugf("Parsing delay %s -> %v", delay, lst)
 	if len(delay) == 0 {
 		return -1
 	}
-	lst := strings.Split(delay, ",")
-	log.Debugf("Parsing delay %s -> %v", delay, lst)
 	// Simple non probabilistic status case:
 	if len(lst) == 1 && !strings.ContainsRune(delay, ':') {
 		d, err := time.ParseDuration(delay)
@@ -879,6 +885,7 @@ func generateDelay(delay string) time.Duration {
 			return delays[i]
 		}
 	}
+	log.Debugf("[0.-100.[ for %s roll %f no hit, defaulting to 0", delay, res)
 	return 0
 }
 
