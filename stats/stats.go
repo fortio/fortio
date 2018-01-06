@@ -231,7 +231,7 @@ func (h *Histogram) RecordN(v float64, n int) {
 
 // Records v value to count times
 func (h *Histogram) record(v float64, count int) {
-	// Scaled value to bucketize - we substract epsilon because the interval
+	// Scaled value to bucketize - we subtract epsilon because the interval
 	// is open to the left ] start, end ] so when exactly on start it has
 	// to fall on the previous bucket. TODO add boundary tests
 	scaledVal := (v-h.Offset)/h.Divider - 0.0001
@@ -339,6 +339,9 @@ func (h *Histogram) Export() *HistogramData {
 	return &res
 }
 
+// CalcPercentiles calculates the requested percentile and add them to the
+// HistogramData. Potential TODO: sort or assume sorting and calculate all
+// the percentiles in 1 pass (greater and greater values).
 func (e *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
 	if e.Count == 0 {
 		return e
