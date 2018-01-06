@@ -474,6 +474,7 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 			sendHTMLDataIndex(w)
 			return
 		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		ext := "/index.tsv"
 		if strings.HasSuffix(path, ext) {
 			// TODO: what if we are reached through https ingress? or a different port
