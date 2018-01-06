@@ -351,7 +351,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		}
 	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export(r.Percentiles)}
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles)}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 
 	select {

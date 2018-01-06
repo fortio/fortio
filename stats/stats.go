@@ -231,8 +231,10 @@ func (h *Histogram) RecordN(v float64, n int) {
 
 // Records v value to count times
 func (h *Histogram) record(v float64, count int) {
-	// Scaled value to bucketize:
-	scaledVal := (v-h.Offset)/h.Divider - 0.0001 // TODO add a boundary test
+	// Scaled value to bucketize - we substract epsilon because the interval
+	// is open to the left ] start, end ] so when exactly on start it has
+	// to fall on the previous bucket. TODO add boundary tests
+	scaledVal := (v-h.Offset)/h.Divider - 0.0001
 	var idx int
 	if scaledVal <= firstValue {
 		idx = 0
@@ -253,57 +255,32 @@ func (h *Histogram) record(v float64, count int) {
 // TODO: consider spreading the count of the bucket evenly from start to end
 // so the % grows by at least to 1/N on start of range, and for last range
 // when start == end we should get to that % faster
-func (h *Histogram) CalcPercentile(percentile float64) float64 {
+func (e *HistogramData) CalcPercentile(percentile float64) float64 {
+	if len(e.Data) == 0 {
+		log.Errf("Unexpected call to CalcPercentile(%g) with no data", percentile)
+		return 0
+	}
 	if percentile >= 100 {
-		return h.Max
+		return e.Max
 	}
-	if percentile <= 0 {
-		return h.Min
+	// We assume Min is at least a single point so at least covers 1/Count %
+	if percentile <= 100./float64(e.Count) {
+		return e.Min
 	}
-	multiplier := h.Divider
-	offset := h.Offset
-
-	prev := h.Offset
-	var total int64
-	ctrTotal := float64(h.Count)
-	var prevPerc float64
-	var perc float64
-	found := false
-	cur := h.Offset
-	// last bucket is virtual/special - we'll use max if we reach it
-	// we also use max if the bucket is past the max for better accuracy
-	// and the property that target = 100 will always return max
-	// (+/- rouding issues) and value close to 100 (99.9...) will be close to max
-	// if the data is not sampled in several buckets
-	for i := 0; i < numValues; i++ {
-		cur = float64(histogramBucketValues[i])*multiplier + offset
-		total += int64(h.Hdata[i])
-		perc = 100. * float64(total) / ctrTotal
-		if cur > h.Max {
-			break
+	for _, cur := range e.Data {
+		if percentile < cur.Percent {
+			return cur.Start
 		}
-		if perc >= percentile {
-			found = true
-			break
+		if percentile == cur.Percent {
+			return cur.End
 		}
-		prevPerc = perc
-		prev = cur
 	}
-	if !found {
-		// covers the > ctrMax case
-		cur = h.Max
-		perc = 100. // can't be removed
-	}
-	// Improve accuracy near p0 too
-	if prev < h.Min {
-		prev = h.Min
-	}
-	return (prev + (percentile-prevPerc)*(cur-prev)/(perc-prevPerc))
+	return e.Max // not reached
 }
 
 // Export translate the internal representation of the histogram data in
 // an externally usable one. Calculates the request Percentiles.
-func (h *Histogram) Export(percentiles []float64) *HistogramData {
+func (h *Histogram) Export() *HistogramData {
 	var res HistogramData
 	res.Count = h.Counter.Count
 	res.Min = h.Counter.Min
@@ -360,10 +337,17 @@ func (h *Histogram) Export(percentiles []float64) *HistogramData {
 		res.Data = append(res.Data, b)
 	}
 	res.Data[len(res.Data)-1].End = h.Max
-	for _, p := range percentiles {
-		res.Percentiles = append(res.Percentiles, Percentile{p, h.CalcPercentile(p)})
-	}
 	return &res
+}
+
+func (e *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
+	if e.Count == 0 {
+		return e
+	}
+	for _, p := range percentiles {
+		e.Percentiles = append(e.Percentiles, Percentile{p, e.CalcPercentile(p)})
+	}
+	return e
 }
 
 // Print dumps the histogram (and counter) to the provided writer.
@@ -396,7 +380,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 // Also calculates the percentiles. Use Export() once and Print if you
 // are going to need the Export results too.
 func (h *Histogram) Print(out io.Writer, msg string, percentiles []float64) {
-	h.Export(percentiles).Print(out, msg)
+	h.Export().CalcPercentiles(percentiles).Print(out, msg)
 }
 
 // Log Logs the histogram to the counter.
@@ -441,7 +425,7 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 		return
 	}
 
-	hData := src.Export([]float64{})
+	hData := src.Export()
 	for _, data := range hData.Data {
 		h.record((data.Start+data.End)/2, int(data.Count))
 	}

@@ -37,6 +37,11 @@ func TestCounter(t *testing.T) {
 	expected := "test1c : count 0 avg NaN +/- NaN min 0 max 0 sum 0\n"
 	c.Print(w, "test1h", []float64{50.0})
 	expected += "test1h : no data\n"
+	*log.LogFileAndLine = false
+	log.SetFlags(0)
+	log.SetOutput(w)
+	c.Export().CalcPercentile(50)
+	expected += "E > Unexpected call to CalcPercentile(50) with no data\n"
 	c.Record(23.1)
 	c.Counter.Print(w, "test2")
 	expected += "test2 : count 1 avg 23.1 +/- 0 min 23.1 max 23.1 sum 23.1\n"
@@ -139,8 +144,9 @@ func TestHistogram(t *testing.T) {
 	h.Record(751)
 	h.Record(1001)
 	h.Print(os.Stdout, "testHistogram1", []float64{50})
+	e := h.Export()
 	for i := 25; i <= 100; i += 25 {
-		fmt.Printf("%d%% at %g\n", i, h.CalcPercentile(float64(i)))
+		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
 	var tests = []struct {
 		actual   float64
@@ -148,19 +154,19 @@ func TestHistogram(t *testing.T) {
 		msg      string
 	}{
 		{h.Avg(), 501, "avg"},
-		{h.CalcPercentile(-1), 1, "p-1"}, // not valid but should return min
-		{h.CalcPercentile(0), 1, "p0"},
-		{h.CalcPercentile(0.1), 1.045, "p0.1"},
-		{h.CalcPercentile(1), 1.45, "p1"},
-		{h.CalcPercentile(20), 10, "p20"},         // 20% = first point, 1st bucket is 10
-		{h.CalcPercentile(20.1), 250.25, "p20.1"}, // near beginning of bucket of 2nd pt
-		{h.CalcPercentile(50), 550, "p50"},
-		{h.CalcPercentile(75), 775, "p75"},
-		{h.CalcPercentile(90), 1000.5, "p90"},
-		{h.CalcPercentile(99), 1000.95, "p99"},
-		{h.CalcPercentile(99.9), 1000.995, "p99.9"},
-		{h.CalcPercentile(100), 1001, "p100"},
-		{h.CalcPercentile(101), 1001, "p101"},
+		{e.CalcPercentile(-1), 1, "p-1"}, // not valid but should return min
+		{e.CalcPercentile(0), 1, "p0"},
+		{e.CalcPercentile(0.1), 1, "p0.1"},
+		{e.CalcPercentile(1), 1, "p1"},
+		{e.CalcPercentile(20), 10, "p20"},         // 20% = first point, 1st bucket is 1-10
+		{e.CalcPercentile(20.1), 250.25, "p20.1"}, // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(50), 550, "p50"},
+		{e.CalcPercentile(75), 775, "p75"},
+		{e.CalcPercentile(90), 1000.5, "p90"},
+		{e.CalcPercentile(99), 1000.95, "p99"},
+		{e.CalcPercentile(99.9), 1000.995, "p99.9"},
+		{e.CalcPercentile(100), 1001, "p100"},
+		{e.CalcPercentile(101), 1001, "p101"},
 	}
 	for _, tst := range tests {
 		if tst.actual != tst.expected {
@@ -175,8 +181,9 @@ func TestPercentiles1(t *testing.T) {
 	h.Record(20)
 	h.Record(30)
 	h.Print(os.Stdout, "testHistogram1", []float64{50})
+	e := h.Export()
 	for i := 0; i <= 100; i += 10 {
-		fmt.Printf("%d%% at %g\n", i, h.CalcPercentile(float64(i)))
+		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
 	var tests = []struct {
 		actual   float64
@@ -184,24 +191,23 @@ func TestPercentiles1(t *testing.T) {
 		msg      string
 	}{
 		{h.Avg(), 20, "avg"},
-		{h.CalcPercentile(-1), 10, "p-1"}, // not valid but should return min
-		{h.CalcPercentile(0), 10, "p0"},
-		{h.CalcPercentile(0.1), 10, "p0.1"},
-		{h.CalcPercentile(1), 10, "p1"},
-		{h.CalcPercentile(20), 10, "p20"},           // 20% = first point, 1st bucket is 10
-		{h.CalcPercentile(33.33), 10, "p33.33"},     // near beginning of bucket of 2nd pt
-		{h.CalcPercentile(100 / 3), 10, "p100/3"},   // near beginning of bucket of 2nd pt
-		{h.CalcPercentile(33.34), 10.002, "p33.34"}, // near beginning of bucket of 2nd pt
-		{h.CalcPercentile(50), 15, "p50"},
-		{h.CalcPercentile(66.66), 19.998, "p66.66"},
-		// TODO: fix next line, gets 19.8 instead of 20 ! goes back in time !
-		// {h.CalcPercentile(100 * 2 / 3), 20, "p100*2/3"},
-		{h.CalcPercentile(66.67), 20.001, "p66.67"},
-		{h.CalcPercentile(75), 22.5, "p75"},
-		{h.CalcPercentile(99), 29.7, "p99"},
-		{h.CalcPercentile(99.9), 29.97, "p99.9"},
-		{h.CalcPercentile(100), 30, "p100"},
-		{h.CalcPercentile(101), 30, "p101"},
+		{e.CalcPercentile(-1), 10, "p-1"}, // not valid but should return min
+		{e.CalcPercentile(0), 10, "p0"},
+		{e.CalcPercentile(0.1), 10, "p0.1"},
+		{e.CalcPercentile(1), 10, "p1"},
+		{e.CalcPercentile(20), 10, "p20"},           // 20% = first point, 1st bucket is 10
+		{e.CalcPercentile(33.33), 10, "p33.33"},     // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(100 / 3), 10, "p100/3"},   // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(33.34), 10.002, "p33.34"}, // near beginning of bucket of 2nd pt
+		{e.CalcPercentile(50), 15, "p50"},
+		{e.CalcPercentile(66.66), 19.998, "p66.66"},
+		{e.CalcPercentile(100 * 2 / 3), 20, "p100*2/3"},
+		{e.CalcPercentile(66.67), 20.001, "p66.67"},
+		{e.CalcPercentile(75), 22.5, "p75"},
+		{e.CalcPercentile(99), 29.7, "p99"},
+		{e.CalcPercentile(99.9), 29.97, "p99.9"},
+		{e.CalcPercentile(100), 30, "p100"},
+		{e.CalcPercentile(101), 30, "p101"},
 	}
 	for _, tst := range tests {
 		actualRounded := float64(int64(tst.actual*100000+0.5)) / 100000.
@@ -221,7 +227,7 @@ func TestHistogramData(t *testing.T) {
 	h.Record(4)
 	h.RecordN(5, 2)
 	percs := []float64{0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100}
-	e := h.Export(percs)
+	e := h.Export().CalcPercentiles(percs)
 	CheckEquals(t, int64(10), e.Count, "10 data points")
 	CheckEquals(t, 1.9, e.Avg, "avg should be 2")
 	CheckEquals(t, Percentile{0, -1}, e.Percentiles[0], "p0 should be 0")
@@ -234,9 +240,8 @@ func TestHistogramData(t *testing.T) {
 	CheckEquals(t, Percentile{60, 2}, e.Percentiles[7], "p60 should 2 (6th/10 point is 2)")
 	CheckEquals(t, Percentile{70, 3}, e.Percentiles[8], "p70 should 3 (7th/10 point is 3)")
 	CheckEquals(t, Percentile{80, 4}, e.Percentiles[9], "p80 should 4 (8th/10 point is 4)")
-	// TODO: should/could be 5, see todo in stats.go
-	CheckEquals(t, Percentile{90, 4.5}, e.Percentiles[10], "p90 should 5 (9th/10 point is 5)")
-	CheckEquals(t, Percentile{99, 4.95}, e.Percentiles[11], "p99 should 5 (as 9th/10 point is already 5 and max is 5)")
+	CheckEquals(t, Percentile{90, 5}, e.Percentiles[10], "p90 should 5 (9th/10 point is 5)")
+	CheckEquals(t, Percentile{99, 5}, e.Percentiles[11], "p99 should 5 (as 9th/10 point is already 5 and max is 5)")
 	CheckEquals(t, Percentile{100, 5}, e.Percentiles[12], "p100 should 5 (10th/10 point is 5 and max is 5)")
 	h.Log("test multi count", percs)
 }
@@ -291,7 +296,7 @@ func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 
 func TestHistogramExport1(t *testing.T) {
 	h := NewHistogram(0, 10)
-	e := h.Export(nil) // no crash or error for empty ones
+	e := h.Export()
 	CheckEquals(t, e.Count, int64(0), "empty is 0 count")
 	CheckEquals(t, len(e.Data), 0, "empty is no bucket data")
 	h.Record(-137.4)
@@ -299,7 +304,7 @@ func TestHistogramExport1(t *testing.T) {
 	h.Record(501)
 	h.Record(751)
 	h.Record(1001.67)
-	e = h.Export([]float64{50, 99, 99.9})
+	e = h.Export().CalcPercentiles([]float64{50, 99, 99.9})
 	CheckEquals(t, e.Count, int64(5), "count")
 	CheckEquals(t, e.Min, -137.4, "min")
 	CheckEquals(t, e.Max, 1001.67, "max")
@@ -395,7 +400,7 @@ func TestHistogramExportRandom(t *testing.T) {
 			}
 			h.Record(v)
 		}
-		e := h.Export([]float64{0, 50, 100})
+		e := h.Export().CalcPercentiles([]float64{0, 50, 100})
 		CheckGenericHistogramDataProperties(t, e)
 		CheckEquals(t, h.Count, int64(numEntries), "num entries should match")
 		CheckEquals(t, h.Min, min, "Min should match")
@@ -448,14 +453,13 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	w.Flush() // nolint: errcheck
 	actual := b.String()
 	// stdev part is not verified/could be brittle
-	// TODO: p75 should be 0, not 9
 	expected := `testHistogramWithNegativeNumbers : count 2 avg 0 +/- 10 min -10 max 10 sum 0
 # range, mid point, percentile, count
 >= -10 <= -10 , -10 , 50.00, 1
 > 8 <= 10 , 9 , 100.00, 1
 # target 1% -10
 # target 50% -10
-# target 75% 9
+# target 75% 0
 `
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\tvs:\n%s", actual, expected)
