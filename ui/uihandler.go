@@ -352,6 +352,12 @@ func DataList() (dataList []string) {
 // BrowseHandler handles listing and rendering the JSON results.
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Browse")
+	path := r.URL.Path
+	if (path != "/") && (path != "/browse") && (path != "/fortio") {
+		w.WriteHeader(http.StatusNotFound)
+		log.Infof("Illegal browse path '%s'", path)
+		return
+	}
 	url := r.FormValue("url")
 	doRender := (url != "")
 	dataList := DataList()
