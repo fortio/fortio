@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.5.2"
+	Version = "0.6.0"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -351,7 +351,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		}
 	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export(r.Percentiles)}
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles)}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 
 	select {

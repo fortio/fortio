@@ -57,7 +57,7 @@ func main() {
 		log.Fatalf("Err reading standard input %v", err)
 	}
 	if *jsonFlag {
-		b, err := json.MarshalIndent(h.Export(percList), "", "  ")
+		b, err := json.MarshalIndent(h.Export().CalcPercentiles(percList), "", "  ")
 		if err != nil {
 			log.Fatalf("Unable to create Json: %v", err)
 		}

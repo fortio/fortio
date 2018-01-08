@@ -140,8 +140,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for _, k := range keys {
 		fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
-	total.HeaderSizes = total.headerSizes.Export([]float64{50})
-	total.Sizes = total.sizes.Export([]float64{50})
+	total.HeaderSizes = total.headerSizes.Export()
+	total.Sizes = total.sizes.Export()
 	if log.LogVerbose() {
 		total.HeaderSizes.Print(out, "Response Header Sizes Histogram")
 		total.Sizes.Print(out, "Response Body/Total Sizes Histogram")
