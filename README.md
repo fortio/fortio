@@ -41,7 +41,7 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.5.1 usage:
+Φορτίο 0.6.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)
 or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)
@@ -82,7 +82,7 @@ and flags are:
   -httpccch
     	Check for Connection: Close Header
   -httpreqtimeout duration
-      	Http request timeout value (default 15s)
+    	Http request timeout value (default 15s)
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
   -keepalive
@@ -167,6 +167,30 @@ Code 200 : 40
 Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
 Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
+```
+
+* Curl like (single request) mode
+
+```
+$ fortio load -curl -H Foo:Bar http://localhost:8080/debug
+14:26:26 I http.go:133> Setting regular extra header Foo: Bar
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=UTF-8
+Date: Mon, 08 Jan 2018 22:26:26 GMT
+Content-Length: 230
+
+Φορτίο version 0.6.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+
+GET /debug HTTP/1.1
+
+headers:
+
+Host: localhost:8080
+User-Agent: istio/fortio-0.6.0
+Foo: Bar
+
+body:
+
 ```
 
 * Report only UI
