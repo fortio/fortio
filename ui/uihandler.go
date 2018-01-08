@@ -16,6 +16,10 @@
 package ui // import "istio.io/fortio/ui"
 
 import (
+	"bytes"
+	// md5 is mandated, not our choice
+	"crypto/md5" // nolint: gas
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -324,31 +328,46 @@ func SaveJSON(name string, json []byte) string {
 	return "data/" + name
 }
 
-// BrowseHandler handles listing and rendering the JSON results.
-func BrowseHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Browse")
-	url := r.FormValue("url")
-	doRender := (url != "")
+// DataList returns the .json files/entries in data dir.
+func DataList() (dataList []string) {
 	files, err := ioutil.ReadDir(dataDir)
 	if err != nil {
 		log.Critf("Can list directory %s: %v", dataDir, err)
-		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	var dataList []string
 	// Newest files at the top:
 	for i := len(files) - 1; i >= 0; i-- {
 		name := files[i].Name()
 		ext := ".json"
-		if !strings.HasSuffix(name, ext) {
+		if !strings.HasSuffix(name, ext) || files[i].IsDir() {
 			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])
 	}
-	log.Infof("data list is %v", dataList)
+	log.LogVf("data list is %v", dataList)
+	return dataList
+}
+
+// BrowseHandler handles listing and rendering the JSON results.
+func BrowseHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Browse")
+	path := r.URL.Path
+	if (path != uiPath) && (path != (uiPath + "browse")) {
+		if strings.HasPrefix(path, "/fortio") {
+			log.Infof("Redirecting /fortio in browse only path '%s'", path)
+			http.Redirect(w, r, uiPath, http.StatusSeeOther)
+		} else {
+			log.Infof("Illegal browse path '%s'", path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+		return
+	}
+	url := r.FormValue("url")
+	doRender := (url != "")
+	dataList := DataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	err = browseTemplate.Execute(w, &struct {
+	err := browseTemplate.Execute(w, &struct {
 		R           *http.Request
 		Extra       string
 		Version     string
@@ -386,10 +405,100 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 	})
 }
 
-// LogDataRequest logs the data request.
-func LogDataRequest(h http.Handler) http.Handler {
+func sendHTMLDataIndex(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.Write([]byte("<html><body><ul>\n")) // nolint: errcheck, gas
+	for _, e := range DataList() {
+		w.Write([]byte("<li><a href=\"")) // nolint: errcheck, gas
+		w.Write([]byte(e))                // nolint: errcheck, gas
+		w.Write([]byte(".json\">"))       // nolint: errcheck, gas
+		w.Write([]byte(e))                // nolint: errcheck, gas
+		w.Write([]byte("</a>\n"))         // nolint: errcheck, gas
+	}
+	w.Write([]byte("</ul></body></html>")) // nolint: errcheck, gas
+}
+
+type tsvCache struct {
+	cachedDirTime time.Time
+	cachedResult  []byte
+}
+
+var (
+	gTSVCache      tsvCache
+	gTSVCacheMutex = &sync.Mutex{}
+)
+
+// format for gcloud transfer
+// https://cloud.google.com/storage/transfer/create-url-list
+func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
+	info, err := os.Stat(dataDir)
+	if err != nil {
+		log.Errf("Unable to stat %s: %v", dataDir, err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	gTSVCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
+	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
+	if !useCache {
+		var b bytes.Buffer
+		b.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
+		for _, e := range DataList() {
+			fname := e + ".json"
+			f, err := os.Open(path.Join(dataDir, fname))
+			if err != nil {
+				log.Errf("Open error for %s: %v", fname, err)
+				continue
+			}
+			// This isn't a crypto hash, more like a checksum - and mandated by the
+			// spec above, not our choice
+			h := md5.New() // nolint: gas
+			var sz int64
+			if sz, err = io.Copy(h, f); err != nil {
+				f.Close() // nolint: errcheck, gas
+				log.Errf("Copy/read error for %s: %v", fname, err)
+				continue
+			}
+			b.Write([]byte(urlPrefix))                                     // nolint: errcheck, gas
+			b.Write([]byte(fname))                                         // nolint: errcheck, gas
+			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
+			b.Write([]byte(strconv.FormatInt(sz, 10)))                     // nolint: errcheck, gas
+			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
+			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
+			b.Write([]byte("\n"))                                          // nolint: errcheck, gas
+		}
+		gTSVCache.cachedDirTime = info.ModTime()
+		gTSVCache.cachedResult = b.Bytes()
+	}
+	result := gTSVCache.cachedResult
+	gTSVCacheMutex.Unlock()
+	log.Infof("Used cached %v to serve %d bytes TSV", useCache, len(result))
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.Write(result) // nolint: errcheck, gas
+}
+
+// LogAndFilterDataRequest logs the data request.
+func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, "Data")
+		path := r.URL.Path
+		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
+			sendHTMLDataIndex(w)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		ext := "/index.tsv"
+		if strings.HasSuffix(path, ext) {
+			// TODO: what if we are reached through https ingress? or a different port
+			urlPrefix := "http://" + r.Host + path[:len(path)-len(ext)+1]
+			log.LogVf("Prefix is '%s'", urlPrefix)
+			sendTSVDataIndex(urlPrefix, w)
+			return
+		}
+		if !strings.HasSuffix(path, ".json") {
+			log.Warnf("Filtering request for non .json '%s'", path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		h.ServeHTTP(w, r)
 	})
 }
@@ -474,7 +583,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))
-		http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fs)))
+		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
 	fhttp.Serve(port, debugpath)
 }
@@ -501,7 +610,7 @@ func Report(port int, staticRsrcDir string, datadir string) {
 		http.HandleFunc(uiPath, BrowseHandler)
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
-	http.Handle(uiPath+"data/", LogDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Critf("Error starting server: %v", err)
 	}
