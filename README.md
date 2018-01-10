@@ -294,7 +294,7 @@ Code 429 : 47 (1.6 %)
 Code 503 : 14 (0.5 %)
 ```
 ## Contributing
-Contributions whether throuh issues, documentation, bug fixes, or new features
+Contributions whether through issues, documentation, bug fixes, or new features
 are most welcome !
 
 Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
