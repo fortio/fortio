@@ -470,10 +470,14 @@ func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 		gTSVCache.cachedResult = b.Bytes()
 	}
 	result := gTSVCache.cachedResult
+	lastModified := gTSVCache.cachedDirTime.Format(http.TimeFormat)
 	gTSVCacheMutex.Unlock()
 	log.Infof("Used cached %v to serve %d bytes TSV", useCache, len(result))
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	w.Write(result) // nolint: errcheck, gas
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8") // nolint: errcheck, gas
+	// Cloud transfer requires ETag
+	w.Header().Set("ETag", fmt.Sprintf("\"%s\"", lastModified)) // nolint: errcheck, gas
+	w.Header().Set("Last-Modified", lastModified)               // nolint: errcheck, gas
+	w.Write(result)                                             // nolint: errcheck, gas
 }
 
 // LogAndFilterDataRequest logs the data request.
