@@ -57,12 +57,13 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n",
+	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
-		"or report (report only UI server) or redirect (redirect only server), where target is a url (http load tests) or host:port (grpc health test)",
-		"and flags are:")
+		"where command is one of: load (load testing), server (starts grpc ping and",
+		"http echo/ui/redirect servers), grpcping (grpc client), report (report only UI",
+		"server) or redirect (redirect only server). where target is a url (http load",
+		"tests) or host:port (grpc health test) and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
 	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
@@ -104,7 +105,7 @@ var (
 	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
-	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels and timestamp")
+	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.Int("redirect-port", 8081,
 		"Redirect all incoming traffic to https URL (need ingress to work properly). -1 means off.")
 )
