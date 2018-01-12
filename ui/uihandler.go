@@ -633,8 +633,9 @@ func Report(port int, staticRsrcDir string, datadir string) {
 
 // RedirectToHTTPSHandler handler sends a redirect to same URL with https.
 func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Redirector to https")
-	http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusSeeOther)
+	dest := "https://" + r.Host + r.URL.String()
+	LogRequest(r, "Redirecting to "+dest)
+	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
