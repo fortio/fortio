@@ -105,6 +105,8 @@ var (
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels and timestamp")
+	redirectFlag           = flag.Int("redirect-port", 8081,
+		"Redirect all incoming traffic to https URL (need ingress to work properly). -1 means off.")
 )
 
 func main() {
@@ -133,8 +135,14 @@ func main() {
 	case "load":
 		fortioLoad()
 	case "report":
+		if *redirectFlag >= 0 {
+			go ui.RedirectToHTTPS(*redirectFlag)
+		}
 		ui.Report(*echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
+		if *redirectFlag >= 0 {
+			go ui.RedirectToHTTPS(*redirectFlag)
+		}
 		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":

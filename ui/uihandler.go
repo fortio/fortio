@@ -41,6 +41,9 @@ import (
 	"istio.io/fortio/stats"
 )
 
+// TODO: move some of those in their own files/package (e.g data transfer TSV)
+// and add unit tests.
+
 var (
 	// UI and Debug prefix/paths (read in ui handler).
 	uiPath      string // absolute (base)
@@ -386,7 +389,8 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose
 func LogRequest(r *http.Request, msg string) {
-	log.Infof("%s: %v %v %v %v", msg, r.Method, r.URL, r.Proto, r.RemoteAddr)
+	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+		r.Header.Get("X-Forwarded-Proto"))
 	if log.LogVerbose() {
 		for name, headers := range r.Header {
 			for _, h := range headers {
@@ -492,8 +496,13 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		ext := "/index.tsv"
 		if strings.HasSuffix(path, ext) {
-			// TODO: what if we are reached through https ingress? or a different port
-			urlPrefix := "http://" + r.Host + path[:len(path)-len(ext)+1]
+			// Ingress effect:
+			// The Host header includes original host/port, only missing is the proto:
+			proto := r.Header.Get("X-Forwarded-Proto")
+			if len(proto) == 0 {
+				proto = "http"
+			}
+			urlPrefix := proto + "://" + r.Host + path[:len(path)-len(ext)+1]
 			log.LogVf("Prefix is '%s'", urlPrefix)
 			sendTSVDataIndex(urlPrefix, w)
 			return
@@ -616,6 +625,30 @@ func Report(port int, staticRsrcDir string, datadir string) {
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		log.Critf("Error starting server: %v", err)
+		log.Critf("Error starting report server: %v", err)
 	}
+}
+
+// -- Redirection to https feature --
+
+// RedirectToHTTPSHandler handler sends a redirect to same URL with https.
+func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Redirector to https")
+	http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusSeeOther)
+}
+
+// RedirectToHTTPS Sets up a redirector to https on the given port.
+// (Do not create a loop, make sure this is addressed from an ingress)
+func RedirectToHTTPS(port int) {
+	m := http.NewServeMux()
+	m.HandleFunc("/", RedirectToHTTPSHandler)
+	s := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: m,
+	}
+	fmt.Printf("Https redirector running on %v\n", s.Addr)
+	if err := s.ListenAndServe(); err != nil {
+		log.Critf("Error starting report server: %v", err)
+	}
+	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
 }
