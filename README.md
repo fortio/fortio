@@ -37,18 +37,19 @@ You can visit the new web UI at http://localhost:8080/fortio/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI and result graphing, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command. You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
 $ fortio
-Φορτίο 0.6.0 usage:
+Φορτίο 0.6.1 usage:
 	fortio command [flags] target
-where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)
-or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)
-and flags are:
+where command is one of: load (load testing), server (starts grpc ping and
+http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
+server) or redirect (redirect only server). where target is a url (http load
+tests) or host:port (grpc health test) and flags are:
   -H value
     	Additional Header(s)
-  -a	Automatically save JSON result with filename based on labels and timestamp
+  -a	Automatically save JSON result with filename based on labels & timestamp
   -allow-initial-errors
     	Allow and don't abort on initial warmup errors
   -c int
@@ -60,7 +61,8 @@ and flags are:
   -data-dir string
     	Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
-    	http echo server URI for debug, empty turns off that part (more secure) (default "/debug")
+    	http echo server URI for debug, empty turns off that part (more secure)
+      (default "/debug")
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
@@ -68,7 +70,8 @@ and flags are:
   -grpc-port int
     	grpc port (default 8079)
   -halfclose
-    	When not keepalive, whether to half close the connection (only for fast http)
+    	When not keepalive, whether to half close the connection (only for fast
+      http)
   -health
     	client mode: use health instead of ping
   -healthservice string
@@ -78,21 +81,25 @@ and flags are:
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
-    	Size of the buffer (max data size) for the optimized http client in kbytes (default 128)
+    	Size of the buffer (max data size) for the optimized http client in kbytes
+      (default 128)
   -httpccch
     	Check for Connection: Close Header
   -httpreqtimeout duration
     	Http request timeout value (default 15s)
   -json string
-    	Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)
+    	Json output to provided file or '-' for stdout (empty = no json output,
+      unless -a is used)
   -keepalive
     	Keep connection alive (only for fast http 1.1) (default true)
   -labels string
-    	Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname
+    	Additional config data/labels to add to the resulting JSON, defaults to
+      target URL and hostname
   -logcaller
     	Logs filename and line number of callers to log (default true)
   -loglevel value
-    	loglevel, one of [Debug Verbose Info Warning Error Critical Fatal] (default Info)
+    	loglevel, one of [Debug Verbose Info Warning Error Critical Fatal]
+      (default Info)
   -logprefix string
     	Prefix to log lines before logged messages (default "> ")
   -n int
@@ -107,6 +114,9 @@ and flags are:
     	Queries Per Seconds or 0 for no wait/max qps (default 8)
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
+  -redirect-port int
+    	Redirect all incoming traffic to https URL (need ingress to work properly)
+      -1 means off. (default 8081)
   -static-dir string
     	Absolute path to the dir containing the static files dir
   -stdclient
@@ -114,7 +124,8 @@ and flags are:
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
   -ui-path string
-    	http server URI for UI, empty turns off that part (more secure) (default "/fortio/")
+    	http server URI for UI, empty turns off that part (more secure)
+      (default "/fortio/")
 ```
 
 ## Example use and output
@@ -122,10 +133,11 @@ and flags are:
 * Start the internal servers:
 ```
 $ fortio server &
+Https redirector running on :8081
 UI starting - visit:
 http://localhost:8080/fortio/
-Fortio 0.3.6 echo server listening on port 8080
-Fortio 0.3.6 grpc ping server listening on port 8079
+Fortio 0.6.1 grpc ping server listening on port 8079
+Fortio 0.6.1 echo server listening on port 8080
 ```
 * Simple grpc ping:
 ```
@@ -201,6 +213,7 @@ If you have json files saved from running the full UI, you can serve just the re
 $ fortio report
 Browse only UI starting - visit:
 http://localhost:8080/
+Https redirector running on :8081
 ```
 
 ## Implementation details
@@ -298,6 +311,7 @@ Contributions whether through issues, documentation, bug fixes, or new features
 are most welcome !
 
 Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
+and [Getting started contributing to Fortio](https://github.com/istio/fortio/wiki/FAQ#how-do-i-get-started-contributing-to-fortio) in the FAQ.
 
 And make sure to go format and run those commands successfully before sending your PRs:
 ```
