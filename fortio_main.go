@@ -61,7 +61,7 @@ func usage(msgs ...interface{}) {
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and http echo/ui servers), grpcping (grpc client)",
-		"or report (report only UI server), where target is a url (http load tests) or host:port (grpc health test)",
+		"or report (report only UI server) or redirect (redirect only server), where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
@@ -134,6 +134,8 @@ func main() {
 	switch command {
 	case "load":
 		fortioLoad()
+	case "redirect":
+		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
 		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
