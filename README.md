@@ -321,9 +321,9 @@ make lint
 make webtest
 ```
 
-When modifying Javascript:
+When modifying Javascript, check with [standard](https://github.com/standard/standard):
 ```
-standard --fix fortio_chart.js
+standard --fix ui/static/js/fortio_chart.js
 ```
 
 ## See also
