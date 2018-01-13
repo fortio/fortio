@@ -83,10 +83,12 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.Destination)
 		}
 		grpcstate[i].req = grpc_health_v1.HealthCheckRequest{Service: o.Service}
-		_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
-		if err != nil {
-			log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
-			return nil, err
+		if o.Exactly <= 0 {
+			_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
+			if err != nil {
+				log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
+				return nil, err
+			}
 		}
 		// Setup the stats for each 'thread'
 		grpcstate[i].RetCodes = make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64)

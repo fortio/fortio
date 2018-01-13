@@ -164,6 +164,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if !JSONOnly {
 		out = io.Writer(&HTMLEscapeWriter{NextWriter: w})
 	}
+	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
 	opts := fhttp.NewHTTPOptions(url)
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
@@ -173,6 +174,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Resolution:  resolution,
 		Percentiles: percList,
 		Labels:      labels,
+		Exactly:     n,
 	}
 	if mode == run {
 		ro.Normalize()
@@ -191,6 +193,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		durSeconds := dur.Seconds()
+		if n > 0 {
+			if qps > 0 {
+				durSeconds = float64(n) / qps
+			} else {
+				durSeconds = -1
+			}
+			log.Infof("Estimating fixed #call %d duration to %g seconds %g", n, durSeconds, qps)
+		}
 		err := mainTemplate.Execute(w, &struct {
 			R                           *http.Request
 			Headers                     http.Header
@@ -209,7 +220,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), dur.Seconds(), httpPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, httpPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}

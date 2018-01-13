@@ -40,7 +40,8 @@ Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empt
 URL: <input type="text" name="url" size="80" value="http://localhost:{{.Port}}/echo?delay=250us:30%,5ms:5%&status=503:0.5%,429:1.5%" /> <br />
 QPS: <input type="text" name="qps" size="6" value="1000" />
 Duration: <input id="duration" type="text" name="t" size="6" value="3s" />
-or run until interrupted: <input type="checkbox" name="t" onchange="toggleDuration(this)" /><br />
+or run until interrupted: <input type="checkbox" name="t" onchange="toggleDuration(this)" />
+or run for exactly <input type="text" name="n" size="6" value="" /> calls. <br />
 Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
 Percentiles: <input type="text" name="p" size="20" value="50, 75, 99, 99.9" /> <br />
 Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />

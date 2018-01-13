@@ -42,7 +42,6 @@ import (
 // GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
 
 var (
-	countFlag     = flag.Int("n", 1, "how many ping(s) the client will send")
 	doHealthFlag  = flag.Bool("health", false, "client mode: use health instead of ping")
 	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
 	payloadFlag   = flag.String("payload", "", "Payload string to send along")
@@ -154,9 +153,13 @@ func grpcClient() {
 	host := flag.Arg(0)
 	// TODO doesn't work for ipv6 addrs etc
 	dest := fmt.Sprintf("%s:%d", host, *grpcPortFlag)
+	count := int(*exactlyFlag)
+	if count <= 0 {
+		count = 1
+	}
 	if *doHealthFlag {
-		grpcHealthCheck(dest, *healthSvcFlag, *countFlag)
+		grpcHealthCheck(dest, *healthSvcFlag, count)
 	} else {
-		pingClientCall(dest, *countFlag, *payloadFlag)
+		pingClientCall(dest, count, *payloadFlag)
 	}
 }

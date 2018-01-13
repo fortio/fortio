@@ -16,6 +16,7 @@ package periodic
 
 import (
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -145,6 +146,81 @@ func TestStartMaxQps(t *testing.T) {
 	}
 }
 
+func TestExactlyLargeDur(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        3,
+		NumThreads: 4,
+		Duration:   100 * time.Hour, // will not be used, large to catch if it would
+		Exactly:    9,               // exactly 9 times, so 2 per thread + 1
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	expected := o.Exactly
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func TestExactlySmallDur(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	expected := int64(11)
+	o := RunnerOptions{
+		QPS:        3,
+		NumThreads: 4,
+		Duration:   1 * time.Second, // would do only 3 calls without Exactly
+		Exactly:    expected,        // exactly 11 times, so 2 per thread + 3
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func TestExactlyMaxQps(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	expected := int64(503)
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   -1,       // infinite but should not be used
+		Exactly:    expected, // exactly 503 times, so 125 per thread + 3
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
 func TestID(t *testing.T) {
 	var tests = []struct {
 		labels string // input
@@ -208,6 +284,32 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	r.Run()
 	if count != 3 { // should get 3 in 140ms
 		t.Errorf("Test executed unexpected number of times %d instead of %d", count, 3)
+	}
+}
+
+func TestExactlyAndAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        10,
+		NumThreads: 1,
+		Exactly:    100, // would take 10s we'll abort after 1sec
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort after 1 sec")
+		r.Options().Abort()
+	}()
+	res := r.Run()
+	if count < 9 || count > 12 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	}
+	if !strings.Contains(res.RequestedDuration, "exactly 100 calls, interrupted after") {
+		t.Errorf("Got '%s' and didn't find expected aborted", res.RequestedDuration)
 	}
 }
 

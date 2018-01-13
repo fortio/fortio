@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.6.1"
+	Version = "0.6.2"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -73,8 +73,10 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
-	Runners  []Runnable
-	QPS      float64
+	Runners []Runnable
+	// At which (target) rate to run the Runners across NumThreads.
+	QPS float64
+	// How long to run the test for. Unless Exactly is specified.
 	Duration time.Duration
 	// Note that this actually maps to gorountines and not actual threads
 	// but threads seems like a more familiar name to use for non go users
@@ -90,6 +92,9 @@ type RunnerOptions struct {
 	// by the end of Run(). To abort a run call Runner.Abort(), don't close channel
 	// directly (or risk a panic that it's already closed).
 	Stop chan struct{}
+	// Mode where an exact number of iterations is requested. Default (0) is
+	// to not use that mode. If specified Duration is not used.
+	Exactly int64
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -97,12 +102,13 @@ type RunnerResults struct {
 	Labels            string
 	StartTime         time.Time
 	RequestedQPS      string
-	RequestedDuration string
+	RequestedDuration string // String version of the requested duration or exact count
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
 	DurationHistogram *stats.HistogramData
+	Exactly           int64 // Echo back the requested count
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -251,16 +257,23 @@ func (r *periodicRunner) Run() RunnerResults {
 	runnerChan := r.Stop // need a copy to not race with assignement to nil
 	gAbortMutex.Unlock()
 	useQPS := (r.QPS > 0)
+	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
+	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
+	useExactly := (r.Exactly > 0)
 	var numCalls int64
+	var leftOver int64 // left over from r.Exactly / numThreads
 	requestedQPS := "max"
 	requestedDuration := "until stop"
 	if useQPS {
 		requestedQPS = fmt.Sprintf("%.9g", r.QPS)
-		// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
-		if hasDuration {
+		if hasDuration || useExactly {
 			requestedDuration = fmt.Sprint(r.Duration)
 			numCalls = int64(r.QPS * r.Duration.Seconds())
+			if useExactly {
+				numCalls = r.Exactly
+				requestedDuration = fmt.Sprintf("exactly %d calls", numCalls)
+			}
 			if numCalls < 2 {
 				log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
 				numCalls = 2
@@ -273,9 +286,16 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 			numCalls /= int64(r.NumThreads)
 			totalCalls := numCalls * int64(r.NumThreads)
-			// nolint: gas
-			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+			if useExactly {
+				leftOver = r.Exactly - totalCalls
+				// nolint: gas
+				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
+					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+			} else {
+				// nolint: gas
+				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+			}
 		} else {
 			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
@@ -286,12 +306,20 @@ func (r *periodicRunner) Run() RunnerResults {
 		// nolint: gas
 		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
-		if hasDuration {
-			requestedDuration = fmt.Sprint(r.Duration)
-			fmt.Fprintf(r.Out, "for %v\n", r.Duration)
+		if useExactly {
+			requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
+			numCalls = r.Exactly / int64(r.NumThreads)
+			leftOver = r.Exactly % int64(r.NumThreads)
+			fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
 		} else {
-			fmt.Fprintf(r.Out, "until interrupted\n")
+			if hasDuration {
+				requestedDuration = fmt.Sprint(r.Duration)
+				fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+			} else {
+				fmt.Fprintf(r.Out, "until interrupted\n")
+			}
 		}
+
 	}
 	runnersLen := len(r.Runners)
 	if runnersLen == 0 {
@@ -308,7 +336,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
 		log.Infof("Running single threaded")
-		runOne(0, runnerChan, functionDuration, sleepTime, numCalls, start, r)
+		runOne(0, runnerChan, functionDuration, sleepTime, numCalls+leftOver, start, r)
 	} else {
 		var wg sync.WaitGroup
 		var fDs []*stats.Histogram
@@ -319,8 +347,13 @@ func (r *periodicRunner) Run() RunnerResults {
 			fDs = append(fDs, durP)
 			sDs = append(sDs, sleepP)
 			wg.Add(1)
+			thisNumCalls := numCalls
+			if (leftOver > 0) && (t == 0) {
+				// The first thread gets to do the additional work
+				thisNumCalls += leftOver
+			}
 			go func(t int, durP *stats.Histogram, sleepP *stats.Histogram) {
-				runOne(t, runnerChan, durP, sleepP, numCalls, start, r)
+				runOne(t, runnerChan, durP, sleepP, thisNumCalls, start, r)
 				wg.Done()
 			}(t, durP, sleepP)
 		}
@@ -350,8 +383,12 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 		}
 	}
+	actualCount := functionDuration.Count
+	if useExactly && actualCount != r.Exactly {
+		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
+	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles)}
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 
 	select {
@@ -373,12 +410,13 @@ func runOne(id int, runnerChan chan struct{},
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
 	hasDuration := (r.Duration > 0)
+	useExactly := (r.Exactly > 0)
 	f := r.Runners[id]
 
 MainLoop:
 	for {
 		fStart := time.Now()
-		if hasDuration && fStart.After(endTime) {
+		if !useExactly && (hasDuration && fStart.After(endTime)) {
 			if !useQPS {
 				// max speed test reached end:
 				break
@@ -395,7 +433,7 @@ MainLoop:
 		i++
 		// if using QPS / pre calc expected call # mode:
 		if useQPS {
-			if hasDuration && i >= numCalls {
+			if (useExactly || hasDuration) && i >= numCalls {
 				break // expected exit for that mode
 			}
 			elapsed := time.Since(start)
@@ -419,6 +457,9 @@ MainLoop:
 				// continue normal execution
 			}
 		} else { // Not using QPS
+			if useExactly && i >= numCalls {
+				break
+			}
 			select {
 			case <-runnerChan:
 				break MainLoop
