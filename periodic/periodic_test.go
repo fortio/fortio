@@ -145,6 +145,81 @@ func TestStartMaxQps(t *testing.T) {
 	}
 }
 
+func TestExactlyLargeDur(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        3,
+		NumThreads: 4,
+		Duration:   100 * time.Hour, // will not be used, large to catch if it would
+		Exactly:    9,               // exactly 9 times, so 2 per thread + 1
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	expected := o.Exactly
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func TestExactlySmallDur(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	expected := int64(11)
+	o := RunnerOptions{
+		QPS:        3,
+		NumThreads: 4,
+		Duration:   1 * time.Second, // would do only 3 calls without Exactly
+		Exactly:    expected,        // exactly 11 times, so 2 per thread + 3
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
+func TestExactlyMaxQps(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	expected := int64(503)
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   -1,       // infinite but should not be used
+		Exactly:    expected, // exactly 503 times, so 125 per thread + 3
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
+	}
+}
+
 func TestID(t *testing.T) {
 	var tests = []struct {
 		labels string // input

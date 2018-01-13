@@ -7,11 +7,11 @@
 # Φορτίο
 <img src="https://github.com/istio/fortio/blob/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
 
-Φορτίο (fortio) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit))
+Φορτίο (fortio) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)). It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
 
 The name fortio comes from greek φορτίο which is load/burden.
 
-Fortio is a reusable, embeddable go library as well as a command line tool and server process, the server includes a simple web UI and graphical representation of the results.
+Fortio is a reusable, embeddable go library as well as a command line tool and server process, the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg and percentiles graphs).
 
 ## Installation
 
@@ -41,7 +41,7 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.6.1 usage:
+Φορτίο 0.6.2 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -103,7 +103,8 @@ tests) or host:port (grpc health test) and flags are:
   -logprefix string
     	Prefix to log lines before logged messages (default "> ")
   -n int
-    	how many ping(s) the client will send (default 1)
+      Run for exactly this number of calls instead of duration. Default (0) is
+      to use duration (-t). Default is 1 when used as grpc ping count.
   -p string
     	List of pXX to calculate (default "50,75,99,99.9")
   -payload string

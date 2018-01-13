@@ -87,12 +87,14 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if httpstate[i].client == nil {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.URL)
 		}
-		code, data, headerSize := httpstate[i].client.Fetch()
-		if !o.AllowInitialErrors && code != http.StatusOK {
-			return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
-		}
-		if i == 0 && log.LogVerbose() {
-			log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+		if o.Exactly <= 0 {
+			code, data, headerSize := httpstate[i].client.Fetch()
+			if !o.AllowInitialErrors && code != http.StatusOK {
+				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+			}
+			if i == 0 && log.LogVerbose() {
+				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+			}
 		}
 		// Setup the stats for each 'thread'
 		httpstate[i].sizes = total.sizes.Clone()

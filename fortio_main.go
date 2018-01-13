@@ -108,6 +108,9 @@ var (
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.Int("redirect-port", 8081,
 		"Redirect all incoming traffic to https URL (need ingress to work properly). -1 means off.")
+	exactlyFlag = flag.Int64("n", 0,
+		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
+			"Default is 1 when used as grpc ping count.")
 )
 
 func main() {
@@ -223,6 +226,7 @@ func fortioLoad() {
 		Resolution:  *resolutionFlag,
 		Out:         out,
 		Labels:      labels,
+		Exactly:     *exactlyFlag,
 	}
 	var res periodic.HasRunnerResult
 	if *grpcFlag {
@@ -245,9 +249,13 @@ func fortioLoad() {
 		os.Exit(1)
 	}
 	rr := res.Result()
+	warmup := *numThreadsFlag
+	if ro.Exactly > 0 {
+		warmup = 0
+	}
 	fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		rr.DurationHistogram.Count,
-		*numThreadsFlag,
+		warmup,
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
