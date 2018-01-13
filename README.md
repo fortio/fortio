@@ -62,7 +62,7 @@ tests) or host:port (grpc health test) and flags are:
     	Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
     	http echo server URI for debug, empty turns off that part (more secure)
-      (default "/debug")
+    	(default "/debug")
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
@@ -71,7 +71,7 @@ tests) or host:port (grpc health test) and flags are:
     	grpc port (default 8079)
   -halfclose
     	When not keepalive, whether to half close the connection (only for fast
-      http)
+    	http)
   -health
     	client mode: use health instead of ping
   -healthservice string
@@ -82,19 +82,19 @@ tests) or host:port (grpc health test) and flags are:
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
     	Size of the buffer (max data size) for the optimized http client in kbytes
-      (default 128)
+    	(default 128)
   -httpccch
     	Check for Connection: Close Header
   -httpreqtimeout duration
     	Http request timeout value (default 15s)
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output,
-      unless -a is used)
+    	unless -a is used)
   -keepalive
     	Keep connection alive (only for fast http 1.1) (default true)
   -labels string
     	Additional config data/labels to add to the resulting JSON, defaults to
-      target URL and hostname
+    	target URL and hostname
   -logcaller
     	Logs filename and line number of callers to log (default true)
   -loglevel value
@@ -103,8 +103,8 @@ tests) or host:port (grpc health test) and flags are:
   -logprefix string
     	Prefix to log lines before logged messages (default "> ")
   -n int
-      Run for exactly this number of calls instead of duration. Default (0) is
-      to use duration (-t). Default is 1 when used as grpc ping count.
+    	Run for exactly this number of calls instead of duration. Default (0) is
+    	to use duration (-t). Default is 1 when used as grpc ping count.
   -p string
     	List of pXX to calculate (default "50,75,99,99.9")
   -payload string
@@ -117,7 +117,7 @@ tests) or host:port (grpc health test) and flags are:
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port int
     	Redirect all incoming traffic to https URL (need ingress to work properly)
-      -1 means off. (default 8081)
+    	-1 means off. (default 8081)
   -static-dir string
     	Absolute path to the dir containing the static files dir
   -stdclient
@@ -126,7 +126,7 @@ tests) or host:port (grpc health test) and flags are:
     	How long to run the test or 0 to run until ^C (default 5s)
   -ui-path string
     	http server URI for UI, empty turns off that part (more secure)
-      (default "/fortio/")
+    	(default "/fortio/")
 ```
 
 ## Example use and output
