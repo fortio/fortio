@@ -109,7 +109,7 @@ function makeTitle (res) {
   }
   title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
         myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-        res.RequestedDuration + ' (actual ' + myRound(res.ActualDuration / 1e9, 1) + 's), ' +
+        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), ' +
         errStr)
   title.push(percStr)
   return title

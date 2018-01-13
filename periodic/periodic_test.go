@@ -16,6 +16,7 @@ package periodic
 
 import (
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -283,6 +284,32 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	r.Run()
 	if count != 3 { // should get 3 in 140ms
 		t.Errorf("Test executed unexpected number of times %d instead of %d", count, 3)
+	}
+}
+
+func TestExactlyAndAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	o := RunnerOptions{
+		QPS:        10,
+		NumThreads: 1,
+		Exactly:    100, // would take 10s we'll abort after 1sec
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort after 1 sec")
+		r.Options().Abort()
+	}()
+	res := r.Run()
+	if count < 9 || count > 12 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	}
+	if !strings.Contains(res.RequestedDuration, "exactly 100 calls, interrupted after") {
+		t.Errorf("Got '%s' and didn't find expected aborted", res.RequestedDuration)
 	}
 }
 

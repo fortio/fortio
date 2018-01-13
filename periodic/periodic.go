@@ -102,12 +102,13 @@ type RunnerResults struct {
 	Labels            string
 	StartTime         time.Time
 	RequestedQPS      string
-	RequestedDuration string
+	RequestedDuration string // String version of the requested duration or exact count
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
 	DurationHistogram *stats.HistogramData
+	Exactly           int64 // Echo back the requested count
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -271,6 +272,7 @@ func (r *periodicRunner) Run() RunnerResults {
 			numCalls = int64(r.QPS * r.Duration.Seconds())
 			if useExactly {
 				numCalls = r.Exactly
+				requestedDuration = fmt.Sprintf("exactly %d calls", numCalls)
 			}
 			if numCalls < 2 {
 				log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
@@ -305,13 +307,14 @@ func (r *periodicRunner) Run() RunnerResults {
 		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
 			r.NumThreads, runtime.GOMAXPROCS(0))
 		if useExactly {
+			requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
 			numCalls = r.Exactly / int64(r.NumThreads)
 			leftOver = r.Exactly % int64(r.NumThreads)
-			fmt.Fprintf(r.Out, "for exactly %d calls (%d per thread + %d)\n", r.Exactly, numCalls, leftOver)
+			fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
 		} else {
 			if hasDuration {
 				requestedDuration = fmt.Sprint(r.Duration)
-				fmt.Fprintf(r.Out, "for %v\n", r.Duration)
+				fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
 			} else {
 				fmt.Fprintf(r.Out, "until interrupted\n")
 			}
@@ -380,8 +383,12 @@ func (r *periodicRunner) Run() RunnerResults {
 			}
 		}
 	}
+	actualCount := functionDuration.Count
+	if useExactly && actualCount != r.Exactly {
+		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
+	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles)}
+		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 
 	select {
