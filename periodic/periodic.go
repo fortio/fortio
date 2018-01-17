@@ -150,7 +150,7 @@ func (r *RunnerOptions) Normalize() {
 	if r.QPS == 0 {
 		r.QPS = DefaultRunnerOptions.QPS
 	} else if r.QPS < 0 {
-		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
+		log.LogVf("Negative qps %f means max speed mode/no wait between calls", r.QPS)
 		r.QPS = -1
 	}
 	if r.Out == nil {
@@ -183,7 +183,7 @@ func (r *RunnerOptions) Normalize() {
 			n := gOutstandingRuns
 			runnerChan := r.Stop // need a copy to not race with assignement to nil
 			if gAbortChan == nil {
-				log.Infof("WATCHER %d First outstanding run starting, catching signal", n)
+				log.LogVf("WATCHER %d First outstanding run starting, catching signal", n)
 				gAbortChan = make(chan os.Signal, 1)
 				signal.Notify(gAbortChan, os.Interrupt)
 			}
