@@ -55,6 +55,19 @@ func TestHTTPRunner(t *testing.T) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
+	// Test raw client, should get warning about non init timeout:
+	rawOpts := HTTPOptions{
+		URL: opts.URL,
+	}
+	o1 := rawOpts
+	if r, _, _ := NewBasicClient(&o1).Fetch(); r != http.StatusOK {
+		t.Errorf("Fast Client with raw option should still work with warning in logs")
+	}
+	o1 = rawOpts
+	o1.HTTPReqTimeOut = -1 // works with std client
+	if r, _, _ := NewStdClient(&o1).Fetch(); r != http.StatusOK {
+		t.Errorf("Std Client with raw option should still work with warning in logs")
+	}
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
