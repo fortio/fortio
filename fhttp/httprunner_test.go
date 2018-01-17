@@ -36,7 +36,7 @@ func TestHTTPRunner(t *testing.T) {
 
 	opts := HTTPRunnerOptions{}
 	opts.QPS = 100
-	opts.Init(baseURL)
+	opts.URL = baseURL
 	opts.DisableFastClient = true
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
