@@ -71,7 +71,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	// unescape then rescape % to %25 (so if it was already %25 it stays)
 	h.URL = strings.Replace(strings.Replace(url, "%25", "%", -1), "%", "%25", -1)
 	h.NumConnections = 1
-	if h.HTTPReqTimeOut == 0 {
+	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	h.ResetHeaders()
@@ -99,7 +99,7 @@ type HTTPOptions struct {
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
 	hostOverride   string
-	HTTPReqTimeOut time.Duration // timeout value for http request in terms of second
+	HTTPReqTimeOut time.Duration // timeout value for http request
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -216,6 +216,10 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 	if o.NumConnections < 1 {
 		o.NumConnections = 1
 	}
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
+		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
+	}
 	client := Client{
 		o.URL,
 		req,
@@ -317,6 +321,10 @@ func NewBasicClient(o *HTTPOptions) Fetcher {
 		} else {
 			buf.WriteString("Connection: close\r\n")
 		}
+	}
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
+		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	bc.reqTimeout = o.HTTPReqTimeOut
 	for h := range o.extraHeaders {
