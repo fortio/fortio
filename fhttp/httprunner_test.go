@@ -64,7 +64,6 @@ func TestHTTPRunner(t *testing.T) {
 		t.Errorf("Fast Client with raw option should still work with warning in logs")
 	}
 	o1 = rawOpts
-	o1.HTTPReqTimeOut = -1 // works with std client
 	if r, _, _ := NewStdClient(&o1).Fetch(); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")
 	}
