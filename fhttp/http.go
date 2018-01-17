@@ -68,10 +68,14 @@ func NewHTTPOptions(url string) *HTTPOptions {
 // It replaces plain % to %25 in the url. If you already have properly
 // escaped URLs use o.URL = to set it.
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
+	if h.initDone {
+		return h
+	}
+	h.initDone = true
 	// unescape then rescape % to %25 (so if it was already %25 it stays)
 	h.URL = strings.Replace(strings.Replace(url, "%25", "%", -1), "%", "%25", -1)
 	h.NumConnections = 1
-	if h.HTTPReqTimeOut == 0 {
+	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	h.ResetHeaders()
@@ -95,11 +99,12 @@ type HTTPOptions struct {
 	HTTP10            bool // defaults to http1.1
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
+	initDone          bool
 	// ExtraHeaders to be added to each request.
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
 	hostOverride   string
-	HTTPReqTimeOut time.Duration // timeout value for http request in terms of second
+	HTTPReqTimeOut time.Duration // timeout value for http request
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -216,6 +221,10 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 	if o.NumConnections < 1 {
 		o.NumConnections = 1
 	}
+	// 0 timeout for stdclient doesn't mean 0 timeout... so just warn and leave it
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Std call with client timeout %v", o.HTTPReqTimeOut)
+	}
 	client := Client{
 		o.URL,
 		req,
@@ -227,9 +236,9 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 				DisableCompression:  !o.Compression,
 				DisableKeepAlives:   o.DisableKeepAlive,
 				Dial: (&net.Dialer{
-					Timeout: 4 * time.Second,
+					Timeout: o.HTTPReqTimeOut,
 				}).Dial,
-				TLSHandshakeTimeout: 4 * time.Second,
+				TLSHandshakeTimeout: o.HTTPReqTimeOut,
 			},
 			// Lets us see the raw response instead of auto following redirects.
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -317,6 +326,10 @@ func NewBasicClient(o *HTTPOptions) Fetcher {
 		} else {
 			buf.WriteString("Connection: close\r\n")
 		}
+	}
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
+		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	bc.reqTimeout = o.HTTPReqTimeOut
 	for h := range o.extraHeaders {
