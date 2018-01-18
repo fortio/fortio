@@ -189,7 +189,7 @@ func (r *RunnerOptions) Normalize() {
 			}
 			abortChan := gAbortChan
 			gAbortMutex.Unlock()
-			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, gAbortChan, runnerChan, runtime.NumGoroutine())
+			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, abortChan, runnerChan, runtime.NumGoroutine())
 			select {
 			case _, ok := <-abortChan:
 				log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
