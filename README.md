@@ -41,7 +41,7 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.6.2 usage:
+Φορτίο 0.6.4 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -113,6 +113,8 @@ tests) or host:port (grpc health test) and flags are:
     	write .cpu and .mem profiles to file
   -qps float
     	Queries Per Seconds or 0 for no wait/max qps (default 8)
+  -quiet
+    	Quiet mode: sets the loglevel to Error and reduces the output.
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port int
@@ -216,6 +218,23 @@ Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081
 ```
+
+## Server URLs and features
+
+Fortio `server` - has the following feature - http listening on 8080 (all paths and ports are configurable through flags above):
+- A simple echo server which will echo back posted data (for any path not mentioned below).
+For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
+
+| Parameter | Usage, example |
+| ----------|----------------|
+| delay     | duration to delay the response by. Can be a single value or a coma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
+| status    | http status to return instead of 200. Can be a single value or a coma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+- `/debug` will echo back the request in plain text for human debugging.
+- `/fortio/` A UI to
+  - Run/Trigger tests and graph the results.
+  - A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
+  - Proxy/fetch other URLs
+
 
 ## Implementation details
 

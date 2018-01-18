@@ -15,6 +15,7 @@
 package fhttp // import "istio.io/fortio/fhttp"
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -137,6 +138,7 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	} else {
 		log.Infof("Setting regular extra header %s: %s", key, value)
 		h.extraHeaders.Add(key, value)
+		log.Debugf("headers now %+v", h.extraHeaders)
 	}
 	return nil
 }
@@ -332,12 +334,10 @@ func NewBasicClient(o *HTTPOptions) Fetcher {
 		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	bc.reqTimeout = o.HTTPReqTimeOut
-	for h := range o.extraHeaders {
-		buf.WriteString(h)
-		buf.WriteString(": ")
-		buf.WriteString(o.extraHeaders.Get(h))
-		buf.WriteString("\r\n")
-	}
+	w := bufio.NewWriter(&buf)
+	// This writes multiple valued headers properly (unlike calling Get() to do it ourselves)
+	o.extraHeaders.Write(w) // nolint: errcheck,gas
+	w.Flush()               // nolint: errcheck,gas
 	buf.WriteString("\r\n")
 	bc.req = buf.Bytes()
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
@@ -905,6 +905,13 @@ func generateDelay(delay string) time.Duration {
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	if err != nil {
+		log.Errf("Error reading %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Debugf("Read %d", len(data))
 	dur := generateDelay(r.FormValue("delay"))
 	if dur > 0 {
 		log.LogVf("Sleeping for %v", dur)
@@ -923,12 +930,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 				log.Debugf("Header %v: %v\n", name, h)
 			}
 		}
-	}
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Errf("Error reading %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 	// echo back the Content-Type and Content-Length in the response
 	for _, k := range []string{"Content-Type", "Content-Length"} {
@@ -967,8 +968,13 @@ func closingServer(listener net.Listener) error {
 }
 
 // DynamicHTTPServer listens on an available port, sets up an http or https
-// (when secure is true) server on it and returns the listening port.
-func DynamicHTTPServer(secure bool) int {
+// (when secure is true) server on it and returns the listening port and
+// mux to which one can attach handlers to.
+func DynamicHTTPServer(secure bool) (int, *http.ServeMux) {
+	m := http.NewServeMux()
+	s := &http.Server{
+		Handler: m,
+	}
 	listener, err := net.Listen("tcp", ":0") // nolint: gas
 	if err != nil {
 		log.Fatalf("Unable to listen to dynamic port: %v", err)
@@ -982,13 +988,13 @@ func DynamicHTTPServer(secure bool) int {
 			//err = http.ServeTLS(listener, nil, "", "") // go 1.9
 			err = closingServer(listener)
 		} else {
-			err = http.Serve(listener, nil)
+			err = s.Serve(listener)
 		}
 		if err != nil {
 			log.Fatalf("Unable to serve with secure=%v on %d: %v", secure, port, err)
 		}
 	}()
-	return port
+	return port, m
 }
 
 /*
