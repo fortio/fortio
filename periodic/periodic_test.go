@@ -274,7 +274,9 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	go func() {
 		time.Sleep(140 * time.Millisecond)
 		log.LogVf("Sending global interrupt after 0.14 sec")
+		gAbortMutex.Lock()
 		gAbortChan <- os.Interrupt
+		gAbortMutex.Unlock()
 	}()
 	r.Run()
 	if count != 3 { // should get 3 in 140ms
