@@ -24,11 +24,6 @@ import (
 	"istio.io/fortio/log"
 )
 
-// in init to avoid data race
-func init() {
-	log.SetLogLevel(log.Verbose)
-}
-
 type Noop struct{}
 
 func (n *Noop) Run(t int) {
