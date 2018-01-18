@@ -24,7 +24,7 @@ import (
 )
 
 // TODO: figure out how to set the loglevel without triggering race test failure
-// and thus not needing this seperate file
+// and thus not needing this separate file
 
 type TestCount struct {
 	count *int64
