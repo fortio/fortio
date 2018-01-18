@@ -141,10 +141,11 @@ var (
 )
 
 // UpperValueIndexer holds upper values of histogramBucketValues such as 1000 to 100000
-// Index and Range are kept. Range is estimated with current index value - previous index value
+// Index and Scope are kept. Scope is estimated with current index value - previous index value plus previous
+// sum of scopes.
 type UpperValueIndexer struct {
 	Index int
-	Range int
+	Scope int
 }
 
 // Histogram extends Counter and adds an histogram.
@@ -227,13 +228,16 @@ func init() {
 	}
 	idx++ // Not include 1000
 	j := 0
+	maxLookupValue := int(histogramBucketValues[line5EndIndex])
+	iteratorValue := maxLookupValue
 	for ; j < line5EndToEndLength-1; j++ {
 		currentValue := histogramBucketValues[idx]
-		previosValue := histogramBucketValues[idx-1]
-		linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Range: int(currentValue - previosValue)}
+		previousValue := histogramBucketValues[idx-1]
+		iteratorValue += int(currentValue - previousValue)
+		linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Scope: iteratorValue}
 		idx++
 	}
-	linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Range: 1} // for 100000
+	linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Scope: 1} // for 100000
 	// coding bug detection (aka impossible if it works once)
 	if idx != numValues {
 		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numValues, lastV)
@@ -242,14 +246,12 @@ func init() {
 
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
 func lookUpIdx(scaledValue int) int {
-	constantOrLinearDeciderValue := int(histogramBucketValues[line5EndIndex])
-	if constantOrLinearDeciderValue > scaledValue { //constant
+	maxLookupValue := int(histogramBucketValues[line5EndIndex])
+	if scaledValue < maxLookupValue { //constant
 		return constantTimeVal2Bucket[scaledValue]
 	}
-	iteratorValue := constantOrLinearDeciderValue
 	for _, value := range linearTimeVal2Bucket {
-		iteratorValue += value.Range
-		if scaledValue < iteratorValue {
+		if scaledValue < value.Scope {
 			return value.Index
 		}
 	}
