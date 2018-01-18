@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package quiet_test
+package quiet
 
 import (
 	"sync"
@@ -24,6 +24,7 @@ import (
 )
 
 // TODO: figure out how to set the loglevel without triggering race test failure
+// and thus not needing this seperate file
 
 type TestCount struct {
 	count *int64
