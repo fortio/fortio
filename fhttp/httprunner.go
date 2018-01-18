@@ -148,7 +148,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	if log.LogVerbose() {
 		total.HeaderSizes.Print(out, "Response Header Sizes Histogram")
 		total.Sizes.Print(out, "Response Body/Total Sizes Histogram")
-	} else {
+	} else if log.Log(log.Warning) {
 		total.headerSizes.Counter.Print(out, "Response Header Sizes")
 		total.sizes.Counter.Print(out, "Response Body/Total Sizes")
 	}
