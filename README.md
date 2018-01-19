@@ -234,7 +234,9 @@ For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It s
   - Run/Trigger tests and graph the results.
   - A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
   - Proxy/fetch other URLs
+  - `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
 
+The `report` mode is a readonly subset of the above directly on `/`.
 
 ## Implementation details
 
