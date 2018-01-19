@@ -183,6 +183,7 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 
 // Fetch fetches the byte and code for pre created client
 func (c *Client) Fetch() (int, []byte, int) {
+	// req can't be null (client itself would be null in that case)
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("Unable to send request for %s : %v", c.url, err)
