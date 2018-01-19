@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.6.3"
+	Version = "0.6.4"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -189,14 +189,14 @@ func (r *RunnerOptions) Normalize() {
 			}
 			abortChan := gAbortChan
 			gAbortMutex.Unlock()
-			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, gAbortChan, runnerChan, runtime.NumGoroutine())
+			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, abortChan, runnerChan, runtime.NumGoroutine())
 			select {
 			case _, ok := <-abortChan:
 				log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
 				if ok {
 					gAbortMutex.Lock()
 					if gAbortChan != nil {
-						log.Infof("WATCHER %d closing %v to notify all", n, gAbortChan)
+						log.LogVf("WATCHER %d closing %v to notify all", n, gAbortChan)
 						close(gAbortChan)
 						gAbortChan = nil
 					}
@@ -211,7 +211,7 @@ func (r *RunnerOptions) Normalize() {
 			gAbortMutex.Lock()
 			gOutstandingRuns--
 			if gOutstandingRuns == 0 {
-				log.Infof("WATCHER %d Last watcher: resetting signal handler", n)
+				log.LogVf("WATCHER %d Last watcher: resetting signal handler", n)
 				gAbortChan = nil
 				signal.Reset(os.Interrupt)
 			} else {
@@ -288,38 +288,53 @@ func (r *periodicRunner) Run() RunnerResults {
 			totalCalls := numCalls * int64(r.NumThreads)
 			if useExactly {
 				leftOver = r.Exactly - totalCalls
-				// nolint: gas
-				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
-					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
+						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+				}
 			} else {
-				// nolint: gas
-				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+				}
 			}
 		} else {
+			// Always print that as we need ^C to interrupt, in that case the user need to notice
 			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
 			numCalls = 0
 		}
 	} else {
-		// nolint: gas
-		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
-			r.NumThreads, runtime.GOMAXPROCS(0))
-		if useExactly {
-			requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
-			numCalls = r.Exactly / int64(r.NumThreads)
-			leftOver = r.Exactly % int64(r.NumThreads)
-			fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+		if !useExactly && !hasDuration {
+			// Always log something when waiting for ^C
+			// nolint: gas
+			fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted\n",
+				r.NumThreads, runtime.GOMAXPROCS(0))
 		} else {
-			if hasDuration {
-				requestedDuration = fmt.Sprint(r.Duration)
-				fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+			if log.Log(log.Warning) {
+				// nolint: gas
+				fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
+					r.NumThreads, runtime.GOMAXPROCS(0))
+			}
+			if useExactly {
+				requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
+				numCalls = r.Exactly / int64(r.NumThreads)
+				leftOver = r.Exactly % int64(r.NumThreads)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+				}
 			} else {
-				fmt.Fprintf(r.Out, "until interrupted\n")
+				requestedDuration = fmt.Sprint(r.Duration)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+				}
 			}
 		}
-
 	}
 	runnersLen := len(r.Runners)
 	if runnersLen == 0 {
@@ -335,7 +350,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
-		log.Infof("Running single threaded")
+		log.LogVf("Running single threaded")
 		runOne(0, runnerChan, functionDuration, sleepTime, numCalls+leftOver, start, r)
 	} else {
 		var wg sync.WaitGroup
@@ -365,8 +380,10 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
-	// nolint: gas
-	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	if log.Log(log.Warning) {
+		// nolint: gas
+		fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	}
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
@@ -378,7 +395,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		} else {
 			if log.Log(log.Verbose) {
 				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
-			} else {
+			} else if log.Log(log.Warning) {
 				sleepTime.Counter.Print(r.Out, "Sleep times")
 			}
 		}
@@ -389,8 +406,14 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
-	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
-
+	if log.Log(log.Warning) {
+		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+	} else {
+		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
+		for _, p := range result.DurationHistogram.Percentiles {
+			fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+		}
+	}
 	select {
 	case <-runnerChan: // nothing
 		log.LogVf("RUNNER r.Stop already closed")

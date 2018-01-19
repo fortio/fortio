@@ -15,6 +15,10 @@
 package fhttp
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -424,6 +428,29 @@ func TestRoundDuration(t *testing.T) {
 		if actual := RoundDuration(tst.input); actual != tst.expected {
 			t.Errorf("Got %v, expected %v for RoundDuration(%v)", actual, tst.expected, tst.input)
 		}
+	}
+}
+
+// Many of the earlier http tests are through httprunner but new tests should go here
+
+func TestEchoBack(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	v := url.Values{}
+	v.Add("foo", "bar")
+	url := fmt.Sprintf("http://localhost:%d/", p)
+	resp, err := http.PostForm(url, v)
+	if err != nil {
+		t.Fatalf("post form err %v", err)
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("readall err %v", err)
+	}
+	expected := "foo=bar"
+	if string(b) != expected {
+		t.Errorf("Got %s while expected %s", DebugSummary(b, 128), expected)
 	}
 }
 

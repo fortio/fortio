@@ -111,6 +111,7 @@ var (
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
+	quietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 )
 
 func main() {
@@ -130,6 +131,9 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	if *quietFlag {
+		log.SetLogLevelQuiet(log.Error)
+	}
 	percList, err = stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
@@ -192,16 +196,20 @@ func fortioLoad() {
 	}
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
-	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs",
-		periodic.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0))
-	if *durationFlag <= 0 {
-		// Infinite mode is determined by having a negative duration value
-		*durationFlag = -1
-		fmt.Printf(", until interrupted: %s\n", url)
+	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
+	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
+		periodic.Version, qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+	if *exactlyFlag > 0 {
+		fmt.Fprintf(out, ", for %d calls: %s\n", *exactlyFlag, url)
 	} else {
-		fmt.Printf(", for %v: %s\n", *durationFlag, url)
+		if *durationFlag <= 0 {
+			// Infinite mode is determined by having a negative duration value
+			*durationFlag = -1
+			fmt.Fprintf(out, ", until interrupted: %s\n", url)
+		} else {
+			fmt.Fprintf(out, ", for %v: %s\n", *durationFlag, url)
+		}
 	}
-	qps := *qpsFlag
 	if qps <= 0 {
 		qps = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
 	}
