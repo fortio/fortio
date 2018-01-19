@@ -608,7 +608,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 				uPath := ur.Path
 				pathParts := strings.Split(uPath, "/")
 				name := pathParts[len(pathParts)-1]
-				downloadOne(w, client, name, ur)
+				downloadOne(w, client, name, u)
 			}
 			w.Write([]byte(fmt.Sprintf("<script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
 			flusher.Flush()
@@ -617,7 +617,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
 }
 
-func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, ur *url.URL) {
+func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
 	if !strings.HasSuffix(name, ".json") {
 		w.Write([]byte(":\t skipped (not json)")) // nolint: gas, errcheck
 		return
@@ -629,7 +629,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, ur *u
 		return
 	}
 	// url already validated
-	_ = client.ChangeURL(ur.String()) // nolint: gas
+	_ = client.ChangeURL(u) // nolint: gas
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
 		w.Write([]byte(fmt.Sprintf(":\t Http error, code %d", code1))) // nolint: gas, errcheck
@@ -642,7 +642,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, ur *u
 		return
 	}
 	// finally ! success !
-	log.Infof("Success fetching %s", ur.String())
+	log.Infof("Success fetching %s", u)
 	// checkmark
 	w.Write([]byte(":\t ✓")) // nolint: gas, errcheck
 }
