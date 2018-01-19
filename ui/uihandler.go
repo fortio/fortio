@@ -608,39 +608,43 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 				uPath := ur.Path
 				pathParts := strings.Split(uPath, "/")
 				name := pathParts[len(pathParts)-1]
-				if !strings.HasSuffix(name, ".json") {
-					w.Write([]byte(":\t skipped (not json)")) // nolint: gas, errcheck
-				} else {
-					localPath := path.Join(dataDir, name)
-					if _, err := os.Stat(localPath); err == nil || !os.IsNotExist(err) {
-						log.Infof("check %s : %v", localPath, err)
-						w.Write([]byte(":\t skipped (already exist or other error)")) // nolint: gas, errcheck
-					} else {
-						// url already validated
-						_ = client.ChangeURL(u) // nolint: gas
-						code1, data1, _ := client.Fetch()
-						if code1 != http.StatusOK {
-							w.Write([]byte(fmt.Sprintf(":\t Http error, code %d", code1))) // nolint: gas, errcheck
-						} else {
-							err := ioutil.WriteFile(localPath, data1, 0644)
-							if err != nil {
-								log.Errf("Unable to save %s: %v", localPath, err)
-								w.Write([]byte(":\t skipped (write error)")) // nolint: gas, errcheck
-							} else {
-								// finally ! success !
-								log.Infof("Success fetching %s", ur.String())
-								// checkmark
-								w.Write([]byte(":\t ✓")) // nolint: gas, errcheck
-							}
-						}
-					}
-				}
+				downloadOne(w, client, name, ur)
 			}
 			w.Write([]byte(fmt.Sprintf("<script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
 			flusher.Flush()
 		}
 	}
 	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
+}
+
+func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, ur *url.URL) {
+	if !strings.HasSuffix(name, ".json") {
+		w.Write([]byte(":\t skipped (not json)")) // nolint: gas, errcheck
+		return
+	}
+	localPath := path.Join(dataDir, name)
+	if _, err := os.Stat(localPath); err == nil || !os.IsNotExist(err) {
+		log.Infof("check %s : %v", localPath, err)
+		w.Write([]byte(":\t skipped (already exist or other error)")) // nolint: gas, errcheck
+		return
+	}
+	// url already validated
+	_ = client.ChangeURL(ur.String()) // nolint: gas
+	code1, data1, _ := client.Fetch()
+	if code1 != http.StatusOK {
+		w.Write([]byte(fmt.Sprintf(":\t Http error, code %d", code1))) // nolint: gas, errcheck
+		return
+	}
+	err := ioutil.WriteFile(localPath, data1, 0644)
+	if err != nil {
+		log.Errf("Unable to save %s: %v", localPath, err)
+		w.Write([]byte(":\t skipped (write error)")) // nolint: gas, errcheck
+		return
+	}
+	// finally ! success !
+	log.Infof("Success fetching %s", ur.String())
+	// checkmark
+	w.Write([]byte(":\t ✓")) // nolint: gas, errcheck
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
