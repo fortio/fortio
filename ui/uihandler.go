@@ -647,7 +647,7 @@ func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
 	// finally ! success !
 	log.Infof("Success fetching %s", u)
 	// checkmark
-	w.Write([]byte("<td style='color: olive; font-size: 1.5em'>✓")) // nolint: gas, errcheck
+	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
