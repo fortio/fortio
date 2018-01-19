@@ -174,6 +174,13 @@ type Client struct {
 	client *http.Client
 }
 
+// ChangeURL only for standard client, allows fetching a different URL
+func (c *Client) ChangeURL(urlStr string) (err error) {
+	c.url = urlStr
+	c.req.URL, err = url.Parse(urlStr)
+	return err
+}
+
 // Fetch fetches the byte and code for pre created client
 func (c *Client) Fetch() (int, []byte, int) {
 	resp, err := c.client.Do(c.req)
@@ -215,7 +222,7 @@ func NewClient(o *HTTPOptions) Fetcher {
 }
 
 // NewStdClient creates a client object that wraps the net/http standard client.
-func NewStdClient(o *HTTPOptions) Fetcher {
+func NewStdClient(o *HTTPOptions) *Client {
 	req := newHTTPRequest(o)
 	if req == nil {
 		return nil

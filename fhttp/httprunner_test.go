@@ -65,7 +65,10 @@ func TestHTTPRunner(t *testing.T) {
 		t.Errorf("Fast Client with raw option should still work with warning in logs")
 	}
 	o1 = rawOpts
-	if r, _, _ := NewStdClient(&o1).Fetch(); r != http.StatusOK {
+	o1.URL = "http://www.doesnotexist.badtld/"
+	c := NewStdClient(&o1)
+	c.ChangeURL(rawOpts.URL)
+	if r, _, _ := c.Fetch(); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")
 	}
 }
