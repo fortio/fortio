@@ -27,6 +27,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"runtime"
@@ -560,33 +561,86 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
-	o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
+	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr) // nolint: gas
 }
 
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Sync")
-	url := r.FormValue("url")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+	}
+	uStr := r.FormValue("url")
 	err := syncTemplate.Execute(w, &struct {
 		Version  string
 		LogoPath string
 		URL      string
-	}{periodic.Version, logoPath, url})
+	}{periodic.Version, logoPath, uStr})
 	if err != nil {
 		log.Critf("Sync template execution failed: %v", err)
 	}
-	o := fhttp.NewHTTPOptions(url)
+	o := fhttp.NewHTTPOptions(uStr)
 	onBehalfOf(o, r)
-	o.DisableFastClient = true // use std go client for https url etc
-	code, data, _ := fhttp.NewClient(o).Fetch()
+	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
+	// and not do multiple passes over the same data, but for small tsv this is fine.
+	// use std client to change the url and handle https:
+	client := fhttp.NewStdClient(o)
+	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf("Http error, code %d", code)))
+		w.Write([]byte(fmt.Sprintf("Http error, code %d", code))) // nolint: gas, errcheck
 	} else {
-		w.Write([]byte("Fetch success:<br /><pre>"))
-		w.Write([]byte(template.HTMLEscapeString(string(data))))
-		w.Write([]byte("</pre>"))
+		w.Write([]byte("Fetch of index url success:<br /><pre>")) // nolint: gas, errcheck
+		sdata := strings.TrimSpace(string(data))
+		//w.Write([]byte(template.HTMLEscapeString(sdata)))
+		//w.Write([]byte("</pre>"))
+		lines := strings.Split(sdata, "\n")
+		w.Write([]byte(fmt.Sprintf("<script>setPB(1,%d)</script>\n", len(lines)))) // nolint: gas, errcheck
+		// TODO: arghhh if/else/if/else too many level
+		for i, l := range lines[1:] {
+			parts := strings.Split(l, "\t")
+			u := parts[0]
+			w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
+			ur, err := url.Parse(u)
+			if err != nil {
+				w.Write([]byte(":\t skipped (not a valid url)")) // nolint: gas, errcheck
+			} else {
+				uPath := ur.Path
+				pathParts := strings.Split(uPath, "/")
+				name := pathParts[len(pathParts)-1]
+				if !strings.HasSuffix(name, ".json") {
+					w.Write([]byte(":\t skipped (not json)")) // nolint: gas, errcheck
+				} else {
+					localPath := path.Join(dataDir, name)
+					if _, err := os.Stat(localPath); err == nil || !os.IsNotExist(err) {
+						log.Infof("check %s : %v", localPath, err)
+						w.Write([]byte(":\t skipped (already exist or other error)")) // nolint: gas, errcheck
+					} else {
+						// url already validated
+						_ = client.ChangeURL(u) // nolint: gas
+						code1, data1, _ := client.Fetch()
+						if code1 != http.StatusOK {
+							w.Write([]byte(fmt.Sprintf(":\t Http error, code %d", code1))) // nolint: gas, errcheck
+						} else {
+							err := ioutil.WriteFile(localPath, data1, 0644)
+							if err != nil {
+								log.Errf("Unable to save %s: %v", localPath, err)
+								w.Write([]byte(":\t skipped (write error)")) // nolint: gas, errcheck
+							} else {
+								// finally ! success !
+								log.Infof("Success fetching %s", ur.String())
+								// checkmark
+								w.Write([]byte(":\t ✓")) // nolint: gas, errcheck
+							}
+						}
+					}
+				}
+			}
+			w.Write([]byte(fmt.Sprintf("<script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+			flusher.Flush()
+		}
 	}
-	w.Write([]byte("\n</body></html>\n"))
+	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
