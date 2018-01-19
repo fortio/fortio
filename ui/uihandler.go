@@ -65,6 +65,7 @@ var (
 	dataDir        string
 	mainTemplate   *template.Template
 	browseTemplate *template.Template
+	syncTemplate   *template.Template
 	uiRunMapMutex  = &sync.Mutex{}
 	id             int64
 	runs           = make(map[int64]*periodic.RunnerOptions)
@@ -556,6 +557,20 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SyncHandler handles syncing/downloading from tsv url.
+func SyncHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Sync")
+	url := r.FormValue("url")
+	err := syncTemplate.Execute(w, &struct {
+		Version  string
+		LogoPath string
+		URL      string
+	}{periodic.Version, logoPath, url})
+	if err != nil {
+		log.Critf("Sync template execution failed: %v", err)
+	}
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
@@ -603,6 +618,12 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 			log.Critf("Unable to parse browse template: %v", err)
 		} else {
 			http.HandleFunc(uiPath+"browse", BrowseHandler)
+		}
+		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"))
+		if err != nil {
+			log.Critf("Unable to parse sync template: %v", err)
+		} else {
+			http.HandleFunc(uiPath+"sync", SyncHandler)
 		}
 	}
 	if dataDir != "" {
