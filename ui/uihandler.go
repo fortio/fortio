@@ -580,6 +580,8 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Critf("Sync template execution failed: %v", err)
 	}
+	w.Write([]byte("Fetch of index url ... ")) // nolint: gas, errcheck
+	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
 	onBehalfOf(o, r)
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
@@ -588,63 +590,64 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	client := fhttp.NewStdClient(o)
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf("Http error, code %d", code))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script>", code))) // nolint: gas, errcheck
 	} else {
-		w.Write([]byte("Fetch of index url success:<br /><pre>")) // nolint: gas, errcheck
 		sdata := strings.TrimSpace(string(data))
-		//w.Write([]byte(template.HTMLEscapeString(sdata)))
-		//w.Write([]byte("</pre>"))
 		lines := strings.Split(sdata, "\n")
-		w.Write([]byte(fmt.Sprintf("<script>setPB(1,%d)</script>\n", len(lines)))) // nolint: gas, errcheck
-		// TODO: arghhh if/else/if/else too many level
+		n := len(lines)
+		w.Write([]byte(fmt.Sprintf("success! fetching %d referenced URLs:<script>setPB(1,%d)</script>\n", n, n))) // nolint: gas, errcheck
+		w.Write([]byte("<table>"))                                                                                // nolint: gas, errcheck
+		flusher.Flush()
 		for i, l := range lines[1:] {
 			parts := strings.Split(l, "\t")
 			u := parts[0]
+			w.Write([]byte("<tr><td>"))                   // nolint: gas, errcheck
 			w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
 			ur, err := url.Parse(u)
 			if err != nil {
-				w.Write([]byte(":\t skipped (not a valid url)")) // nolint: gas, errcheck
+				w.Write([]byte("<td>skipped (not a valid url)")) // nolint: gas, errcheck
 			} else {
 				uPath := ur.Path
 				pathParts := strings.Split(uPath, "/")
 				name := pathParts[len(pathParts)-1]
 				downloadOne(w, client, name, u)
 			}
-			w.Write([]byte(fmt.Sprintf("<script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+			w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
 			flusher.Flush()
 		}
+		w.Write([]byte("</table>")) // nolint: gas, errcheck
 	}
 	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
 }
 
 func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
 	if !strings.HasSuffix(name, ".json") {
-		w.Write([]byte(":\t skipped (not json)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (not json)")) // nolint: gas, errcheck
 		return
 	}
 	localPath := path.Join(dataDir, name)
 	if _, err := os.Stat(localPath); err == nil || !os.IsNotExist(err) {
 		log.Infof("check %s : %v", localPath, err)
-		w.Write([]byte(":\t skipped (already exist or other error)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (already exist or other error)")) // nolint: gas, errcheck
 		return
 	}
 	// url already validated
 	_ = client.ChangeURL(u) // nolint: gas
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf(":\t Http error, code %d", code1))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1))) // nolint: gas, errcheck
 		return
 	}
 	err := ioutil.WriteFile(localPath, data1, 0644)
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
-		w.Write([]byte(":\t skipped (write error)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck
 		return
 	}
 	// finally ! success !
 	log.Infof("Success fetching %s", u)
 	// checkmark
-	w.Write([]byte(":\t ✓")) // nolint: gas, errcheck
+	w.Write([]byte("<td style='color: olive; font-size: 1.5em'>✓")) // nolint: gas, errcheck
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
