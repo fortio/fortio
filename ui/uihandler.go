@@ -265,6 +265,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				log.Errf("Error adding custom headers: %v", err)
 			}
 		}
+		onBehalfOf(opts, r)
 		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions:      ro,
 			HTTPOptions:        *opts,
@@ -546,6 +547,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.String()[len(fetchPath):]
 	opts := fhttp.NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
+	onBehalfOf(opts, r)
 	client := fhttp.NewClient(opts)
 	if client == nil {
 		return // error logged already
@@ -555,6 +557,10 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
 	}
+}
+
+func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
+	o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
 // SyncHandler handles syncing/downloading from tsv url.
@@ -569,6 +575,18 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Critf("Sync template execution failed: %v", err)
 	}
+	o := fhttp.NewHTTPOptions(url)
+	onBehalfOf(o, r)
+	o.DisableFastClient = true // use std go client for https url etc
+	code, data, _ := fhttp.NewClient(o).Fetch()
+	if code != http.StatusOK {
+		w.Write([]byte(fmt.Sprintf("Http error, code %d", code)))
+	} else {
+		w.Write([]byte("Fetch success:<br /><pre>"))
+		w.Write([]byte(template.HTMLEscapeString(string(data))))
+		w.Write([]byte("</pre>"))
+	}
+	w.Write([]byte("\n</body></html>\n"))
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
