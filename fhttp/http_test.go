@@ -454,6 +454,24 @@ func TestEchoBack(t *testing.T) {
 	}
 }
 
+func TestInvalidRequest(t *testing.T) {
+	o := HTTPOptions{
+		URL: "http://www.google.com/", // valid url
+	}
+	client := NewStdClient(&o)
+	client.ChangeURL(" http://bad.url.with.space.com/") // invalid url
+	// should not crash (issue #93), should error out
+	code, _, _ := client.Fetch()
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d code while expecting bad request (%d)", code, http.StatusBadRequest)
+	}
+	o.URL = client.url
+	c2 := NewStdClient(&o)
+	if c2 != nil {
+		t.Errorf("Got non nil client %+v code while expecting nil for bad request", c2)
+	}
+}
+
 // --- for bench mark/comparaison
 
 func asciiFold0(str string) []byte {

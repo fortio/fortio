@@ -571,7 +571,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 	}
-	uStr := r.FormValue("url")
+	uStr := strings.TrimSpace(r.FormValue("url"))
 	err := syncTemplate.Execute(w, &struct {
 		Version  string
 		LogoPath string
@@ -588,6 +588,10 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// and not do multiple passes over the same data, but for small tsv this is fine.
 	// use std client to change the url and handle https:
 	client := fhttp.NewStdClient(o)
+	if client == nil {
+		w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		return
+	}
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
 		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script>", code))) // nolint: gas, errcheck
