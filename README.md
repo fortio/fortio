@@ -236,6 +236,7 @@ For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It s
   - Proxy/fetch other URLs
   - `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
   - Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
+  - Download/sync from an Amazon S3 or Google Cloud compatible bucket listings XML URLs
 
 The `report` mode is a readonly subset of the above directly on `/`.
 

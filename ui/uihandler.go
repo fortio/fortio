@@ -21,6 +21,7 @@ import (
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"html"
 	"html/template"
@@ -564,6 +565,8 @@ func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr) // nolint: gas
 }
 
+// TODO: move tsv/xml sync handling to their own file (and possibly package)
+
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Sync")
@@ -580,7 +583,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Critf("Sync template execution failed: %v", err)
 	}
-	w.Write([]byte("Fetch of index url ... ")) // nolint: gas, errcheck
+	w.Write([]byte("Fetch of index/bucket url ... ")) // nolint: gas, errcheck
 	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
 	onBehalfOf(o, r)
@@ -594,45 +597,136 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script>", code))) // nolint: gas, errcheck
-	} else {
-		sdata := strings.TrimSpace(string(data))
-		lines := strings.Split(sdata, "\n")
-		n := len(lines)
-		w.Write([]byte(fmt.Sprintf("success! fetching %d referenced URLs:<script>setPB(1,%d)</script>\n", n, n))) // nolint: gas, errcheck
-		w.Write([]byte("<table>"))                                                                                // nolint: gas, errcheck
-		flusher.Flush()
-		for i, l := range lines[1:] {
-			parts := strings.Split(l, "\t")
-			u := parts[0]
-			w.Write([]byte("<tr><td>"))                   // nolint: gas, errcheck
-			w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
-			ur, err := url.Parse(u)
-			if err != nil {
-				w.Write([]byte("<td>skipped (not a valid url)")) // nolint: gas, errcheck
-			} else {
-				uPath := ur.Path
-				pathParts := strings.Split(uPath, "/")
-				name := pathParts[len(pathParts)-1]
-				downloadOne(w, client, name, u)
-			}
-			w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
-			flusher.Flush()
-		}
-		w.Write([]byte("</table>")) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code))) // nolint: gas, errcheck
+		return
 	}
+	sdata := strings.TrimSpace(string(data))
+	if strings.HasPrefix(sdata, "TsvHttpData-1.0") {
+		processTSV(w, client, sdata)
+	} else {
+		if !processXML(w, client, data, uStr, 0) {
+			return
+		}
+	}
+	w.Write([]byte("</table>"))           // nolint: gas, errcheck
 	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
 }
 
+func processTSV(w io.Writer, client *fhttp.Client, sdata string) {
+	flusher := w.(http.Flusher)
+	lines := strings.Split(sdata, "\n")
+	n := len(lines)
+	// nolint: gas, errcheck
+	w.Write([]byte(fmt.Sprintf("success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
+		n-1, n)))
+	w.Write([]byte("<table>")) // nolint: gas, errcheck
+	flusher.Flush()
+	for i, l := range lines[1:] {
+		parts := strings.Split(l, "\t")
+		u := parts[0]
+		w.Write([]byte("<tr><td>"))                   // nolint: gas, errcheck
+		w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
+		ur, err := url.Parse(u)
+		if err != nil {
+			w.Write([]byte("<td>skipped (not a valid url)")) // nolint: gas, errcheck
+		} else {
+			uPath := ur.Path
+			pathParts := strings.Split(uPath, "/")
+			name := pathParts[len(pathParts)-1]
+			downloadOne(w, client, name, u)
+		}
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		flusher.Flush()
+	}
+}
+
+// ListBucketResult is the minimum we need out of s3 xml results.
+type ListBucketResult struct {
+	NextMarker string   `xml:"NextMarker"`
+	Names      []string `xml:"Contents>Key"`
+}
+
+// @returns true if started a table successfully - false is error
+func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, level int) bool {
+	// We already know this parses as we just fetched it:
+	bu, _ := url.Parse(baseURL) // nolint: gas, errcheck
+	flusher := w.(http.Flusher)
+	l := ListBucketResult{}
+	err := xml.Unmarshal(data, &l)
+	if err != nil {
+		log.Errf("xml unmarshal error %v", err)
+		// don't show the error / would need html escape to avoid CSS attacks
+		w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		return false
+	}
+	n := len(l.Names)
+	log.Infof("Parsed %+v", l)
+	// nolint: gas, errcheck
+	w.Write([]byte(fmt.Sprintf("success xml fetch #%d! Now fetching %d referenced objects:<script>setPB(1,%d)</script>\n",
+		level+1, n, n+1)))
+	if level == 0 {
+		w.Write([]byte("<table>")) // nolint: gas, errcheck
+	}
+	for i, el := range l.Names {
+		w.Write([]byte("<tr><td>"))                    // nolint: gas, errcheck
+		w.Write([]byte(template.HTMLEscapeString(el))) // nolint: gas, errcheck
+		pathParts := strings.Split(el, "/")
+		name := pathParts[len(pathParts)-1]
+		newURL := *bu // copy
+		newURL.Path = newURL.Path + "/" + el
+		fullURL := newURL.String()
+		downloadOne(w, client, name, fullURL)
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		flusher.Flush()
+	}
+	flusher.Flush()
+	// Is there more data ? (NextMarker present)
+	if len(l.NextMarker) == 0 {
+		return true
+	}
+	if level > 100 {
+		log.Errf("Too many chunks, stopping after 100")
+		return true
+	}
+	q := bu.Query()
+	if q.Get("marker") == l.NextMarker {
+		log.Errf("Loop with same marker %+v", bu)
+		return true
+	}
+	q.Set("marker", l.NextMarker)
+	bu.RawQuery = q.Encode()
+	newBaseURL := bu.String()
+	// url already validated
+	w.Write([]byte("<tr><td>"))                            // nolint: gas, errcheck
+	w.Write([]byte(template.HTMLEscapeString(newBaseURL))) // nolint: gas, errcheck
+	w.Write([]byte("<td>"))                                // nolint: gas, errcheck
+	_ = client.ChangeURL(newBaseURL)                       // nolint: gas
+	ncode, ndata, _ := client.Fetch()
+	if ncode != http.StatusOK {
+		log.Errf("Can't fetch continuation with marker %+v", bu)
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode))) // nolint: gas, errcheck
+		return false
+	}
+	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
+}
+
 func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
+	log.Infof("downloadOne(%s,%s)", name, u)
 	if !strings.HasSuffix(name, ".json") {
 		w.Write([]byte("<td>skipped (not json)")) // nolint: gas, errcheck
 		return
 	}
 	localPath := path.Join(dataDir, name)
-	if _, err := os.Stat(localPath); err == nil || !os.IsNotExist(err) {
-		log.Infof("check %s : %v", localPath, err)
-		w.Write([]byte("<td>skipped (already exist or other error)")) // nolint: gas, errcheck
+	_, err := os.Stat(localPath)
+	if err == nil {
+		w.Write([]byte("<td>skipped (already exists)")) // nolint: gas, errcheck
+		return
+	}
+	// note that if data dir doesn't exist this will trigger too - TODO: check datadir earlier
+	if !os.IsNotExist(err) {
+		log.Warnf("check %s : %v", localPath, err)
+		// don't return the details of the error to not leak local data dir etc
+		w.Write([]byte("<td>skipped (access error)")) // nolint: gas, errcheck
 		return
 	}
 	// url already validated
@@ -642,7 +736,7 @@ func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
 		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1))) // nolint: gas, errcheck
 		return
 	}
-	err := ioutil.WriteFile(localPath, data1, 0644)
+	err = ioutil.WriteFile(localPath, data1, 0644)
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck
