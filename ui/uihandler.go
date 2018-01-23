@@ -567,6 +567,41 @@ func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
 
 // TODO: move tsv/xml sync handling to their own file (and possibly package)
 
+// http.ResponseWriter + Flusher emulator
+type outHTTPWriter struct {
+	CodePtr *int // Needed because that interface is somehow pass by value
+	Out     io.Writer
+	header  http.Header
+}
+
+func (o outHTTPWriter) Header() http.Header {
+	return o.header
+}
+
+func (o outHTTPWriter) Write(b []byte) (int, error) {
+	return o.Out.Write(b)
+}
+
+func (o outHTTPWriter) WriteHeader(code int) {
+	*o.CodePtr = code
+	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code)))
+}
+
+func (o outHTTPWriter) Flush() {
+	// nothing
+}
+
+// Sync is the non http equivalent of fortio/sync?url=u.
+func Sync(out io.Writer, u string) bool {
+	v := url.Values{}
+	v.Set("url", u)
+	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil)
+	code := http.StatusOK // default
+	w := outHTTPWriter{Out: out, CodePtr: &code}
+	SyncHandler(w, req)
+	return (code == http.StatusOK)
+}
+
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Sync")
@@ -575,13 +610,15 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 	}
 	uStr := strings.TrimSpace(r.FormValue("url"))
-	err := syncTemplate.Execute(w, &struct {
-		Version  string
-		LogoPath string
-		URL      string
-	}{periodic.Version, logoPath, uStr})
-	if err != nil {
-		log.Critf("Sync template execution failed: %v", err)
+	if syncTemplate != nil {
+		err := syncTemplate.Execute(w, &struct {
+			Version  string
+			LogoPath string
+			URL      string
+		}{periodic.Version, logoPath, uStr})
+		if err != nil {
+			log.Critf("Sync template execution failed: %v", err)
+		}
 	}
 	w.Write([]byte("Fetch of index/bucket url ... ")) // nolint: gas, errcheck
 	flusher.Flush()
@@ -593,11 +630,13 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	client := fhttp.NewStdClient(o)
 	if client == nil {
 		w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.WriteHeader(422 /*Unprocessable Entity*/)
 		return
 	}
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
 		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code))) // nolint: gas, errcheck
+		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
 	sdata := strings.TrimSpace(string(data))
@@ -612,7 +651,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
 }
 
-func processTSV(w io.Writer, client *fhttp.Client, sdata string) {
+func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
 	flusher := w.(http.Flusher)
 	lines := strings.Split(sdata, "\n")
 	n := len(lines)
@@ -649,7 +688,7 @@ type ListBucketResult struct {
 }
 
 // @returns true if started a table successfully - false is error
-func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, level int) bool {
+func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
 	// We already know this parses as we just fetched it:
 	bu, _ := url.Parse(baseURL) // nolint: gas, errcheck
 	flusher := w.(http.Flusher)
@@ -659,6 +698,7 @@ func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, 
 		log.Errf("xml unmarshal error %v", err)
 		// don't show the error / would need html escape to avoid CSS attacks
 		w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.WriteHeader(http.StatusInternalServerError)
 		return false
 	}
 	n := len(l.Names)
@@ -688,11 +728,13 @@ func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, 
 	}
 	if level > 100 {
 		log.Errf("Too many chunks, stopping after 100")
+		w.WriteHeader(509 /* Bandwidth Limit Exceeded */)
 		return true
 	}
 	q := bu.Query()
 	if q.Get("marker") == l.NextMarker {
 		log.Errf("Loop with same marker %+v", bu)
+		w.WriteHeader(508 /* Loop Detected */)
 		return true
 	}
 	q.Set("marker", l.NextMarker)
@@ -708,12 +750,13 @@ func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, 
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 		// nolint: gas, errcheck
 		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
+		w.WriteHeader(424 /*Failed Dependency*/)
 		return false
 	}
 	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
 }
 
-func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
+func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u string) {
 	log.Infof("downloadOne(%s,%s)", name, u)
 	if !strings.HasSuffix(name, ".json") {
 		w.Write([]byte("<td>skipped (not json)")) // nolint: gas, errcheck
@@ -737,12 +780,14 @@ func downloadOne(w io.Writer, client *fhttp.Client, name string, u string) {
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
 		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1))) // nolint: gas, errcheck
+		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
 	err = ioutil.WriteFile(localPath, data1, 0644)
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// finally ! success !

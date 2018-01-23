@@ -41,7 +41,7 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.6.4 usage:
+Φορτίο 0.6.5 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -124,6 +124,8 @@ tests) or host:port (grpc health test) and flags are:
     	Absolute path to the dir containing the static files dir
   -stdclient
     	Use the slower net/http standard client (works for TLS)
+  -sync string
+      index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
   -ui-path string

@@ -112,6 +112,7 @@ var (
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
 	quietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
+	syncFlag  = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 )
 
 func main() {
@@ -137,6 +138,13 @@ func main() {
 	percList, err = stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
+	}
+
+	sync := strings.TrimSpace(*syncFlag)
+	if sync != "" {
+		if !ui.Sync(os.Stdout, sync) {
+			os.Exit(1)
+		}
 	}
 
 	switch command {
