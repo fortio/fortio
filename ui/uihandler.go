@@ -641,6 +641,8 @@ func processTSV(w io.Writer, client *fhttp.Client, sdata string) {
 }
 
 // ListBucketResult is the minimum we need out of s3 xml results.
+// https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
+// e.g. https://storage.googleapis.com/fortio-data?max-keys=2&prefix=fortio.istio.io/
 type ListBucketResult struct {
 	NextMarker string   `xml:"NextMarker"`
 	Names      []string `xml:"Contents>Key"`
@@ -704,7 +706,8 @@ func processXML(w io.Writer, client *fhttp.Client, data []byte, baseURL string, 
 	ncode, ndata, _ := client.Fetch()
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
-		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode))) // nolint: gas, errcheck
+		// nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
 		return false
 	}
 	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
