@@ -567,7 +567,8 @@ func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
 
 // TODO: move tsv/xml sync handling to their own file (and possibly package)
 
-// http.ResponseWriter + Flusher emulator
+// http.ResponseWriter + Flusher emulator - if we refactor the code this should
+// not be needed. on the other hand it's useful and could be reused.
 type outHTTPWriter struct {
 	CodePtr *int // Needed because that interface is somehow pass by value
 	Out     io.Writer
@@ -584,7 +585,7 @@ func (o outHTTPWriter) Write(b []byte) (int, error) {
 
 func (o outHTTPWriter) WriteHeader(code int) {
 	*o.CodePtr = code
-	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code)))
+	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code))) // nolint: gas, errcheck
 }
 
 func (o outHTTPWriter) Flush() {
@@ -595,8 +596,8 @@ func (o outHTTPWriter) Flush() {
 func Sync(out io.Writer, u string) bool {
 	v := url.Values{}
 	v.Set("url", u)
-	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil)
-	code := http.StatusOK // default
+	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil) // nolint: gas
+	code := http.StatusOK                                               // default
 	w := outHTTPWriter{Out: out, CodePtr: &code}
 	SyncHandler(w, req)
 	return (code == http.StatusOK)
