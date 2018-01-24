@@ -68,6 +68,11 @@ func (c *Counter) Avg() float64 {
 func (c *Counter) StdDev() float64 {
 	fC := float64(c.Count)
 	sigma := (c.sumOfSquares - c.Sum*c.Sum/fC) / fC
+	// should never happen but it does
+	if sigma < 0 {
+		log.Warnf("Unexpected negative sigma for %+v: %g", c, sigma)
+		return 0
+	}
 	return math.Sqrt(sigma)
 }
 
