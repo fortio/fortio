@@ -113,7 +113,12 @@ func TestSchemeCheck(t *testing.T) {
 		{"www.google.com", "http://www.google.com", false},
 		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
 		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
-		{"", "", false}, // and error in the logs
+		{"", "", false},                      // and error in the logs
+		{"x", "http://x", false},             //should not crash because url is shorter than prefix
+		{"http:/", "http://http:/", false},   //boundary
+		{"http://", "http://", false},        //boundary
+		{"https://", "https://", true},       //boundary
+		{"https:/", "http://https:/", false}, //boundary
 	}
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.input)
