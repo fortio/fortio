@@ -891,6 +891,7 @@ func Report(port int, staticRsrcDir string, datadir string) {
 	fs := http.FileServer(http.Dir(staticRsrcDir))
 	prefix := uiPath + periodic.Version
 	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	http.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
 	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
 	if err != nil {
