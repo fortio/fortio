@@ -111,6 +111,8 @@ func TestSchemeCheck(t *testing.T) {
 	}{
 		{"https://www.google.com/", "https://www.google.com/", true},
 		{"www.google.com", "http://www.google.com", false},
+		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
+		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
 		{"", "", false}, // and error in the logs
 	}
 	for _, tst := range tests {

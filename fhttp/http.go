@@ -93,14 +93,16 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		log.Errf("unexpected init with empty url")
 		return
 	}
-	if strings.HasPrefix(h.URL, "https://") {
+	hs := "https://"                          // longer of the 2 prefixes
+	lcURL := strings.ToLower(h.URL[:len(hs)]) // no need to tolower more than we check
+	if strings.HasPrefix(lcURL, hs) {
 		if !h.DisableFastClient {
 			log.Warnf("https requested, switching to standard go client")
 			h.DisableFastClient = true
 		}
 		return // url is good
 	}
-	if !strings.HasPrefix(h.URL, "http://") {
+	if !strings.HasPrefix(lcURL, "http://") {
 		log.Warnf("assuming http:// on missing scheme for '%s'", h.URL)
 		h.URL = "http://" + h.URL
 	}
