@@ -1,5 +1,6 @@
 <!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
+<link rel="icon" href="/favicon.ico" />
 <style>
 a:link {
   text-decoration: none;
@@ -77,7 +78,7 @@ List of<br />saved<br />results:</td><td>
 </td><td valign="top">Graph link: <div id="url">...</div>
 </tr></table>
 {{end}}
-<div class="chart-container" style="position: relative; height:75vh; width:98vw; visibility: hidden">
+<div class="chart-container" id="cc1" style="position: relative; height:75vh; width:98vw; visibility: hidden">
 <canvas style="background-color: #fff" id="chart1"></canvas>
 </div>
 <div id="running">

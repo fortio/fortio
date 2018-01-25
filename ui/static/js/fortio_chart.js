@@ -187,6 +187,7 @@ function showChart (data) {
 
 function toggleVisibility () {
   document.getElementById('running').style.display = 'none'
+  document.getElementById('cc1').style.display = 'block'
   document.getElementById('update').style.visibility = 'visible'
 }
 
