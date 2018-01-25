@@ -189,7 +189,7 @@ func fortioLoad(justCurl bool) {
 	if len(flag.Args()) != 1 {
 		usage("Error: fortio load/curl needs a url or destination")
 	}
-	url := flag.Arg(0)
+	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
 	httpOpts.URL = url
 	httpOpts.HTTP10 = *http10Flag
 	httpOpts.DisableFastClient = *stdClientFlag
