@@ -86,7 +86,7 @@ func TestNewHTTPRequest(t *testing.T) {
 
 func TestMultiInitAndEscape(t *testing.T) {
 	// one escaped already 2 not
-	o := NewHTTPOptions("http://localhost:8080/?delay=1s:10%,0.5s:15%25,0.25s:5%")
+	o := NewHTTPOptions("localhost:8080/?delay=1s:10%,0.5s:15%25,0.25s:5%")
 	expected := "http://localhost:8080/?delay=1s:10%25,0.5s:15%25,0.25s:5%25"
 	if o.URL != expected {
 		t.Errorf("Got initially '%s', expected '%s'", o.URL, expected)
@@ -100,6 +100,27 @@ func TestMultiInitAndEscape(t *testing.T) {
 	// Escaping should be indempotent
 	if o.URL != expected {
 		t.Errorf("Got after reinit '%s', expected '%s'", o.URL, expected)
+	}
+}
+
+func TestSchemeCheck(t *testing.T) {
+	var tests = []struct {
+		input  string
+		output string
+		stdcli bool
+	}{
+		{"https://www.google.com/", "https://www.google.com/", true},
+		{"www.google.com", "http://www.google.com", false},
+		{"", "", false}, // and error in the logs
+	}
+	for _, tst := range tests {
+		o := NewHTTPOptions(tst.input)
+		if o.URL != tst.output {
+			t.Errorf("Got %v, expecting %v for url '%s'", o.URL, tst.output, tst.input)
+		}
+		if o.DisableFastClient != tst.stdcli {
+			t.Errorf("Got %v, expecting %v for stdclient for url '%s'", o.DisableFastClient, tst.stdcli, tst.input)
+		}
 	}
 }
 

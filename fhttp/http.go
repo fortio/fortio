@@ -81,7 +81,29 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	}
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
+	h.URLSchemeCheck()
 	return h
+}
+
+// URLSchemeCheck makes sure the client will work with the scheme requested.
+// it also adds missing http:// to emulate curl's behavior.
+func (h *HTTPOptions) URLSchemeCheck() {
+	log.LogVf("URLSchemeCheck %+v", h)
+	if len(h.URL) == 0 {
+		log.Errf("unexpected init with empty url")
+		return
+	}
+	if strings.HasPrefix(h.URL, "https://") {
+		if !h.DisableFastClient {
+			log.Warnf("https requested, switching to standard go client")
+			h.DisableFastClient = true
+		}
+		return // url is good
+	}
+	if !strings.HasPrefix(h.URL, "http://") {
+		log.Warnf("assuming http:// on missing scheme for '%s'", h.URL)
+		h.URL = "http://" + h.URL
+	}
 }
 
 // Version is the fortio package version (TODO:auto gen/extract).
@@ -216,6 +238,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag)
 func NewClient(o *HTTPOptions) Fetcher {
+	o.URLSchemeCheck()
 	if o.DisableFastClient {
 		return NewStdClient(o)
 	}
