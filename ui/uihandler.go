@@ -295,7 +295,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Errf("Init error %+v : %v", o, err)
 			// nolint: errcheck,gas
-			w.Write([]byte(fmt.Sprintf("Aborting because %s\n</pre></body></html>\n",
+			w.Write([]byte(fmt.Sprintf(
+				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
 			return
 		}

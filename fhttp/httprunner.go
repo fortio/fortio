@@ -71,6 +71,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// TODO 1. use std client automatically when https url
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
+	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
