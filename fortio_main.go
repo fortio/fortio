@@ -142,7 +142,7 @@ func main() {
 
 	sync := strings.TrimSpace(*syncFlag)
 	if sync != "" {
-		if !ui.Sync(os.Stdout, sync) {
+		if !ui.Sync(os.Stdout, sync, *dataDirFlag) {
 			os.Exit(1)
 		}
 	}

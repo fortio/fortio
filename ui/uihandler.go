@@ -363,7 +363,7 @@ func DataList() (dataList []string) {
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])
 	}
-	log.LogVf("data list is %v", dataList)
+	log.LogVf("data list is %v (out of %d files in %s)", dataList, len(files), dataDir)
 	return dataList
 }
 
@@ -593,7 +593,8 @@ func (o outHTTPWriter) Flush() {
 }
 
 // Sync is the non http equivalent of fortio/sync?url=u.
-func Sync(out io.Writer, u string) bool {
+func Sync(out io.Writer, u string, datadir string) bool {
+	dataDir = datadir
 	v := url.Values{}
 	v.Set("url", u)
 	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil) // nolint: gas
@@ -792,7 +793,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 		return
 	}
 	// finally ! success !
-	log.Infof("Success fetching %s", u)
+	log.Infof("Success fetching %s - saved at %s", u, localPath)
 	// checkmark
 	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
 }
