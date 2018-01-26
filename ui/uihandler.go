@@ -394,6 +394,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := r.FormValue("url")
+	search := r.FormValue("s")
 	doRender := (url != "")
 	dataList := DataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
@@ -404,11 +405,13 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		LogoPath    string
 		ChartJSPath string
 		URL         string
+		Search      string
 		DataList    []string
 		Port        int
 		DoRender    bool
+		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
-		url, dataList, httpPort, doRender})
+		url, search, dataList, httpPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
