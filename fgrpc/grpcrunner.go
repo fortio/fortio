@@ -65,6 +65,7 @@ type GRPCRunnerOptions struct {
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
+	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),

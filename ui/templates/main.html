@@ -1,6 +1,7 @@
 <!DOCTYPE html><html><head><title>Φορτίο v{{.Version}}</title>
 <script src="{{.ChartJSPath}}"></script>
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
+<link rel="icon" href="/favicon.ico" />
 </head>
 <body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
 <a href="http://fortio.org/"><img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" /></a>
@@ -18,8 +19,8 @@ Running load test... Results pending...
 <button type="submit" onclick='javascript:fetch("./?stop=Stop&runid={{.RunID}}");'>Interrupt</button>
 </div>
 <script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
-<div class="chart-container" style="position: relative; height:75vh; width:98vw">
-<canvas style="background-color: #fff; visibility: hidden;" id="chart1"></canvas>
+<div class="chart-container" id="cc1" style="position: relative; height:75vh; width:98vw; display:none;">
+<canvas style="background-color: #fff;" id="chart1"></canvas>
 </div>
 <div id="update" style="visibility: hidden">
 <form id="updtForm" action="javascript:updateChart()">
