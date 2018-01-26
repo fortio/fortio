@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.6.6"
+	Version = "0.6.7"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -146,6 +146,8 @@ var (
 
 // Normalize initializes and normalizes the runner options. In particular it sets
 // up the channel that can be used to interrupt the run later.
+// Once Normalize is called, if Run() is skipped, Abort() must be called to
+// cleanup the watchers.
 func (r *RunnerOptions) Normalize() {
 	if r.QPS == 0 {
 		r.QPS = DefaultRunnerOptions.QPS
@@ -242,6 +244,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 }
 
 // NewPeriodicRunner constructs a runner from input parameters/options.
+// Abort() must be called if Run() is not called.
 func NewPeriodicRunner(params *RunnerOptions) PeriodicRunner {
 	return newPeriodicRunner(params)
 }

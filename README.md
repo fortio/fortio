@@ -37,16 +37,17 @@ You can visit the new web UI at http://localhost:8080/fortio/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command. You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
 $ fortio
-Φορτίο 0.6.5 usage:
+Φορτίο 0.6.7 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
-server) or redirect (redirect only server). where target is a url (http load
-tests) or host:port (grpc health test) and flags are:
+server), redirect (redirect only server), or curl (single URL debug).
+where target is a url (http load tests) or host:port (grpc health test)
+and flags are:
   -H value
     	Additional Header(s)
   -a	Automatically save JSON result with filename based on labels & timestamp

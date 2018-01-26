@@ -74,7 +74,8 @@ var (
 )
 
 const (
-	fetchURI = "fetch/"
+	fetchURI    = "fetch/"
+	faviconPath = "/favicon.ico"
 )
 
 // Gets the resources directory from one of 3 sources:
@@ -99,10 +100,14 @@ func getResourcesDir(override string) string {
 // HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
 type HTMLEscapeWriter struct {
 	NextWriter io.Writer
+	Flusher    http.Flusher
 }
 
 func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 	template.HTMLEscape(w.NextWriter, p)
+	if w.Flusher != nil {
+		w.Flusher.Flush()
+	}
 	return len(p), nil
 }
 
@@ -163,11 +168,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+	}
 	out := io.Writer(os.Stderr)
 	if !JSONOnly {
-		out = io.Writer(&HTMLEscapeWriter{NextWriter: w})
+		out = io.Writer(&HTMLEscapeWriter{NextWriter: w, Flusher: flusher})
 	}
 	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
+	if strings.TrimSpace(url) == "" {
+		url = "http://url.needed" // just because url validation doesn't like empty urls
+	}
 	opts := fhttp.NewHTTPOptions(url)
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
@@ -273,10 +285,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			HTTPOptions:        *opts,
 			AllowInitialErrors: true,
 		}
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
-		}
 		if !JSONOnly {
 			flusher.Flush()
 		}
@@ -285,7 +293,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		delete(runs, runid)
 		uiRunMapMutex.Unlock()
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
+			log.Errf("Init error %+v : %v", o, err)
+			// nolint: errcheck,gas
+			w.Write([]byte(fmt.Sprintf(
+				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
+				html.EscapeString(err.Error()))))
 			return
 		}
 		json, err := json.MarshalIndent(res, "", "  ")
@@ -419,6 +431,11 @@ func LogRequest(r *http.Request, msg string) {
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, "Static")
+		path := r.URL.Path
+		if path == faviconPath {
+			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
+			log.LogVf("Changed favicon internal path to %s", r.URL.Path)
+		}
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 		h.ServeHTTP(w, r)
 	})
@@ -835,6 +852,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 		fs := http.FileServer(http.Dir(staticRsrcDir))
 		prefix := uiPath + periodic.Version
 		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+		http.Handle(faviconPath, LogAndAddCacheControl(fs))
 		var err error
 		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"))
 		if err != nil {
@@ -874,6 +892,7 @@ func Report(port int, staticRsrcDir string, datadir string) {
 	fs := http.FileServer(http.Dir(staticRsrcDir))
 	prefix := uiPath + periodic.Version
 	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	http.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
 	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
 	if err != nil {

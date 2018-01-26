@@ -36,10 +36,6 @@ import (
 
 var httpOpts fhttp.HTTPOptions
 
-func init() {
-	httpOpts.Init("")
-}
-
 // -- Support for multiple instances of -H flag on cmd line:
 type flagList struct {
 }
@@ -57,13 +53,14 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
 		"http echo/ui/redirect servers), grpcping (grpc client), report (report only UI",
-		"server) or redirect (redirect only server). where target is a url (http load",
-		"tests) or host:port (grpc health test) and flags are:")
+		"server), redirect (redirect only server), or curl (single URL debug).",
+		"where target is a url (http load tests) or host:port (grpc health test)",
+		"and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
 	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
@@ -148,8 +145,10 @@ func main() {
 	}
 
 	switch command {
+	case "curl":
+		fortioLoad(true)
 	case "load":
-		fortioLoad()
+		fortioLoad(*curlFlag)
 	case "redirect":
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
@@ -186,11 +185,11 @@ func fetchURL(o *fhttp.HTTPOptions) {
 	}
 }
 
-func fortioLoad() {
+func fortioLoad(justCurl bool) {
 	if len(flag.Args()) != 1 {
-		usage("Error: fortio load needs a url or destination")
+		usage("Error: fortio load/curl needs a url or destination")
 	}
-	url := flag.Arg(0)
+	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
 	httpOpts.URL = url
 	httpOpts.HTTP10 = *http10Flag
 	httpOpts.DisableFastClient = *stdClientFlag
@@ -198,7 +197,7 @@ func fortioLoad() {
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
-	if *curlFlag {
+	if justCurl {
 		fetchURL(&httpOpts)
 		return
 	}
