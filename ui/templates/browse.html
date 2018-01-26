@@ -69,14 +69,39 @@ fortio_load('{{.URL}}')
 </script>
 {{else}}
 <table><tr><td valign="top">
-List of<br />saved<br />results:</td><td>
+List of saved results:<br />
+<br />
+Filter:<form><input id="searchinp" name="s" type="text" size=20 value="{{.Search}}" /></form>
+</td><td>
 <select id="files" size=7 onchange="fortio_load(value);" multiple>
 {{range $f := .DataList}}
   <option value="{{$f}}.json">{{$f}}</option>
 {{end}}
 </select>
-</td><td valign="top">Graph link: <div id="url">...</div>
+</td><td valign="top">
+Graph link: <div id="url">...</div>
 </tr></table>
+<script>
+const files = document.getElementById('files');
+const allFiles = Array.from(files.options);
+const search = document.getElementById('searchinp');
+function findMatches (search, allFiles) {
+  const regex = new RegExp(search, 'gi');
+  return allFiles.filter(fileOption => {
+    return fileOption.text.match(regex);
+  });
+}
+function filterFiles () {
+  allFiles.forEach(fileOption => {
+    fileOption.remove();
+    fileOption.selected = false;
+  });
+  const filteredFiles = findMatches(this.value, allFiles);
+  files.append(...filteredFiles);
+}
+search.addEventListener('change', filterFiles);
+search.addEventListener('keyup', filterFiles);
+</script>
 {{end}}
 <div class="chart-container" id="cc1" style="position: relative; height:75vh; width:98vw; visibility: hidden">
 <canvas style="background-color: #fff" id="chart1"></canvas>
@@ -94,5 +119,14 @@ logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
 Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
 </form>
 </div>
+{{if .DoSearch}}
+<script>
+filterFiles.call(search)
+for (var i = 0; i < files.options.length; i++) {
+  files.options[i].selected = true;
+}
+fortio_load(files.value)
+</script>
+{{end}}
 </body>
 </html>
