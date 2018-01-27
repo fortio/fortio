@@ -33,7 +33,9 @@ curl -L https://github.com/istio/fortio/releases/download/0.4.0/fortio-linux_x64
  | sudo tar -C / -xvzpf -
 ```
 
-You can visit the new web UI at http://localhost:8080/fortio/
+Once `fortio server` is running, you can visit its web UI at http://localhost:8080/fortio/
+
+You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 
 ## Command line arguments
 
