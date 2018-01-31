@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	port      = flag.Int("port", 8080, "default http port")
+	port      = flag.String("port", "0.0.0.0:8080", "default http port")
 	debugPath = flag.String("debug-path", "/debug", "path for debug url, set to empty for no debug")
 )
 

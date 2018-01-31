@@ -54,7 +54,7 @@ var (
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
-	httpPort int
+	httpPort string
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
 	// Directory where the static content and templates are to be loaded from.
@@ -232,7 +232,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
-			Port                        int
+			Port                        string
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
@@ -409,7 +409,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		URL         string
 		Search      string
 		DataList    []string
-		Port        int
+		Port        string
 		DoRender    bool
 		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
@@ -828,7 +828,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, datadir string) {
+func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
 	httpPort = port
@@ -844,7 +844,7 @@ func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, da
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", port, uiPath)
 
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
@@ -891,13 +891,13 @@ func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, da
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(baseurl string, port int, staticRsrcDir string, datadir string) {
+func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	httpPort = port
 	uiPath = "/"
 	dataDir = datadir
-	fmt.Printf("Browse only UI starting - visit:\nhttp://localhost:%d/\n", port)
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", port)
 	logoPath = periodic.Version + "/static/img/logo.svg"
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
@@ -914,7 +914,7 @@ func Report(baseurl string, port int, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
 }
@@ -930,11 +930,11 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port int) {
+func RedirectToHTTPS(port string) {
 	m := http.NewServeMux()
 	m.HandleFunc("/", RedirectToHTTPSHandler)
 	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    port,
 		Handler: m,
 	}
 	fmt.Printf("Https redirector running on %v\n", s.Addr)

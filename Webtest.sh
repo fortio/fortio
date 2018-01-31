@@ -14,7 +14,7 @@ trap cleanup EXIT
 set -e
 set -o pipefail
 docker ps
-BASE_URL="http://localhost:8080"
+BASE_URL="http://0.0.0.0:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
 CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image)
@@ -22,7 +22,7 @@ $CURL -stdclient https://istio.io/robots.txt
 # Check that browse doesn't 404s
 $CURL ${BASE_FORTIO}browse
 # Check we can connect, and run a QPS test against ourselves through fetch
-$CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
+$CURL "${BASE_FORTIO}fetch/0.0.0.0:8080$FORTIO_UI_PREFIX?url=http://0.0.0.0:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec fortio_server /usr/local/bin/fortio -version)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
@@ -31,7 +31,7 @@ if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   exit 1
 fi
 # Check we can get the JS file through the proxy and it's > 50k
-SIZE=$($CURL "${BASE_FORTIO}fetch/localhost:8080${FORTIO_UI_PREFIX}${VERSION}/static/js/Chart.min.js" |wc -c)
+SIZE=$($CURL "${BASE_FORTIO}fetch/0.0.0.0:8080${FORTIO_UI_PREFIX}${VERSION}/static/js/Chart.min.js" |wc -c)
 if [ "$SIZE" -lt 50000 ]; then
   echo "Too small fetch for js: $SIZE"
   exit 1
