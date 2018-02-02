@@ -23,14 +23,21 @@ import (
 	"flag"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/log"
+	"istio.io/fortio/util"
 )
 
 var (
-	port      = flag.String("port", "0.0.0.0:8080", "default http port")
+	port      = flag.String("port", "8080", "default http port, either port or address:port can be specified")
 	debugPath = flag.String("debug-path", "/debug", "path for debug url, set to empty for no debug")
 )
 
 func main() {
 	flag.Parse()
-	fhttp.Serve(*port, *debugPath)
+	httpPort, err := util.NormalizePort(*port)
+	if err != nil {
+		log.Critf("Error starting echo server: %v", err)
+	} else {
+		fhttp.Serve(httpPort, *debugPath)
+	}
 }

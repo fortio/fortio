@@ -35,6 +35,7 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/util"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -1149,12 +1150,17 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 // add a non blocking mode that makes sure the socket exists before returning
 func Serve(port string, debugPath string) {
 	startTime = time.Now()
-	fmt.Printf("Fortio %s echo server listening on %v\n", periodic.Version, port)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
 	http.HandleFunc("/", EchoHandler)
-	if err := http.ListenAndServe(port, nil); err != nil {
+	nPort, err := util.NormalizePort(port)
+	if err != nil {
 		fmt.Println("Error starting server", err)
+	} else {
+		if err := http.ListenAndServe(nPort, nil); err != nil {
+			fmt.Println("Error starting server", err)
+		}
+		fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 	}
 }

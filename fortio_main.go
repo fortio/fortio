@@ -84,9 +84,10 @@ var (
 	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
-	echoPortFlag       = flag.String("http-port", "0.0.0.0:8080", "http echo server port")
-	grpcPortFlag       = flag.Int("grpc-port", 8079, "grpc port")
-	echoDbgPathFlag    = flag.String("echo-debug-path", "/debug",
+	echoPortFlag       = flag.String("http-port", "8080",
+		"http echo server port. Can be in the form of host:port, ip:port or port. Valid port range is 1024-65535")
+	grpcPortFlag    = flag.Int("grpc-port", 8079, "grpc port")
+	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
 		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
@@ -103,8 +104,8 @@ var (
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
-	redirectFlag           = flag.String("redirect-port", "disabled",
-		"IP:Port pair to redirect all incoming traffic to https. Disabled by default.")
+	redirectFlag           = flag.Int("redirect-port", 8081,
+		"Redirect all incoming traffic to https URL (need ingress to work properly). -1 means off.")
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
@@ -154,12 +155,12 @@ func main() {
 	case "redirect":
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
-		if *redirectFlag != "disabled" {
+		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
-		if *redirectFlag != "disabled" {
+		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
 		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)

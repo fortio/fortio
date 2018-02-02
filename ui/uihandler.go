@@ -41,6 +41,7 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/util"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)
@@ -831,7 +832,6 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	httpPort = port
 	if uipath == "" {
 		fhttp.Serve(port, debugpath) // doesn't return until exit
 		return
@@ -843,9 +843,14 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiPath += "/"
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", port, uiPath)
-
+	var err error
+	httpPort, err = util.NormalizePort(port)
+	if err != nil {
+		log.Critf("Error starting UI: %v", err)
+	} else {
+		http.HandleFunc(uiPath, Handler)
+		fmt.Printf("UI starting - visit:\nhttp://%s%s\n", httpPort, uiPath)
+	}
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -894,10 +899,8 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	httpPort = port
 	uiPath = "/"
 	dataDir = datadir
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", port)
 	logoPath = periodic.Version + "/static/img/logo.svg"
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
@@ -914,8 +917,17 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(port, nil); err != nil {
+	if err != nil {
+		log.Critf("%v", err)
+	}
+	httpPort, err = util.NormalizePort(port)
+	if err != nil {
 		log.Critf("Error starting report server: %v", err)
+	} else {
+		if err := http.ListenAndServe(httpPort, nil); err != nil {
+			log.Critf("Error starting report server: %v", err)
+		}
+		fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", httpPort)
 	}
 }
 
@@ -930,11 +942,11 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port string) {
+func RedirectToHTTPS(port int) {
 	m := http.NewServeMux()
 	m.HandleFunc("/", RedirectToHTTPSHandler)
 	s := &http.Server{
-		Addr:    port,
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: m,
 	}
 	fmt.Printf("Https redirector running on %v\n", s.Addr)
