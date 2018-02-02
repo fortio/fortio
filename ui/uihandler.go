@@ -71,6 +71,8 @@ var (
 	uiRunMapMutex  = &sync.Mutex{}
 	id             int64
 	runs           = make(map[int64]*periodic.RunnerOptions)
+	// Base URL used for index - useful when running under an ingress with prefix
+	baseURL string
 )
 
 const (
@@ -532,13 +534,18 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 		ext := "/index.tsv"
 		if strings.HasSuffix(path, ext) {
 			// Ingress effect:
-			// The Host header includes original host/port, only missing is the proto:
-			proto := r.Header.Get("X-Forwarded-Proto")
-			if len(proto) == 0 {
-				proto = "http"
+			urlPrefix := baseURL
+			if len(urlPrefix) == 0 {
+				// The Host header includes original host/port, only missing is the proto:
+				proto := r.Header.Get("X-Forwarded-Proto")
+				if len(proto) == 0 {
+					proto = "http"
+				}
+				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
+			} else {
+				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
 			}
-			urlPrefix := proto + "://" + r.Host + path[:len(path)-len(ext)+1]
-			log.LogVf("Prefix is '%s'", urlPrefix)
+			log.Infof("Prefix is '%s'", urlPrefix)
 			sendTSVDataIndex(urlPrefix, w)
 			return
 		}
@@ -821,7 +828,8 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
+func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, datadir string) {
+	baseURL = baseurl
 	startTime = time.Now()
 	httpPort = port
 	if uipath == "" {
@@ -883,7 +891,8 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(port int, staticRsrcDir string, datadir string) {
+func Report(baseurl string, port int, staticRsrcDir string, datadir string) {
+	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	httpPort = port
 	uiPath = "/"
