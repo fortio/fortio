@@ -111,7 +111,7 @@ var (
 	quietFlag   = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 	baseURLFlag = flag.String("base-url", "",
-		"base URL used as prefix for index.tsv generation. Should be the externally reachable url. (empty uses the url from the first request)")
+		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
 )
 
 func main() {
