@@ -108,8 +108,10 @@ var (
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
-	quietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
-	syncFlag  = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	quietFlag   = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
+	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	baseURLFlag = flag.String("base-url", "",
+		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
 )
 
 func main() {
@@ -136,7 +138,7 @@ func main() {
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
-
+	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
 	if sync != "" {
 		if !ui.Sync(os.Stdout, sync, *dataDirFlag) {
@@ -155,12 +157,12 @@ func main() {
 		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Report(*echoPortFlag, *staticDirFlag, *dataDirFlag)
+		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
+		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
