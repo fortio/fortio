@@ -32,10 +32,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
-	"istio.io/fortio/util"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -1154,13 +1154,9 @@ func Serve(port string, debugPath string) {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
 	http.HandleFunc("/", EchoHandler)
-	nPort, err := util.NormalizePort(port)
-	if err != nil {
+	nPort := fnet.NormalizePort(port)
+	if err := http.ListenAndServe(nPort, nil); err != nil {
 		fmt.Println("Error starting server", err)
-	} else {
-		if err := http.ListenAndServe(nPort, nil); err != nil {
-			fmt.Println("Error starting server", err)
-		}
-		fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 	}
+	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 }

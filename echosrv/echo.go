@@ -23,8 +23,7 @@ import (
 	"flag"
 
 	"istio.io/fortio/fhttp"
-	"istio.io/fortio/log"
-	"istio.io/fortio/util"
+	"istio.io/fortio/fnet"
 )
 
 var (
@@ -34,10 +33,6 @@ var (
 
 func main() {
 	flag.Parse()
-	httpPort, err := util.NormalizePort(*port)
-	if err != nil {
-		log.Critf("Error starting echo server: %v", err)
-	} else {
-		fhttp.Serve(httpPort, *debugPath)
-	}
+	httpPort := fnet.NormalizePort(*port)
+	fhttp.Serve(httpPort, *debugPath)
 }

@@ -38,10 +38,10 @@ import (
 	"time"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
-	"istio.io/fortio/util"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)
@@ -843,14 +843,12 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiPath += "/"
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-	var err error
-	httpPort, err = util.NormalizePort(port)
-	if err != nil {
-		log.Critf("Error starting UI: %v", err)
-	} else {
-		http.HandleFunc(uiPath, Handler)
-		fmt.Printf("UI starting - visit:\nhttp://%s%s\n", httpPort, uiPath)
+	httpPort = fnet.NormalizePort(port)
+	if strings.HasPrefix(httpPort, ":") {
+		httpPort = "localhost" + httpPort
 	}
+	http.HandleFunc(uiPath, Handler)
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", httpPort, uiPath)
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -899,6 +897,10 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
+	httpPort = fnet.NormalizePort(port)
+	if strings.HasPrefix(httpPort, ":") {
+		httpPort = "localhost" + httpPort
+	}
 	uiPath = "/"
 	dataDir = datadir
 	logoPath = periodic.Version + "/static/img/logo.svg"
@@ -920,15 +922,10 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	if err != nil {
 		log.Critf("%v", err)
 	}
-	httpPort, err = util.NormalizePort(port)
-	if err != nil {
+	if err := http.ListenAndServe(httpPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
-	} else {
-		if err := http.ListenAndServe(httpPort, nil); err != nil {
-			log.Critf("Error starting report server: %v", err)
-		}
-		fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", httpPort)
 	}
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", httpPort)
 }
 
 // -- Redirection to https feature --
