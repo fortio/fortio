@@ -919,9 +919,6 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err != nil {
-		log.Critf("%v", err)
-	}
 	if err := http.ListenAndServe(httpPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
