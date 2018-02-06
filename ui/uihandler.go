@@ -898,6 +898,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
+	httpPort = port
 	nPort := fnet.NormalizePort(port)
 	if strings.HasPrefix(nPort, ":") {
 		nPort = "localhost" + nPort
