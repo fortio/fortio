@@ -55,7 +55,7 @@ var (
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
-	httpPort string
+	hostAndPort string
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
 	// Directory where the static content and templates are to be loaded from.
@@ -233,12 +233,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
-			Port                        string
+			HostAndPort                 string
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), durSeconds, httpPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, hostAndPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -410,11 +410,11 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		URL         string
 		Search      string
 		DataList    []string
-		Port        string
+		HostAndPort string
 		DoRender    bool
 		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
-		url, search, dataList, httpPort, doRender, (search != "")})
+		url, search, dataList, hostAndPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
@@ -836,7 +836,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	if strings.HasPrefix(nPort, ":") {
 		nPort = "localhost" + nPort
 	}
-	httpPort = nPort
+	hostAndPort = nPort
 	if uipath == "" {
 		fhttp.Serve(nPort, debugpath) // doesn't return until exit
 		return
@@ -902,7 +902,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	if strings.HasPrefix(nPort, ":") {
 		nPort = "localhost" + nPort
 	}
-	httpPort = nPort
+	hostAndPort = nPort
 	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
 	uiPath = "/"
 	dataDir = datadir

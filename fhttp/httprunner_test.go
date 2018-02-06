@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -119,12 +120,12 @@ func TestServe(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Unable to listen to dynamic port: %v", err)
 	}
-	port := fmt.Sprintf("%d", (listener.Addr().(*net.TCPAddr).Port))
-	log.Infof("Using port: %s", port)
+	port := listener.Addr().(*net.TCPAddr).Port
+	log.Infof("Using port: %d", port)
 	listener.Close()
-	url := fmt.Sprintf("http://localhost:%s/debugx1?env=dump", port)
+	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	go func() {
-		Serve(port, "/debugx1")
+		Serve(strconv.Itoa(port), "/debugx1")
 	}()
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
