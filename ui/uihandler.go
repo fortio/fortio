@@ -902,6 +902,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	if strings.HasPrefix(nPort, ":") {
 		nPort = "localhost" + nPort
 	}
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
 	uiPath = "/"
 	dataDir = datadir
 	logoPath = periodic.Version + "/static/img/logo.svg"
@@ -923,7 +924,6 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	if err := http.ListenAndServe(nPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
 }
 
 // -- Redirection to https feature --
