@@ -832,9 +832,13 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	httpPort = port
+	nPort := fnet.NormalizePort(port)
+	if strings.HasPrefix(nPort, ":") {
+		nPort = "0.0.0.0" + nPort
+	}
+	httpPort = nPort
 	if uipath == "" {
-		fhttp.Serve(port, debugpath) // doesn't return until exit
+		fhttp.Serve(nPort, debugpath) // doesn't return until exit
 		return
 	}
 	uiPath = uipath
@@ -844,10 +848,6 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiPath += "/"
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-	nPort := fnet.NormalizePort(port)
-	if strings.HasPrefix(nPort, ":") {
-		nPort = "0.0.0.0" + nPort
-	}
 	http.HandleFunc(uiPath, Handler)
 	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", nPort, uiPath)
 	fetchPath = uiPath + fetchURI
@@ -898,11 +898,11 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	httpPort = port
 	nPort := fnet.NormalizePort(port)
 	if strings.HasPrefix(nPort, ":") {
-		nPort = "localhost" + nPort
+		nPort = "0.0.0.0" + nPort
 	}
+	httpPort = nPort
 	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
 	uiPath = "/"
 	dataDir = datadir
