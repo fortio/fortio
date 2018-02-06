@@ -55,7 +55,7 @@ var (
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
-	hostAndPort string
+	urlHostPort string
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
 	// Directory where the static content and templates are to be loaded from.
@@ -233,12 +233,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
-			HostAndPort                 string
+			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), durSeconds, hostAndPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -410,11 +410,11 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		URL         string
 		Search      string
 		DataList    []string
-		HostAndPort string
+		URLHostPort string
 		DoRender    bool
 		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
-		url, search, dataList, hostAndPort, doRender, (search != "")})
+		url, search, dataList, urlHostPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
@@ -832,13 +832,10 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	nPort := fnet.NormalizePort(port)
-	if strings.HasPrefix(nPort, ":") {
-		nPort = "localhost" + nPort
-	}
-	hostAndPort = nPort
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	urlHostPort = hostPort
 	if uipath == "" {
-		fhttp.Serve(nPort, debugpath) // doesn't return until exit
+		fhttp.Serve(hostPort, debugpath) // doesn't return until exit
 		return
 	}
 	uiPath = uipath
@@ -849,7 +846,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", nPort, uiPath)
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", hostPort, uiPath)
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -898,12 +895,9 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	nPort := fnet.NormalizePort(port)
-	if strings.HasPrefix(nPort, ":") {
-		nPort = "localhost" + nPort
-	}
-	hostAndPort = nPort
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	urlHostPort = hostPort
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", hostPort)
 	uiPath = "/"
 	dataDir = datadir
 	logoPath = periodic.Version + "/static/img/logo.svg"
@@ -922,7 +916,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(nPort, nil); err != nil {
+	if err := http.ListenAndServe(hostPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
 }
@@ -950,4 +944,13 @@ func RedirectToHTTPS(port int) {
 		log.Critf("Error starting report server: %v", err)
 	}
 	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
+}
+
+// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port
+// and returns "localhost:port" if hostport is in the form of :port.
+func setHostAndPort(hostport string) string {
+	if strings.HasPrefix(hostport, ":") {
+		return "localhost" + hostport
+	}
+	return hostport
 }
