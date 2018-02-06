@@ -834,7 +834,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	startTime = time.Now()
 	nPort := fnet.NormalizePort(port)
 	if strings.HasPrefix(nPort, ":") {
-		nPort = "0.0.0.0" + nPort
+		nPort = "localhost" + nPort
 	}
 	httpPort = nPort
 	if uipath == "" {
@@ -900,7 +900,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	extraBrowseLabel = ", report only limited UI"
 	nPort := fnet.NormalizePort(port)
 	if strings.HasPrefix(nPort, ":") {
-		nPort = "0.0.0.0" + nPort
+		nPort = "localhost" + nPort
 	}
 	httpPort = nPort
 	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
