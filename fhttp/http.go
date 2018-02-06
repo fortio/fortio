@@ -1150,13 +1150,13 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 // add a non blocking mode that makes sure the socket exists before returning
 func Serve(port string, debugPath string) {
 	startTime = time.Now()
+	nPort := fnet.NormalizePort(port)
+	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
 	http.HandleFunc("/", EchoHandler)
-	nPort := fnet.NormalizePort(port)
 	if err := http.ListenAndServe(nPort, nil); err != nil {
 		fmt.Println("Error starting server", err)
 	}
-	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 }

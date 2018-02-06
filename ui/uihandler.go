@@ -843,12 +843,12 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiPath += "/"
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-	httpPort = fnet.NormalizePort(port)
-	if strings.HasPrefix(httpPort, ":") {
-		httpPort = "localhost" + httpPort
+	nPort := fnet.NormalizePort(port)
+	if strings.HasPrefix(nPort, ":") {
+		nPort = "0.0.0.0" + nPort
 	}
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", httpPort, uiPath)
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", nPort, uiPath)
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -897,9 +897,9 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	httpPort = fnet.NormalizePort(port)
-	if strings.HasPrefix(httpPort, ":") {
-		httpPort = "localhost" + httpPort
+	nPort := fnet.NormalizePort(port)
+	if strings.HasPrefix(nPort, ":") {
+		nPort = "localhost" + nPort
 	}
 	uiPath = "/"
 	dataDir = datadir
@@ -919,10 +919,10 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(httpPort, nil); err != nil {
+	if err := http.ListenAndServe(nPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", httpPort)
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", nPort)
 }
 
 // -- Redirection to https feature --
