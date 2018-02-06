@@ -832,6 +832,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
+	httpPort = port
 	if uipath == "" {
 		fhttp.Serve(port, debugpath) // doesn't return until exit
 		return
