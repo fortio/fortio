@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -54,7 +55,7 @@ var (
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
-	httpPort int
+	urlHostPort string
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
 	// Directory where the static content and templates are to be loaded from.
@@ -232,12 +233,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
-			Port                        int
+			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), durSeconds, httpPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -409,11 +410,11 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		URL         string
 		Search      string
 		DataList    []string
-		Port        int
+		URLHostPort string
 		DoRender    bool
 		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
-		url, search, dataList, httpPort, doRender, (search != "")})
+		url, search, dataList, urlHostPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
@@ -828,12 +829,12 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, datadir string) {
+func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	httpPort = port
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
 	if uipath == "" {
-		fhttp.Serve(port, debugpath) // doesn't return until exit
+		fhttp.Serve(hostPort, debugpath) // doesn't return until exit
 		return
 	}
 	uiPath = uipath
@@ -844,8 +845,7 @@ func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, da
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
-
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", urlHostPort, uiPath)
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -886,18 +886,18 @@ func Serve(baseurl string, port int, debugpath, uipath, staticRsrcDir string, da
 		fs := http.FileServer(http.Dir(dataDir))
 		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	fhttp.Serve(port, debugpath)
+	fhttp.Serve(hostPort, debugpath)
 }
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(baseurl string, port int, staticRsrcDir string, datadir string) {
+func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	httpPort = port
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", urlHostPort)
 	uiPath = "/"
 	dataDir = datadir
-	fmt.Printf("Browse only UI starting - visit:\nhttp://localhost:%d/\n", port)
 	logoPath = periodic.Version + "/static/img/logo.svg"
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
@@ -914,7 +914,7 @@ func Report(baseurl string, port int, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(hostPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
 }
@@ -942,4 +942,15 @@ func RedirectToHTTPS(port int) {
 		log.Critf("Error starting report server: %v", err)
 	}
 	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
+}
+
+// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
+// sets the urlHostPort variable and returns hostport unmodified.
+func setHostAndPort(hostport string) string {
+	if strings.HasPrefix(hostport, ":") {
+		urlHostPort = "localhost" + hostport
+		return hostport
+	}
+	urlHostPort = hostport
+	return hostport
 }

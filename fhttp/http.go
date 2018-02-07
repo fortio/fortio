@@ -32,6 +32,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -1147,14 +1148,15 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 // Serve starts a debug / echo http server on the given port.
 // TODO: make it work for port 0 and return the port found and also
 // add a non blocking mode that makes sure the socket exists before returning
-func Serve(port int, debugPath string) {
+func Serve(port, debugPath string) {
 	startTime = time.Now()
-	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
+	nPort := fnet.NormalizePort(port)
+	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
 	http.HandleFunc("/", EchoHandler)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(nPort, nil); err != nil {
 		fmt.Println("Error starting server", err)
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -124,7 +125,7 @@ func TestServe(t *testing.T) {
 	listener.Close()
 	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	go func() {
-		Serve(port, "/debugx1")
+		Serve(strconv.Itoa(port), "/debugx1")
 	}()
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
