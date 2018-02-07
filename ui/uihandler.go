@@ -833,7 +833,6 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	baseURL = baseurl
 	startTime = time.Now()
 	hostPort := setHostAndPort(fnet.NormalizePort(port))
-	urlHostPort = hostPort
 	if uipath == "" {
 		fhttp.Serve(hostPort, debugpath) // doesn't return until exit
 		return
@@ -846,7 +845,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", hostPort, uiPath)
+	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", urlHostPort, uiPath)
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -887,7 +886,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		fs := http.FileServer(http.Dir(dataDir))
 		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	fhttp.Serve(port, debugpath)
+	fhttp.Serve(hostPort, debugpath)
 }
 
 // Report starts the browsing only UI server on the given port.
@@ -896,8 +895,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	hostPort := setHostAndPort(fnet.NormalizePort(port))
-	urlHostPort = hostPort
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", hostPort)
+	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", urlHostPort)
 	uiPath = "/"
 	dataDir = datadir
 	logoPath = periodic.Version + "/static/img/logo.svg"
@@ -946,11 +944,13 @@ func RedirectToHTTPS(port int) {
 	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
 }
 
-// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port
-// and returns "localhost:port" if hostport is in the form of :port.
+// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
+// sets the urlHostPort variable and returns hostport unmodified.
 func setHostAndPort(hostport string) string {
 	if strings.HasPrefix(hostport, ":") {
-		return "localhost" + hostport
+		urlHostPort = "localhost" + hostport
+		return hostport
 	}
+	urlHostPort = hostport
 	return hostport
 }
