@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"istio.io/fortio/fgrpc"
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -57,8 +58,9 @@ func (s *pingSrv) Ping(c context.Context, in *fgrpc.PingMessage) (*fgrpc.PingMes
 	return &out, nil
 }
 
-func pingServer(port int) {
-	socket, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+func pingServer(port string) {
+	port = fnet.NormalizePort(port)
+	socket, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -68,7 +70,7 @@ func pingServer(port int) {
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", periodic.Version, port)
+	fmt.Printf("Fortio %s grpc ping server listening on port %s\n", periodic.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
@@ -151,8 +153,7 @@ func grpcClient() {
 		usage("Error: fortio grpcping needs host argument")
 	}
 	host := flag.Arg(0)
-	// TODO doesn't work for ipv6 addrs etc
-	dest := fmt.Sprintf("%s:%d", host, *grpcPortFlag)
+	dest := setGRPCDestination(host)
 	count := int(*exactlyFlag)
 	if count <= 0 {
 		count = 1
@@ -162,4 +163,15 @@ func grpcClient() {
 	} else {
 		pingClientCall(dest, count, *payloadFlag)
 	}
+}
+
+func setGRPCDestination(dest string) string {
+	if _, _, err := net.SplitHostPort(dest); err == nil {
+		return dest
+	}
+	if ip := net.ParseIP(dest); ip != nil {
+		return ip.String() + fnet.NormalizePort(*grpcPortFlag)
+	}
+	// dest must be in the form of hostname
+	return dest + fnet.NormalizePort(*grpcPortFlag)
 }

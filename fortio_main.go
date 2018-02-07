@@ -85,7 +85,7 @@ var (
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
 	echoPortFlag       = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
-	grpcPortFlag       = flag.Int("grpc-port", 8079, "grpc port")
+	grpcPortFlag       = flag.String("grpc-port", "8079", "grpc server port. Can be in the form of host:port, ip:port or port.")
 	echoDbgPathFlag    = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
