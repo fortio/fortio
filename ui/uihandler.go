@@ -845,7 +845,13 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://%s%s\n", urlHostPort, uiPath)
+	switch {
+	case strings.Contains(port, ":"):
+		fmt.Printf("UI starting - visit:\nhttp://%s%s\n", urlHostPort, uiPath)
+	default:
+		fmt.Printf("UI starting - visit:\nhttp://%s%s"+
+			"   (or any host/ip reaching this machine)\n", urlHostPort, uiPath)
+	}
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -895,7 +901,13 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	hostPort := setHostAndPort(fnet.NormalizePort(port))
-	fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", urlHostPort)
+	switch {
+	case strings.Contains(port, ":"):
+		fmt.Printf("Browse only UI starting - visit:\nhttp://%s/\n", urlHostPort)
+	default:
+		fmt.Printf("Browse only UI starting - visit:\nhttp://%s/"+
+			"   (or any host/ip reaching this machine)\n", urlHostPort)
+	}
 	uiPath = "/"
 	dataDir = datadir
 	logoPath = periodic.Version + "/static/img/logo.svg"
