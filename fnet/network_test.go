@@ -53,3 +53,42 @@ func TestNormalizePort(t *testing.T) {
 		}
 	}
 }
+
+func TestGRPCDestination(t *testing.T) {
+	tests := []struct {
+		name   string
+		dest   string
+		port   string
+		output string
+	}{
+		{
+			"port number only",
+			"localhost",
+			"8079",
+			"localhost:8079",
+		},
+		{
+			"IPv4 address",
+			"1.2.3.4",
+			"8078",
+			"1.2.3.4:8078",
+		},
+		{
+			"IPv6 address",
+			"2001:dba::1",
+			"8079",
+			"[2001:dba::1]:8079",
+		},
+	}
+
+	for _, tc := range tests {
+		dest := GRPCDestination(tc.dest, tc.port)
+		if dest != tc.output {
+			t.Errorf("Test case %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.output,
+				dest,
+			)
+		}
+	}
+}

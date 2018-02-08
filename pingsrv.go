@@ -70,7 +70,7 @@ func pingServer(port string) {
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %s\n", periodic.Version, port)
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", periodic.Version, port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
@@ -149,11 +149,16 @@ func grpcHealthCheck(serverAddr string, svcname string, n int) {
 }
 
 func grpcClient() {
-	if len(flag.Args()) != 1 {
-		usage("Error: fortio grpcping needs host argument")
+	if len(flag.Args()) < 1 || len(flag.Args()) > 2 {
+		usage("Error: fortio grpcping needs either host or host and port arguments. ",
+			"Fortio's default gRPC server port (8079) is used if port is omitted.")
 	}
 	host := flag.Arg(0)
-	dest := setGRPCDestination(host)
+	port := flag.Arg(1)
+	if port == "" {
+		port = *grpcPortFlag
+	}
+	dest := fnet.GRPCDestination(host, port)
 	count := int(*exactlyFlag)
 	if count <= 0 {
 		count = 1
@@ -163,15 +168,4 @@ func grpcClient() {
 	} else {
 		pingClientCall(dest, count, *payloadFlag)
 	}
-}
-
-func setGRPCDestination(dest string) string {
-	if _, _, err := net.SplitHostPort(dest); err == nil {
-		return dest
-	}
-	if ip := net.ParseIP(dest); ip != nil {
-		return ip.String() + fnet.NormalizePort(*grpcPortFlag)
-	}
-	// dest must be in the form of hostname
-	return dest + fnet.NormalizePort(*grpcPortFlag)
 }
