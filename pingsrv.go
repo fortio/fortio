@@ -149,16 +149,11 @@ func grpcHealthCheck(serverAddr string, svcname string, n int) {
 }
 
 func grpcClient() {
-	if len(flag.Args()) < 1 || len(flag.Args()) > 2 {
-		usage("Error: fortio grpcping needs either host or host and port arguments. ",
-			"Fortio's default gRPC server port (8079) is used if port is omitted.")
+	if len(flag.Args()) != 1 {
+		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
-	port := flag.Arg(1)
-	if port == "" {
-		port = *grpcPortFlag
-	}
-	dest := fnet.GRPCDestination(host, port)
+	dest := fgrpc.GRPCDestination(host)
 	count := int(*exactlyFlag)
 	if count <= 0 {
 		count = 1

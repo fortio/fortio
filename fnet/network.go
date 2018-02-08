@@ -15,7 +15,6 @@
 package fnet // import "istio.io/fortio/fnet"
 
 import (
-	"net"
 	"strings"
 )
 
@@ -26,20 +25,4 @@ func NormalizePort(port string) string {
 		return port
 	}
 	return ":" + port
-}
-
-// GRPCDestination parses dest and returns dest:port based on dest type
-// being a hostname, IPv4 or IPv6 address.
-func GRPCDestination(dest, port string) string {
-	if ip := net.ParseIP(dest); ip != nil {
-		switch {
-		case ip.To4() != nil:
-			return ip.String() + NormalizePort(port)
-		case ip.To16() != nil:
-			return "[" + ip.String() + "]" + NormalizePort(port)
-		}
-
-	}
-	// dest must be in the form of hostname
-	return dest + NormalizePort(port)
 }
