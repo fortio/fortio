@@ -161,7 +161,7 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	key := strings.TrimSpace(s[0])
 	value := strings.TrimSpace(s[1])
 	if strings.EqualFold(key, "host") {
-		log.Infof("Will be setting special Host header to %s", value)
+		log.LogVf("Will be setting special Host header to %s", value)
 		h.hostOverride = value
 	} else {
 		log.LogVf("Setting regular extra header %s: %s", key, value)
