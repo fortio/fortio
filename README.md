@@ -60,7 +60,7 @@ and flags are:
   -compression
     	Enable http compression
   -curl
-    	Just fetch the content once
+       Just fetch the content once
   -data-dir string
     	Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
@@ -69,9 +69,9 @@ and flags are:
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-      Use GRPC (health check) for load testing
+       Use GRPC (health check) for load testing
   -grpc-port string
-      grpc server port. Can take the form of host:port, ip:port or port (default 8079)
+       grpc server port. Can take the form of host:port, ip:port or port (default 8079)
   -halfclose
     	When not keepalive, whether to half close the connection (only for fast
     	http)
@@ -145,8 +145,8 @@ $ fortio server &
 Https redirector running on :8081
 UI starting - visit:
 http://localhost:8080/fortio/
-Fortio 0.6.1 grpc ping server listening on port 8079
-Fortio 0.6.1 echo server listening on port 8080
+Fortio 0.6.8 grpc ping server listening on port 8079
+Fortio 0.6.8 echo server listening on port 8080
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -156,8 +156,8 @@ $ fortio server -http-port 10.10.10.10:8088 &
 Https redirector running on :8081
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
-Fortio 0.6.1 grpc ping server listening on port 8079
-Fortio 0.6.1 echo server listening on port 10.10.10.10:8088
+Fortio 0.6.8 grpc ping server listening on port 8079
+Fortio 0.6.8 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -173,7 +173,9 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
-* The value of `-grpc-port` (default 8079) is used when specifying a hostname or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to change this behavior:
+* The value of `-grpc-port` (default 8079) is used when specifying a hostname
+or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to
+change this behavior:
 ```
 $ fortio grpcping 10.10.10.100:8078 # Connects to gRPC server 10.10.10.100 listening on port 8078
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
@@ -225,14 +227,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.6.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.6.8 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.6.0
+User-Agent: istio/fortio-0.6.8
 Foo: Bar
 
 body:
