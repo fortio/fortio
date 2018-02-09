@@ -114,6 +114,16 @@ func TestGRPCDestination(t *testing.T) {
 			"[2001:dba::1]:1234",
 			"[2001:dba::1]:1234",
 		},
+		{
+			"hostname and no port",
+			"foo.bar.com",
+			"foo.bar.com:8079",
+		},
+		{
+			"hostname and port",
+			"foo.bar.com:123",
+			"foo.bar.com:123",
+		},
 	}
 
 	for _, tc := range tests {
