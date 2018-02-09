@@ -43,7 +43,7 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 
 ```
 $ fortio
-Φορτίο 0.6.7 usage:
+Φορτίο 0.6.8 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -69,7 +69,7 @@ and flags are:
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-    	Use GRPC (health check) for load testing
+      Use GRPC (health check) for load testing
   -grpc-port string
       grpc server port. Can take the form of host:port, ip:port or port (default 8079)
   -halfclose
@@ -80,7 +80,8 @@ and flags are:
   -healthservice string
     	which service string to pass to health check
   -http-port string
-      http echo server port. Can take the form of host:port, ip:port or port (default 8080)
+      http echo server port. Can take the form of host:port,
+      ip:port or port (default 8080)
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
@@ -148,7 +149,8 @@ Fortio 0.6.1 grpc ping server listening on port 8079
 Fortio 0.6.1 echo server listening on port 8080
 ```
 
-* By default, Fortio's web and echo server listens on port 8080 on all interfaces. Use the `-http-port` flag to change this behavior:
+* By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
+Use the `-http-port` flag to change this behavior:
 ```
 $ fortio server -http-port 10.10.10.10:8088 &
 Https redirector running on :8081
@@ -173,7 +175,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 ```
 * The value of `-grpc-port` (default 8079) is used when specifying a hostname or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to change this behavior:
 ```
-$ fortio grpcping 10.10.10.100:8078 # gRPC server 10.10.10.100 listening on port 8078
+$ fortio grpcping 10.10.10.100:8078 # Connects to gRPC server 10.10.10.100 listening on port 8078
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
 Clock skew histogram usec : count 1 avg -2.137 +/- 0 min -2.137 max -2.137 sum -2.137
 # range, mid point, percentile, count
