@@ -318,6 +318,8 @@ Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 
 Or you can get the data in [JSON format](https://github.com/istio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
 
+### Web/Graphical UI
+
 Or graphically (through the [http://localhost:8080/fortio/](http://localhost:8080/fortio/) web UI):
 
 Simple form/UI:
