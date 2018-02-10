@@ -11,13 +11,16 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
+# ./... runs in vendor/ and cause problems (!)
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs)")
+
 # Local targets:
 install:
-	go install ./...
+	go install $(PACKAGES)
 
 # Local test
 test:
-	go test -timeout 60s -race ./...
+	go test -timeout 60s -race $(PACKAGES)
 
 # To debug linters, uncomment
 #DEBUG_LINTERS="--debug"
@@ -28,14 +31,14 @@ local-lint:
 	--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
-LINT_PACKAGES:=./...
+LINT_PACKAGES:=$(PACKAGES)
 # TODO: do something about cyclomatic complexity
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
 lint:
 	docker run -v $(shell pwd):/go/src/istio.io/fortio $(BUILD_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
-		&& time make local-lint LINT_PACKAGES=$(LINT_PACKAGES)"
+		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 webtest:
 	./Webtest.sh
