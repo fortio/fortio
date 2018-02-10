@@ -11,21 +11,24 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
-# ./... runs in vendor/ and cause problems (!)
+# x runs in vendor/ and cause problems (!)
 PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs)")
 
+# Marker for whether vendor submodule is here or not already
+GRPC_DIR:=./vendor/google.golang.org/grpc
+
 # Local targets:
-install:
+install: submodule
 	go install $(PACKAGES)
 
 # Local test
-test:
+test: submodule
 	go test -timeout 60s -race $(PACKAGES)
 
 # To debug linters, uncomment
 #DEBUG_LINTERS="--debug"
 
-local-lint:
+local-lint: submodule
 	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate \
 	--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
@@ -35,7 +38,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # TODO: do something about cyclomatic complexity
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
-lint:
+lint: submodule
 	docker run -v $(shell pwd):/go/src/istio.io/fortio $(BUILD_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
@@ -43,9 +46,16 @@ lint:
 webtest:
 	./Webtest.sh
 
-coverage:
+coverage: submodule
 	./.circleci/coverage.sh
 	curl -s https://codecov.io/bash | bash
+
+# Submodule handling when not already there
+submodule: $(GRPC_DIR)
+
+$(GRPC_DIR):
+	git submodule sync
+	git submodule update --init
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: test install lint docker-version docker-push-internal
@@ -86,4 +96,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: local-lint update-build-image-tag release
+.PHONY: local-lint update-build-image-tag release submodule

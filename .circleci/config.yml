@@ -12,9 +12,9 @@ jobs:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
-      - run: make test
+#      - run: git submodule sync
+#      - run: git submodule update --init
+      - run: make test # will also get submodule
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
       - run: make webtest
