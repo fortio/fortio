@@ -11,7 +11,7 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
-# x runs in vendor/ and cause problems (!)
+# go test ./... and others run in vendor/ and cause problems (!)
 PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs)")
 
 # Marker for whether vendor submodule is here or not already
@@ -78,7 +78,7 @@ docker-version:
 	@echo "### Docker is `which docker`"
 	@docker version
 
-docker-internal:
+docker-internal: submodule
 	@echo "### Now building $(DOCKER_TAG)"
 	docker build -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
@@ -86,7 +86,7 @@ docker-push-internal: docker-internal
 	@echo "### Now pushing $(DOCKER_TAG)"
 	docker push $(DOCKER_TAG)
 
-release:
+release: submodule
 	release/release.sh
 
 authorize:
