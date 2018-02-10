@@ -88,11 +88,11 @@ func getResourcesDir(override string) string {
 		return override
 	}
 	if resourcesDir != "" {
-		log.Infof("Using resources directory set at link time: %s", resourcesDir)
+		log.LogVf("Using resources directory set at link time: %s", resourcesDir)
 		return resourcesDir
 	}
 	_, filename, _, ok := runtime.Caller(0)
-	log.Infof("Guessing resources directory from runtime source location: %v - %s", ok, filename)
+	log.LogVf("Guessing resources directory from runtime source location: %v - %s", ok, filename)
 	if ok {
 		return path.Dir(filename)
 	}

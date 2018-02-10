@@ -31,7 +31,7 @@ func (n *Noop) Run(t int) {
 
 // used for when we don't actually run periodic test/want to initialize
 // watchers
-var bogusTestChan = make(chan struct{}, 1)
+var bogusTestChan = NewAborter()
 
 func TestNewPeriodicRunner(t *testing.T) {
 	var tests = []struct {
