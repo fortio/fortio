@@ -254,7 +254,6 @@ func (r *RunnerOptions) Normalize() {
 func (r *RunnerOptions) Abort() {
 	log.LogVf("Abort called for %p %+v", r, r)
 	if r.Stop != nil {
-		log.LogVf("Closing %v", r.Stop)
 		r.Stop.Abort()
 	}
 }
