@@ -12,6 +12,7 @@ jobs:
       - setup_remote_docker:
           version: 17.10.0-ce
       - checkout
+      - run: make submodule # will run: (only if needed:)
 #      - run: git submodule sync
 #      - run: git submodule update --init
       - run: make test # will also get submodule

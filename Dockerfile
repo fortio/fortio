@@ -3,7 +3,7 @@ FROM istio/fortio.build:v5 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
 # Submodule handling
-RUN make submodule
+RUN make -C fortio submodule
 # NOTE: changes to this file should be propagated to release/Dockerfile.in too
 # (wtb docker include)
 # Demonstrate moving the static directory outside of the go source tree and
