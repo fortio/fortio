@@ -72,21 +72,21 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 
 // Aborter is the object controlling Abort() of the runs.
 type Aborter struct {
-	StopChan   chan struct{}
-	AbortMutex sync.Mutex
+	sync.Mutex
+	StopChan chan struct{}
 }
 
 // Abort signals all the go routine of this run to stop.
 // Implemented by closing the shared channel. The lock is to make sure
 // we close it exactly once to avoid go panic.
 func (a *Aborter) Abort() {
-	a.AbortMutex.Lock()
+	a.Lock()
 	if a.StopChan != nil {
 		log.LogVf("Closing %v", a.StopChan)
 		close(a.StopChan)
 		a.StopChan = nil
 	}
-	a.AbortMutex.Unlock()
+	a.Unlock()
 }
 
 // NewAborter makes a new Aborter and initialize its StopChan.
@@ -278,9 +278,9 @@ func (r *periodicRunner) Options() *RunnerOptions {
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
-	r.Stop.AbortMutex.Lock()
+	r.Stop.Lock()
 	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
-	r.Stop.AbortMutex.Unlock()
+	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
