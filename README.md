@@ -60,7 +60,7 @@ and flags are:
   -compression
     	Enable http compression
   -curl
-       Just fetch the content once
+    	Just fetch the content once
   -data-dir string
     	Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
@@ -69,9 +69,9 @@ and flags are:
   -gomaxprocs int
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-       Use GRPC (health check) for load testing
+    	Use GRPC (health check) for load testing
   -grpc-port string
-       grpc server port. Can take the form of host:port, ip:port or port (default 8079)
+    	grpc server port. Can take the form of host:port, ip:port or port (default 8079)
   -halfclose
     	When not keepalive, whether to half close the connection (only for fast
     	http)
@@ -80,8 +80,7 @@ and flags are:
   -healthservice string
     	which service string to pass to health check
   -http-port string
-      http echo server port. Can take the form of host:port,
-      ip:port or port (default 8080)
+    	http echo server port. Can take the form of host:port, ip:port or port (default 8080)
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
@@ -144,19 +143,19 @@ and flags are:
 $ fortio server &
 Https redirector running on :8081
 UI starting - visit:
-http://localhost:8080/fortio/
-Fortio 0.6.8 grpc ping server listening on port 8079
-Fortio 0.6.8 echo server listening on port 8080
+http://localhost:8080/fortio/   (or any host/ip reachable on this server)
+Fortio 0.6.8 grpc ping server listening on port :8079
+Fortio 0.6.8 echo server listening on port :8080
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
 Use the `-http-port` flag to change this behavior:
 ```
-$ fortio server -http-port 10.10.10.10:8088 &
-Https redirector running on :8081
+$ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
-Fortio 0.6.8 grpc ping server listening on port 8079
+Https redirector running on :8081
+Fortio 0.6.8 grpc ping server listening on port :8079
 Fortio 0.6.8 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
