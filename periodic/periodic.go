@@ -114,7 +114,9 @@ type RunnerOptions struct {
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
 	// Aborter to interrupt a run. Will be created if not set/left nil. Or you
-	// can pass your own.
+	// can pass your own. It is very important this is a pointer and not a field
+	// as RunnerOptions themselves get copied while the channel and lock must
+	// stay unique (per run).
 	Stop *Aborter
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
