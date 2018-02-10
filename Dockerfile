@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM fortio/fortio.build:v4 as build
+FROM istio/fortio.build:v5 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
 # NOTE: changes to this file should be propagated to release/Dockerfile.in too
