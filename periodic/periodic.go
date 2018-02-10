@@ -70,6 +70,31 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 	}
 }
 
+// Aborter is the object controlling Abort() of the runs.
+type Aborter struct {
+	sync.Mutex
+	StopChan chan struct{}
+}
+
+// Abort signals all the go routine of this run to stop.
+// Implemented by closing the shared channel. The lock is to make sure
+// we close it exactly once to avoid go panic.
+func (a *Aborter) Abort() {
+	a.Lock()
+	if a.StopChan != nil {
+		log.LogVf("Closing %v", a.StopChan)
+		close(a.StopChan)
+		a.StopChan = nil
+	}
+	a.Unlock()
+}
+
+// NewAborter makes a new Aborter and initialize its StopChan.
+// The pointer should be shared. The structure is NoCopy.
+func NewAborter() *Aborter {
+	return &Aborter{StopChan: make(chan struct{}, 1)}
+}
+
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
@@ -88,10 +113,11 @@ type RunnerOptions struct {
 	Out io.Writer
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
-	// Channel to interrupt a run. If given non nil, will get closed and nil'ed
-	// by the end of Run(). To abort a run call Runner.Abort(), don't close channel
-	// directly (or risk a panic that it's already closed).
-	Stop chan struct{}
+	// Aborter to interrupt a run. Will be created if not set/left nil. Or you
+	// can pass your own. It is very important this is a pointer and not a field
+	// as RunnerOptions themselves get copied while the channel and lock must
+	// stay unique (per run).
+	Stop *Aborter
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
@@ -178,12 +204,12 @@ func (r *RunnerOptions) Normalize() {
 		r.Runners = make([]Runnable, r.NumThreads)
 	}
 	if r.Stop == nil {
-		r.Stop = make(chan struct{}, 1)
+		r.Stop = NewAborter()
+		runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
 		go func() {
 			gAbortMutex.Lock()
 			gOutstandingRuns++
 			n := gOutstandingRuns
-			runnerChan := r.Stop // need a copy to not race with assignement to nil
 			if gAbortChan == nil {
 				log.LogVf("WATCHER %d First outstanding run starting, catching signal", n)
 				gAbortChan = make(chan os.Signal, 1)
@@ -228,12 +254,10 @@ func (r *RunnerOptions) Normalize() {
 // to nil under lock so it can be called multiple times and not create panic for
 // already closed channel.
 func (r *RunnerOptions) Abort() {
-	gAbortMutex.Lock()
+	log.LogVf("Abort called for %p %+v", r, r)
 	if r.Stop != nil {
-		close(r.Stop)
-		r.Stop = nil
+		r.Stop.Abort()
 	}
-	gAbortMutex.Unlock()
 }
 
 // internal version, returning the concrete implementation.
@@ -256,9 +280,9 @@ func (r *periodicRunner) Options() *RunnerOptions {
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
-	gAbortMutex.Lock()
-	runnerChan := r.Stop // need a copy to not race with assignement to nil
-	gAbortMutex.Unlock()
+	r.Stop.Lock()
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
