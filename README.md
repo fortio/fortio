@@ -16,7 +16,7 @@ Fortio is a reusable, embeddable go library as well as a command line tool and s
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
-2. `go get -u istio.io/fortio`
+2. `go get istio.io/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
 Or use docker, for instance:
@@ -29,7 +29,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/0.4.0/fortio-linux_x64-0.4.0.tgz \
+curl -L https://github.com/istio/fortio/releases/download/0.6.8/fortio-linux_x64-0.6.8.tgz \
  | sudo tar -C / -xvzpf -
 ```
 

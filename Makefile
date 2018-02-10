@@ -54,8 +54,13 @@ coverage: submodule
 submodule: $(GRPC_DIR)
 
 $(GRPC_DIR):
+	$(MAKE) submodule-sync
+
+# If you want to force update/sync, invoke 'make submodule-sync' directly
+submodule-sync:
 	git submodule sync
 	git submodule update --init
+
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: test install lint docker-version docker-push-internal
@@ -96,4 +101,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: local-lint update-build-image-tag release submodule
+.PHONY: local-lint update-build-image-tag release submodule submodule-sync
