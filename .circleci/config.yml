@@ -15,7 +15,7 @@ jobs:
       - run: make submodule # will run: (only if needed:)
 #      - run: git submodule sync
 #      - run: git submodule update --init
-      - run: make test # will also get submodule
+      - run: make test
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
       - run: make webtest
