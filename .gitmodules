@@ -1,3 +1,4 @@
 [submodule "vendor"]
 	path = vendor
 	url = https://github.com/istio-releases/fortio-vendor.git
+	branch = master
