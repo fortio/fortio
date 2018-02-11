@@ -61,6 +61,10 @@ submodule-sync:
 	git submodule sync
 	git submodule update --init
 
+# Short cut for pulling/updating to latest of the current branch
+pull:
+	git pull
+	$(MAKE) submodule-sync
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: test install lint docker-version docker-push-internal
@@ -101,4 +105,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage weblint update-build-image
 
-.PHONY: local-lint update-build-image-tag release submodule submodule-sync
+.PHONY: local-lint update-build-image-tag release submodule submodule-sync pull
