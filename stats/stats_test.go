@@ -708,6 +708,18 @@ func TestRound(t *testing.T) {
 	}
 }
 
+func TestNaN(t *testing.T) {
+	var c Counter
+	for i := 599713; i > 0; i-- {
+		c.Record(1281)
+	}
+	c.Log("counter with 599713 times 1281 - issue #97")
+	actual := c.StdDev()
+	if actual != 0.0 {
+		t.Errorf("Got %g, expected 0 for stddev/issue #97 c is %+v", actual, c)
+	}
+}
+
 // TODO: add test with data 1.0 1.0001 1.999 2.0 2.5
 // should get 3 buckets 0-1 with count 1
 // 1-2 with count 3

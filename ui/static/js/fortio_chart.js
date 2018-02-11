@@ -187,6 +187,7 @@ function showChart (data) {
 
 function toggleVisibility () {
   document.getElementById('running').style.display = 'none'
+  document.getElementById('cc1').style.display = 'block'
   document.getElementById('update').style.visibility = 'visible'
 }
 
@@ -334,9 +335,10 @@ function fortioAddToMultiResult (i, res) {
   findData(1, i, res, '50')
   mchart.data.datasets[2].data[i] = 1000.0 * res.DurationHistogram.Avg
   findData(3, i, res, '75')
-  findData(4, i, res, '99')
-  findData(5, i, res, '99.9')
-  mchart.data.datasets[6].data[i] = 1000.0 * res.DurationHistogram.Max
+  findData(4, i, res, '90')
+  findData(5, i, res, '99')
+  findData(6, i, res, '99.9')
+  mchart.data.datasets[7].data[i] = 1000.0 * res.DurationHistogram.Max
 }
 
 function endMultiChart (len) {
@@ -404,22 +406,29 @@ function makeMultiChart (data) {
           label: 'p75',
           fill: false,
           stepped: true,
-          backgroundColor: 'hsla(55, 100%, 40%, .8)',
-          borderColor: 'hsla(55, 100%, 40%, .8)'
+          backgroundColor: 'hsla(60, 100%, 40%, .8)',
+          borderColor: 'hsla(60, 100%, 40%, .8)'
+        },
+        {
+          label: 'p90',
+          fill: false,
+          stepped: true,
+          backgroundColor: 'hsla(45, 100%, 40%, .8)',
+          borderColor: 'hsla(45, 100%, 40%, .8)'
         },
         {
           label: 'p99',
           fill: false,
           stepped: true,
-          backgroundColor: 'hsla(40, 100%, 40%, .8)',
-          borderColor: 'hsla(40, 100%, 40%, .8)'
+          backgroundColor: 'hsla(30, 100%, 40%, .8)',
+          borderColor: 'hsla(30, 100%, 40%, .8)'
         },
         {
           label: 'p99.9',
           fill: false,
           stepped: true,
-          backgroundColor: 'hsla(20, 100%, 40%, .8)',
-          borderColor: 'hsla(20, 100%, 40%, .8)'
+          backgroundColor: 'hsla(15, 100%, 40%, .8)',
+          borderColor: 'hsla(15, 100%, 40%, .8)'
         },
         {
           label: 'Max',

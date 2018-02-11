@@ -15,6 +15,10 @@
 package fhttp
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -76,6 +80,53 @@ func TestNewHTTPRequest(t *testing.T) {
 		r := newHTTPRequest(o)
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
+		}
+	}
+}
+
+func TestMultiInitAndEscape(t *testing.T) {
+	// one escaped already 2 not
+	o := NewHTTPOptions("localhost:8080/?delay=1s:10%,0.5s:15%25,0.25s:5%")
+	expected := "http://localhost:8080/?delay=1s:10%25,0.5s:15%25,0.25s:5%25"
+	if o.URL != expected {
+		t.Errorf("Got initially '%s', expected '%s'", o.URL, expected)
+	}
+	o.AddAndValidateExtraHeader("FoO: BaR")
+	// re init should not erase headers
+	o.Init(o.URL)
+	if o.GetHeaders().Get("Foo") != "BaR" {
+		t.Errorf("Lost header after Init %+v", o.GetHeaders())
+	}
+	// Escaping should be indempotent
+	if o.URL != expected {
+		t.Errorf("Got after reinit '%s', expected '%s'", o.URL, expected)
+	}
+}
+
+func TestSchemeCheck(t *testing.T) {
+	var tests = []struct {
+		input  string
+		output string
+		stdcli bool
+	}{
+		{"https://www.google.com/", "https://www.google.com/", true},
+		{"www.google.com", "http://www.google.com", false},
+		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
+		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
+		{"", "", false},                      // and error in the logs
+		{"x", "http://x", false},             //should not crash because url is shorter than prefix
+		{"http:/", "http://http:/", false},   //boundary
+		{"http://", "http://", false},        //boundary
+		{"https://", "https://", true},       //boundary
+		{"https:/", "http://https:/", false}, //boundary
+	}
+	for _, tst := range tests {
+		o := NewHTTPOptions(tst.input)
+		if o.URL != tst.output {
+			t.Errorf("Got %v, expecting %v for url '%s'", o.URL, tst.output, tst.input)
+		}
+		if o.DisableFastClient != tst.stdcli {
+			t.Errorf("Got %v, expecting %v for stdclient for url '%s'", o.DisableFastClient, tst.stdcli, tst.input)
 		}
 	}
 }
@@ -405,6 +456,47 @@ func TestRoundDuration(t *testing.T) {
 		if actual := RoundDuration(tst.input); actual != tst.expected {
 			t.Errorf("Got %v, expected %v for RoundDuration(%v)", actual, tst.expected, tst.input)
 		}
+	}
+}
+
+// Many of the earlier http tests are through httprunner but new tests should go here
+
+func TestEchoBack(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	v := url.Values{}
+	v.Add("foo", "bar")
+	url := fmt.Sprintf("http://localhost:%d/", p)
+	resp, err := http.PostForm(url, v)
+	if err != nil {
+		t.Fatalf("post form err %v", err)
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("readall err %v", err)
+	}
+	expected := "foo=bar"
+	if string(b) != expected {
+		t.Errorf("Got %s while expected %s", DebugSummary(b, 128), expected)
+	}
+}
+
+func TestInvalidRequest(t *testing.T) {
+	o := HTTPOptions{
+		URL: "http://www.google.com/", // valid url
+	}
+	client := NewStdClient(&o)
+	client.ChangeURL(" http://bad.url.with.space.com/") // invalid url
+	// should not crash (issue #93), should error out
+	code, _, _ := client.Fetch()
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d code while expecting bad request (%d)", code, http.StatusBadRequest)
+	}
+	o.URL = client.url
+	c2 := NewStdClient(&o)
+	if c2 != nil {
+		t.Errorf("Got non nil client %+v code while expecting nil for bad request", c2)
 	}
 }
 

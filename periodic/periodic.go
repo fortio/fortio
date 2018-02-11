@@ -37,7 +37,7 @@ import (
 
 const (
 	// Version is the overall package version (used to version json output too).
-	Version = "0.6.2"
+	Version = "0.6.9"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -70,6 +70,31 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 	}
 }
 
+// Aborter is the object controlling Abort() of the runs.
+type Aborter struct {
+	sync.Mutex
+	StopChan chan struct{}
+}
+
+// Abort signals all the go routine of this run to stop.
+// Implemented by closing the shared channel. The lock is to make sure
+// we close it exactly once to avoid go panic.
+func (a *Aborter) Abort() {
+	a.Lock()
+	if a.StopChan != nil {
+		log.LogVf("Closing %v", a.StopChan)
+		close(a.StopChan)
+		a.StopChan = nil
+	}
+	a.Unlock()
+}
+
+// NewAborter makes a new Aborter and initialize its StopChan.
+// The pointer should be shared. The structure is NoCopy.
+func NewAborter() *Aborter {
+	return &Aborter{StopChan: make(chan struct{}, 1)}
+}
+
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
@@ -88,10 +113,11 @@ type RunnerOptions struct {
 	Out io.Writer
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
-	// Channel to interrupt a run. If given non nil, will get closed and nil'ed
-	// by the end of Run(). To abort a run call Runner.Abort(), don't close channel
-	// directly (or risk a panic that it's already closed).
-	Stop chan struct{}
+	// Aborter to interrupt a run. Will be created if not set/left nil. Or you
+	// can pass your own. It is very important this is a pointer and not a field
+	// as RunnerOptions themselves get copied while the channel and lock must
+	// stay unique (per run).
+	Stop *Aborter
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
@@ -146,11 +172,13 @@ var (
 
 // Normalize initializes and normalizes the runner options. In particular it sets
 // up the channel that can be used to interrupt the run later.
+// Once Normalize is called, if Run() is skipped, Abort() must be called to
+// cleanup the watchers.
 func (r *RunnerOptions) Normalize() {
 	if r.QPS == 0 {
 		r.QPS = DefaultRunnerOptions.QPS
 	} else if r.QPS < 0 {
-		log.Infof("Negative qps %f means max speed mode/no wait between calls", r.QPS)
+		log.LogVf("Negative qps %f means max speed mode/no wait between calls", r.QPS)
 		r.QPS = -1
 	}
 	if r.Out == nil {
@@ -176,27 +204,27 @@ func (r *RunnerOptions) Normalize() {
 		r.Runners = make([]Runnable, r.NumThreads)
 	}
 	if r.Stop == nil {
-		r.Stop = make(chan struct{}, 1)
+		r.Stop = NewAborter()
+		runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
 		go func() {
 			gAbortMutex.Lock()
 			gOutstandingRuns++
 			n := gOutstandingRuns
-			runnerChan := r.Stop // need a copy to not race with assignement to nil
 			if gAbortChan == nil {
-				log.Infof("WATCHER %d First outstanding run starting, catching signal", n)
+				log.LogVf("WATCHER %d First outstanding run starting, catching signal", n)
 				gAbortChan = make(chan os.Signal, 1)
 				signal.Notify(gAbortChan, os.Interrupt)
 			}
 			abortChan := gAbortChan
 			gAbortMutex.Unlock()
-			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, gAbortChan, runnerChan, runtime.NumGoroutine())
+			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, abortChan, runnerChan, runtime.NumGoroutine())
 			select {
 			case _, ok := <-abortChan:
 				log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
 				if ok {
 					gAbortMutex.Lock()
 					if gAbortChan != nil {
-						log.Infof("WATCHER %d closing %v to notify all", n, gAbortChan)
+						log.LogVf("WATCHER %d closing %v to notify all", n, gAbortChan)
 						close(gAbortChan)
 						gAbortChan = nil
 					}
@@ -211,7 +239,7 @@ func (r *RunnerOptions) Normalize() {
 			gAbortMutex.Lock()
 			gOutstandingRuns--
 			if gOutstandingRuns == 0 {
-				log.Infof("WATCHER %d Last watcher: resetting signal handler", n)
+				log.LogVf("WATCHER %d Last watcher: resetting signal handler", n)
 				gAbortChan = nil
 				signal.Reset(os.Interrupt)
 			} else {
@@ -226,12 +254,10 @@ func (r *RunnerOptions) Normalize() {
 // to nil under lock so it can be called multiple times and not create panic for
 // already closed channel.
 func (r *RunnerOptions) Abort() {
-	gAbortMutex.Lock()
+	log.LogVf("Abort called for %p %+v", r, r)
 	if r.Stop != nil {
-		close(r.Stop)
-		r.Stop = nil
+		r.Stop.Abort()
 	}
-	gAbortMutex.Unlock()
 }
 
 // internal version, returning the concrete implementation.
@@ -242,6 +268,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 }
 
 // NewPeriodicRunner constructs a runner from input parameters/options.
+// Abort() must be called if Run() is not called.
 func NewPeriodicRunner(params *RunnerOptions) PeriodicRunner {
 	return newPeriodicRunner(params)
 }
@@ -253,9 +280,9 @@ func (r *periodicRunner) Options() *RunnerOptions {
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
-	gAbortMutex.Lock()
-	runnerChan := r.Stop // need a copy to not race with assignement to nil
-	gAbortMutex.Unlock()
+	r.Stop.Lock()
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
@@ -288,38 +315,53 @@ func (r *periodicRunner) Run() RunnerResults {
 			totalCalls := numCalls * int64(r.NumThreads)
 			if useExactly {
 				leftOver = r.Exactly - totalCalls
-				// nolint: gas
-				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
-					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
+						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+				}
 			} else {
-				// nolint: gas
-				fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-					r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+				}
 			}
 		} else {
+			// Always print that as we need ^C to interrupt, in that case the user need to notice
 			// nolint: gas
 			fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
 			numCalls = 0
 		}
 	} else {
-		// nolint: gas
-		fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
-			r.NumThreads, runtime.GOMAXPROCS(0))
-		if useExactly {
-			requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
-			numCalls = r.Exactly / int64(r.NumThreads)
-			leftOver = r.Exactly % int64(r.NumThreads)
-			fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+		if !useExactly && !hasDuration {
+			// Always log something when waiting for ^C
+			// nolint: gas
+			fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted\n",
+				r.NumThreads, runtime.GOMAXPROCS(0))
 		} else {
-			if hasDuration {
-				requestedDuration = fmt.Sprint(r.Duration)
-				fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+			if log.Log(log.Warning) {
+				// nolint: gas
+				fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
+					r.NumThreads, runtime.GOMAXPROCS(0))
+			}
+			if useExactly {
+				requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
+				numCalls = r.Exactly / int64(r.NumThreads)
+				leftOver = r.Exactly % int64(r.NumThreads)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+				}
 			} else {
-				fmt.Fprintf(r.Out, "until interrupted\n")
+				requestedDuration = fmt.Sprint(r.Duration)
+				if log.Log(log.Warning) {
+					// nolint: gas
+					fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+				}
 			}
 		}
-
 	}
 	runnersLen := len(r.Runners)
 	if runnersLen == 0 {
@@ -335,7 +377,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
-		log.Infof("Running single threaded")
+		log.LogVf("Running single threaded")
 		runOne(0, runnerChan, functionDuration, sleepTime, numCalls+leftOver, start, r)
 	} else {
 		var wg sync.WaitGroup
@@ -365,8 +407,10 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
-	// nolint: gas
-	fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	if log.Log(log.Warning) {
+		// nolint: gas
+		fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+	}
 	if useQPS {
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
@@ -378,7 +422,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		} else {
 			if log.Log(log.Verbose) {
 				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
-			} else {
+			} else if log.Log(log.Warning) {
 				sleepTime.Counter.Print(r.Out, "Sleep times")
 			}
 		}
@@ -389,8 +433,14 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
-	result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
-
+	if log.Log(log.Warning) {
+		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+	} else {
+		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
+		for _, p := range result.DurationHistogram.Percentiles {
+			fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+		}
+	}
 	select {
 	case <-runnerChan: // nothing
 		log.LogVf("RUNNER r.Stop already closed")

@@ -5,10 +5,12 @@ RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
   apt-get --no-install-recommends -y install ca-certificates curl make git gcc \
   libc6-dev apt-transport-https ssh
-RUN curl https://storage.googleapis.com/golang/go1.8.5.linux-amd64.tar.gz | tar xfz - -C /usr/local
+# Stay on go1.8 so we don't become incompatible with 1.8
+RUN curl https://storage.googleapis.com/golang/go1.8.7.linux-amd64.tar.gz | tar xfz - -C /usr/local
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$PATH:$GOPATH/bin
-RUN go get -u google.golang.org/grpc
+# This is now handled through dep and vendor submodule
+# RUN go get -u google.golang.org/grpc
 RUN go get -u github.com/alecthomas/gometalinter
 RUN gometalinter -i -u
 WORKDIR /go/src/istio.io

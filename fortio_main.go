@@ -36,10 +36,6 @@ import (
 
 var httpOpts fhttp.HTTPOptions
 
-func init() {
-	httpOpts.Init("")
-}
-
 // -- Support for multiple instances of -H flag on cmd line:
 type flagList struct {
 }
@@ -57,13 +53,14 @@ func (f *flagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n",
 		periodic.Version,
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
 		"http echo/ui/redirect servers), grpcping (grpc client), report (report only UI",
-		"server) or redirect (redirect only server). where target is a url (http load",
-		"tests) or host:port (grpc health test) and flags are:")
+		"server), redirect (redirect only server), or curl (single URL debug).",
+		"where target is a url (http load tests) or host:port (grpc health test)",
+		"and flags are:")
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
 	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
@@ -76,7 +73,7 @@ var (
 	qpsFlag            = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag     = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag       = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
-	percentilesFlag    = flag.String("p", "50,75,99,99.9", "List of pXX to calculate")
+	percentilesFlag    = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag     = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	compressionFlag    = flag.Bool("compression", false, "Enable http compression")
 	goMaxProcsFlag     = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
@@ -87,9 +84,10 @@ var (
 	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
-	echoPortFlag       = flag.Int("http-port", 8080, "http echo server port")
-	grpcPortFlag       = flag.Int("grpc-port", 8079, "grpc port")
-	echoDbgPathFlag    = flag.String("echo-debug-path", "/debug",
+	echoPortFlag       = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
+	grpcPortFlag       = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
+		"grpc server port. Can be in the form of host:port, ip:port or port.")
+	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
 		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
@@ -111,6 +109,10 @@ var (
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
+	quietFlag   = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
+	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	baseURLFlag = flag.String("base-url", "",
+		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
 )
 
 func main() {
@@ -130,26 +132,38 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	if *quietFlag {
+		log.SetLogLevelQuiet(log.Error)
+	}
 	percList, err = stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
+	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
+	sync := strings.TrimSpace(*syncFlag)
+	if sync != "" {
+		if !ui.Sync(os.Stdout, sync, *dataDirFlag) {
+			os.Exit(1)
+		}
+	}
 
 	switch command {
+	case "curl":
+		fortioLoad(true)
 	case "load":
-		fortioLoad()
+		fortioLoad(*curlFlag)
 	case "redirect":
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
 		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Report(*echoPortFlag, *staticDirFlag, *dataDirFlag)
+		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		if *redirectFlag >= 0 {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		go ui.Serve(*echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
+		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
@@ -174,11 +188,11 @@ func fetchURL(o *fhttp.HTTPOptions) {
 	}
 }
 
-func fortioLoad() {
+func fortioLoad(justCurl bool) {
 	if len(flag.Args()) != 1 {
-		usage("Error: fortio load needs a url or destination")
+		usage("Error: fortio load/curl needs a url or destination")
 	}
-	url := flag.Arg(0)
+	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
 	httpOpts.URL = url
 	httpOpts.HTTP10 = *http10Flag
 	httpOpts.DisableFastClient = *stdClientFlag
@@ -186,22 +200,26 @@ func fortioLoad() {
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
-	if *curlFlag {
+	if justCurl {
 		fetchURL(&httpOpts)
 		return
 	}
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
-	fmt.Printf("Fortio %s running at %g queries per second, %d->%d procs",
-		periodic.Version, *qpsFlag, prevGoMaxProcs, runtime.GOMAXPROCS(0))
-	if *durationFlag <= 0 {
-		// Infinite mode is determined by having a negative duration value
-		*durationFlag = -1
-		fmt.Printf(", until interrupted: %s\n", url)
+	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
+	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
+		periodic.Version, qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+	if *exactlyFlag > 0 {
+		fmt.Fprintf(out, ", for %d calls: %s\n", *exactlyFlag, url)
 	} else {
-		fmt.Printf(", for %v: %s\n", *durationFlag, url)
+		if *durationFlag <= 0 {
+			// Infinite mode is determined by having a negative duration value
+			*durationFlag = -1
+			fmt.Fprintf(out, ", until interrupted: %s\n", url)
+		} else {
+			fmt.Fprintf(out, ", for %v: %s\n", *durationFlag, url)
+		}
 	}
-	qps := *qpsFlag
 	if qps <= 0 {
 		qps = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
 	}

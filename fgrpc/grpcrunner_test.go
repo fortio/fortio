@@ -77,3 +77,63 @@ func TestGRPCRunner(t *testing.T) {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
 }
+
+func TestGRPCDestination(t *testing.T) {
+	tests := []struct {
+		name   string
+		dest   string
+		output string
+	}{
+		{
+			"hostname",
+			"localhost",
+			"localhost:8079",
+		},
+		{
+			"hostname and port",
+			"localhost:1234",
+			"localhost:1234",
+		},
+		{
+			"IPv4 address",
+			"1.2.3.4",
+			"1.2.3.4:8079",
+		},
+		{
+			"IPv4 address and port",
+			"1.2.3.4:5678",
+			"1.2.3.4:5678",
+		},
+		{
+			"IPv6 address",
+			"2001:dba::1",
+			"[2001:dba::1]:8079",
+		},
+		{
+			"IPv6 address and port",
+			"[2001:dba::1]:1234",
+			"[2001:dba::1]:1234",
+		},
+		{
+			"hostname and no port",
+			"foo.bar.com",
+			"foo.bar.com:8079",
+		},
+		{
+			"hostname and port",
+			"foo.bar.com:123",
+			"foo.bar.com:123",
+		},
+	}
+
+	for _, tc := range tests {
+		dest := GRPCDestination(tc.dest)
+		if dest != tc.output {
+			t.Errorf("Test case %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.output,
+				dest,
+			)
+		}
+	}
+}

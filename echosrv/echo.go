@@ -23,14 +23,16 @@ import (
 	"flag"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/fnet"
 )
 
 var (
-	port      = flag.Int("port", 8080, "default http port")
+	port      = flag.String("port", "8080", "default http port, either port or address:port can be specified")
 	debugPath = flag.String("debug-path", "/debug", "path for debug url, set to empty for no debug")
 )
 
 func main() {
 	flag.Parse()
-	fhttp.Serve(*port, *debugPath)
+	httpPort := fnet.NormalizePort(*port)
+	fhttp.Serve(httpPort, *debugPath)
 }

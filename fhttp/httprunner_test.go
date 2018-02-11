@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,13 +32,13 @@ import (
 )
 
 func TestHTTPRunner(t *testing.T) {
-	http.HandleFunc("/foo/", EchoHandler)
-	port := DynamicHTTPServer(false)
+	port, mux := DynamicHTTPServer(false)
+	mux.HandleFunc("/foo/", EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
 	opts := HTTPRunnerOptions{}
 	opts.QPS = 100
-	opts.Init(baseURL)
+	opts.URL = baseURL
 	opts.DisableFastClient = true
 	_, err := RunHTTPTest(&opts)
 	if err == nil {
@@ -55,11 +57,26 @@ func TestHTTPRunner(t *testing.T) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
+	// Test raw client, should get warning about non init timeout:
+	rawOpts := HTTPOptions{
+		URL: opts.URL,
+	}
+	o1 := rawOpts
+	if r, _, _ := NewBasicClient(&o1).Fetch(); r != http.StatusOK {
+		t.Errorf("Fast Client with raw option should still work with warning in logs")
+	}
+	o1 = rawOpts
+	o1.URL = "http://www.doesnotexist.badtld/"
+	c := NewStdClient(&o1)
+	c.ChangeURL(rawOpts.URL)
+	if r, _, _ := c.Fetch(); r != http.StatusOK {
+		t.Errorf("Std Client with raw option should still work with warning in logs")
+	}
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
-	http.HandleFunc("/echo1/", EchoHandler)
-	port := DynamicHTTPServer(false)
+	port, mux := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo1/", EchoHandler)
 	URL := fmt.Sprintf("http://localhost:%d/echo1/", port)
 
 	opts := HTTPRunnerOptions{}
@@ -82,7 +99,7 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 func TestHTTPRunnerBadServer(t *testing.T) {
 	// Using http to an https server (or the current 'close all' dummy https server)
 	// should fail:
-	port := DynamicHTTPServer(true)
+	port, _ := DynamicHTTPServer(true)
 	baseURL := fmt.Sprintf("http://localhost:%d/", port)
 
 	opts := HTTPRunnerOptions{}
@@ -106,17 +123,22 @@ func TestServe(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	log.Infof("Using port: %d", port)
 	listener.Close()
-	url := fmt.Sprintf("http://localhost:%d/debugx1", port)
+	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	go func() {
-		Serve(port, "/debugx1")
+		Serve(strconv.Itoa(port), "/debugx1")
 	}()
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
+	o.AddAndValidateExtraHeader("X-Header: value1")
+	o.AddAndValidateExtraHeader("X-Header: value2")
 	code, data, _ := NewClient(o).Fetch()
 	if code != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
 	}
 	if len(data) <= 100 {
 		t.Errorf("Unexpected short data for debug url %s : %s", url, DebugSummary(data, 101))
+	}
+	if !strings.Contains(string(data), "X-Header: value1,value2") {
+		t.Errorf("Multi header not found in %s", DebugSummary(data, 1024))
 	}
 }

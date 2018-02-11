@@ -17,6 +17,7 @@ package fgrpc // import "istio.io/fortio/fgrpc"
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -24,8 +25,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
+)
+
+const (
+	// DefaultGRPCPort is the Fortio gRPC server default port number.
+	DefaultGRPCPort = "8079"
 )
 
 // TODO: refactor common parts between http and grpc runners
@@ -65,6 +72,7 @@ type GRPCRunnerOptions struct {
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
+	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
@@ -131,4 +139,23 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		fmt.Printf("Health %s : %d\n", k.String(), total.RetCodes[k])
 	}
 	return &total, nil
+}
+
+// GRPCDestination parses dest and returns dest:port based on dest type
+// being a hostname, IP address or hostname/ip:port pair.
+func GRPCDestination(dest string) string {
+	if _, _, err := net.SplitHostPort(dest); err == nil {
+		return dest
+	}
+	if ip := net.ParseIP(dest); ip != nil {
+		switch {
+		case ip.To4() != nil:
+			return ip.String() + fnet.NormalizePort(DefaultGRPCPort)
+		case ip.To16() != nil:
+			return "[" + ip.String() + "]" + fnet.NormalizePort(DefaultGRPCPort)
+		}
+
+	}
+	// dest must be in the form of hostname
+	return dest + fnet.NormalizePort(DefaultGRPCPort)
 }

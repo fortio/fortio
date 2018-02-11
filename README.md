@@ -1,4 +1,4 @@
-[![Awesome Go](docs/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
+[![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
 [![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
@@ -16,7 +16,7 @@ Fortio is a reusable, embeddable go library as well as a command line tool and s
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
-2. `go get -u istio.io/fortio`
+2. `go get istio.io/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
 Or use docker, for instance:
@@ -29,24 +29,27 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/0.4.0/fortio-linux_x64-0.4.0.tgz \
+curl -L https://github.com/istio/fortio/releases/download/0.6.8/fortio-linux_x64-0.6.8.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
-You can visit the new web UI at http://localhost:8080/fortio/
+Once `fortio server` is running, you can visit its web UI at http://localhost:8080/fortio/
+
+You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's content using the `-curl` flag to the load command. You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
 $ fortio
-Φορτίο 0.6.2 usage:
+Φορτίο 0.6.8 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
-server) or redirect (redirect only server). where target is a url (http load
-tests) or host:port (grpc health test) and flags are:
+server), redirect (redirect only server), or curl (single URL debug).
+where target is a url (http load tests) or host:port (grpc health test)
+and flags are:
   -H value
     	Additional Header(s)
   -a	Automatically save JSON result with filename based on labels & timestamp
@@ -67,8 +70,8 @@ tests) or host:port (grpc health test) and flags are:
     	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
     	Use GRPC (health check) for load testing
-  -grpc-port int
-    	grpc port (default 8079)
+  -grpc-port string
+    	grpc server port. Can take the form of host:port, ip:port or port (default 8079)
   -halfclose
     	When not keepalive, whether to half close the connection (only for fast
     	http)
@@ -76,8 +79,8 @@ tests) or host:port (grpc health test) and flags are:
     	client mode: use health instead of ping
   -healthservice string
     	which service string to pass to health check
-  -http-port int
-    	http echo server port (default 8080)
+  -http-port string
+    	http echo server port. Can take the form of host:port, ip:port or port (default 8080)
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
@@ -113,6 +116,8 @@ tests) or host:port (grpc health test) and flags are:
     	write .cpu and .mem profiles to file
   -qps float
     	Queries Per Seconds or 0 for no wait/max qps (default 8)
+  -quiet
+    	Quiet mode: sets the loglevel to Error and reduces the output.
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port int
@@ -122,6 +127,8 @@ tests) or host:port (grpc health test) and flags are:
     	Absolute path to the dir containing the static files dir
   -stdclient
     	Use the slower net/http standard client (works for TLS)
+  -sync string
+      index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
   -ui-path string
@@ -136,13 +143,40 @@ tests) or host:port (grpc health test) and flags are:
 $ fortio server &
 Https redirector running on :8081
 UI starting - visit:
-http://localhost:8080/fortio/
-Fortio 0.6.1 grpc ping server listening on port 8079
-Fortio 0.6.1 echo server listening on port 8080
+http://localhost:8080/fortio/   (or any host/ip reachable on this server)
+Fortio 0.6.8 grpc ping server listening on port :8079
+Fortio 0.6.8 echo server listening on port :8080
+```
+
+* By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
+Use the `-http-port` flag to change this behavior:
+```
+$ fortio server -http-port 10.10.10.10:8088
+UI starting - visit:
+http://10.10.10.10:8088/fortio/
+Https redirector running on :8081
+Fortio 0.6.8 grpc ping server listening on port :8079
+Fortio 0.6.8 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
 $ fortio grpcping localhost
+02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
+Clock skew histogram usec : count 1 avg -2.137 +/- 0 min -2.137 max -2.137 sum -2.137
+# range, mid point, percentile, count
+>= -4 < -2 , -3 , 100.00, 1
+# target 50% -2.137
+RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 916.002
+# range, mid point, percentile, count
+>= 250 < 300 , 275 , 66.67, 2
+>= 300 < 350 , 325 , 100.00, 1
+# target 50% 294.879
+```
+* The value of `-grpc-port` (default 8079) is used when specifying a hostname
+or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to
+change this behavior:
+```
+$ fortio grpcping 10.10.10.100:8078 # Connects to gRPC server 10.10.10.100 listening on port 8078
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
 Clock skew histogram usec : count 1 avg -2.137 +/- 0 min -2.137 max -2.137 sum -2.137
 # range, mid point, percentile, count
@@ -192,14 +226,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.6.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.6.8 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.6.0
+User-Agent: istio/fortio-0.6.8
 Foo: Bar
 
 body:
@@ -216,6 +250,27 @@ Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081
 ```
+
+## Server URLs and features
+
+Fortio `server` - has the following feature - http listening on 8080 (all paths and ports are configurable through flags above):
+- A simple echo server which will echo back posted data (for any path not mentioned below).
+For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
+
+| Parameter | Usage, example |
+| ----------|----------------|
+| delay     | duration to delay the response by. Can be a single value or a coma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
+| status    | http status to return instead of 200. Can be a single value or a coma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+- `/debug` will echo back the request in plain text for human debugging.
+- `/fortio/` A UI to
+  - Run/Trigger tests and graph the results.
+  - A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
+  - Proxy/fetch other URLs
+  - `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
+  - Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
+  - Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
+
+The `report` mode is a readonly subset of the above directly on `/`.
 
 ## Implementation details
 
@@ -289,6 +344,8 @@ Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 ```
 
 Or you can get the data in [JSON format](https://github.com/istio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
+
+### Web/Graphical UI
 
 Or graphically (through the [http://localhost:8080/fortio/](http://localhost:8080/fortio/) web UI):
 

@@ -15,6 +15,7 @@
 package fhttp // import "istio.io/fortio/fhttp"
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -68,15 +70,46 @@ func NewHTTPOptions(url string) *HTTPOptions {
 // It replaces plain % to %25 in the url. If you already have properly
 // escaped URLs use o.URL = to set it.
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
+	if h.initDone {
+		return h
+	}
+	h.initDone = true
 	// unescape then rescape % to %25 (so if it was already %25 it stays)
 	h.URL = strings.Replace(strings.Replace(url, "%25", "%", -1), "%", "%25", -1)
 	h.NumConnections = 1
-	if h.HTTPReqTimeOut == 0 {
+	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
+	h.URLSchemeCheck()
 	return h
+}
+
+// URLSchemeCheck makes sure the client will work with the scheme requested.
+// it also adds missing http:// to emulate curl's behavior.
+func (h *HTTPOptions) URLSchemeCheck() {
+	log.LogVf("URLSchemeCheck %+v", h)
+	if len(h.URL) == 0 {
+		log.Errf("unexpected init with empty url")
+		return
+	}
+	hs := "https://" // longer of the 2 prefixes
+	lcURL := h.URL
+	if len(lcURL) > len(hs) {
+		lcURL = strings.ToLower(h.URL[:len(hs)]) // no need to tolower more than we check
+	}
+	if strings.HasPrefix(lcURL, hs) {
+		if !h.DisableFastClient {
+			log.Warnf("https requested, switching to standard go client")
+			h.DisableFastClient = true
+		}
+		return // url is good
+	}
+	if !strings.HasPrefix(lcURL, "http://") {
+		log.Warnf("assuming http:// on missing scheme for '%s'", h.URL)
+		h.URL = "http://" + h.URL
+	}
 }
 
 // Version is the fortio package version (TODO:auto gen/extract).
@@ -95,11 +128,12 @@ type HTTPOptions struct {
 	HTTP10            bool // defaults to http1.1
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
+	initDone          bool
 	// ExtraHeaders to be added to each request.
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
 	hostOverride   string
-	HTTPReqTimeOut time.Duration // timeout value for http request in terms of second
+	HTTPReqTimeOut time.Duration // timeout value for http request
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -127,11 +161,12 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	key := strings.TrimSpace(s[0])
 	value := strings.TrimSpace(s[1])
 	if strings.EqualFold(key, "host") {
-		log.Infof("Will be setting special Host header to %s", value)
+		log.LogVf("Will be setting special Host header to %s", value)
 		h.hostOverride = value
 	} else {
-		log.Infof("Setting regular extra header %s: %s", key, value)
+		log.LogVf("Setting regular extra header %s: %s", key, value)
 		h.extraHeaders.Add(key, value)
+		log.Debugf("headers now %+v", h.extraHeaders)
 	}
 	return nil
 }
@@ -167,8 +202,16 @@ type Client struct {
 	client *http.Client
 }
 
+// ChangeURL only for standard client, allows fetching a different URL
+func (c *Client) ChangeURL(urlStr string) (err error) {
+	c.url = urlStr
+	c.req.URL, err = url.Parse(urlStr)
+	return err
+}
+
 // Fetch fetches the byte and code for pre created client
 func (c *Client) Fetch() (int, []byte, int) {
+	// req can't be null (client itself would be null in that case)
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("Unable to send request for %s : %v", c.url, err)
@@ -201,6 +244,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag)
 func NewClient(o *HTTPOptions) Fetcher {
+	o.URLSchemeCheck()
 	if o.DisableFastClient {
 		return NewStdClient(o)
 	}
@@ -208,13 +252,17 @@ func NewClient(o *HTTPOptions) Fetcher {
 }
 
 // NewStdClient creates a client object that wraps the net/http standard client.
-func NewStdClient(o *HTTPOptions) Fetcher {
+func NewStdClient(o *HTTPOptions) *Client {
 	req := newHTTPRequest(o)
 	if req == nil {
 		return nil
 	}
 	if o.NumConnections < 1 {
 		o.NumConnections = 1
+	}
+	// 0 timeout for stdclient doesn't mean 0 timeout... so just warn and leave it
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Std call with client timeout %v", o.HTTPReqTimeOut)
 	}
 	client := Client{
 		o.URL,
@@ -227,9 +275,9 @@ func NewStdClient(o *HTTPOptions) Fetcher {
 				DisableCompression:  !o.Compression,
 				DisableKeepAlives:   o.DisableKeepAlive,
 				Dial: (&net.Dialer{
-					Timeout: 4 * time.Second,
+					Timeout: o.HTTPReqTimeOut,
 				}).Dial,
-				TLSHandshakeTimeout: 4 * time.Second,
+				TLSHandshakeTimeout: o.HTTPReqTimeOut,
 			},
 			// Lets us see the raw response instead of auto following redirects.
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -318,13 +366,15 @@ func NewBasicClient(o *HTTPOptions) Fetcher {
 			buf.WriteString("Connection: close\r\n")
 		}
 	}
-	bc.reqTimeout = o.HTTPReqTimeOut
-	for h := range o.extraHeaders {
-		buf.WriteString(h)
-		buf.WriteString(": ")
-		buf.WriteString(o.extraHeaders.Get(h))
-		buf.WriteString("\r\n")
+	if o.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
+		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
+	bc.reqTimeout = o.HTTPReqTimeOut
+	w := bufio.NewWriter(&buf)
+	// This writes multiple valued headers properly (unlike calling Get() to do it ourselves)
+	o.extraHeaders.Write(w) // nolint: errcheck,gas
+	w.Flush()               // nolint: errcheck,gas
 	buf.WriteString("\r\n")
 	bc.req = buf.Bytes()
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
@@ -892,6 +942,13 @@ func generateDelay(delay string) time.Duration {
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	if err != nil {
+		log.Errf("Error reading %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Debugf("Read %d", len(data))
 	dur := generateDelay(r.FormValue("delay"))
 	if dur > 0 {
 		log.LogVf("Sleeping for %v", dur)
@@ -910,12 +967,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 				log.Debugf("Header %v: %v\n", name, h)
 			}
 		}
-	}
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Errf("Error reading %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 	// echo back the Content-Type and Content-Length in the response
 	for _, k := range []string{"Content-Type", "Content-Length"} {
@@ -954,8 +1005,13 @@ func closingServer(listener net.Listener) error {
 }
 
 // DynamicHTTPServer listens on an available port, sets up an http or https
-// (when secure is true) server on it and returns the listening port.
-func DynamicHTTPServer(secure bool) int {
+// (when secure is true) server on it and returns the listening port and
+// mux to which one can attach handlers to.
+func DynamicHTTPServer(secure bool) (int, *http.ServeMux) {
+	m := http.NewServeMux()
+	s := &http.Server{
+		Handler: m,
+	}
 	listener, err := net.Listen("tcp", ":0") // nolint: gas
 	if err != nil {
 		log.Fatalf("Unable to listen to dynamic port: %v", err)
@@ -969,13 +1025,13 @@ func DynamicHTTPServer(secure bool) int {
 			//err = http.ServeTLS(listener, nil, "", "") // go 1.9
 			err = closingServer(listener)
 		} else {
-			err = http.Serve(listener, nil)
+			err = s.Serve(listener)
 		}
 		if err != nil {
 			log.Fatalf("Unable to serve with secure=%v on %d: %v", secure, port, err)
 		}
 	}()
-	return port
+	return port, m
 }
 
 /*
@@ -1092,14 +1148,15 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 // Serve starts a debug / echo http server on the given port.
 // TODO: make it work for port 0 and return the port found and also
 // add a non blocking mode that makes sure the socket exists before returning
-func Serve(port int, debugPath string) {
+func Serve(port, debugPath string) {
 	startTime = time.Now()
-	fmt.Printf("Fortio %s echo server listening on port %v\n", periodic.Version, port)
+	nPort := fnet.NormalizePort(port)
+	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
 	http.HandleFunc("/", EchoHandler)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(nPort, nil); err != nil {
 		fmt.Println("Error starting server", err)
 	}
 }

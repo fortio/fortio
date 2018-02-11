@@ -94,6 +94,18 @@ func (l *Level) Set(str string) error {
 
 // SetLogLevel sets the log level and returns the previous one.
 func SetLogLevel(lvl Level) Level {
+	return setLogLevel(lvl, true)
+}
+
+// SetLogLevelQuiet sets the log level and returns the previous one but does
+// not log the change of level itself.
+func SetLogLevelQuiet(lvl Level) Level {
+	return setLogLevel(lvl, false)
+}
+
+// setLogLevel sets the log level and returns the previous one.
+// if logChange is true the level change is logged.
+func setLogLevel(lvl Level, logChange bool) Level {
 	prev := level
 	if lvl < Debug {
 		log.Printf("SetLogLevel called with level %d lower than Debug!", lvl)
@@ -104,7 +116,9 @@ func SetLogLevel(lvl Level) Level {
 		return -1
 	}
 	if lvl != prev {
-		logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.ToString(), prev, prev.ToString())
+		if logChange {
+			logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.ToString(), prev, prev.ToString())
+		}
 		level = lvl
 	}
 	return prev

@@ -21,12 +21,14 @@ import (
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"html"
 	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"runtime"
@@ -36,6 +38,7 @@ import (
 	"time"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -52,7 +55,7 @@ var (
 	debugPath   string // mostly relative
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
-	httpPort int
+	urlHostPort string
 	// Start time of the UI Server (for uptime info).
 	startTime time.Time
 	// Directory where the static content and templates are to be loaded from.
@@ -65,13 +68,17 @@ var (
 	dataDir        string
 	mainTemplate   *template.Template
 	browseTemplate *template.Template
+	syncTemplate   *template.Template
 	uiRunMapMutex  = &sync.Mutex{}
 	id             int64
 	runs           = make(map[int64]*periodic.RunnerOptions)
+	// Base URL used for index - useful when running under an ingress with prefix
+	baseURL string
 )
 
 const (
-	fetchURI = "fetch/"
+	fetchURI    = "fetch/"
+	faviconPath = "/favicon.ico"
 )
 
 // Gets the resources directory from one of 3 sources:
@@ -81,11 +88,11 @@ func getResourcesDir(override string) string {
 		return override
 	}
 	if resourcesDir != "" {
-		log.Infof("Using resources directory set at link time: %s", resourcesDir)
+		log.LogVf("Using resources directory set at link time: %s", resourcesDir)
 		return resourcesDir
 	}
 	_, filename, _, ok := runtime.Caller(0)
-	log.Infof("Guessing resources directory from runtime source location: %v - %s", ok, filename)
+	log.LogVf("Guessing resources directory from runtime source location: %v - %s", ok, filename)
 	if ok {
 		return path.Dir(filename)
 	}
@@ -96,10 +103,14 @@ func getResourcesDir(override string) string {
 // HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
 type HTMLEscapeWriter struct {
 	NextWriter io.Writer
+	Flusher    http.Flusher
 }
 
 func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 	template.HTMLEscape(w.NextWriter, p)
+	if w.Flusher != nil {
+		w.Flusher.Flush()
+	}
 	return len(p), nil
 }
 
@@ -160,11 +171,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+	}
 	out := io.Writer(os.Stderr)
 	if !JSONOnly {
-		out = io.Writer(&HTMLEscapeWriter{NextWriter: w})
+		out = io.Writer(&HTMLEscapeWriter{NextWriter: w, Flusher: flusher})
 	}
 	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
+	if strings.TrimSpace(url) == "" {
+		url = "http://url.needed" // just because url validation doesn't like empty urls
+	}
 	opts := fhttp.NewHTTPOptions(url)
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
@@ -215,12 +233,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			RunID                       int64
 			UpTime                      time.Duration
 			TestExpectedDurationSeconds float64
-			Port                        int
+			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
 		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), durSeconds, httpPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -264,14 +282,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				log.Errf("Error adding custom headers: %v", err)
 			}
 		}
+		onBehalfOf(opts, r)
 		o := fhttp.HTTPRunnerOptions{
 			RunnerOptions:      ro,
 			HTTPOptions:        *opts,
 			AllowInitialErrors: true,
-		}
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 		}
 		if !JSONOnly {
 			flusher.Flush()
@@ -281,7 +296,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		delete(runs, runid)
 		uiRunMapMutex.Unlock()
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("Aborting because %s\n", html.EscapeString(err.Error())))) // nolint: errcheck,gas
+			log.Errf("Init error %+v : %v", o, err)
+			// nolint: errcheck,gas
+			w.Write([]byte(fmt.Sprintf(
+				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
+				html.EscapeString(err.Error()))))
 			return
 		}
 		json, err := json.MarshalIndent(res, "", "  ")
@@ -359,7 +378,7 @@ func DataList() (dataList []string) {
 		}
 		dataList = append(dataList, name[:len(name)-len(ext)])
 	}
-	log.LogVf("data list is %v", dataList)
+	log.LogVf("data list is %v (out of %d files in %s)", dataList, len(files), dataDir)
 	return dataList
 }
 
@@ -378,6 +397,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := r.FormValue("url")
+	search := r.FormValue("s")
 	doRender := (url != "")
 	dataList := DataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
@@ -388,11 +408,13 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		LogoPath    string
 		ChartJSPath string
 		URL         string
+		Search      string
 		DataList    []string
-		Port        int
+		URLHostPort string
 		DoRender    bool
+		DoSearch    bool
 	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
-		url, dataList, httpPort, doRender})
+		url, search, dataList, urlHostPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
@@ -415,6 +437,11 @@ func LogRequest(r *http.Request, msg string) {
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, "Static")
+		path := r.URL.Path
+		if path == faviconPath {
+			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
+			log.LogVf("Changed favicon internal path to %s", r.URL.Path)
+		}
 		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 		h.ServeHTTP(w, r)
 	})
@@ -508,13 +535,18 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 		ext := "/index.tsv"
 		if strings.HasSuffix(path, ext) {
 			// Ingress effect:
-			// The Host header includes original host/port, only missing is the proto:
-			proto := r.Header.Get("X-Forwarded-Proto")
-			if len(proto) == 0 {
-				proto = "http"
+			urlPrefix := baseURL
+			if len(urlPrefix) == 0 {
+				// The Host header includes original host/port, only missing is the proto:
+				proto := r.Header.Get("X-Forwarded-Proto")
+				if len(proto) == 0 {
+					proto = "http"
+				}
+				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
+			} else {
+				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
 			}
-			urlPrefix := proto + "://" + r.Host + path[:len(path)-len(ext)+1]
-			log.LogVf("Prefix is '%s'", urlPrefix)
+			log.Infof("Prefix is '%s'", urlPrefix)
 			sendTSVDataIndex(urlPrefix, w)
 			return
 		}
@@ -545,6 +577,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.String()[len(fetchPath):]
 	opts := fhttp.NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
+	onBehalfOf(opts, r)
 	client := fhttp.NewClient(opts)
 	if client == nil {
 		return // error logged already
@@ -556,14 +589,252 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
+	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr) // nolint: gas
+}
+
+// TODO: move tsv/xml sync handling to their own file (and possibly package)
+
+// http.ResponseWriter + Flusher emulator - if we refactor the code this should
+// not be needed. on the other hand it's useful and could be reused.
+type outHTTPWriter struct {
+	CodePtr *int // Needed because that interface is somehow pass by value
+	Out     io.Writer
+	header  http.Header
+}
+
+func (o outHTTPWriter) Header() http.Header {
+	return o.header
+}
+
+func (o outHTTPWriter) Write(b []byte) (int, error) {
+	return o.Out.Write(b)
+}
+
+func (o outHTTPWriter) WriteHeader(code int) {
+	*o.CodePtr = code
+	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code))) // nolint: gas, errcheck
+}
+
+func (o outHTTPWriter) Flush() {
+	// nothing
+}
+
+// Sync is the non http equivalent of fortio/sync?url=u.
+func Sync(out io.Writer, u string, datadir string) bool {
+	dataDir = datadir
+	v := url.Values{}
+	v.Set("url", u)
+	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil) // nolint: gas
+	code := http.StatusOK                                               // default
+	w := outHTTPWriter{Out: out, CodePtr: &code}
+	SyncHandler(w, req)
+	return (code == http.StatusOK)
+}
+
+// SyncHandler handles syncing/downloading from tsv url.
+func SyncHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Sync")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+	}
+	uStr := strings.TrimSpace(r.FormValue("url"))
+	if syncTemplate != nil {
+		err := syncTemplate.Execute(w, &struct {
+			Version  string
+			LogoPath string
+			URL      string
+		}{periodic.Version, logoPath, uStr})
+		if err != nil {
+			log.Critf("Sync template execution failed: %v", err)
+		}
+	}
+	w.Write([]byte("Fetch of index/bucket url ... ")) // nolint: gas, errcheck
+	flusher.Flush()
+	o := fhttp.NewHTTPOptions(uStr)
+	onBehalfOf(o, r)
+	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
+	// and not do multiple passes over the same data, but for small tsv this is fine.
+	// use std client to change the url and handle https:
+	client := fhttp.NewStdClient(o)
+	if client == nil {
+		w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.WriteHeader(422 /*Unprocessable Entity*/)
+		return
+	}
+	code, data, _ := client.Fetch()
+	if code != http.StatusOK {
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code))) // nolint: gas, errcheck
+		w.WriteHeader(424 /*Failed Dependency*/)
+		return
+	}
+	sdata := strings.TrimSpace(string(data))
+	if strings.HasPrefix(sdata, "TsvHttpData-1.0") {
+		processTSV(w, client, sdata)
+	} else {
+		if !processXML(w, client, data, uStr, 0) {
+			return
+		}
+	}
+	w.Write([]byte("</table>"))           // nolint: gas, errcheck
+	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
+}
+
+func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
+	flusher := w.(http.Flusher)
+	lines := strings.Split(sdata, "\n")
+	n := len(lines)
+	// nolint: gas, errcheck
+	w.Write([]byte(fmt.Sprintf("success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
+		n-1, n)))
+	w.Write([]byte("<table>")) // nolint: gas, errcheck
+	flusher.Flush()
+	for i, l := range lines[1:] {
+		parts := strings.Split(l, "\t")
+		u := parts[0]
+		w.Write([]byte("<tr><td>"))                   // nolint: gas, errcheck
+		w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
+		ur, err := url.Parse(u)
+		if err != nil {
+			w.Write([]byte("<td>skipped (not a valid url)")) // nolint: gas, errcheck
+		} else {
+			uPath := ur.Path
+			pathParts := strings.Split(uPath, "/")
+			name := pathParts[len(pathParts)-1]
+			downloadOne(w, client, name, u)
+		}
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		flusher.Flush()
+	}
+}
+
+// ListBucketResult is the minimum we need out of s3 xml results.
+// https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
+// e.g. https://storage.googleapis.com/fortio-data?max-keys=2&prefix=fortio.istio.io/
+type ListBucketResult struct {
+	NextMarker string   `xml:"NextMarker"`
+	Names      []string `xml:"Contents>Key"`
+}
+
+// @returns true if started a table successfully - false is error
+func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
+	// We already know this parses as we just fetched it:
+	bu, _ := url.Parse(baseURL) // nolint: gas, errcheck
+	flusher := w.(http.Flusher)
+	l := ListBucketResult{}
+	err := xml.Unmarshal(data, &l)
+	if err != nil {
+		log.Errf("xml unmarshal error %v", err)
+		// don't show the error / would need html escape to avoid CSS attacks
+		w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.WriteHeader(http.StatusInternalServerError)
+		return false
+	}
+	n := len(l.Names)
+	log.Infof("Parsed %+v", l)
+	// nolint: gas, errcheck
+	w.Write([]byte(fmt.Sprintf("success xml fetch #%d! Now fetching %d referenced objects:<script>setPB(1,%d)</script>\n",
+		level+1, n, n+1)))
+	if level == 0 {
+		w.Write([]byte("<table>")) // nolint: gas, errcheck
+	}
+	for i, el := range l.Names {
+		w.Write([]byte("<tr><td>"))                    // nolint: gas, errcheck
+		w.Write([]byte(template.HTMLEscapeString(el))) // nolint: gas, errcheck
+		pathParts := strings.Split(el, "/")
+		name := pathParts[len(pathParts)-1]
+		newURL := *bu // copy
+		newURL.Path = newURL.Path + "/" + el
+		fullURL := newURL.String()
+		downloadOne(w, client, name, fullURL)
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		flusher.Flush()
+	}
+	flusher.Flush()
+	// Is there more data ? (NextMarker present)
+	if len(l.NextMarker) == 0 {
+		return true
+	}
+	if level > 100 {
+		log.Errf("Too many chunks, stopping after 100")
+		w.WriteHeader(509 /* Bandwidth Limit Exceeded */)
+		return true
+	}
+	q := bu.Query()
+	if q.Get("marker") == l.NextMarker {
+		log.Errf("Loop with same marker %+v", bu)
+		w.WriteHeader(508 /* Loop Detected */)
+		return true
+	}
+	q.Set("marker", l.NextMarker)
+	bu.RawQuery = q.Encode()
+	newBaseURL := bu.String()
+	// url already validated
+	w.Write([]byte("<tr><td>"))                            // nolint: gas, errcheck
+	w.Write([]byte(template.HTMLEscapeString(newBaseURL))) // nolint: gas, errcheck
+	w.Write([]byte("<td>"))                                // nolint: gas, errcheck
+	_ = client.ChangeURL(newBaseURL)                       // nolint: gas
+	ncode, ndata, _ := client.Fetch()
+	if ncode != http.StatusOK {
+		log.Errf("Can't fetch continuation with marker %+v", bu)
+		// nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
+		w.WriteHeader(424 /*Failed Dependency*/)
+		return false
+	}
+	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
+}
+
+func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u string) {
+	log.Infof("downloadOne(%s,%s)", name, u)
+	if !strings.HasSuffix(name, ".json") {
+		w.Write([]byte("<td>skipped (not json)")) // nolint: gas, errcheck
+		return
+	}
+	localPath := path.Join(dataDir, name)
+	_, err := os.Stat(localPath)
+	if err == nil {
+		w.Write([]byte("<td>skipped (already exists)")) // nolint: gas, errcheck
+		return
+	}
+	// note that if data dir doesn't exist this will trigger too - TODO: check datadir earlier
+	if !os.IsNotExist(err) {
+		log.Warnf("check %s : %v", localPath, err)
+		// don't return the details of the error to not leak local data dir etc
+		w.Write([]byte("<td>skipped (access error)")) // nolint: gas, errcheck
+		return
+	}
+	// url already validated
+	_ = client.ChangeURL(u) // nolint: gas
+	code1, data1, _ := client.Fetch()
+	if code1 != http.StatusOK {
+		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1))) // nolint: gas, errcheck
+		w.WriteHeader(424 /*Failed Dependency*/)
+		return
+	}
+	err = ioutil.WriteFile(localPath, data1, 0644)
+	if err != nil {
+		log.Errf("Unable to save %s: %v", localPath, err)
+		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// finally ! success !
+	log.Infof("Success fetching %s - saved at %s", u, localPath)
+	// checkmark
+	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
+func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
+	baseURL = baseurl
 	startTime = time.Now()
-	httpPort = port
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
 	if uipath == "" {
-		fhttp.Serve(port, debugpath) // doesn't return until exit
+		fhttp.Serve(hostPort, debugpath) // doesn't return until exit
 		return
 	}
 	uiPath = uipath
@@ -574,8 +845,11 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	fmt.Printf("UI starting - visit:\nhttp://localhost:%d%s\n", port, uiPath)
-
+	uiMsg := fmt.Sprintf("UI starting - visit:\nhttp://%s%s", urlHostPort, uiPath)
+	if !strings.Contains(port, ":") {
+		uiMsg += "   (or any host/ip reachable on this server)"
+	}
+	fmt.Printf(uiMsg + "\n")
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -593,6 +867,7 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 		fs := http.FileServer(http.Dir(staticRsrcDir))
 		prefix := uiPath + periodic.Version
 		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+		http.Handle(faviconPath, LogAndAddCacheControl(fs))
 		var err error
 		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"))
 		if err != nil {
@@ -604,28 +879,40 @@ func Serve(port int, debugpath, uipath, staticRsrcDir string, datadir string) {
 		} else {
 			http.HandleFunc(uiPath+"browse", BrowseHandler)
 		}
+		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"))
+		if err != nil {
+			log.Critf("Unable to parse sync template: %v", err)
+		} else {
+			http.HandleFunc(uiPath+"sync", SyncHandler)
+		}
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))
 		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	fhttp.Serve(port, debugpath)
+	fhttp.Serve(hostPort, debugpath)
 }
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(port int, staticRsrcDir string, datadir string) {
+func Report(baseurl, port, staticRsrcDir string, datadir string) {
+	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	httpPort = port
+	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	uiMsg := fmt.Sprintf("Browse only UI starting - visit:\nhttp://%s/", urlHostPort)
+	if !strings.Contains(port, ":") {
+		uiMsg += "   (or any host/ip reachable on this server)"
+	}
+	fmt.Printf(uiMsg + "\n")
 	uiPath = "/"
 	dataDir = datadir
-	fmt.Printf("Browse only UI starting - visit:\nhttp://localhost:%d/\n", port)
 	logoPath = periodic.Version + "/static/img/logo.svg"
 	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
 	fs := http.FileServer(http.Dir(staticRsrcDir))
 	prefix := uiPath + periodic.Version
 	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	http.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
 	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
 	if err != nil {
@@ -635,7 +922,7 @@ func Report(port int, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(hostPort, nil); err != nil {
 		log.Critf("Error starting report server: %v", err)
 	}
 }
@@ -663,4 +950,15 @@ func RedirectToHTTPS(port int) {
 		log.Critf("Error starting report server: %v", err)
 	}
 	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
+}
+
+// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
+// sets the urlHostPort variable and returns hostport unmodified.
+func setHostAndPort(hostport string) string {
+	if strings.HasPrefix(hostport, ":") {
+		urlHostPort = "localhost" + hostport
+		return hostport
+	}
+	urlHostPort = hostport
+	return hostport
 }
