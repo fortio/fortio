@@ -29,7 +29,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/0.6.8/fortio-linux_x64-0.6.8.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v0.6.8/fortio-linux_x64-0.6.8.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
