@@ -104,8 +104,8 @@ var (
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
-	redirectFlag           = flag.Int("redirect-port", 8081,
-		"Redirect all incoming traffic to https URL (need ingress to work properly). -1 means off.")
+	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
+		" (need ingress to work properly). Can be in the form of host:port, ip:port, port or disabled to disable the feature.")
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
@@ -155,12 +155,12 @@ func main() {
 	case "redirect":
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
-		if *redirectFlag >= 0 {
+		if *redirectFlag != "disabled" {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
-		if *redirectFlag >= 0 {
+		if *redirectFlag != "disabled" {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
 		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
