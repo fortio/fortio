@@ -122,8 +122,8 @@ and flags are:
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port string
     	Redirect all incoming traffic to https URL (need ingress to work properly).
-    	Can take the form of host:port, ip:port, port or disabled to disable the feature.
-    	(default 8081)
+    	Can take the form of host:port, ip:port, port or "disabled" to disable
+    	the feature. (default 8081)
   -static-dir string
     	Absolute path to the dir containing the static files dir
   -stdclient
