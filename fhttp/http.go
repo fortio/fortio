@@ -713,6 +713,12 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 							chunkedMode = true
 							var dataStart int
 							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:c.size])
+							if contentLength == -1 {
+								// chunk length not available yet
+								log.LogVf("chunk mode but no first chunk length yet, reading more")
+								max = c.headerLen
+								continue
+							}
 							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("chunk-length is %d (%s) setting max to %d",
 								contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],

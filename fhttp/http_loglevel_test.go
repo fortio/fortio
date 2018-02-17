@@ -28,4 +28,5 @@ import (
 func TestDebugMode(t *testing.T) {
 	log.SetLogLevel(log.Debug)
 	TestHTTPRunner(t)
+	TestNoFirstChunkSizeInitially(t)
 }
