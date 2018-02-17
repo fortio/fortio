@@ -482,6 +482,36 @@ func TestEchoBack(t *testing.T) {
 	}
 }
 
+// Test for bug #127
+
+var testBody = "delayedChunkedSize-body"
+
+func delayedChunkedSize(w http.ResponseWriter, r *http.Request) {
+	log.LogVf("delayedChunkedSize %v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	w.WriteHeader(http.StatusOK)
+	flusher, _ := w.(http.Flusher)
+	flusher.Flush()
+	time.Sleep(1 * time.Second)
+	w.Write([]byte(testBody))
+}
+
+func TestNoFirstChunkSizeInitially(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/", delayedChunkedSize)
+	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", p)
+	o := HTTPOptions{URL: url}
+	client := NewClient(&o)
+	code, data, header := client.Fetch() // used to panic/bug #127
+	log.LogVf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+	expected := "17\r\n" + testBody + "\r\n0\r\n\r\n" // 17 is hex size of testBody
+	if string(data[header:]) != expected {
+		t.Errorf("Got %s not as expected %q at offset %d", DebugSummary(data, 256), expected, header)
+	}
+}
+
 func TestInvalidRequest(t *testing.T) {
 	o := HTTPOptions{
 		URL: "http://www.google.com/", // valid url

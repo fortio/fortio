@@ -716,6 +716,7 @@ func (c *BasicClient) readResponse(conn *net.TCPConn) {
 							if contentLength == -1 {
 								// chunk length not available yet
 								log.LogVf("chunk mode but no first chunk length yet, reading more")
+								max = c.headerLen
 								continue
 							}
 							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
