@@ -938,11 +938,11 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port int) {
+func RedirectToHTTPS(port string) {
 	m := http.NewServeMux()
 	m.HandleFunc("/", RedirectToHTTPSHandler)
 	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    fnet.NormalizePort(port),
 		Handler: m,
 	}
 	fmt.Printf("Https redirector running on %v\n", s.Addr)

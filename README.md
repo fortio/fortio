@@ -120,9 +120,10 @@ and flags are:
     	Quiet mode: sets the loglevel to Error and reduces the output.
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
-  -redirect-port int
-    	Redirect all incoming traffic to https URL (need ingress to work properly)
-    	-1 means off. (default 8081)
+  -redirect-port string
+    	Redirect all incoming traffic to https URL (need ingress to work properly).
+    	Can take the form of host:port, ip:port, port or "disabled" to disable
+    	the feature. (default 8081)
   -static-dir string
     	Absolute path to the dir containing the static files dir
   -stdclient
