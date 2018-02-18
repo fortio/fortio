@@ -115,7 +115,8 @@ func (h *HTTPOptions) URLSchemeCheck() {
 var userAgent = "istio/fortio-" + version.Short()
 
 const (
-	retcodeOffset              = len("HTTP/1.X ")
+	retcodeOffset = len("HTTP/1.X ")
+	// HTTPReqTimeOutDefaultValue is the default timeout value. 15s.
 	HTTPReqTimeOutDefaultValue = 15 * time.Second
 )
 
