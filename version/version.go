@@ -25,7 +25,7 @@ const (
 	minor = 7
 	patch = 0
 
-	debug = true // turn on debug init()
+	debug = false // turn on to debug init()
 )
 
 var (
