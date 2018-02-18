@@ -35,8 +35,8 @@ import (
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/version"
 )
 
 // To get most debugging/tracing:
@@ -70,7 +70,7 @@ func pingServer(port string) {
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", periodic.Version, port)
+	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", version.Short(), port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
