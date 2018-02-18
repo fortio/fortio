@@ -25,7 +25,7 @@ const (
 	minor = 7
 	patch = 0
 
-	debug = false // turn on debug init()
+	debug = true // turn on debug init()
 )
 
 var (
@@ -81,7 +81,7 @@ func init() {
 	}
 	if !clean {
 		buildInfo += "-dirty"
-		log.Debugf("gitstatus is %v, marking buildinfo as dirty: %v", gitstatus, buildInfo)
+		log.Debugf("gitstatus is %q, marking buildinfo as dirty: %v", gitstatus, buildInfo)
 	}
 	longVersion = version + "-" + buildInfo
 }
