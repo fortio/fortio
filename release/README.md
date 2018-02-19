@@ -14,6 +14,8 @@
 
 - The docker official builds are done automatically based on tag, check https://cloud.docker.com/app/istio/repository/docker/istio/fortio/builds
 
+- Increment the `patch` and commit that right away so the first point is true next time and so master/latest docker images have the correct next-pre version.
+
 ## How to change the build image
 
 Update [../Dockerfile.build](../Dockerfile.build)
