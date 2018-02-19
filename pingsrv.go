@@ -43,7 +43,7 @@ import (
 // GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
 
 var (
-	doHealthFlag  = flag.Bool("health", false, "client mode: use health instead of ping")
+	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
 	payloadFlag   = flag.String("payload", "", "Payload string to send along")
 )
@@ -76,10 +76,10 @@ func pingServer(port string) {
 	}
 }
 
-func pingClientCall(serverAddr string, n int, payload string) {
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+func pingClientCall(serverAddr string, tls bool, n int, payload string) {
+	conn, err := fgrpc.Dial(serverAddr, tls)
 	if err != nil {
-		log.Fatalf("failed to conect to %s: %v", serverAddr, err)
+		os.Exit(1) // error already logged
 	}
 	msg := &fgrpc.PingMessage{Payload: payload}
 	cli := fgrpc.NewPingServerClient(conn)
@@ -124,10 +124,10 @@ func pingClientCall(serverAddr string, n int, payload string) {
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 }
 
-func grpcHealthCheck(serverAddr string, svcname string, n int) {
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+func grpcHealthCheck(serverAddr string, tls bool, svcname string, n int) {
+	conn, err := fgrpc.Dial(serverAddr, tls)
 	if err != nil {
-		log.Fatalf("failed to conect to %s: %v", serverAddr, err)
+		os.Exit(1) // error already logged
 	}
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
@@ -158,9 +158,10 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
+	tls := *grpcSecureFlag
 	if *doHealthFlag {
-		grpcHealthCheck(dest, *healthSvcFlag, count)
+		grpcHealthCheck(dest, tls, *healthSvcFlag, count)
 	} else {
-		pingClientCall(dest, count, *payloadFlag)
+		pingClientCall(dest, tls, count, *payloadFlag)
 	}
 }
