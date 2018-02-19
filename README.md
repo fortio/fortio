@@ -42,8 +42,7 @@ You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
-$ fortio
-Φορτίο 0.6.8 usage:
+Φορτίο 0.7.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -55,6 +54,9 @@ and flags are:
   -a	Automatically save JSON result with filename based on labels & timestamp
   -allow-initial-errors
     	Allow and don't abort on initial warmup errors
+  -base-url string
+    	base URL used as prefix for data/index.tsv generation. (when empty, the
+    	url from the first request is used)
   -c int
     	Number of connections/goroutine/threads (default 4)
   -compression
@@ -71,16 +73,20 @@ and flags are:
   -grpc
     	Use GRPC (health check) for load testing
   -grpc-port string
-    	grpc server port. Can take the form of host:port, ip:port or port (default 8079)
+    	grpc server port. Can be in the form of host:port, ip:port or port.
+    	(default "8079")
+  -grpc-secure
+    	Use secure transport (tls) for GRPC
   -halfclose
     	When not keepalive, whether to half close the connection (only for fast
     	http)
   -health
-    	client mode: use health instead of ping
+    	grpc ping client mode: use health instead of ping
   -healthservice string
     	which service string to pass to health check
   -http-port string
-    	http echo server port. Can take the form of host:port, ip:port or port (default 8080)
+    	http echo server port. Can be in the form of host:port, ip:port or port.
+    	(default "8080")
   -http1.0
     	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
@@ -90,6 +96,8 @@ and flags are:
     	Check for Connection: Close Header
   -httpreqtimeout duration
     	Http request timeout value (default 15s)
+  -https-insecure
+    	Do not verify certs in https connections
   -json string
     	Json output to provided file or '-' for stdout (empty = no json output,
     	unless -a is used)
@@ -109,7 +117,7 @@ and flags are:
     	Run for exactly this number of calls instead of duration. Default (0) is
     	to use duration (-t). Default is 1 when used as grpc ping count.
   -p string
-    	List of pXX to calculate (default "50,75,99,99.9")
+    	List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
     	Payload string to send along
   -profile string
@@ -121,15 +129,15 @@ and flags are:
   -r float
     	Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port string
-    	Redirect all incoming traffic to https URL (need ingress to work properly).
+    	Redirect all incoming traffic to https URL (need ingress to work properly)
     	Can take the form of host:port, ip:port, port or "disabled" to disable
-    	the feature. (default 8081)
+    	the feature. (default "8081")
   -static-dir string
     	Absolute path to the dir containing the static files dir
   -stdclient
     	Use the slower net/http standard client (works for TLS)
   -sync string
-      index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
+    	index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -t duration
     	How long to run the test or 0 to run until ^C (default 5s)
   -ui-path string
