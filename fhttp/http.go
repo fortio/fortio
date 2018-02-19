@@ -281,7 +281,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 	}
 	if o.Insecure && o.https {
 		log.LogVf("using insecure https")
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
 	}
 	client := Client{
 		o.URL,
