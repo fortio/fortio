@@ -32,6 +32,7 @@ import (
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 	"istio.io/fortio/ui"
+	"istio.io/fortio/version"
 )
 
 var httpOpts fhttp.HTTPOptions
@@ -54,7 +55,7 @@ func (f *flagList) Set(value string) error {
 func usage(msgs ...interface{}) {
 	// nolint: gas
 	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n",
-		periodic.Version,
+		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
 		"http echo/ui/redirect servers), grpcping (grpc client), report (report only UI",
@@ -122,8 +123,13 @@ func main() {
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fortio -version` and `--version` and `version` and ... work
-	if len(os.Args) == 2 && strings.Contains(os.Args[1], "version") {
-		fmt.Println(periodic.Version)
+	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
+		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
+			// so `fortio version -s` is the short version; everything else is long/full
+			fmt.Println(version.Short())
+		} else {
+			fmt.Println(version.Long())
+		}
 		os.Exit(0)
 	}
 	if len(os.Args) < 2 {
@@ -208,7 +214,7 @@ func fortioLoad(justCurl bool) {
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
-		periodic.Version, qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {
 		fmt.Fprintf(out, ", for %d calls: %s\n", *exactlyFlag, url)
 	} else {

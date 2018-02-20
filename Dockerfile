@@ -9,7 +9,10 @@ RUN make -C fortio submodule
 # Demonstrate moving the static directory outside of the go source tree and
 # the default data directory to a /var/lib/... volume
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags \
-  '-X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -X main.defaultDataDir=/var/lib/istio/fortio -s' \
+  "-s -X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -X main.defaultDataDir=/var/lib/istio/fortio \
+  -X istio.io/fortio/version.buildInfo=$(date +%y%m%d_%H%M_)$(cd fortio; git rev-parse HEAD) \
+  -X istio.io/fortio/version.tag=$(cd fortio; git describe --tags) \
+  -X istio.io/fortio/version.gitstatus=$(cd fortio; git status --porcelain | wc -l)" \
   -o fortio.bin istio.io/fortio
 # Just check it stays compiling on Windows (would need to set the rsrcDir too)
 RUN CGO_ENABLED=0 GOOS=windows go build -a -o fortio.exe istio.io/fortio

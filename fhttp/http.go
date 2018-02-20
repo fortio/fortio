@@ -34,8 +34,8 @@ import (
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/version"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -112,10 +112,11 @@ func (h *HTTPOptions) URLSchemeCheck() {
 	}
 }
 
-// Version is the fortio package version (TODO:auto gen/extract).
+var userAgent = "istio/fortio-" + version.Short()
+
 const (
-	userAgent                  = "istio/fortio-" + periodic.Version
-	retcodeOffset              = len("HTTP/1.X ")
+	retcodeOffset = len("HTTP/1.X ")
+	// HTTPReqTimeOutDefaultValue is the default timeout value. 15s.
 	HTTPReqTimeOutDefaultValue = 15 * time.Second
 )
 
@@ -1098,7 +1099,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
-	buf.WriteString(periodic.Version)
+	buf.WriteString(version.Long())
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
@@ -1157,7 +1158,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 func Serve(port, debugPath string) {
 	startTime = time.Now()
 	nPort := fnet.NormalizePort(port)
-	fmt.Printf("Fortio %s echo server listening on port %s\n", periodic.Version, nPort)
+	fmt.Printf("Fortio %s echo server listening on port %s\n", version.Short(), nPort)
 	if debugPath != "" {
 		http.HandleFunc(debugPath, DebugHandler)
 	}
