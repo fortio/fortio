@@ -42,4 +42,6 @@ $CURL $BASE_FORTIO
 docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal
 docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
+# Do a grpcping
+docker exec fortio_server /usr/local/bin/fortio grpcping localhost
 # TODO: check report mode
