@@ -4,7 +4,7 @@
 
 - Make a release there and document the changes since the previous release
 
-- Make sure to use the same tag format (e.g "v0.7.1" - note that there is "v" in the tag unlike the rest of istio)
+- Make sure to use the same git tag format (e.g "v0.7.1" - note that there is `v` prefix in the tag, like many projects but unlike the rest of istio). Docker and internal version/tag is "0.7.1", the `v` is only for git tags.
 
 - Make sure your git status is clean, and the tag is present before the next step or it will get marked dirty/pre
 
