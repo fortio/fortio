@@ -23,6 +23,7 @@ import (
 	"runtime/pprof"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"istio.io/fortio/fnet"
@@ -34,6 +35,20 @@ const (
 	// DefaultGRPCPort is the Fortio gRPC server default port number.
 	DefaultGRPCPort = "8079"
 )
+
+// Dial dials grpc either using insecure or using default tls setup.
+// TODO: option to specify certs.
+func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
+	opts := grpc.WithInsecure()
+	if tls {
+		opts = grpc.WithTransportCredentials(credentials.NewTLS(nil))
+	}
+	conn, err = grpc.Dial(serverAddr, opts)
+	if err != nil {
+		log.Errf("failed to conect to %s with tls %v: %v", serverAddr, tls, err)
+	}
+	return conn, err
+}
 
 // TODO: refactor common parts between http and grpc runners
 
@@ -66,6 +81,7 @@ type GRPCRunnerOptions struct {
 	Destination string
 	Service     string
 	Profiler    string // file to save profiles to. defaults to no profiling
+	Secure      bool   // use tls transport
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -80,8 +96,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		// TODO: option to use certs
-		conn, err := grpc.Dial(o.Destination, grpc.WithInsecure())
+		conn, err := Dial(o.Destination, o.Secure)
 		if err != nil {
 			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err

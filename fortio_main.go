@@ -85,6 +85,8 @@ var (
 	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	grpcSecureFlag     = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
+	httpsInsecureFlag  = flag.Bool("https-insecure", false, "Do not verify certs in https connections")
 	echoPortFlag       = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag       = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port.")
@@ -99,8 +101,6 @@ var (
 	staticDirFlag  = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
 	dataDirFlag    = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
 	headersFlags   flagList
-	percList       []float64
-	err            error
 	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
@@ -141,7 +141,7 @@ func main() {
 	if *quietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}
-	percList, err = stats.ParsePercentiles(*percentilesFlag)
+	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
@@ -155,9 +155,9 @@ func main() {
 
 	switch command {
 	case "curl":
-		fortioLoad(true)
+		fortioLoad(true, nil)
 	case "load":
-		fortioLoad(*curlFlag)
+		fortioLoad(*curlFlag, percList)
 	case "redirect":
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
@@ -194,7 +194,7 @@ func fetchURL(o *fhttp.HTTPOptions) {
 	}
 }
 
-func fortioLoad(justCurl bool) {
+func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usage("Error: fortio load/curl needs a url or destination")
 	}
@@ -206,6 +206,7 @@ func fortioLoad(justCurl bool) {
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
+	httpOpts.Insecure = *httpsInsecureFlag
 	if justCurl {
 		fetchURL(&httpOpts)
 		return
@@ -253,10 +254,12 @@ func fortioLoad(justCurl bool) {
 		Exactly:     *exactlyFlag,
 	}
 	var res periodic.HasRunnerResult
+	var err error
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions: ro,
 			Destination:   url,
+			Secure:        *grpcSecureFlag,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
@@ -284,7 +287,8 @@ func fortioLoad(justCurl bool) {
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 {
-		j, err := json.MarshalIndent(res, "", "  ")
+		var j []byte
+		j, err = json.MarshalIndent(res, "", "  ")
 		if err != nil {
 			log.Fatalf("Unable to json serialize result: %v", err)
 		}

@@ -17,6 +17,7 @@ package fhttp // import "istio.io/fortio/fhttp"
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -100,6 +101,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		lcURL = strings.ToLower(h.URL[:len(hs)]) // no need to tolower more than we check
 	}
 	if strings.HasPrefix(lcURL, hs) {
+		h.https = true
 		if !h.DisableFastClient {
 			log.Warnf("https requested, switching to standard go client")
 			h.DisableFastClient = true
@@ -129,7 +131,9 @@ type HTTPOptions struct {
 	HTTP10            bool // defaults to http1.1
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
+	Insecure          bool // do not verify certs for https
 	initDone          bool
+	https             bool // whether URLSchemeCheck determined this was an https:// call or not
 	// ExtraHeaders to be added to each request.
 	extraHeaders http.Header
 	// Host is treated specially, remember that one separately.
@@ -265,21 +269,26 @@ func NewStdClient(o *HTTPOptions) *Client {
 	if o.HTTPReqTimeOut <= 0 {
 		log.Warnf("Std call with client timeout %v", o.HTTPReqTimeOut)
 	}
+	tr := http.Transport{
+		MaxIdleConns:        o.NumConnections,
+		MaxIdleConnsPerHost: o.NumConnections,
+		DisableCompression:  !o.Compression,
+		DisableKeepAlives:   o.DisableKeepAlive,
+		Dial: (&net.Dialer{
+			Timeout: o.HTTPReqTimeOut,
+		}).Dial,
+		TLSHandshakeTimeout: o.HTTPReqTimeOut,
+	}
+	if o.Insecure && o.https {
+		log.LogVf("using insecure https")
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
+	}
 	client := Client{
 		o.URL,
 		req,
 		&http.Client{
-			Timeout: o.HTTPReqTimeOut,
-			Transport: &http.Transport{
-				MaxIdleConns:        o.NumConnections,
-				MaxIdleConnsPerHost: o.NumConnections,
-				DisableCompression:  !o.Compression,
-				DisableKeepAlives:   o.DisableKeepAlive,
-				Dial: (&net.Dialer{
-					Timeout: o.HTTPReqTimeOut,
-				}).Dial,
-				TLSHandshakeTimeout: o.HTTPReqTimeOut,
-			},
+			Timeout:   o.HTTPReqTimeOut,
+			Transport: &tr,
 			// Lets us see the raw response instead of auto following redirects.
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
