@@ -270,6 +270,7 @@ For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It s
 | ----------|----------------|
 | delay     | duration to delay the response by. Can be a single value or a coma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
 | status    | http status to return instead of 200. Can be a single value or a coma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+| size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
 - `/debug` will echo back the request in plain text for human debugging.
 - `/fortio/` A UI to
   - Run/Trigger tests and graph the results.

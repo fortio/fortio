@@ -352,7 +352,7 @@ func TestParseDelay(t *testing.T) {
 		{"20ms:101%", -1},
 		{"10ms:45,100ms:56", -1},
 		// Max delay case:
-		{"10s:45,10s:55", 1 * time.Second},
+		{"10s:45,10s:55", MaxDelay},
 		// Good cases
 		{"100ms", 100 * time.Millisecond},
 		{"100ms:100", 100 * time.Millisecond},
@@ -459,6 +459,37 @@ func TestRoundDuration(t *testing.T) {
 	}
 }
 
+func TestGenerateSize(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected int
+	}{
+		// Error cases
+		{"x", -1},
+		{"1::", -1},
+		{"x:10", -1},
+		{"555:x", -1},
+		{"555:-1", -1},
+		{"555:101", -1},
+		{"551:45,551:56", -1},
+		// Good cases
+		{"", -1},
+		{"512", 512},
+		{"512:100", 512},
+		{"512:0", -1},
+		{"512:45,512:55", 512},
+		{"0", 0}, // and not -1
+		{"262144", 262144},
+		{"262145", MaxPayloadSize}, // MaxSize test
+		{"1000000:10,2000000:90", 262144},
+	}
+	for _, tst := range tests {
+		if actual := generateSize(tst.input); actual != tst.expected {
+			t.Errorf("Got %d, expected %d for generateSize(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
 // Many of the earlier http tests are through httprunner but new tests should go here
 
 func TestEchoBack(t *testing.T) {
@@ -502,7 +533,7 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	o := HTTPOptions{URL: url}
 	client := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
-	log.LogVf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	t.Logf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
 	}
@@ -527,6 +558,42 @@ func TestInvalidRequest(t *testing.T) {
 	c2 := NewStdClient(&o)
 	if c2 != nil {
 		t.Errorf("Got non nil client %+v code while expecting nil for bad request", c2)
+	}
+}
+
+func TestPayloadSizeSmall(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	for _, size := range []int{768, 0, 1} {
+		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", p, size)
+		o := HTTPOptions{URL: url}
+		client := NewClient(&o)
+		code, data, header := client.Fetch() // used to panic/bug #127
+		t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+		if code != http.StatusOK {
+			t.Errorf("Got %d instead of 200", code)
+		}
+		if len(data)-header != size {
+			t.Errorf("Got len(data)-header %d not as expected %d : got %s", len(data)-header, size, DebugSummary(data, 512))
+		}
+	}
+}
+
+func TestPayloadSizeLarge(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	//basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
+	size := 200000
+	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", p, size)
+	o := HTTPOptions{URL: url, DisableFastClient: true}
+	client := NewClient(&o)
+	code, data, header := client.Fetch() // used to panic/bug #127
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 888 {
+		t.Errorf("Got %d instead of 888", code)
+	}
+	if len(data)-header != size {
+		t.Errorf("Got len(data)-header %d not as expected %d : got %s", len(data)-header, size, DebugSummary(data, 512))
 	}
 }
 
