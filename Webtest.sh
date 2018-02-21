@@ -44,4 +44,7 @@ docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 
 docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
 # Do a grpcping
 docker exec fortio_server /usr/local/bin/fortio grpcping localhost
+# Test extra headers (-H) flag
+docker exec fortio_server /usr/local/bin/fortio load -H Foo:Bar -curl http://www.google.com
+docker exec fortio_server /usr/local/bin/fortio curl -H Foo:Bar -H Baz:Zab -curl http://www.google.com
 # TODO: check report mode
