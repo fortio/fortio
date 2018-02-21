@@ -31,7 +31,7 @@ func init() {
 }
 
 func TestGetHeaders(t *testing.T) {
-	o := NewHTTPOptions("")
+	o := &HTTPOptions{}
 	o.AddAndValidateExtraHeader("FOo:baR")
 	oo := *o // check that copying works
 	h := oo.GetHeaders()
