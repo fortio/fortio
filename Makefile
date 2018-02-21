@@ -1,5 +1,8 @@
 # Makefile to build fortio's docker images as well as short cut
 # for local test/install
+#
+# See also release/README.md
+#
 
 IMAGES=echosrv # plus the combo image / Dockerfile without ext.
 

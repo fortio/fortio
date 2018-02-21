@@ -24,7 +24,7 @@ $CURL ${BASE_FORTIO}browse
 # Check we can connect, and run a QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
-VERSION=$(docker exec fortio_server /usr/local/bin/fortio -version)
+VERSION=$(docker exec fortio_server /usr/local/bin/fortio version -s)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
@@ -42,4 +42,6 @@ $CURL $BASE_FORTIO
 docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal
 docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
+# Do a grpcping
+docker exec fortio_server /usr/local/bin/fortio grpcping localhost
 # TODO: check report mode

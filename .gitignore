@@ -4,3 +4,4 @@ coverage.txt
 test.profile.*
 # binary, in case of go build .
 fortio
+.DS_Store

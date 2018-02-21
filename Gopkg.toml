@@ -4,6 +4,8 @@
 # for detailed Gopkg.toml documentation.
 #
 
+# DO NOT ADD MORE DEPENDENCIES TO FORTIO
+
 [[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.0.0"

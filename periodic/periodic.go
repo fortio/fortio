@@ -33,11 +33,7 @@ import (
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
-)
-
-const (
-	// Version is the overall package version (used to version json output too).
-	Version = "0.6.9"
+	"istio.io/fortio/version"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -432,7 +428,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, Version, functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {

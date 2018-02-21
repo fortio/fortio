@@ -42,6 +42,7 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
+	"istio.io/fortio/version"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)
@@ -236,7 +237,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
-		}{r, opts.GetHeaders(), periodic.Version, logoPath, debugPath, chartJSPath,
+		}{r, opts.GetHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
@@ -413,7 +414,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		URLHostPort string
 		DoRender    bool
 		DoSearch    bool
-	}{r, extraBrowseLabel, periodic.Version, logoPath, chartJSPath,
+	}{r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
 		url, search, dataList, urlHostPort, doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
@@ -645,7 +646,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 			Version  string
 			LogoPath string
 			URL      string
-		}{periodic.Version, logoPath, uStr})
+		}{version.Short(), logoPath, uStr})
 		if err != nil {
 			log.Critf("Sync template execution failed: %v", err)
 		}
@@ -854,8 +855,8 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	logoPath = periodic.Version + "/static/img/logo.svg"
-	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
+	logoPath = version.Short() + "/static/img/logo.svg"
+	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
 	// by the function parameter staticPath, we use getResourcesDir which uses the
@@ -865,7 +866,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
 	if staticRsrcDir != "" {
 		fs := http.FileServer(http.Dir(staticRsrcDir))
-		prefix := uiPath + periodic.Version
+		prefix := uiPath + version.Short()
 		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 		http.Handle(faviconPath, LogAndAddCacheControl(fs))
 		var err error
@@ -906,11 +907,11 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	fmt.Printf(uiMsg + "\n")
 	uiPath = "/"
 	dataDir = datadir
-	logoPath = periodic.Version + "/static/img/logo.svg"
-	chartJSPath = periodic.Version + "/static/js/Chart.min.js"
+	logoPath = version.Short() + "/static/img/logo.svg"
+	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
 	fs := http.FileServer(http.Dir(staticRsrcDir))
-	prefix := uiPath + periodic.Version
+	prefix := uiPath + version.Short()
 	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 	http.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
@@ -938,11 +939,11 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port int) {
+func RedirectToHTTPS(port string) {
 	m := http.NewServeMux()
 	m.HandleFunc("/", RedirectToHTTPSHandler)
 	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    fnet.NormalizePort(port),
 		Handler: m,
 	}
 	fmt.Printf("Https redirector running on %v\n", s.Addr)
