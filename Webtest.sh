@@ -21,8 +21,10 @@ CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGL
 $CURL https://istio.io/robots.txt
 # Check that browse doesn't 404s
 $CURL ${BASE_FORTIO}browse
-# Check we can connect, and run a QPS test against ourselves through fetch
+# Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
+# Check we can connect, and run a grpc QPS test against ourselves through fetch
+$CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&runner=grpc" | grep ActualQPS
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec fortio_server /usr/local/bin/fortio version -s)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
