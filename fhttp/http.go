@@ -27,6 +27,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -34,8 +35,6 @@ import (
 	"unicode/utf8"
 	// get /debug/pprof endpoints on default server - make sure report only doesn't have it
 	_ "net/http/pprof"
-
-	"sort"
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
