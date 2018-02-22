@@ -32,6 +32,8 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
+	// get /debug/pprof endpoints on default server - make sure report only doesn't have it
+	_ "net/http/pprof"
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"

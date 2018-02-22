@@ -897,6 +897,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
+	http.DefaultServeMux = http.NewServeMux() // drop the pprof default handlers
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	hostPort := setHostAndPort(fnet.NormalizePort(port))
@@ -948,7 +949,7 @@ func RedirectToHTTPS(port string) {
 	}
 	fmt.Printf("Https redirector running on %v\n", s.Addr)
 	if err := s.ListenAndServe(); err != nil {
-		log.Critf("Error starting report server: %v", err)
+		log.Critf("Error starting redirect server: %v", err)
 	}
 	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
 }
