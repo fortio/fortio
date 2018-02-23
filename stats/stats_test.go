@@ -724,3 +724,10 @@ func TestNaN(t *testing.T) {
 // should get 3 buckets 0-1 with count 1
 // 1-2 with count 3
 // 2-2.5 with count 1
+
+func BenchmarkBucketLookUpWithHighestValue(b *testing.B) {
+	testHistogram := NewHistogram(0, 1)
+	for i := 0; i < b.N; i++ {
+		testHistogram.Record(100000)
+	}
+}
