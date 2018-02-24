@@ -32,6 +32,8 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
+	// get /debug/pprof endpoints on default server - make sure report only doesn't have it
+	_ "net/http/pprof"
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
@@ -159,6 +161,7 @@ func (h *HTTPOptions) GetHeaders() http.Header {
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
 func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
+	h.Init(h.URL)
 	s := strings.SplitN(hdr, ":", 2)
 	if len(s) != 2 {
 		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
