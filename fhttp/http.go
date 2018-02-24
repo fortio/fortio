@@ -1268,17 +1268,24 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve starts a debug / echo http server on the given port.
-// TODO: make it work for port 0 and return the port found and also
-// add a non blocking mode that makes sure the socket exists before returning
-func Serve(port, debugPath string) {
+// Returns the port that opened for listing socket
+func Serve(port, debugPath string) string {
 	startTime = time.Now()
 	nPort := fnet.NormalizePort(port)
+	listener, err := net.Listen("tcp", nPort)
+	if err != nil {
+		log.Fatalf("Error occurred while listening %v", err)
+	}
+	nPort = strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 	fmt.Printf("Fortio %s echo server listening on port %s\n", version.Short(), nPort)
-	if debugPath != "" {
-		http.HandleFunc(debugPath, DebugHandler)
-	}
-	http.HandleFunc("/", EchoHandler)
-	if err := http.ListenAndServe(nPort, nil); err != nil {
-		fmt.Println("Error starting server", err)
-	}
+	go func() {
+		if debugPath != "" {
+			http.HandleFunc(debugPath, DebugHandler)
+		}
+		http.HandleFunc("/", EchoHandler)
+		if err := http.Serve(listener, nil); err != nil {
+			fmt.Println("Error starting server", err)
+		}
+	}()
+	return nPort
 }
