@@ -30,7 +30,7 @@ const (
 
 var (
 	// The following are set by Dockerfile during link time:
-	tag       = "pre"
+	tag       = "n/a"
 	buildInfo = "unknown"
 	// Number of lines in git status --porcelain; 0 means clean
 	gitstatus = "0" // buildInfo default is unknown so no need to add -dirty
@@ -39,29 +39,34 @@ var (
 	longVersion = ""
 )
 
-// Major returns the numerical major version number (first digit of Version()).
+// Major returns the numerical major version number (first digit of version.Short()).
 func Major() int {
 	return major
 }
 
-// Minor returns the numerical minor version number (second digit of Version()).
+// Minor returns the numerical minor version number (second digit of version.Short()).
 func Minor() int {
 	return minor
 }
 
-// Patch returns the numerical patch level (third digit of Version()).
+// Patch returns the numerical patch level (third digit of version.Short()).
 func Patch() int {
 	return patch
 }
 
-// Short returns the 3 digit short version string Major.Minor.Patch[-build]
+// Short returns the 3 digit short version string Major.Minor.Patch[-pre]
 // version.Short() is the overall project version (used to version json
-// output too).
+// output too). "-pre" is added when the version doesn't match exactly
+// a git tag or the build isn't from a clean source tree. (only standard
+// dockerfile based build of a clean, tagged source tree should print "X.Y.Z"
+// as short version).
 func Short() string {
 	return version
 }
 
 // Long returns the full version and build information.
+// Format is "X.Y.X[-pre] YYYY-MM-DD HH:MM SHA[-dirty]" date and time is
+// the build date (UTC), sha is the git sha of the source tree.
 func Long() string {
 	return longVersion
 }
