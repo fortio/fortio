@@ -17,6 +17,7 @@ package ui // import "istio.io/fortio/ui"
 
 import (
 	"bytes"
+	"net"
 	// md5 is mandated, not our choice
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
@@ -833,9 +834,9 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	hostPort := fnet.NormalizePort(port)
 	if uipath == "" {
-		fhttp.Serve(hostPort, debugpath) // doesn't return until exit
+		fhttp.Serve(hostPort, debugpath)
 		return
 	}
 	uiPath = uipath
@@ -846,11 +847,6 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	http.HandleFunc(uiPath, Handler)
-	uiMsg := fmt.Sprintf("UI starting - visit:\nhttp://%s%s", urlHostPort, uiPath)
-	if !strings.Contains(port, ":") {
-		uiMsg += "   (or any host/ip reachable on this server)"
-	}
-	fmt.Printf(uiMsg + "\n")
 	fetchPath = uiPath + fetchURI
 	http.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
@@ -891,7 +887,14 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		fs := http.FileServer(http.Dir(dataDir))
 		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	fhttp.Serve(hostPort, debugpath)
+	addr := fhttp.Serve(hostPort, debugpath)
+	setHostAndPort(hostPort, addr)
+	uiMsg := fmt.Sprintf("UI starting - visit:\nhttp://%s%s", urlHostPort, uiPath)
+	if !strings.Contains(port, ":") {
+		uiMsg += "   (or any host/ip reachable on this server)"
+	}
+	fmt.Printf(uiMsg + "\n")
+
 }
 
 // Report starts the browsing only UI server on the given port.
@@ -900,7 +903,8 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	http.DefaultServeMux = http.NewServeMux() // drop the pprof default handlers
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	hostPort := setHostAndPort(fnet.NormalizePort(port))
+	hostPort := fnet.NormalizePort(port)
+	setHostAndPort(hostPort, nil)
 	uiMsg := fmt.Sprintf("Browse only UI starting - visit:\nhttp://%s/", urlHostPort)
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
@@ -956,11 +960,14 @@ func RedirectToHTTPS(port string) {
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
 // sets the urlHostPort variable and returns hostport unmodified.
-func setHostAndPort(hostport string) string {
-	if strings.HasPrefix(hostport, ":") {
-		urlHostPort = "localhost" + hostport
-		return hostport
+func setHostAndPort(inputPort string, addr *net.TCPAddr) {
+	if strings.HasPrefix(inputPort, ":") {
+		urlHostPort = "localhost" + inputPort
+		return
 	}
-	urlHostPort = hostport
-	return hostport
+	urlHostPort = inputPort
+	if addr != nil {
+		urlHostPort = addr.String()
+	}
+	return
 }

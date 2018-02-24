@@ -114,8 +114,9 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 // the error test for / url above fail:
 
 func TestServe(t *testing.T) {
-	port := Serve("0", "/debugx1")
-	log.Infof("Using port: %d", port)
+	addr := Serve("0", "/debugx1")
+	port := addr.Port
+	log.Infof("On addr %s found port: %d", addr, port)
 	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	if port == 0 {
 		t.Errorf("outport: %d must be different", port)
