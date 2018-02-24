@@ -83,5 +83,5 @@ func init() {
 		buildInfo += "-dirty"
 		log.Debugf("gitstatus is %q, marking buildinfo as dirty: %v", gitstatus, buildInfo)
 	}
-	longVersion = version + "-" + buildInfo
+	longVersion = version + " " + buildInfo
 }

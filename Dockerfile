@@ -4,13 +4,13 @@ WORKDIR /go/src/istio.io
 COPY . fortio
 # Submodule handling
 RUN make -C fortio submodule
-# NOTE: changes to this file should be propagated to release/Dockerfile.in too
-# (wtb docker include)
-# Demonstrate moving the static directory outside of the go source tree and
+# Putting spaces in linker replaced variables is hard but does work.
+RUN echo "$(date +'%Y-%m-%d %H:%M') $(cd fortio; git rev-parse HEAD)" > /build-info.txt
+# Sets up the static directory outside of the go source tree and
 # the default data directory to a /var/lib/... volume
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags \
   "-s -X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -X main.defaultDataDir=/var/lib/istio/fortio \
-  -X istio.io/fortio/version.buildInfo=$(date +%y%m%d_%H%M_)$(cd fortio; git rev-parse HEAD) \
+  -X \"istio.io/fortio/version.buildInfo=$(cat /build-info.txt)\" \
   -X istio.io/fortio/version.tag=$(cd fortio; git describe --tags) \
   -X istio.io/fortio/version.gitstatus=$(cd fortio; git status --porcelain | wc -l)" \
   -o fortio.bin istio.io/fortio
@@ -18,6 +18,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags \
 RUN CGO_ENABLED=0 GOOS=windows go build -a -o fortio.exe istio.io/fortio
 # Minimal image with just the binary and certs
 FROM scratch as release
+# NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/istio.io/fortio/ui/static /usr/local/lib/fortio/static
 COPY --from=build /go/src/istio.io/fortio/ui/templates /usr/local/lib/fortio/templates
