@@ -597,6 +597,39 @@ func TestPayloadSizeLarge(t *testing.T) {
 	}
 }
 
+func TestDebugHandlerSortedHeaders(t *testing.T) {
+	p, m := DynamicHTTPServer(false)
+	m.HandleFunc("/debug", DebugHandler)
+	url := fmt.Sprintf("http://localhost:%d/debug", p)
+	o := HTTPOptions{URL: url, DisableFastClient: true}
+	o.AddAndValidateExtraHeader("BBB: bbb")
+	o.AddAndValidateExtraHeader("CCC: ccc")
+	o.AddAndValidateExtraHeader("ZZZ: zzz")
+	o.AddAndValidateExtraHeader("AAA: aaa")
+	client := NewClient(&o)
+	code, data, header := client.Fetch() // used to panic/bug #127
+	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != http.StatusOK {
+		t.Errorf("Got %d instead of 200", code)
+	}
+	//remove the first line ('Φορτίο version...') from the body
+	body := string(data)
+	i := strings.Index(body, "\n")
+	body = body[i+1:]
+	expected := fmt.Sprintf("\nGET /debug HTTP/1.1\n\n"+
+		"headers:\n\n"+
+		"Host: localhost:%d\n"+
+		"Aaa: aaa\n"+
+		"Bbb: bbb\n"+
+		"Ccc: ccc\n"+
+		"User-Agent: %s\n"+
+		"Zzz: zzz\n\n"+
+		"body:\n\n\n", p, userAgent)
+	if body != expected {
+		t.Errorf("Get body: %s not as expected: %s", body, expected)
+	}
+}
+
 // --- for bench mark/comparaison
 
 func asciiFold0(str string) []byte {
