@@ -309,7 +309,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			res, err = fhttp.RunHTTPTest(&o)
 		}
 		if err != nil {
-			log.Errf("Init error %+v : %v", ro, err)
+			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 			// nolint: errcheck,gas
 			w.Write([]byte(fmt.Sprintf(
 				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",

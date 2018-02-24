@@ -26,6 +26,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
+	"strings"
+
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
@@ -34,15 +36,18 @@ import (
 const (
 	// DefaultGRPCPort is the Fortio gRPC server default port number.
 	DefaultGRPCPort = "8079"
+	prefixHTTP      = "http://"
+	prefixHTTPS     = "https://"
 )
 
 // Dial dials grpc either using insecure or using default tls setup.
 // TODO: option to specify certs.
 func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
 	opts := grpc.WithInsecure()
-	if tls {
+	if tls || (strings.HasPrefix(serverAddr, "https://")) {
 		opts = grpc.WithTransportCredentials(credentials.NewTLS(nil))
 	}
+	serverAddr = grpcDestination(serverAddr)
 	conn, err = grpc.Dial(serverAddr, opts)
 	if err != nil {
 		log.Errf("failed to conect to %s with tls %v: %v", serverAddr, tls, err)
@@ -94,6 +99,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
+
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
 		conn, err := Dial(o.Destination, o.Secure)
@@ -156,9 +162,18 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	return &total, nil
 }
 
-// GRPCDestination parses dest and returns dest:port based on dest type
+// grpcDestination parses dest and returns dest:port based on dest type
 // being a hostname, IP address or hostname/ip:port pair.
-func GRPCDestination(dest string) string {
+func grpcDestination(dest string) string {
+	// strip any unintentional http/https scheme prefixes from destination
+	if strings.HasPrefix(dest, prefixHTTP) {
+		dest = strings.Replace(dest, prefixHTTP, "", 1)
+		log.Infof("stripping http scheme. grpc destination: %v", dest)
+	} else if strings.HasPrefix(dest, prefixHTTPS) {
+		dest = strings.Replace(dest, prefixHTTPS, "", 1)
+		log.Infof("stripping https scheme. grpc destination: %v", dest)
+	}
+
 	if _, _, err := net.SplitHostPort(dest); err == nil {
 		return dest
 	}
