@@ -731,3 +731,10 @@ func BenchmarkBucketLookUpWithHighestValue(b *testing.B) {
 		testHistogram.Record(100000)
 	}
 }
+
+func BenchmarkBucketLookUpWithRandomValues(b *testing.B) {
+	testHistogram := NewHistogram(0, 1)
+	for i := 0; i < b.N; i++ {
+		testHistogram.Record(float64(rand.Intn(100000)))
+	}
+}
