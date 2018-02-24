@@ -22,7 +22,6 @@ package fhttp
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
