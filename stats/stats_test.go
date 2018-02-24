@@ -722,25 +722,29 @@ func TestNaN(t *testing.T) {
 
 func TestBucketLookUp(t *testing.T) {
 	var tests = []struct {
-		inputRecord   float64 // input
-		expectedIndex int     // expected
+		input float64 // input
+		start float64 // start
+		end   float64 // end
 
 	}{
-		{inputRecord: 999, expectedIndex: 43},
-		{inputRecord: 999.99, expectedIndex: 43},
-		{inputRecord: 1000.0004, expectedIndex: 44},
-		{inputRecord: 1000.01, expectedIndex: 44},
-		{inputRecord: 1001, expectedIndex: 44},
-		{inputRecord: 1999.99, expectedIndex: 44},
-		{inputRecord: 2000.0004, expectedIndex: 45},
-		{inputRecord: 2001, expectedIndex: 45},
+		{input: 999, start: 900, end: 1000},
+		{input: 999.99, start: 900, end: 1000},
+		{input: 1000.0004, start: 1000, end: 2000},
+		{input: 1000.01, start: 1000, end: 2000},
+		{input: 1001, start: 1000, end: 2000},
+		{input: 1999.99, start: 1000, end: 2000},
+		{input: 2000.0004, start: 2000, end: 3000},
+		{input: 2001, start: 2000, end: 3000},
 	}
 	h := NewHistogram(0, 1)
 	for _, test := range tests {
 		h.Reset()
-		h.Record(test.inputRecord)
-		if h.Hdata[test.expectedIndex] == 0 {
-			t.Errorf("Got 0 on index %d. Expected to be bigger than 1 for %f", test.expectedIndex, test.inputRecord)
+		h.Record(1)
+		h.Record(1000000)
+		h.Record(test.input)
+		hData := h.Export()
+		if hData.Data[1].Start != test.start || hData.Data[1].End != test.end {
+			t.Errorf("Testing data %f is matched with different bucket", test.input)
 		}
 	}
 }

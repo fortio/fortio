@@ -139,9 +139,10 @@ var (
 	numBuckets         = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
 	firstValue         = float64(histogramBucketValues[0])
 	lastValue          = float64(histogramBucketValues[numValues-1])
+	val2Bucket         []int
 	maxArrayValue      = int32(1000) // Last value looked up as O(1) array, the rest is linear search
 	maxArrayValueIndex = -1          // Index of maxArrayValue
-	val2Bucket         []int         //up to 1000
+
 )
 
 // Histogram extends Counter and adds an histogram.
@@ -234,12 +235,12 @@ func init() {
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
 // TODO: change linear time to O(log(N)) with binary search
 func lookUpIdx(scaledValue int) int {
-	scaledVale32 := int32(scaledValue)
-	if scaledVale32 < maxArrayValue { //constant
+	scaledValue32 := int32(scaledValue)
+	if scaledValue32 < maxArrayValue { //constant
 		return val2Bucket[scaledValue]
 	}
 	for i := maxArrayValueIndex; i < numValues; i++ {
-		if histogramBucketValues[i] > scaledVale32 {
+		if histogramBucketValues[i] > scaledValue32 {
 			return i
 		}
 	}
