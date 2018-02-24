@@ -720,6 +720,31 @@ func TestNaN(t *testing.T) {
 	}
 }
 
+func TestBucketLookUp(t *testing.T) {
+	var tests = []struct {
+		inputRecord   float64 // input
+		expectedIndex int     // expected
+
+	}{
+		{inputRecord: 999, expectedIndex: 43},
+		{inputRecord: 999.99, expectedIndex: 43},
+		{inputRecord: 1000.0004, expectedIndex: 44},
+		{inputRecord: 1000.01, expectedIndex: 44},
+		{inputRecord: 1001, expectedIndex: 44},
+		{inputRecord: 1999.99, expectedIndex: 44},
+		{inputRecord: 2000.0004, expectedIndex: 45},
+		{inputRecord: 2001, expectedIndex: 45},
+	}
+	h := NewHistogram(0, 1)
+	for _, test := range tests {
+		h.Reset()
+		h.Record(test.inputRecord)
+		if h.Hdata[test.expectedIndex] == 0 {
+			t.Errorf("Got 0 on index %d. Expected to be bigger than 1 for %f", test.expectedIndex, test.inputRecord)
+		}
+	}
+}
+
 // TODO: add test with data 1.0 1.0001 1.999 2.0 2.5
 // should get 3 buckets 0-1 with count 1
 // 1-2 with count 3
