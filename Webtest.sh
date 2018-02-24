@@ -17,8 +17,8 @@ docker ps
 BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
 CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGLEVEL"
-# Check https works (certs are in the image)
-$CURL -stdclient https://istio.io/robots.txt
+# Check https works (certs are in the image) - also tests autoswitch to std client for https
+$CURL https://istio.io/robots.txt
 # Check that browse doesn't 404s
 $CURL ${BASE_FORTIO}browse
 # Check we can connect, and run a QPS test against ourselves through fetch
@@ -40,8 +40,8 @@ fi
 $CURL $BASE_FORTIO
 # Do a small load using std client
 docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
-# and with normal
-docker exec fortio_server /usr/local/bin/fortio load -qps 1 -t 2s -c 2 http://www.google.com/
+# and with normal and with custom headers
+docker exec fortio_server /usr/local/bin/fortio load -H Foo:Bar -H Blah:Blah -qps 1 -t 2s -c 2 http://www.google.com/
 # Do a grpcping
 docker exec fortio_server /usr/local/bin/fortio grpcping localhost
-# TODO: check report mode
+# TODO: check report mode and pprof
