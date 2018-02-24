@@ -1278,7 +1278,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve starts a debug / echo http server on the given port.
 // Returns the addr where the listening socket is bound.
-// The .Port can be retrived from it when requesting the 0 port as
+// The .Port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
 func Serve(port, debugPath string) *net.TCPAddr {
 	startTime = time.Now()

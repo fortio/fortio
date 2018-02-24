@@ -969,6 +969,5 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	}
 	if strings.HasPrefix(inputPort, ":") {
 		urlHostPort = "localhost" + portStr
-		return
 	}
 }
