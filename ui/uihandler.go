@@ -961,13 +961,14 @@ func RedirectToHTTPS(port string) {
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
 // sets the urlHostPort variable and returns hostport unmodified.
 func setHostAndPort(inputPort string, addr *net.TCPAddr) {
-	if strings.HasPrefix(inputPort, ":") {
-		urlHostPort = "localhost" + inputPort
-		return
-	}
 	urlHostPort = inputPort
+	portStr := inputPort
 	if addr != nil {
 		urlHostPort = addr.String()
+		portStr = fmt.Sprintf(":%d", addr.Port)
 	}
-	return
+	if strings.HasPrefix(inputPort, ":") {
+		urlHostPort = "localhost" + portStr
+		return
+	}
 }
