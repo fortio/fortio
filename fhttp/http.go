@@ -1269,15 +1269,15 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve starts a debug / echo http server on the given port.
 // Returns the port that opened for listing socket
-func Serve(port, debugPath string) string {
+func Serve(port, debugPath string) int {
 	startTime = time.Now()
 	nPort := fnet.NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
 	if err != nil {
-		log.Fatalf("Error occurred while listening %v", err)
+		log.Fatalf("Error occurred while listening %v: %v", nPort, err)
 	}
-	nPort = strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
-	fmt.Printf("Fortio %s echo server listening on port %s\n", version.Short(), nPort)
+	portValue := listener.Addr().(*net.TCPAddr).Port
+	fmt.Printf("Fortio %s echo server listening on port %d\n", version.Short(), portValue)
 	go func() {
 		if debugPath != "" {
 			http.HandleFunc(debugPath, DebugHandler)
@@ -1287,5 +1287,5 @@ func Serve(port, debugPath string) string {
 			fmt.Println("Error starting server", err)
 		}
 	}()
-	return nPort
+	return portValue
 }

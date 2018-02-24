@@ -21,7 +21,6 @@ package fhttp
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -116,17 +115,13 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 // the error test for / url above fail:
 
 func TestServe(t *testing.T) {
-	listener, err := net.Listen("tcp", ":0") // nolint: gas
-	if err != nil {
-		log.Fatalf("Unable to listen to dynamic port: %v", err)
+	port := 0
+	outputPort := Serve(strconv.Itoa(port), "/debugx1")
+	log.Infof("Using port: %d", outputPort)
+	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", outputPort)
+	if port == outputPort {
+		t.Errorf("outport: %d must be different", outputPort)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	log.Infof("Using port: %d", port)
-	listener.Close()
-	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
-	go func() {
-		Serve(strconv.Itoa(port), "/debugx1")
-	}()
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
 	o.AddAndValidateExtraHeader("X-Header: value1")
