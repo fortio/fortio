@@ -139,7 +139,7 @@ var (
 	numBuckets = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
 	firstValue = float64(histogramBucketValues[0])
 	lastValue  = float64(histogramBucketValues[numValues-1])
-	val2Bucket []int
+	val2Bucket []int // ends at 1000. Remaining values will not be received in constant time.
 
 	maxArrayValue      = int32(1000) // Last value looked up as O(1) array, the rest is linear search
 	maxArrayValueIndex = -1          // Index of maxArrayValue
@@ -210,6 +210,7 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 // val2Bucket allows you reach between 0 and 1000 in constant time
 func init() {
 	val2Bucket = make([]int, maxArrayValue)
+	maxArrayValueIndex = -1
 	for i, value := range histogramBucketValues {
 		if value == maxArrayValue {
 			maxArrayValueIndex = i
@@ -239,7 +240,7 @@ func lookUpIdx(scaledValue int) int {
 	if scaledValue32 < maxArrayValue { //constant
 		return val2Bucket[scaledValue]
 	}
-	for i := maxArrayValueIndex; i < numValues; i++ {
+	for i := maxArrayValueIndex; i < numValues-1; i++ {
 		if histogramBucketValues[i] > scaledValue32 {
 			return i
 		}

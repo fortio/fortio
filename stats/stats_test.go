@@ -735,6 +735,12 @@ func TestBucketLookUp(t *testing.T) {
 		{input: 1999.99, start: 1000, end: 2000},
 		{input: 2000, start: 1000, end: 2000},
 		{input: 2001, start: 2000, end: 3000},
+		{input: 100000.0001, start: 75000, end: 100000},
+		{input: 7500, start: 5000, end: 7500},
+		{input: 10000.99, start: 10000, end: 20000},
+		{input: 99999.99, start: 75000, end: 100000},
+		{input: 100000, start: 75000, end: 100000},
+		{input: 100000.0002, start: 100000, end: 1e+06},
 	}
 	h := NewHistogram(0, 1)
 	for _, test := range tests {
