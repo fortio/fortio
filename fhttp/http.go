@@ -27,6 +27,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -1232,11 +1233,18 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	// Host is removed from headers map and put here (!)
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
-	for name, headers := range r.Header {
+
+	var keys []string
+	for k := range r.Header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, name := range keys {
 		buf.WriteByte('\n')
 		buf.WriteString(name)
 		buf.WriteString(": ")
 		first := true
+		headers := r.Header[name]
 		for _, h := range headers {
 			if !first {
 				buf.WriteByte(',')
