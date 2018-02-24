@@ -23,7 +23,6 @@ import (
 	"flag"
 
 	"istio.io/fortio/fhttp"
-	"istio.io/fortio/fnet"
 )
 
 var (
@@ -33,6 +32,5 @@ var (
 
 func main() {
 	flag.Parse()
-	httpPort := fnet.NormalizePort(*port)
-	fhttp.Serve(httpPort, *debugPath)
+	fhttp.Serve(*port, *debugPath)
 }
