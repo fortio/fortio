@@ -728,7 +728,7 @@ func TestNaN(t *testing.T) {
 func BenchmarkBucketLookUpWithHighestValue(b *testing.B) {
 	testHistogram := NewHistogram(0, 1)
 	for i := 0; i < b.N; i++ {
-		testHistogram.Record(100000)
+		testHistogram.Record(99999)
 	}
 }
 

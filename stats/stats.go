@@ -135,23 +135,14 @@ var (
 		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsly covered
 		20000, 30000, 40000, 50000, 75000, 100000, // ditto, the end
 	}
-	numValues              = len(histogramBucketValues)
-	numBuckets             = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
-	firstValue             = float64(histogramBucketValues[0])
-	lastValue              = float64(histogramBucketValues[numValues-1])
-	line5EndToEndLength    = 13
-	line5EndIndex          = numValues - line5EndToEndLength //to reach 1000
-	constantTimeVal2Bucket []int                             //up to 1000
-	linearTimeVal2Bucket   []UpperValueIndexer               // later than 1000 to 100000
+	numValues            = len(histogramBucketValues)
+	numBuckets           = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
+	firstValue           = float64(histogramBucketValues[0])
+	lastValue            = float64(histogramBucketValues[numValues-1])
+	maxArrayValue        = int32(1000) // Last value looked up as O(1) array, the rest is linear search
+	val2Bucket           []int         //up to 1000
+	linearTimeVal2Bucket []int         // later than 1000 to 100000
 )
-
-// UpperValueIndexer holds upper values of histogramBucketValues such as 1000 to 100000
-// Index and Scope are kept. Scope is estimated with current index value - previous index value plus previous
-// sum of scopes.
-type UpperValueIndexer struct {
-	Index int
-	Scope int
-}
 
 // Histogram extends Counter and adds an histogram.
 // Must be created using NewHistogram or anotherHistogram.Clone()
@@ -215,49 +206,56 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 }
 
 // Val2Bucket values are kept in two different structure
-// constantTimeVal2Bucket allows you reach between 0 and 1000 in constant time
+// val2Bucket allows you reach between 0 and 1000 in constant time
 // linearTimeVal2Bucket allows you to reach between 1000 and 100000 in linear time
 // linearTimeVal2Bucket approach saves memory usage but loses speed
+// TODO: change linear time to O(log(N)) with binary search for linearTimeVal2Bucket
 func init() {
-	lastV := int32(lastValue)
-	line5EndValue := histogramBucketValues[line5EndIndex]
-	constantTimeVal2Bucket = make([]int, line5EndValue)
-	linearTimeVal2Bucket = make([]UpperValueIndexer, line5EndToEndLength)
-	val2BucketLen := int32(len(constantTimeVal2Bucket))
+	maxArrayValueIndex := 0
+	for i, value := range histogramBucketValues {
+		if value == maxArrayValue {
+			maxArrayValueIndex = i
+			break
+		}
+	}
+	val2Bucket = make([]int, maxArrayValue)
+	linearTineVal2BucketLen := numValues - maxArrayValueIndex
+	linearTimeVal2Bucket = make([]int, linearTineVal2BucketLen)
+	val2BucketLen := int32(len(val2Bucket))
 	idx := 0
 	for i := int32(0); i < val2BucketLen; i++ {
 		if i >= histogramBucketValues[idx] {
 			idx++
 		}
-		constantTimeVal2Bucket[i] = idx
+		val2Bucket[i] = idx
 	}
-	idx++ // Not include 1000
+	// coding bug detection (aka impossible if it works once) until 1000
+	if idx != maxArrayValueIndex {
+		log.Fatalf("Bug in creating histogram index idx %d vs index %d up to %d", idx, int(maxArrayValue), maxArrayValue)
+	}
 	j := 0
-	maxLookupValue := int(histogramBucketValues[line5EndIndex])
-	iteratorValue := maxLookupValue
-	for ; j < line5EndToEndLength-1; j++ {
-		currentValue := histogramBucketValues[idx]
-		previousValue := histogramBucketValues[idx-1]
-		iteratorValue += int(currentValue - previousValue)
-		linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Scope: iteratorValue}
-		idx++
+	k := maxArrayValueIndex
+	for ; j < linearTineVal2BucketLen-1; j++ {
+		linearTimeVal2Bucket[j] = k
+		k++
 	}
-	linearTimeVal2Bucket[j] = UpperValueIndexer{Index: idx, Scope: 1} // for 100000
-	// coding bug detection (aka impossible if it works once)
-	if idx != numValues {
-		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numValues, lastV)
+	linearTimeVal2Bucket[j] = k // for 100000 index
+	// coding bug detection (aka impossible if it works once) until 1000
+	if k != numValues-1 {
+		log.Fatalf("Bug in creating histogram buckets maximum possible index %d vs"+
+			" found possible index %d between 1000 and 100000", numValues-1, k)
 	}
 }
 
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
 func lookUpIdx(scaledValue int) int {
-	maxLookupValue := int(histogramBucketValues[line5EndIndex])
-	if scaledValue < maxLookupValue { //constant
-		return constantTimeVal2Bucket[scaledValue]
+	scaledVale32 := int32(scaledValue)
+	if scaledVale32 < maxArrayValue { //constant
+		return val2Bucket[scaledValue]
 	}
 	for _, value := range linearTimeVal2Bucket {
-		if scaledValue < value.Scope {
-			return value.Index
+		if histogramBucketValues[value] > scaledVale32 {
+			return value
 		}
 	}
 	//select max value
