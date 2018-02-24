@@ -729,11 +729,11 @@ func TestBucketLookUp(t *testing.T) {
 	}{
 		{input: 999, start: 900, end: 1000},
 		{input: 999.99, start: 900, end: 1000},
-		{input: 1000.0004, start: 1000, end: 2000},
+		{input: 1000, start: 900, end: 1000},
 		{input: 1000.01, start: 1000, end: 2000},
 		{input: 1001, start: 1000, end: 2000},
 		{input: 1999.99, start: 1000, end: 2000},
-		{input: 2000.0004, start: 2000, end: 3000},
+		{input: 2000, start: 1000, end: 2000},
 		{input: 2001, start: 2000, end: 3000},
 	}
 	h := NewHistogram(0, 1)
@@ -744,7 +744,7 @@ func TestBucketLookUp(t *testing.T) {
 		h.Record(test.input)
 		hData := h.Export()
 		if hData.Data[1].Start != test.start || hData.Data[1].End != test.end {
-			t.Errorf("Testing data %f is matched with different bucket", test.input)
+			t.Errorf("Got %+v while expected %+v", hData.Data[1], test)
 		}
 	}
 }

@@ -135,14 +135,14 @@ var (
 		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsly covered
 		20000, 30000, 40000, 50000, 75000, 100000, // ditto, the end
 	}
-	numValues          = len(histogramBucketValues)
-	numBuckets         = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
-	firstValue         = float64(histogramBucketValues[0])
-	lastValue          = float64(histogramBucketValues[numValues-1])
-	val2Bucket         []int
+	numValues  = len(histogramBucketValues)
+	numBuckets = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
+	firstValue = float64(histogramBucketValues[0])
+	lastValue  = float64(histogramBucketValues[numValues-1])
+	val2Bucket []int
+
 	maxArrayValue      = int32(1000) // Last value looked up as O(1) array, the rest is linear search
 	maxArrayValueIndex = -1          // Index of maxArrayValue
-
 )
 
 // Histogram extends Counter and adds an histogram.
