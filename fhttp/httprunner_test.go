@@ -115,12 +115,11 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 // the error test for / url above fail:
 
 func TestServe(t *testing.T) {
-	port := 0
-	outputPort := Serve(strconv.Itoa(port), "/debugx1")
-	log.Infof("Using port: %d", outputPort)
-	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", outputPort)
-	if port == outputPort {
-		t.Errorf("outport: %d must be different", outputPort)
+	port := Serve("0", "/debugx1")
+	log.Infof("Using port: %d", port)
+	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
+	if port == 0 {
+		t.Errorf("outport: %d must be different", port)
 	}
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
