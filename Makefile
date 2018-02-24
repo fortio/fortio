@@ -16,6 +16,7 @@ DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
 # go test ./... and others run in vendor/ and cause problems (!)
 PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs)")
+#PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already
 GRPC_DIR:=./vendor/google.golang.org/grpc
@@ -41,7 +42,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # TODO: do something about cyclomatic complexity
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
-lint: submodule
+lint: submodule vendor.check
 	docker run -v $(shell pwd):/go/src/istio.io/fortio $(BUILD_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
@@ -68,6 +69,33 @@ submodule-sync:
 pull:
 	git pull
 	$(MAKE) submodule-sync
+
+# https://github.com/istio/istio/wiki/Vendor-FAQ#how-do-i-add--change-a-dependency
+# PS: for fortio no dependencies should be added, only grpc updated.
+depend.status:
+	@echo "No error means your Gopkg.* are in sync and ok with vendor/"
+	dep status
+	cp Gopkg.* vendor/
+
+depend.update.full: depend.cleanlock depend.update
+
+depend.cleanlock:
+	-rm Gopkg.lock
+
+depend.update:
+	@echo "Running dep ensure with DEPARGS=$(DEPARGS)"
+	time dep ensure $(DEPARGS)
+	cp Gopkg.* vendor/
+	@echo "now check the diff in vendor/ and make a PR"
+
+vendor.check:
+	@echo "Checking that Gopkg.* are in sync with vendor/ submodule:"
+	@echo "if this fails, 'make pull' and/or seek on-call help"
+	diff Gopkg.toml vendor/
+	diff Gopkg.lock vendor/
+
+.PHONY: depend.status depend.cleanlock depend.update depend.update.full vendor.check
+
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: test install lint docker-version docker-push-internal
