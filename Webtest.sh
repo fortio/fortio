@@ -21,8 +21,10 @@ CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGL
 $CURL https://istio.io/robots.txt
 # Check that browse doesn't 404s
 $CURL ${BASE_FORTIO}browse
-# Check we can connect, and run a QPS test against ourselves through fetch
+# Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
+# Check we can connect, and run a grpc QPS test against ourselves through fetch
+$CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"1": 100'
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec fortio_server /usr/local/bin/fortio version -s)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
@@ -38,10 +40,12 @@ if [ "$SIZE" -lt 50000 ]; then
 fi
 # Check the main page
 $CURL $BASE_FORTIO
-# Do a small load using std client
+# Do a small http load using std client
 docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal and with custom headers
 docker exec fortio_server /usr/local/bin/fortio load -H Foo:Bar -H Blah:Blah -qps 1 -t 2s -c 2 http://www.google.com/
 # Do a grpcping
 docker exec fortio_server /usr/local/bin/fortio grpcping localhost
+# Do a grpcping to a scheme-prefixed destination
+docker exec fortio_server /usr/local/bin/fortio grpcping https://fortio.istio.io:443
 # TODO: check report mode and pprof
