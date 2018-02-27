@@ -126,6 +126,16 @@ func TestGRPCDestination(t *testing.T) {
 			"[2001:dba::1]:1234",
 		},
 		{
+			"http hostname and port",
+			"http://foo.bar:2567",
+			"foo.bar:2567",
+		},
+		{
+			"https hostname and port",
+			"https://foo.bar:2567",
+			"foo.bar:2567",
+		},
+		{
 			"hostname and no port",
 			"foo.bar.com",
 			"foo.bar.com:8079",
