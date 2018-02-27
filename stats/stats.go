@@ -240,13 +240,13 @@ func lookUpIdx(scaledValue int) int {
 	if scaledValue32 < maxArrayValue { //constant
 		return val2Bucket[scaledValue]
 	}
-	for i := maxArrayValueIndex; i < numValues-1; i++ {
-		if histogramBucketValues[i] > scaledValue32 {
+	for i := maxArrayValueIndex; i < numValues; i++ {
+		if histogramBucketValues[i] >= scaledValue32 {
 			return i
 		}
 	}
-	//select max value
-	return numValues - 1
+	log.Fatalf("should not be reached")
+	return 0
 }
 
 // Record records a data point.
