@@ -260,6 +260,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			RunnerOptions: ro,
 			Destination:   url,
 			Secure:        *grpcSecureFlag,
+			Service:       *healthSvcFlag,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {

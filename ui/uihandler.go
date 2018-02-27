@@ -38,6 +38,7 @@ import (
 	"sync"
 	"time"
 
+	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
@@ -81,6 +82,7 @@ var (
 const (
 	fetchURI    = "fetch/"
 	faviconPath = "/favicon.ico"
+	modegrpc    = "grpc"
 )
 
 // Gets the resources directory from one of 3 sources:
@@ -141,13 +143,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	DoSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	runid := int64(0)
+	runner := r.FormValue("runner")
 	if r.FormValue("load") == "Start" {
 		mode = run
 		if r.FormValue("json") == "on" {
 			JSONOnly = true
-			log.Infof("Starting JSON only load request from %v for %s", r.RemoteAddr, url)
+			log.Infof("Starting JSON only %s load request from %v for %s", runner, r.RemoteAddr, url)
 		} else {
-			log.Infof("Starting load request from %v for %s", r.RemoteAddr, url)
+			log.Infof("Starting %s load request from %v for %s", runner, r.RemoteAddr, url)
 		}
 	} else {
 		if r.FormValue("stop") == "Stop" {
@@ -162,6 +165,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
+	grpcSecure := (r.FormValue("grpc-secure") == "on")
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
 		dur = -1
@@ -185,7 +189,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(url) == "" {
 		url = "http://url.needed" // just because url validation doesn't like empty urls
 	}
-	opts := fhttp.NewHTTPOptions(url)
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
 		Duration:    dur,
@@ -205,6 +208,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		uiRunMapMutex.Unlock()
 		log.Infof("New run id %d", runid)
 	}
+	httpopts := fhttp.NewHTTPOptions(url)
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -238,7 +242,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
-		}{r, opts.GetHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
+		}{r, httpopts.GetHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
@@ -276,29 +280,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.LogVf("adding header %v", header)
 			if firstHeader {
 				// If there is at least 1 non empty H passed, reset the header list
-				opts.ResetHeaders()
+				httpopts.ResetHeaders()
 				firstHeader = false
 			}
-			err := opts.AddAndValidateExtraHeader(header)
+			err := httpopts.AddAndValidateExtraHeader(header)
 			if err != nil {
 				log.Errf("Error adding custom headers: %v", err)
 			}
 		}
-		onBehalfOf(opts, r)
-		o := fhttp.HTTPRunnerOptions{
-			RunnerOptions:      ro,
-			HTTPOptions:        *opts,
-			AllowInitialErrors: true,
-		}
+		onBehalfOf(httpopts, r)
 		if !JSONOnly {
 			flusher.Flush()
 		}
-		res, err := fhttp.RunHTTPTest(&o)
-		uiRunMapMutex.Lock()
-		delete(runs, runid)
-		uiRunMapMutex.Unlock()
+		var res periodic.HasRunnerResult
+		var err error
+		if runner == modegrpc {
+			o := fgrpc.GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   url,
+				Secure:        grpcSecure,
+			}
+			res, err = fgrpc.RunGRPCTest(&o)
+		} else {
+			o := fhttp.HTTPRunnerOptions{
+				HTTPOptions:        *httpopts,
+				RunnerOptions:      ro,
+				AllowInitialErrors: true,
+			}
+			res, err = fhttp.RunHTTPTest(&o)
+		}
 		if err != nil {
-			log.Errf("Init error %+v : %v", o, err)
+			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 			// nolint: errcheck,gas
 			w.Write([]byte(fmt.Sprintf(
 				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
@@ -311,7 +323,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		savedAs := ""
 		if DoSave {
-			savedAs = SaveJSON(res.ID(), json)
+			savedAs = SaveJSON(res.Result().ID(), json)
 		}
 		if JSONOnly {
 			w.Header().Set("Content-Type", "application/json")
@@ -327,9 +339,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		// nolint: errcheck, gas
 		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-			res.DurationHistogram.Count,
-			1000.*res.DurationHistogram.Avg,
-			res.ActualQPS)))
+			res.Result().DurationHistogram.Count,
+			1000.*res.Result().DurationHistogram.Avg,
+			res.Result().ActualQPS)))
 		ResultToJsData(w, json)
 		w.Write([]byte("</script></body></html>\n")) // nolint: gas
 	}

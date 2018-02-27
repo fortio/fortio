@@ -96,6 +96,16 @@ func TestGRPCDestination(t *testing.T) {
 			"localhost:1234",
 		},
 		{
+			"http hostname and port",
+			"http://localhost:1234",
+			"localhost:1234",
+		},
+		{
+			"https hostname and port",
+			"https://localhost:1234",
+			"localhost:1234",
+		},
+		{
 			"IPv4 address",
 			"1.2.3.4",
 			"1.2.3.4:8079",
@@ -116,6 +126,16 @@ func TestGRPCDestination(t *testing.T) {
 			"[2001:dba::1]:1234",
 		},
 		{
+			"http hostname and port",
+			"http://foo.bar:2567",
+			"foo.bar:2567",
+		},
+		{
+			"https hostname and port",
+			"https://foo.bar:2567",
+			"foo.bar:2567",
+		},
+		{
 			"hostname and no port",
 			"foo.bar.com",
 			"foo.bar.com:8079",
@@ -128,7 +148,7 @@ func TestGRPCDestination(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		dest := GRPCDestination(tc.dest)
+		dest := grpcDestination(tc.dest)
 		if dest != tc.output {
 			t.Errorf("Test case %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
 				tc.name,
