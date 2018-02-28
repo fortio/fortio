@@ -720,7 +720,66 @@ func TestNaN(t *testing.T) {
 	}
 }
 
+func TestBucketLookUp(t *testing.T) {
+	var tests = []struct {
+		input float64 // input
+		start float64 // start
+		end   float64 // end
+
+	}{
+		{input: 11, start: 10, end: 11},
+		{input: 171, start: 160, end: 180},
+		{input: 180, start: 160, end: 180},
+		{input: 801, start: 800, end: 900},
+		{input: 900, start: 800, end: 900},
+		{input: 999, start: 900, end: 1000},
+		{input: 999.99, start: 900, end: 1000},
+		{input: 1000, start: 900, end: 1000},
+		{input: 1000.01, start: 1000, end: 2000},
+		{input: 1001, start: 1000, end: 2000},
+		{input: 1001.1, start: 1000, end: 2000},
+		{input: 1999.99, start: 1000, end: 2000},
+		{input: 2000, start: 1000, end: 2000},
+		{input: 2001, start: 2000, end: 3000},
+		{input: 2001.1, start: 2000, end: 3000},
+		{input: 75000, start: 50000, end: 75000},
+		{input: 75000.01, start: 75000, end: 100000},
+		{input: 99999.99, start: 75000, end: 100000},
+		{input: 100000, start: 75000, end: 100000},
+		{input: 100000.01, start: 100000, end: 1e+06},
+		{input: 100000.99, start: 100000, end: 1e+06},
+		{input: 100001, start: 100000, end: 1e+06},
+		{input: 523477, start: 100000, end: 1e+06},
+	}
+	h := NewHistogram(0, 1)
+	for _, test := range tests {
+		h.Reset()
+		h.Record(1)
+		h.Record(1000000)
+		h.Record(test.input)
+		hData := h.Export()
+		hd := hData.Data[1]
+		if hd.Start != test.start || hd.End != test.end {
+			t.Errorf("Got %+v while expected %+v", hd, test)
+		}
+	}
+}
+
 // TODO: add test with data 1.0 1.0001 1.999 2.0 2.5
 // should get 3 buckets 0-1 with count 1
 // 1-2 with count 3
 // 2-2.5 with count 1
+
+func BenchmarkBucketLookUpWithHighestValue(b *testing.B) {
+	testHistogram := NewHistogram(0, 1)
+	for i := 0; i < b.N; i++ {
+		testHistogram.Record(99999)
+	}
+}
+
+func BenchmarkBucketLookUpWithRandomValues(b *testing.B) {
+	testHistogram := NewHistogram(0, 1)
+	for i := 0; i < b.N; i++ {
+		testHistogram.Record(float64(rand.Intn(100000)))
+	}
+}
