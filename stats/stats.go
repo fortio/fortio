@@ -245,8 +245,8 @@ func lookUpIdx(scaledValue int) int {
 			return i
 		}
 	}
-	//select max value
-	return numValues - 1
+	log.Fatalf("never reached/bug")
+	return 0
 }
 
 // Record records a data point.

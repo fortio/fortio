@@ -743,12 +743,14 @@ func TestBucketLookUp(t *testing.T) {
 		{input: 2000, start: 1000, end: 2000},
 		{input: 2001, start: 2000, end: 3000},
 		{input: 2001.1, start: 2000, end: 3000},
-		{input: 100000.0001, start: 75000, end: 100000},
-		{input: 7500, start: 5000, end: 7500},
-		{input: 10000.99, start: 10000, end: 20000},
+		{input: 75000, start: 50000, end: 75000},
+		{input: 75000.01, start: 75000, end: 100000},
 		{input: 99999.99, start: 75000, end: 100000},
 		{input: 100000, start: 75000, end: 100000},
-		{input: 100000.0002, start: 100000, end: 1e+06},
+		{input: 100000.01, start: 100000, end: 1e+06},
+		{input: 100000.99, start: 100000, end: 1e+06},
+		{input: 100001, start: 100000, end: 1e+06},
+		{input: 523477, start: 100000, end: 1e+06},
 	}
 	h := NewHistogram(0, 1)
 	for _, test := range tests {
@@ -757,8 +759,9 @@ func TestBucketLookUp(t *testing.T) {
 		h.Record(1000000)
 		h.Record(test.input)
 		hData := h.Export()
-		if hData.Data[1].Start != test.start || hData.Data[1].End != test.end {
-			t.Errorf("Got %+v while expected %+v", hData.Data[1], test)
+		hd := hData.Data[1]
+		if hd.Start != test.start || hd.End != test.end {
+			t.Errorf("Got %+v while expected %+v", hd, test)
 		}
 	}
 }
