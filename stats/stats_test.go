@@ -733,7 +733,6 @@ func TestBucketLookUp(t *testing.T) {
 		{input: 801, start: 800, end: 900},
 		{input: 900, start: 800, end: 900},
 		{input: 999, start: 900, end: 1000},
-		{input: 999, start: 900, end: 1000},
 		{input: 999.99, start: 900, end: 1000},
 		{input: 1000, start: 900, end: 1000},
 		{input: 1000.01, start: 1000, end: 2000},
