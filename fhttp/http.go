@@ -1130,6 +1130,7 @@ func closingServer(listener net.Listener) error {
 // DynamicHTTPServer listens on an available port, sets up an http or https
 // (when secure is true) server on it and returns the listening port and
 // mux to which one can attach handlers to.
+// TODO: merge/refactor/share with Serve()
 func DynamicHTTPServer(secure bool) (int, *http.ServeMux) {
 	m := http.NewServeMux()
 	s := &http.Server{
@@ -1276,16 +1277,18 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve starts a debug / echo http server on the given port.
-// Returns the port that opened for listing socket
-func Serve(port, debugPath string) int {
+// Returns the addr where the listening socket is bound.
+// The .Port can be retrieved from it when requesting the 0 port as
+// input for dynamic http server.
+func Serve(port, debugPath string) *net.TCPAddr {
 	startTime = time.Now()
 	nPort := fnet.NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
 	if err != nil {
 		log.Fatalf("Error occurred while listening %v: %v", nPort, err)
 	}
-	portValue := listener.Addr().(*net.TCPAddr).Port
-	fmt.Printf("Fortio %s echo server listening on port %d\n", version.Short(), portValue)
+	addr := listener.Addr().(*net.TCPAddr)
+	fmt.Printf("Fortio %s echo server listening on %s\n", version.Short(), addr.String())
 	go func() {
 		if debugPath != "" {
 			http.HandleFunc(debugPath, DebugHandler)
@@ -1295,5 +1298,5 @@ func Serve(port, debugPath string) int {
 			fmt.Println("Error starting server", err)
 		}
 	}()
-	return portValue
+	return addr
 }

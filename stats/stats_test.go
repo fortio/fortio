@@ -765,6 +765,35 @@ func TestBucketLookUp(t *testing.T) {
 	}
 }
 
+func TestAllBucketBoundaries(t *testing.T) {
+	h := NewHistogram(0, 1)
+
+	for i, value := range histogramBucketValues {
+		v := float64(value)
+		h.Reset()
+		h.Record(-1)
+		h.RecordN(v-0.01, 50)
+		h.RecordN(v, 700)       // so first interval gets a count of 750 + 1 for first
+		h.RecordN(v+0.01, 1003) // second interval gets a count of 1003 + 1 for last
+		h.Record(1e6)
+		hData := h.Export()
+		var firstInterval int64
+		if i == 0 {
+			firstInterval = 1 // fist interval is [min, 0[
+		}
+		var lastInterval int64
+		if i == len(histogramBucketValues)-1 {
+			lastInterval = 1
+		}
+		if hData.Data[1-firstInterval].End != v || hData.Data[1-firstInterval].Count != 750+firstInterval {
+			t.Errorf("= Boundary, got %+v unexpectedly for %d %g", hData, value, v)
+		}
+		if hData.Data[2-firstInterval].Start != v || hData.Data[2-firstInterval].Count != 1003+lastInterval {
+			t.Errorf("> Boundary, got %+v unexpectedly for %d %g", hData, value, v)
+		}
+	}
+}
+
 // TODO: add test with data 1.0 1.0001 1.999 2.0 2.5
 // should get 3 buckets 0-1 with count 1
 // 1-2 with count 3
