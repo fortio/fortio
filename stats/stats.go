@@ -139,7 +139,10 @@ var (
 	numBuckets = numValues + 1 // 1 special first bucket is <= 0; and 1 extra last bucket is > 100000
 	firstValue = float64(histogramBucketValues[0])
 	lastValue  = float64(histogramBucketValues[numValues-1])
-	val2Bucket []int
+	val2Bucket []int // ends at 1000. Remaining values will not be received in constant time.
+
+	maxArrayValue      = int32(1000) // Last value looked up as O(1) array, the rest is linear search
+	maxArrayValueIndex = -1          // Index of maxArrayValue
 )
 
 // Histogram extends Counter and adds an histogram.
@@ -203,24 +206,47 @@ func NewHistogram(Offset float64, Divider float64) *Histogram {
 	return h
 }
 
-// Tradeoff memory for speed (though that also kills the cache so...)
-// this creates an array of 100k (max value) entries
-// TODO: consider using an interval search for the last N big buckets
+// Val2Bucket values are kept in two different structure
+// val2Bucket allows you reach between 0 and 1000 in constant time
 func init() {
-	lastV := int32(lastValue)
-	val2Bucket = make([]int, lastV+1)
+	val2Bucket = make([]int, maxArrayValue)
+	maxArrayValueIndex = -1
+	for i, value := range histogramBucketValues {
+		if value == maxArrayValue {
+			maxArrayValueIndex = i
+			break
+		}
+	}
+	if maxArrayValueIndex == -1 {
+		log.Fatalf("Bug boundary maxArrayValue=%d not found in bucket list %v", maxArrayValue, histogramBucketValues)
+	}
 	idx := 0
-	for i := int32(0); i <= lastV; i++ {
+	for i := int32(0); i < maxArrayValue; i++ {
 		if i >= histogramBucketValues[idx] {
 			idx++
 		}
 		val2Bucket[i] = idx
 	}
-	// coding bug detection (aka impossible if it works once)
-	if idx != numValues {
-		log.Fatalf("Bug in creating histogram buckets idx %d vs numbuckets %d (last val %d)", idx, numValues, lastV)
+	// coding bug detection (aka impossible if it works once) until 1000
+	if idx != maxArrayValueIndex {
+		log.Fatalf("Bug in creating histogram index idx %d vs index %d up to %d", idx, int(maxArrayValue), maxArrayValue)
 	}
+}
 
+// lookUpIdx looks for scaledValue's index in histogramBucketValues
+// TODO: change linear time to O(log(N)) with binary search
+func lookUpIdx(scaledValue int) int {
+	scaledValue32 := int32(scaledValue)
+	if scaledValue32 < maxArrayValue { //constant
+		return val2Bucket[scaledValue]
+	}
+	for i := maxArrayValueIndex; i < numValues; i++ {
+		if histogramBucketValues[i] > scaledValue32 {
+			return i
+		}
+	}
+	log.Fatalf("never reached/bug")
+	return 0
 }
 
 // Record records a data point.
@@ -247,7 +273,7 @@ func (h *Histogram) record(v float64, count int) {
 		idx = numBuckets - 1 // last bucket is for > last value
 	} else {
 		// else we look it up
-		idx = val2Bucket[int(scaledVal)]
+		idx = lookUpIdx(int(scaledVal))
 	}
 	h.Hdata[idx] += int32(count)
 }
