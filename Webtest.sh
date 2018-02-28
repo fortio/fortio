@@ -4,8 +4,9 @@ set -x
 make docker-internal TAG=webtest || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 #LOGLEVEL=debug
+FILE_LIMIT=20 # must be low to detect leaks
 LOGLEVEL=info
-DOCKERID=$(docker run -d --name fortio_server istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name fortio_server istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
 function cleanup {
   docker stop $DOCKERID
   docker rm fortio_server
@@ -23,6 +24,8 @@ $CURL https://istio.io/robots.txt
 $CURL ${BASE_FORTIO}browse
 # Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
+# Check we can do it twice despite ulimit - check we get all 200s (exactly 100 of them)
+$CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&c=10&n=100&qps=-1&json=on" | grep '"200": 100'
 # Check we can connect, and run a grpc QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"1": 100'
 # Check we get the logo (need to remove the CR from raw headers)

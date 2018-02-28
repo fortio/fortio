@@ -22,6 +22,7 @@ package fhttp
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -70,6 +71,55 @@ func TestHTTPRunner(t *testing.T) {
 	if r, _, _ := c.Fetch(); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")
 	}
+}
+
+func testHttpNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
+	ngBefore1 := runtime.NumGoroutine()
+	t.Logf("Number go rountine before test %d", ngBefore1)
+	port, mux := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo100", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/echo100", port)
+	numCalls := 100
+	opts.NumThreads = numCalls / 2 // make 2 calls per thread
+	opts.Exactly = int64(numCalls)
+	opts.QPS = float64(numCalls) / 2 // take 1 second
+	opts.URL = url
+	// Warm up round 1
+	res, err := RunHTTPTest(opts)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	httpOk := res.RetCodes[http.StatusOK]
+	if opts.Exactly != httpOk {
+		t.Errorf("Run1: Mismatch between requested calls %d and ok %v", numCalls, res.RetCodes)
+	}
+	ngBefore2 := runtime.NumGoroutine()
+	t.Logf("Number go rountine after warm up / before 2nd test %d", ngBefore2)
+	// 2nd run, should be stable number of go routines after first, not keep growing:
+	res, err = RunHTTPTest(opts)
+	ngAfter := runtime.NumGoroutine()
+	t.Logf("Number go rountine after 2nd test %d", ngAfter)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	httpOk = res.RetCodes[http.StatusOK]
+	if opts.Exactly != httpOk {
+		t.Errorf("Run2: Mismatch between requested calls %d and ok %v", numCalls, res.RetCodes)
+	}
+	// allow for ~5 goroutine variance, as we use 50 if we leak it will show
+	if ngAfter > ngBefore2+5 {
+		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
+	}
+}
+
+func TestHttpNotLeakingFastClient(t *testing.T) {
+	testHttpNotLeaking(t, &HTTPRunnerOptions{})
+}
+
+func TestHttpNotLeakingStdClient(t *testing.T) {
+	testHttpNotLeaking(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
