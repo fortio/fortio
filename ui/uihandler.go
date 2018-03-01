@@ -601,6 +601,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
 	}
+	client.Close()
 }
 
 func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
@@ -678,6 +679,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code, data, _ := client.Fetch()
+	defer client.Close()
 	if code != http.StatusOK {
 		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code))) // nolint: gas, errcheck
 		w.WriteHeader(424 /*Failed Dependency*/)

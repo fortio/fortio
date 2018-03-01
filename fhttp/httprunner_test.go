@@ -61,7 +61,7 @@ func TestHTTPRunner(t *testing.T) {
 		URL: opts.URL,
 	}
 	o1 := rawOpts
-	if r, _, _ := NewBasicClient(&o1).Fetch(); r != http.StatusOK {
+	if r, _, _ := NewFastClient(&o1).Fetch(); r != http.StatusOK {
 		t.Errorf("Fast Client with raw option should still work with warning in logs")
 	}
 	o1 = rawOpts
@@ -73,7 +73,7 @@ func TestHTTPRunner(t *testing.T) {
 	}
 }
 
-func testHttpNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
+func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	ngBefore1 := runtime.NumGoroutine()
 	t.Logf("Number go rountine before test %d", ngBefore1)
 	port, mux := DynamicHTTPServer(false)
@@ -98,6 +98,8 @@ func testHttpNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	t.Logf("Number go rountine after warm up / before 2nd test %d", ngBefore2)
 	// 2nd run, should be stable number of go routines after first, not keep growing:
 	res, err = RunHTTPTest(opts)
+	// it takes a while for the connections to close with std client (!) why isn't CloseIdleConnections() synchronous
+	runtime.GC()
 	ngAfter := runtime.NumGoroutine()
 	t.Logf("Number go rountine after 2nd test %d", ngAfter)
 	if err != nil {
@@ -115,11 +117,11 @@ func testHttpNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 }
 
 func TestHttpNotLeakingFastClient(t *testing.T) {
-	testHttpNotLeaking(t, &HTTPRunnerOptions{})
+	testHTTPNotLeaking(t, &HTTPRunnerOptions{})
 }
 
 func TestHttpNotLeakingStdClient(t *testing.T) {
-	testHttpNotLeaking(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
+	testHTTPNotLeaking(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
