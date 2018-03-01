@@ -125,10 +125,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		fm.Close()                 // nolint:gas,errcheck
 		fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
-	// Numthreads may have reduced
-	numThreads = r.Options().NumThreads
+	// Numthreads may have reduced but it should be ok to accumulate 0s from
+	// unused ones. We also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
+		httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {

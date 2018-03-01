@@ -29,7 +29,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v0.7.1/fortio-linux_x64-0.7.1.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v0.7.2/fortio-linux_x64-0.7.2.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -42,7 +42,7 @@ You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 
 ```
-Φορτίο 0.7.1 usage:
+Φορτίο 0.7.2 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect servers), grpcping (grpc client), report (report only UI
@@ -153,8 +153,8 @@ $ fortio server &
 Https redirector running on :8081
 UI starting - visit:
 http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-Fortio 0.7.1 grpc ping server listening on port :8079
-Fortio 0.7.1 echo server listening on port :8080
+Fortio 0.7.2 grpc ping server listening on port :8079
+Fortio 0.7.2 echo server listening on port :8080
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -164,8 +164,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 0.7.1 grpc ping server listening on port :8079
-Fortio 0.7.1 echo server listening on port 10.10.10.10:8088
+Fortio 0.7.2 grpc ping server listening on port :8079
+Fortio 0.7.2 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -235,14 +235,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.7.1 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.7.2 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.7.1
+User-Agent: istio/fortio-0.7.2
 Foo: Bar
 
 body:
