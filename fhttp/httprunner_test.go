@@ -75,7 +75,7 @@ func TestHTTPRunner(t *testing.T) {
 
 func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	ngBefore1 := runtime.NumGoroutine()
-	t.Logf("Number go rountine before test %d", ngBefore1)
+	t.Logf("Number go routine before test %d", ngBefore1)
 	port, mux := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo100", EchoHandler)
 	url := fmt.Sprintf("http://localhost:%d/echo100", port)
@@ -95,13 +95,13 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 		t.Errorf("Run1: Mismatch between requested calls %d and ok %v", numCalls, res.RetCodes)
 	}
 	ngBefore2 := runtime.NumGoroutine()
-	t.Logf("Number go rountine after warm up / before 2nd test %d", ngBefore2)
+	t.Logf("Number of go routine after warm up / before 2nd test %d", ngBefore2)
 	// 2nd run, should be stable number of go routines after first, not keep growing:
 	res, err = RunHTTPTest(opts)
 	// it takes a while for the connections to close with std client (!) why isn't CloseIdleConnections() synchronous
 	runtime.GC()
 	ngAfter := runtime.NumGoroutine()
-	t.Logf("Number go rountine after 2nd test %d", ngAfter)
+	t.Logf("Number of go routine after 2nd test %d", ngAfter)
 	if err != nil {
 		t.Error(err)
 		return
@@ -110,7 +110,7 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	if opts.Exactly != httpOk {
 		t.Errorf("Run2: Mismatch between requested calls %d and ok %v", numCalls, res.RetCodes)
 	}
-	// allow for ~5 goroutine variance, as we use 50 if we leak it will show
+	// allow for ~5 goroutine variance, as we use 50 if we leak it will show (was failing before #167)
 	if ngAfter > ngBefore2+5 {
 		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
 	}

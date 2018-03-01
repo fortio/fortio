@@ -47,7 +47,7 @@ type Fetcher interface {
 	// Fetch returns http code, data, offset of body (for client which returns
 	// headers)
 	Fetch() (int, []byte, int)
-	// Close() - only really needed for the standard go client to cleanup connections.
+	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
 }
 
