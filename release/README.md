@@ -16,6 +16,8 @@
 
 - Increment the `patch` and commit that right away so the first point is true next time and so master/latest docker images have the correct next-pre version.
 
+- Once the release is deemed good/stable: move the git tag `latest_release` to the same as the release. Also push `latest_release` docker tag/image.
+
 ## How to change the build image
 
 Update [../Dockerfile.build](../Dockerfile.build)
