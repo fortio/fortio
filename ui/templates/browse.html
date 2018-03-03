@@ -37,7 +37,7 @@ function fortio_load(url) {
       data = fortioResultToJsChartData(res)
       showChart(data)
       var urldiv = document.getElementById('url')
-      urldiv.innerHTML = "<a href='browse?url=" + url + "'>" + url + "</a>"
+      urldiv.innerHTML = "<a href='browse?url=" + url + "'>" + url + "</a> (<a href='data/" + url +"'>json</a>)"
     }).catch(err => { throw err })
   } else {
     var urldiv = document.getElementById('url')
@@ -128,5 +128,6 @@ for (var i = 0; i < files.options.length; i++) {
 fortio_load(files.value)
 </script>
 {{end}}
+<p>Go to <a href='./'>Top</a>.</p>
 </body>
 </html>

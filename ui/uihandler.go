@@ -322,8 +322,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Fatalf("Unable to json serialize result: %v", err)
 		}
 		savedAs := ""
+		id := res.Result().ID()
 		if DoSave {
-			savedAs = SaveJSON(res.Result().ID(), json)
+			savedAs = SaveJSON(id, json)
 		}
 		if JSONOnly {
 			w.Header().Set("Content-Type", "application/json")
@@ -335,7 +336,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if savedAs != "" {
 			// nolint: errcheck, gas
-			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>\n", savedAs, savedAs)))
+			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
+				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}
 		// nolint: errcheck, gas
 		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
@@ -343,7 +345,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			1000.*res.Result().DurationHistogram.Avg,
 			res.Result().ActualQPS)))
 		ResultToJsData(w, json)
-		w.Write([]byte("</script></body></html>\n")) // nolint: gas
+		w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n")) // nolint: gas
 	}
 }
 
