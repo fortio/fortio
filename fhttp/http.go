@@ -1113,6 +1113,9 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if r.FormValue("close") != "" {
+		w.Header().Set("Connection", "close")
+	}
 	size := generateSize(r.FormValue("size"))
 	if size >= 0 {
 		log.Errf("Writing %d size with %d status", size, status)
