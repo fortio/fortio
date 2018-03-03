@@ -86,8 +86,9 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
-	h.ResetHeaders()
-	h.extraHeaders.Add("User-Agent", userAgent)
+	if h.extraHeaders == nil { // not already initialized from flags.
+		h.InitHeaders()
+	}
 	h.URLSchemeCheck()
 	return h
 }
@@ -152,6 +153,12 @@ func (h *HTTPOptions) ResetHeaders() {
 	h.hostOverride = ""
 }
 
+// InitHeaders initialize and/or resets the default headers.
+func (h *HTTPOptions) InitHeaders() {
+	h.ResetHeaders()
+	h.extraHeaders.Add("User-Agent", userAgent)
+}
+
 // GetHeaders returns the current set of headers.
 func (h *HTTPOptions) GetHeaders() http.Header {
 	if h.hostOverride == "" {
@@ -164,7 +171,11 @@ func (h *HTTPOptions) GetHeaders() http.Header {
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
 func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
-	h.Init(h.URL)
+	// This function can be called from the flag settings, before we have a URL
+	// so we can't just call h.Init(h.URL)
+	if h.extraHeaders == nil {
+		h.InitHeaders()
+	}
 	s := strings.SplitN(hdr, ":", 2)
 	if len(s) != 2 {
 		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
@@ -345,7 +356,7 @@ type FastClient struct {
 
 // Close cleans up any resources used by FastClient
 func (c *FastClient) Close() {
-	log.Debugf("Closing %+v", c)
+	log.Debugf("Closing %p %s", c, c.url)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
 			log.Warnf("Error closing fast client's socket: %v", err)
