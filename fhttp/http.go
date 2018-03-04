@@ -710,7 +710,7 @@ func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 					c.errorCount++
 					err = conn.Close() // close the previous one
 					if err != nil {
-						log.Warnf("Error closing dead socket %v", *conn)
+						log.Warnf("Error closing dead socket %v: %v", *conn, err)
 					}
 					c.code = -2 // special "retry once" code
 					return
