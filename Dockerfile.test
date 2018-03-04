@@ -2,4 +2,3 @@
 FROM istio/fortio.build:v6
 WORKDIR /go/src/istio.io
 COPY . fortio
-RUN make submodule-sync
