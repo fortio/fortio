@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: istio/fortio.build:v5
+      - image: istio/fortio.build:v6
     working_directory: /go/src/istio.io/fortio
     steps:
       - setup_remote_docker:
