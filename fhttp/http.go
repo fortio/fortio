@@ -1136,7 +1136,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	size := generateSize(r.FormValue("size"))
 	if size >= 0 {
-		log.Errf("Writing %d size with %d status", size, status)
+		log.LogVf("Writing %d size with %d status", size, status)
 		writePayload(w, status, size)
 		return
 	}
