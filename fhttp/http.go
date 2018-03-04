@@ -1190,35 +1190,41 @@ func closingServer(listener net.Listener) error {
 	return err
 }
 
-// DynamicHTTPServer listens on an available port, sets up an http or https
-// (when secure is true) server on it and returns the listening port and
-// mux to which one can attach handlers to.
-// TODO: merge/refactor/share with Serve()
-func DynamicHTTPServer(secure bool) (int, *http.ServeMux) {
+// HTTPServer creates an http server named name on address/port port.
+// Port can include binding address and/or be port 0.
+func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 	m := http.NewServeMux()
 	s := &http.Server{
 		Handler: m,
 	}
-	listener, err := net.Listen("tcp", ":0") // nolint: gas
-	if err != nil {
-		log.Fatalf("Unable to listen to dynamic port: %v", err)
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	log.Infof("Using port: %d", port)
+	listener, addr := fnet.Listen(name, port)
 	go func() {
-		var err error
-		if secure {
-			log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
-			//err = http.ServeTLS(listener, nil, "", "") // go 1.9
-			err = closingServer(listener)
-		} else {
-			err = s.Serve(listener)
-		}
+		err := s.Serve(listener)
 		if err != nil {
-			log.Fatalf("Unable to serve with secure=%v on %d: %v", secure, port, err)
+			log.Fatalf("Unable to serve %s on %s: %v", name, addr.String(), err)
 		}
 	}()
-	return port, m
+	return m, addr
+}
+
+// DynamicHTTPServer listens on an available port, sets up an http or https
+// (when secure is true) server on it and returns the listening port and
+// mux to which one can attach handlers to.
+// TODO: make signature consistent ?
+func DynamicHTTPServer(closing bool) (int, *http.ServeMux) {
+	if !closing {
+		mux, addr := HTTPServer("dynamic", ":0")
+		return addr.Port, mux
+	}
+	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
+	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
+	listener, addr := fnet.Listen("closing server", ":0")
+	//err = http.ServeTLS(listener, nil, "", "") // go 1.9
+	err := closingServer(listener)
+	if err != nil {
+		log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
+	}
+	return addr.Port, nil
 }
 
 /*
@@ -1345,21 +1351,10 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 // input for dynamic http server.
 func Serve(port, debugPath string) *net.TCPAddr {
 	startTime = time.Now()
-	nPort := fnet.NormalizePort(port)
-	listener, err := net.Listen("tcp", nPort)
-	if err != nil {
-		log.Fatalf("Error occurred while listening %v: %v", nPort, err)
+	mux, addr := HTTPServer("echo", port)
+	if debugPath != "" {
+		mux.HandleFunc(debugPath, DebugHandler)
 	}
-	addr := listener.Addr().(*net.TCPAddr)
-	fmt.Printf("Fortio %s echo server listening on %s\n", version.Short(), addr.String())
-	go func() {
-		if debugPath != "" {
-			http.HandleFunc(debugPath, DebugHandler)
-		}
-		http.HandleFunc("/", EchoHandler)
-		if err := http.Serve(listener, nil); err != nil {
-			fmt.Println("Error starting server", err)
-		}
-	}()
+	mux.HandleFunc("/", EchoHandler)
 	return addr
 }

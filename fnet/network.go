@@ -15,7 +15,12 @@
 package fnet // import "istio.io/fortio/fnet"
 
 import (
+	"fmt"
+	"log"
+	"net"
 	"strings"
+
+	"istio.io/fortio/version"
 )
 
 // NormalizePort parses port and returns host:port if port is in the form
@@ -25,4 +30,25 @@ func NormalizePort(port string) string {
 		return port
 	}
 	return ":" + port
+}
+
+// Listen returns a listener for the port. Port can be a port or a
+// bind address and a port (e.g. "8080" or "[::1]:8080"...). If the
+// port component is 0 a free port will be returned by the system.
+func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
+	nPort := NormalizePort(port)
+	listener, err := net.Listen("tcp", nPort)
+	if err != nil {
+		log.Fatalf("Error occurred while listening %v: %v", nPort, err)
+	}
+	addr := listener.Addr().(*net.TCPAddr)
+	if len(name) > 0 {
+		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, addr.String())
+	}
+	return listener, addr
+}
+
+// Proxy starts a tcp proxy.
+func Proxy(port string) {
+
 }
