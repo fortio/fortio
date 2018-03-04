@@ -44,7 +44,7 @@ func TestHTTPRunner(t *testing.T) {
 		t.Error("Expecting an error but didn't get it when not using full url")
 	}
 	opts.DisableFastClient = false
-	opts.URL = baseURL + "foo/bar?delay=2s&status=200:100"
+	opts.URL = baseURL + "foo/bar?delay=20ms&status=200:100"
 	opts.Profiler = "test.profile"
 	res, err := RunHTTPTest(&opts)
 	if err != nil {

@@ -1220,10 +1220,12 @@ func DynamicHTTPServer(closing bool) (int, *http.ServeMux) {
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
 	listener, addr := fnet.Listen("closing server", ":0")
 	//err = http.ServeTLS(listener, nil, "", "") // go 1.9
-	err := closingServer(listener)
-	if err != nil {
-		log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
-	}
+	go func() {
+		err := closingServer(listener)
+		if err != nil {
+			log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
+		}
+	}()
 	return addr.Port, nil
 }
 

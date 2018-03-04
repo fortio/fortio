@@ -166,10 +166,12 @@ func main() {
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
+		// To get a start time log/timestamp in the logs
+		log.Infof("All fortio %s servers starting!", version.Long())
 		if *redirectFlag != "disabled" {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
+		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
