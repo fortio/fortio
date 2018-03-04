@@ -52,9 +52,10 @@ Headers: <br />
 {{end}}{{end}} <!-- 2 extra header lines, TODO: add a JS 'more headers' button -->
 <input type="text" name="H" size=40 value="" /> <br />
 <input type="text" name="H" size=40 value="" /> <br />
-http: <input type="radio" name="runner" value="http" checked/>,
-grpc: <input type="radio" name="runner" value="grpc"/><br/>
-Use secure transport (tls) for GRPC <input type="checkbox" name="grpc-secure"/><br/>
+Use standard go client instead of fastclient <input type="checkbox" name="stdclient"/> <br />
+Load using http: <input type="radio" name="runner" value="http" checked/> or
+grpc: <input type="radio" name="runner" value="grpc"/>
+(grpc secure transport (tls): <input type="checkbox" name="grpc-secure"/>) <br />
 JSON output: <input type="checkbox" name="json" />,
 Save output: <input type="checkbox" name="save" checked /> <br />
 <input type="submit" name="load" value="Start"/>
