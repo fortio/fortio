@@ -99,7 +99,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		RetCodes: make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
-
+	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
 		conn, err := Dial(o.Destination, o.Secure)
@@ -157,7 +157,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 	}
 	for _, k := range keys {
-		fmt.Printf("Health %s : %d\n", k.String(), total.RetCodes[k])
+		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
 	}
 	return &total, nil
 }

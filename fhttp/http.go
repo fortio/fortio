@@ -48,7 +48,8 @@ type Fetcher interface {
 	// headers)
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
-	Close()
+	// returns how many sockets have been used (Fastclient only)
+	Close() int
 }
 
 var (
@@ -226,7 +227,7 @@ type Client struct {
 }
 
 // Close cleans up any resources used by NewStdClient
-func (c *Client) Close() {
+func (c *Client) Close() int {
 	log.Debugf("Close() on %+v", c)
 	if c.req != nil {
 		if c.req.Body != nil {
@@ -239,6 +240,7 @@ func (c *Client) Close() {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
+	return 0 // TODO: find a way to track std client socket usage.
 }
 
 // ChangeURL only for standard client, allows fetching a different URL
@@ -339,6 +341,7 @@ type FastClient struct {
 	req          []byte
 	dest         net.TCPAddr
 	socket       *net.TCPConn
+	socketCount  int
 	size         int
 	code         int
 	errorCount   int
@@ -355,14 +358,15 @@ type FastClient struct {
 }
 
 // Close cleans up any resources used by FastClient
-func (c *FastClient) Close() {
-	log.Debugf("Closing %p %s", c, c.url)
+func (c *FastClient) Close() int {
+	log.Debugf("Closing %p %s socket count %d", c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
 			log.Warnf("Error closing fast client's socket: %v", err)
 		}
 		c.socket = nil
 	}
+	return c.socketCount
 }
 
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
@@ -593,6 +597,7 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 
 // connect to destination.
 func (c *FastClient) connect() *net.TCPConn {
+	c.socketCount++
 	socket, err := net.DialTCP("tcp", nil, &c.dest)
 	if err != nil {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
@@ -627,7 +632,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	} else {
 		log.Debugf("Reusing socket %v", *conn)
 	}
-	c.socket = nil // because of error returns
+	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	n, err := conn.Write(c.req)
@@ -654,7 +659,11 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
 	}
 	// Read the response:
-	c.readResponse(conn)
+	c.readResponse(conn, reuse)
+	if c.code == -2 {
+		// Special "eof on reused socket" code
+		return c.Fetch() // recurse once
+	}
 	// Return the result:
 	return c.returnRes()
 }
@@ -679,7 +688,7 @@ func DebugSummary(buf []byte, max int) string {
 
 // Response reading:
 // TODO: refactor - unwiedly/ugly atm
-func (c *FastClient) readResponse(conn *net.TCPConn) {
+func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
 	// TODO: safer to start with -1 and fix ok for http 1.0
@@ -694,14 +703,22 @@ func (c *FastClient) readResponse(conn *net.TCPConn) {
 		// TODO: need automated tests
 		if !skipRead {
 			n, err := conn.Read(c.buffer[c.size:])
-			if err == io.EOF {
-				if c.size == 0 {
-					log.Errf("EOF before reading anything on %v %v", conn, c.dest)
-					c.code = -1
-				}
-				break
-			}
 			if err != nil {
+				if reusedSocket && c.size == 0 {
+					// Ok for reused socket to be dead once (close by server)
+					log.Infof("Closing dead socket %v (err %v at first read)", *conn, err)
+					c.errorCount++
+					err = conn.Close() // close the previous one
+					if err != nil {
+						log.Warnf("Error closing dead socket %v", *conn)
+					}
+					c.code = -2 // special "retry once" code
+					return
+				}
+				if err == io.EOF && c.size != 0 {
+					// handled below as possibly normal end of stream after we read something
+					break
+				}
 				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
 				c.code = -1
 				break
@@ -1114,6 +1131,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if r.FormValue("close") != "" {
+		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
 	size := generateSize(r.FormValue("size"))
