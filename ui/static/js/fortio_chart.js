@@ -87,7 +87,11 @@ function formatDate (dStr) {
 function makeTitle (res) {
   var title = []
   if (res.Labels !== '') {
-    title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
+    if (res.URL) { // http results
+        title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
+    } else { // grpc results
+        title.push(res.Labels + ' - ' + res.Destination + ' - ' + formatDate(res.StartTime))
+    }
   }
   var percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
   if (res.DurationHistogram.Percentiles) {
@@ -97,12 +101,15 @@ function makeTitle (res) {
     }
   }
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
-  var httpOk = res.RetCodes[200]
+  var statusOk = res.RetCodes[200]
+  if (!statusOk) { // grpc results
+    statusOk = res.RetCodes[1]
+  }
   var total = res.DurationHistogram.Count
   var errStr = 'no error'
-  if (httpOk !== total) {
-    if (httpOk) {
-      errStr = myRound(100.0 * (total - httpOk) / total, 2) + '% errors'
+  if (statusOk !== total) {
+    if (statusOk) {
+      errStr = myRound(100.0 * (total - statusOk) / total, 2) + '% errors'
     } else {
       errStr = '100% errors!'
     }
