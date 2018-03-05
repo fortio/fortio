@@ -1204,8 +1204,7 @@ func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 // TODO: make signature consistent ?
 func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	if !closing {
-		mux, addr := HTTPServer("dynamic", "0")
-		return mux, addr
+		return HTTPServer("dynamic", "0")
 	}
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
