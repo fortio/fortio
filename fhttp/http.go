@@ -1206,10 +1206,11 @@ func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 	return m, addr
 }
 
-// DynamicHTTPServer listens on an available port, sets up an http or https
-// (when secure is true) server on it and returns the listening port and
-// mux to which one can attach handlers to.
-// TODO: make signature consistent ?
+// DynamicHTTPServer listens on an available port, sets up an http or a closing
+// server simulating an https server (when closing is true) server on it and
+// returns the listening port and mux to which one can attach handlers to.
+// Note: in a future version of istio, the closing will be actually be secure
+// on/off and create an https server instead of a closing server.
 func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	if !closing {
 		return HTTPServer("dynamic", "0")
