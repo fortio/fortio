@@ -493,11 +493,11 @@ func TestGenerateSize(t *testing.T) {
 // Many of the earlier http tests are through httprunner but new tests should go here
 
 func TestEchoBack(t *testing.T) {
-	p, m := DynamicHTTPServer(false)
+	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
 	v := url.Values{}
 	v.Add("foo", "bar")
-	url := fmt.Sprintf("http://localhost:%d/", p)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
 	resp, err := http.PostForm(url, v)
 	if err != nil {
 		t.Fatalf("post form err %v", err)
@@ -527,9 +527,9 @@ func delayedChunkedSize(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestNoFirstChunkSizeInitially(t *testing.T) {
-	p, m := DynamicHTTPServer(false)
+	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", delayedChunkedSize)
-	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", p)
+	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", a.Port)
 	o := HTTPOptions{URL: url}
 	client := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
@@ -562,10 +562,10 @@ func TestInvalidRequest(t *testing.T) {
 }
 
 func TestPayloadSizeSmall(t *testing.T) {
-	p, m := DynamicHTTPServer(false)
+	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
 	for _, size := range []int{768, 0, 1} {
-		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", p, size)
+		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", a.Port, size)
 		o := HTTPOptions{URL: url}
 		client := NewClient(&o)
 		code, data, header := client.Fetch() // used to panic/bug #127
@@ -580,11 +580,11 @@ func TestPayloadSizeSmall(t *testing.T) {
 }
 
 func TestPayloadSizeLarge(t *testing.T) {
-	p, m := DynamicHTTPServer(false)
+	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
 	//basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
 	size := 200000
-	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", p, size)
+	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", a.Port, size)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
@@ -598,9 +598,9 @@ func TestPayloadSizeLarge(t *testing.T) {
 }
 
 func TestDebugHandlerSortedHeaders(t *testing.T) {
-	p, m := DynamicHTTPServer(false)
+	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/debug", DebugHandler)
-	url := fmt.Sprintf("http://localhost:%d/debug", p)
+	url := fmt.Sprintf("http://localhost:%d/debug", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	o.AddAndValidateExtraHeader("BBB: bbb")
 	o.AddAndValidateExtraHeader("CCC: ccc")
@@ -624,7 +624,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 		"Ccc: ccc\n"+
 		"User-Agent: %s\n"+
 		"Zzz: zzz\n\n"+
-		"body:\n\n\n", p, userAgent)
+		"body:\n\n\n", a.Port, userAgent)
 	if body != expected {
 		t.Errorf("Get body: %s not as expected: %s", body, expected)
 	}

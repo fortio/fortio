@@ -40,7 +40,6 @@ import (
 
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
-	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
@@ -852,9 +851,8 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
 	baseURL = baseurl
 	startTime = time.Now()
-	hostPort := fnet.NormalizePort(port)
+	mux, addr := fhttp.Serve(port, debugpath)
 	if uipath == "" {
-		fhttp.Serve(hostPort, debugpath)
 		return
 	}
 	uiPath = uipath
@@ -864,9 +862,9 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiPath += "/"
 	}
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
-	http.HandleFunc(uiPath, Handler)
+	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
-	http.HandleFunc(fetchPath, FetcherHandler)
+	mux.HandleFunc(fetchPath, FetcherHandler)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	logoPath = version.Short() + "/static/img/logo.svg"
@@ -881,8 +879,8 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	if staticRsrcDir != "" {
 		fs := http.FileServer(http.Dir(staticRsrcDir))
 		prefix := uiPath + version.Short()
-		http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
-		http.Handle(faviconPath, LogAndAddCacheControl(fs))
+		mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+		mux.Handle(faviconPath, LogAndAddCacheControl(fs))
 		var err error
 		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"))
 		if err != nil {
@@ -892,22 +890,21 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		if err != nil {
 			log.Critf("Unable to parse browse template: %v", err)
 		} else {
-			http.HandleFunc(uiPath+"browse", BrowseHandler)
+			mux.HandleFunc(uiPath+"browse", BrowseHandler)
 		}
 		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"))
 		if err != nil {
 			log.Critf("Unable to parse sync template: %v", err)
 		} else {
-			http.HandleFunc(uiPath+"sync", SyncHandler)
+			mux.HandleFunc(uiPath+"sync", SyncHandler)
 		}
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))
-		http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
+		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	addr := fhttp.Serve(hostPort, debugpath)
-	setHostAndPort(hostPort, addr)
-	uiMsg := fmt.Sprintf("UI starting - visit:\nhttp://%s%s", urlHostPort, uiPath)
+	setHostAndPort(port, addr)
+	uiMsg := fmt.Sprintf("UI started - visit:\nhttp://%s%s", urlHostPort, uiPath)
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
 	}
@@ -921,9 +918,9 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	http.DefaultServeMux = http.NewServeMux() // drop the pprof default handlers
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
-	hostPort := fnet.NormalizePort(port)
-	setHostAndPort(hostPort, nil)
-	uiMsg := fmt.Sprintf("Browse only UI starting - visit:\nhttp://%s/", urlHostPort)
+	mux, addr := fhttp.HTTPServer("report", port)
+	setHostAndPort(port, addr)
+	uiMsg := fmt.Sprintf("Browse only UI started - visit:\nhttp://%s/", urlHostPort)
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
 	}
@@ -935,20 +932,17 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	staticRsrcDir = getResourcesDir(staticRsrcDir)
 	fs := http.FileServer(http.Dir(staticRsrcDir))
 	prefix := uiPath + version.Short()
-	http.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
-	http.Handle(faviconPath, LogAndAddCacheControl(fs))
+	mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	mux.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
 	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
 	if err != nil {
 		log.Critf("Unable to parse browse template: %v", err)
 	} else {
-		http.HandleFunc(uiPath, BrowseHandler)
+		mux.HandleFunc(uiPath, BrowseHandler)
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
-	http.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-	if err := http.ListenAndServe(hostPort, nil); err != nil {
-		log.Critf("Error starting report server: %v", err)
-	}
+	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 }
 
 // -- Redirection to https feature --
@@ -963,17 +957,8 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
 func RedirectToHTTPS(port string) {
-	m := http.NewServeMux()
+	m, _ := fhttp.HTTPServer("https redirector", port)
 	m.HandleFunc("/", RedirectToHTTPSHandler)
-	s := &http.Server{
-		Addr:    fnet.NormalizePort(port),
-		Handler: m,
-	}
-	fmt.Printf("Https redirector running on %v\n", s.Addr)
-	if err := s.ListenAndServe(); err != nil {
-		log.Critf("Error starting redirect server: %v", err)
-	}
-	fmt.Printf("Not reached, https redirector exiting - was on %v\n", s.Addr)
 }
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,

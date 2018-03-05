@@ -1211,10 +1211,10 @@ func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 // (when secure is true) server on it and returns the listening port and
 // mux to which one can attach handlers to.
 // TODO: make signature consistent ?
-func DynamicHTTPServer(closing bool) (int, *http.ServeMux) {
+func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	if !closing {
 		mux, addr := HTTPServer("dynamic", ":0")
-		return addr.Port, mux
+		return mux, addr
 	}
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
@@ -1226,7 +1226,7 @@ func DynamicHTTPServer(closing bool) (int, *http.ServeMux) {
 			log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
 		}
 	}()
-	return addr.Port, nil
+	return nil, addr
 }
 
 /*
@@ -1348,15 +1348,15 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve starts a debug / echo http server on the given port.
-// Returns the addr where the listening socket is bound.
+// Returns the mux and addr where the listening socket is bound.
 // The .Port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
-func Serve(port, debugPath string) *net.TCPAddr {
+func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	startTime = time.Now()
 	mux, addr := HTTPServer("echo", port)
 	if debugPath != "" {
 		mux.HandleFunc(debugPath, DebugHandler)
 	}
 	mux.HandleFunc("/", EchoHandler)
-	return addr
+	return mux, addr
 }

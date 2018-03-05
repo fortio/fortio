@@ -31,9 +31,9 @@ import (
 )
 
 func TestHTTPRunner(t *testing.T) {
-	port, mux := DynamicHTTPServer(false)
+	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", EchoHandler)
-	baseURL := fmt.Sprintf("http://localhost:%d/", port)
+	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 
 	opts := HTTPRunnerOptions{}
 	opts.QPS = 100
@@ -79,9 +79,9 @@ func TestHTTPRunner(t *testing.T) {
 func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	ngBefore1 := runtime.NumGoroutine()
 	t.Logf("Number go routine before test %d", ngBefore1)
-	port, mux := DynamicHTTPServer(false)
+	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo100", EchoHandler)
-	url := fmt.Sprintf("http://localhost:%d/echo100", port)
+	url := fmt.Sprintf("http://localhost:%d/echo100", addr.Port)
 	numCalls := 100
 	opts.NumThreads = numCalls / 2 // make 2 calls per thread
 	opts.Exactly = int64(numCalls)
@@ -134,9 +134,9 @@ func TestHttpNotLeakingStdClient(t *testing.T) {
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
-	port, mux := DynamicHTTPServer(false)
+	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo1/", EchoHandler)
-	URL := fmt.Sprintf("http://localhost:%d/echo1/", port)
+	URL := fmt.Sprintf("http://localhost:%d/echo1/", addr.Port)
 
 	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
@@ -156,9 +156,9 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 }
 
 func TestClosingAndSocketCount(t *testing.T) {
-	port, mux := DynamicHTTPServer(false)
+	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo42/", EchoHandler)
-	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=1", port)
+	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=1", addr.Port)
 	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
 	opts.QPS = 10
@@ -185,8 +185,8 @@ func TestClosingAndSocketCount(t *testing.T) {
 func TestHTTPRunnerBadServer(t *testing.T) {
 	// Using http to an https server (or the current 'close all' dummy https server)
 	// should fail:
-	port, _ := DynamicHTTPServer(true)
-	baseURL := fmt.Sprintf("http://localhost:%d/", port)
+	_, addr := DynamicHTTPServer(true)
+	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 
 	opts := HTTPRunnerOptions{}
 	opts.QPS = 10
@@ -202,7 +202,7 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 // the error test for / url above fail:
 
 func TestServe(t *testing.T) {
-	addr := Serve("0", "/debugx1")
+	_, addr := Serve("0", "/debugx1")
 	port := addr.Port
 	log.Infof("On addr %s found port: %d", addr, port)
 	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
