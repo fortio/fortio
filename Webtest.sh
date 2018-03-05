@@ -5,10 +5,11 @@ make docker-internal TAG=webtest || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=20 # must be low to detect leaks
 LOGLEVEL=info # change to debug to debug
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name fortio_server istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
+DOCKERNAME=fortio_server
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
 function cleanup {
   docker stop $DOCKERID
-  docker rm fortio_server
+  docker rm $DOCKERNAME
 }
 trap cleanup EXIT
 set -e
@@ -16,7 +17,7 @@ set -o pipefail
 docker ps
 BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
-CURL="docker exec fortio_server /usr/local/bin/fortio load -curl -loglevel $LOGLEVEL"
+CURL="docker exec $DOCKERNAME /usr/local/bin/fortio curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://istio.io/robots.txt
 # Check that browse doesn't 404s
@@ -28,7 +29,7 @@ $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:
 # Check we can connect, and run a grpc QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"1": 100'
 # Check we get the logo (need to remove the CR from raw headers)
-VERSION=$(docker exec fortio_server /usr/local/bin/fortio version -s)
+VERSION=$(docker exec $DOCKERNAME /usr/local/bin/fortio version -s)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
@@ -43,11 +44,28 @@ fi
 # Check the main page
 $CURL $BASE_FORTIO
 # Do a small http load using std client
-docker exec fortio_server /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
+docker exec $DOCKERNAME /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal and with custom headers
-docker exec fortio_server /usr/local/bin/fortio load -H Foo:Bar -H Blah:Blah -qps 1 -t 2s -c 2 http://www.google.com/
+docker exec $DOCKERNAME /usr/local/bin/fortio load -H Foo:Bar -H Blah:Blah -qps 1 -t 2s -c 2 http://www.google.com/
 # Do a grpcping
-docker exec fortio_server /usr/local/bin/fortio grpcping localhost
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 # Do a grpcping to a scheme-prefixed destination
-docker exec fortio_server /usr/local/bin/fortio grpcping https://fortio.istio.io:443
-# TODO: check report mode and pprof
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping https://fortio.istio.io:443
+# pprof should be there, no 404/error
+PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
+$CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
+# switch to report mode
+docker stop $DOCKERID
+docker rm $DOCKERNAME
+DOCKERNAME=fortio_report
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest report -loglevel $LOGLEVEL)
+docker ps
+CURL="docker exec $DOCKERNAME /usr/local/bin/fortio curl -loglevel $LOGLEVEL"
+if $CURL $PPROF_URL ; then
+  echo "pprof should 404 on report mode!"
+  exit 1
+else
+  echo "expected pprof failure to access in report mode - good !"
+fi
+# base url should serve report only UI in report mode
+$CURL $BASE_URL | grep "report only limited UI"

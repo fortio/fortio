@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"path"
@@ -845,6 +846,23 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
 }
 
+// LogAndCall wrapps an HTTP handler to log the request first.
+func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r, msg)
+		hf(w, r)
+	})
+}
+
+// SetupPPROF add pprof to the mux (mirror the init() of http pprof).
+func SetupPPROF(mux *http.ServeMux) {
+	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
@@ -855,6 +873,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	if uipath == "" {
 		return
 	}
+	SetupPPROF(mux)
 	uiPath = uipath
 	dataDir = datadir
 	if uiPath[len(uiPath)-1] != '/' {
@@ -909,13 +928,13 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiMsg += "   (or any host/ip reachable on this server)"
 	}
 	fmt.Printf(uiMsg + "\n")
-
 }
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
 func Report(baseurl, port, staticRsrcDir string, datadir string) {
-	http.DefaultServeMux = http.NewServeMux() // drop the pprof default handlers
+	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
+	http.DefaultServeMux = http.NewServeMux()
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	mux, addr := fhttp.HTTPServer("report", port)
@@ -962,13 +981,16 @@ func RedirectToHTTPS(port string) {
 }
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
-// sets the urlHostPort variable and returns hostport unmodified.
+// sets the urlHostPort variable.
 func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	urlHostPort = inputPort
 	portStr := inputPort
 	if addr != nil {
 		urlHostPort = addr.String()
 		portStr = fmt.Sprintf(":%d", addr.Port)
+	}
+	if strings.Index(inputPort, ":") == -1 {
+		inputPort = ":" + inputPort
 	}
 	if strings.HasPrefix(inputPort, ":") {
 		urlHostPort = "localhost" + portStr
