@@ -989,7 +989,7 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 		urlHostPort = addr.String()
 		portStr = fmt.Sprintf(":%d", addr.Port)
 	}
-	if strings.Index(inputPort, ":") == -1 {
+	if !strings.Contains(inputPort, ":") {
 		inputPort = ":" + inputPort
 	}
 	if strings.HasPrefix(inputPort, ":") {
