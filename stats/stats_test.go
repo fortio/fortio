@@ -683,6 +683,16 @@ func TestParsePercentiles(t *testing.T) {
 	}
 }
 
+func TestEmptyPercentilesExport(t *testing.T) {
+	h := NewHistogram(0, 1)
+	h.Record(15)
+	h.Record(20)
+	hData := h.Export()
+	if hData.Percentiles == nil {
+		t.Errorf("Export is broken. Percentiles must not be null. Expected is empty array. Got %v", hData)
+	}
+}
+
 func TestRound(t *testing.T) {
 	var tests = []struct {
 		input    float64
