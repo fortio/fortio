@@ -53,3 +53,14 @@ func TestNormalizePort(t *testing.T) {
 		}
 	}
 }
+
+func TestListen(t *testing.T) {
+	l, a := Listen("test listen", "0")
+	if l == nil || a == nil {
+		t.Fatalf("Unexpected nil in Listen() %v %v", l, a)
+	}
+	if a.Port == 0 {
+		t.Errorf("Unexpected 0 port after listen %+v", a)
+	}
+	_ = l.Close() // nolint: gas
+}

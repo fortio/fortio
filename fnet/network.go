@@ -35,6 +35,9 @@ func NormalizePort(port string) string {
 // Listen returns a listener for the port. Port can be a port or a
 // bind address and a port (e.g. "8080" or "[::1]:8080"...). If the
 // port component is 0 a free port will be returned by the system.
+// This logs fatal on error and is meant for servers that must start.
+// For library use, we could extract into 2 functions, one returning
+// error,... if needed.
 func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	nPort := NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
@@ -49,6 +52,8 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 }
 
 // Proxy starts a tcp proxy.
+/*
 func Proxy(port string) {
 
 }
+*/
