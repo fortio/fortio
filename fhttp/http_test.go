@@ -497,7 +497,7 @@ func TestEchoBack(t *testing.T) {
 	m.HandleFunc("/", EchoHandler)
 	v := url.Values{}
 	v.Add("foo", "bar")
-	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	url := fmt.Sprintf("http://localhost:%d/?delay=2s", a.Port) // trigger max delay
 	resp, err := http.PostForm(url, v)
 	if err != nil {
 		t.Fatalf("post form err %v", err)
