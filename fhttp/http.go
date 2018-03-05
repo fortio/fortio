@@ -395,21 +395,12 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		bc.port = url.Scheme // ie http which turns into 80 later
 		log.LogVf("No port specified, using %s", bc.port)
 	}
-	addrs, err := net.LookupIP(bc.hostname)
-	if err != nil {
-		log.Errf("Unable to lookup '%s' : %v", bc.host, err)
+	addr := fnet.Resolve(bc.hostname, bc.port)
+	if addr == nil {
+		// Error already logged
 		return nil
 	}
-	if len(addrs) > 1 && log.LogDebug() {
-		log.Debugf("Using only the first of the addresses for %s : %v", bc.host, addrs)
-	}
-	log.Debugf("Will go to %s", addrs[0])
-	bc.dest.IP = addrs[0]
-	bc.dest.Port, err = net.LookupPort("tcp", bc.port)
-	if err != nil {
-		log.Errf("Unable to resolve port '%s' : %v", bc.port, err)
-		return nil
-	}
+	bc.dest = *addr
 	// Create the bytes for the request:
 	host := bc.host
 	if o.hostOverride != "" {

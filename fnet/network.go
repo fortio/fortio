@@ -24,7 +24,7 @@ import (
 )
 
 // NormalizePort parses port and returns host:port if port is in the form
-// of host:port or :port if port is in the form of port.
+// of host:port already or :port if port is only a port (doesn't contain :).
 func NormalizePort(port string) string {
 	if strings.ContainsAny(port, ":") {
 		return port
@@ -51,8 +51,50 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	return listener, addr
 }
 
+// ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
+// nil in case of errors.
+func ResolveDestination(dest string) *net.TCPAddr {
+	i := strings.LastIndex(dest, ":")
+	if i < 0 {
+		log.Errf("Destination '%s' is not host:port format", dest)
+		return nil
+	}
+	host := dest[0:i]
+	port := dest[i+1:]
+	return Resolve(host, port)
+}
+
+// Resolve returns the TCP address of the host,port suitable for net.Dial.
+// nil in case of errors.
+func Resolve(host string, port string) *net.TCPAddr {
+	addrs, err := net.LookupIP(host)
+	if err != nil {
+		log.Errf("Unable to lookup '%s' : %v", host, err)
+		return nil
+	}
+	if len(addrs) > 1 && log.LogDebug() {
+		log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
+	}
+	log.Debugf("Will go to %s", addrs[0])
+	dest := &net.TCPAddr{}
+	dest.IP = addrs[0]
+	dest.Port, err = net.LookupPort("tcp", port)
+	if err != nil {
+		log.Errf("Unable to resolve port '%s' : %v", port, err)
+		return nil
+	}
+	return dest
+}
+
 /*
 // Proxy starts a tcp proxy.
-func Proxy(port string) {
+func Proxy(port string, dest *net.TCPAddr) {
+	l, a := Listen("proxy", port)
+	d, err := net.DialTCP("tcp", nil, dest)
+	if err != nil {
+		log.Errf("Unable to connect to %v : %v", dest, err)
+		return nil
+	}
+
 }
 */
