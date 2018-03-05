@@ -48,7 +48,8 @@ type Fetcher interface {
 	// headers)
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
-	Close()
+	// returns how many sockets have been used (Fastclient only)
+	Close() int
 }
 
 var (
@@ -86,8 +87,9 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
-	h.ResetHeaders()
-	h.extraHeaders.Add("User-Agent", userAgent)
+	if h.extraHeaders == nil { // not already initialized from flags.
+		h.InitHeaders()
+	}
 	h.URLSchemeCheck()
 	return h
 }
@@ -152,6 +154,12 @@ func (h *HTTPOptions) ResetHeaders() {
 	h.hostOverride = ""
 }
 
+// InitHeaders initialize and/or resets the default headers.
+func (h *HTTPOptions) InitHeaders() {
+	h.ResetHeaders()
+	h.extraHeaders.Add("User-Agent", userAgent)
+}
+
 // GetHeaders returns the current set of headers.
 func (h *HTTPOptions) GetHeaders() http.Header {
 	if h.hostOverride == "" {
@@ -164,7 +172,11 @@ func (h *HTTPOptions) GetHeaders() http.Header {
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
 func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
-	h.Init(h.URL)
+	// This function can be called from the flag settings, before we have a URL
+	// so we can't just call h.Init(h.URL)
+	if h.extraHeaders == nil {
+		h.InitHeaders()
+	}
 	s := strings.SplitN(hdr, ":", 2)
 	if len(s) != 2 {
 		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
@@ -215,7 +227,7 @@ type Client struct {
 }
 
 // Close cleans up any resources used by NewStdClient
-func (c *Client) Close() {
+func (c *Client) Close() int {
 	log.Debugf("Close() on %+v", c)
 	if c.req != nil {
 		if c.req.Body != nil {
@@ -228,6 +240,7 @@ func (c *Client) Close() {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
+	return 0 // TODO: find a way to track std client socket usage.
 }
 
 // ChangeURL only for standard client, allows fetching a different URL
@@ -328,6 +341,7 @@ type FastClient struct {
 	req          []byte
 	dest         net.TCPAddr
 	socket       *net.TCPConn
+	socketCount  int
 	size         int
 	code         int
 	errorCount   int
@@ -344,14 +358,15 @@ type FastClient struct {
 }
 
 // Close cleans up any resources used by FastClient
-func (c *FastClient) Close() {
-	log.Debugf("Closing %+v", c)
+func (c *FastClient) Close() int {
+	log.Debugf("Closing %p %s socket count %d", c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
 			log.Warnf("Error closing fast client's socket: %v", err)
 		}
 		c.socket = nil
 	}
+	return c.socketCount
 }
 
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
@@ -582,6 +597,7 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 
 // connect to destination.
 func (c *FastClient) connect() *net.TCPConn {
+	c.socketCount++
 	socket, err := net.DialTCP("tcp", nil, &c.dest)
 	if err != nil {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
@@ -600,9 +616,17 @@ func (c *FastClient) connect() *net.TCPConn {
 	return socket
 }
 
+// Extra error codes outside of the HTTP Status code ranges. ie negative.
+const (
+	// SocketError is return when a transport error occurred: unexpected EOF, connection error, etc...
+	SocketError = -1
+	// RetryOnce is used internally as an error code to allow 1 retry for bad socket reuse.
+	RetryOnce = -2
+)
+
 // Fetch fetches the url content. Returns http code, data, offset of body.
 func (c *FastClient) Fetch() (int, []byte, int) {
-	c.code = -1
+	c.code = SocketError
 	c.size = 0
 	c.headerLen = 0
 	// Connect or reuse existing socket:
@@ -616,7 +640,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	} else {
 		log.Debugf("Reusing socket %v", *conn)
 	}
-	c.socket = nil // because of error returns
+	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	n, err := conn.Write(c.req)
@@ -643,7 +667,11 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
 	}
 	// Read the response:
-	c.readResponse(conn)
+	c.readResponse(conn, reuse)
+	if c.code == RetryOnce {
+		// Special "eof on reused socket" code
+		return c.Fetch() // recurse once
+	}
 	// Return the result:
 	return c.returnRes()
 }
@@ -668,10 +696,10 @@ func DebugSummary(buf []byte, max int) string {
 
 // Response reading:
 // TODO: refactor - unwiedly/ugly atm
-func (c *FastClient) readResponse(conn *net.TCPConn) {
+func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
-	// TODO: safer to start with -1 and fix ok for http 1.0
+	// TODO: safer to start with -1 / SocketError and fix ok for http 1.0
 	c.code = http.StatusOK // In http 1.0 mode we don't bother parsing anything
 	endofHeadersStart := retcodeOffset + 3
 	keepAlive := c.keepAlive
@@ -683,16 +711,24 @@ func (c *FastClient) readResponse(conn *net.TCPConn) {
 		// TODO: need automated tests
 		if !skipRead {
 			n, err := conn.Read(c.buffer[c.size:])
-			if err == io.EOF {
-				if c.size == 0 {
-					log.Errf("EOF before reading anything on %v %v", conn, c.dest)
-					c.code = -1
-				}
-				break
-			}
 			if err != nil {
+				if reusedSocket && c.size == 0 {
+					// Ok for reused socket to be dead once (close by server)
+					log.Infof("Closing dead socket %v (err %v at first read)", *conn, err)
+					c.errorCount++
+					err = conn.Close() // close the previous one
+					if err != nil {
+						log.Warnf("Error closing dead socket %v: %v", *conn, err)
+					}
+					c.code = RetryOnce // special "retry once" code
+					return
+				}
+				if err == io.EOF && c.size != 0 {
+					// handled below as possibly normal end of stream after we read something
+					break
+				}
 				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
-				c.code = -1
+				c.code = SocketError
 				break
 			}
 			c.size += n
@@ -1102,9 +1138,13 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if r.FormValue("close") != "" {
+		log.Debugf("Adding Connection:close / will close socket")
+		w.Header().Set("Connection", "close")
+	}
 	size := generateSize(r.FormValue("size"))
 	if size >= 0 {
-		log.Errf("Writing %d size with %d status", size, status)
+		log.LogVf("Writing %d size with %d status", size, status)
 		writePayload(w, status, size)
 		return
 	}

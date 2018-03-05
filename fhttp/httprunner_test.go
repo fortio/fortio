@@ -56,6 +56,9 @@ func TestHTTPRunner(t *testing.T) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
+	if res.SocketCount != res.RunnerResults.NumThreads {
+		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
+	}
 	// Test raw client, should get warning about non init timeout:
 	rawOpts := HTTPOptions{
 		URL: opts.URL,
@@ -114,6 +117,12 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	if ngAfter > ngBefore2+5 {
 		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
 	}
+	if !opts.DisableFastClient {
+		// only fast client so far has a socket count
+		if res.SocketCount != res.RunnerResults.NumThreads {
+			t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
+		}
+	}
 }
 
 func TestHttpNotLeakingFastClient(t *testing.T) {
@@ -143,6 +152,33 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 	httpOk := res.RetCodes[http.StatusOK]
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+}
+
+func TestClosingAndSocketCount(t *testing.T) {
+	port, mux := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo42/", EchoHandler)
+	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=1", port)
+	opts := HTTPRunnerOptions{}
+	opts.Init(URL)
+	opts.QPS = 10
+	numReq := int64(50) // can't do too many without running out of fds on mac
+	opts.Exactly = numReq
+	opts.NumThreads = 5
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	totalReq := res.DurationHistogram.Count
+	if totalReq != numReq {
+		t.Errorf("Mismatch between requests %d and expected %d", totalReq, numReq)
+	}
+	httpOk := res.RetCodes[http.StatusOK]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+	if int64(res.SocketCount) != numReq {
+		t.Errorf("When closing, got %d while expected as many sockets as requests %d", res.SocketCount, numReq)
 	}
 }
 
