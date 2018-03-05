@@ -618,7 +618,7 @@ func (c *FastClient) connect() *net.TCPConn {
 
 // Extra error codes outside of the HTTP Status code ranges. ie negative.
 const (
-	// SocketError is return when a transport error occured: unexpected EOF, connection error, etc...
+	// SocketError is return when a transport error occurred: unexpected EOF, connection error, etc...
 	SocketError = -1
 	// RetryOnce is used internally as an error code to allow 1 retry for bad socket reuse.
 	RetryOnce = -2
