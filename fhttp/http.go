@@ -616,9 +616,17 @@ func (c *FastClient) connect() *net.TCPConn {
 	return socket
 }
 
+// Extra error codes outside of the HTTP Status code ranges. ie negative.
+const (
+	// SocketError is return when a transport error occured: unexpected EOF, connection error, etc...
+	SocketError = -1
+	// RetryOnce is used internally as an error code to allow 1 retry for bad socket reuse.
+	RetryOnce = -2
+)
+
 // Fetch fetches the url content. Returns http code, data, offset of body.
 func (c *FastClient) Fetch() (int, []byte, int) {
-	c.code = -1
+	c.code = SocketError
 	c.size = 0
 	c.headerLen = 0
 	// Connect or reuse existing socket:
@@ -660,7 +668,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	}
 	// Read the response:
 	c.readResponse(conn, reuse)
-	if c.code == -2 {
+	if c.code == RetryOnce {
 		// Special "eof on reused socket" code
 		return c.Fetch() // recurse once
 	}
@@ -691,7 +699,7 @@ func DebugSummary(buf []byte, max int) string {
 func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
-	// TODO: safer to start with -1 and fix ok for http 1.0
+	// TODO: safer to start with -1 / SocketError and fix ok for http 1.0
 	c.code = http.StatusOK // In http 1.0 mode we don't bother parsing anything
 	endofHeadersStart := retcodeOffset + 3
 	keepAlive := c.keepAlive
@@ -712,7 +720,7 @@ func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 					if err != nil {
 						log.Warnf("Error closing dead socket %v: %v", *conn, err)
 					}
-					c.code = -2 // special "retry once" code
+					c.code = RetryOnce // special "retry once" code
 					return
 				}
 				if err == io.EOF && c.size != 0 {
@@ -720,7 +728,7 @@ func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 					break
 				}
 				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
-				c.code = -1
+				c.code = SocketError
 				break
 			}
 			c.size += n
