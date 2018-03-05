@@ -16,10 +16,10 @@ package fnet // import "istio.io/fortio/fnet"
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 
+	"istio.io/fortio/log"
 	"istio.io/fortio/version"
 )
 
@@ -42,7 +42,7 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	nPort := NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
 	if err != nil {
-		log.Fatalf("Error occurred while listening %v: %v", nPort, err)
+		log.Fatalf("Can't listen to %v: %v", nPort, err)
 	}
 	addr := listener.Addr().(*net.TCPAddr)
 	if len(name) > 0 {
@@ -51,9 +51,8 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	return listener, addr
 }
 
-// Proxy starts a tcp proxy.
 /*
+// Proxy starts a tcp proxy.
 func Proxy(port string) {
-
 }
 */

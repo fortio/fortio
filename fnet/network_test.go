@@ -15,6 +15,7 @@
 package fnet // import "istio.io/fortio/fnet"
 
 import (
+	"strconv"
 	"testing"
 )
 
@@ -63,4 +64,23 @@ func TestListen(t *testing.T) {
 		t.Errorf("Unexpected 0 port after listen %+v", a)
 	}
 	_ = l.Close() // nolint: gas
+}
+
+func TestListenFailure(t *testing.T) {
+	reached := false
+	defer func(rp *bool) {
+		if r := recover(); r == nil {
+			t.Error("expected a panic from listen, didn't get one")
+		}
+		if !*rp {
+			t.Error("didn't reach expected statement")
+		}
+	}(&reached)
+	_, a1 := Listen("test listen1", "0")
+	if a1.Port == 0 {
+		t.Errorf("Unexpected 0 port after listen %+v", a1)
+	}
+	reached = true // last reached statement
+	_, _ = Listen("this should fail", strconv.Itoa(a1.Port))
+	t.Error("should not reach this")
 }
