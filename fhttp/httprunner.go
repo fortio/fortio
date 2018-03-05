@@ -43,6 +43,7 @@ type HTTPRunnerResults struct {
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
 	URL         string
+	SocketCount int
 }
 
 // Run tests http request fetching. Main call being run at the target QPS.
@@ -129,7 +130,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// unused ones. We also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
-		httpstate[i].client.Close()
+		total.SocketCount += httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {
@@ -142,6 +143,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 	sort.Ints(keys)
 	totalCount := float64(total.DurationHistogram.Count)
+	fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	for _, k := range keys {
 		fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
