@@ -17,7 +17,6 @@ package main
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -33,6 +32,7 @@ import (
 	"istio.io/fortio/stats"
 	"istio.io/fortio/ui"
 	"istio.io/fortio/version"
+	"istio.io/fortio/results"
 )
 
 var httpOpts fhttp.HTTPOptions
@@ -145,6 +145,10 @@ func main() {
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
+	filesList, err := results.ParseArgsForResultFiles(os.Args)
+	if err != nil {
+		usage("Unable to parse files from args: ", err)
+	}
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
 	if sync != "" {
@@ -176,6 +180,12 @@ func main() {
 		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 	case "grpcping":
 		grpcClient()
+	case "merge":
+		res, err := results.LoadResultFiles(filesList)
+		if err != nil {
+			os.Exit(1) // error logged already
+		}
+		results.MergeRunnerResults(res)
 	default:
 		usage("Error: unknown command ", command)
 	}
@@ -261,7 +271,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
 	}
-	var res periodic.HasRunnerResult
+	var res results.HasRunnerResult
 	var err error
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
@@ -294,35 +304,15 @@ func fortioLoad(justCurl bool, percList []float64) {
 		warmup,
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
+
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 {
-		var j []byte
-		j, err = json.MarshalIndent(res, "", "  ")
+		if len(jsonFileName) == 0 {
+			jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
+		}
+		n, err := results.SaveJSON(res, jsonFileName)
 		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		var f *os.File
-		if jsonFileName == "-" {
-			f = os.Stdout
-			jsonFileName = "stdout"
-		} else {
-			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
-			}
-			f, err = os.Create(jsonFileName)
-			if err != nil {
-				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
-			}
-		}
-		n, err := f.Write(append(j, '\n'))
-		if err != nil {
-			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
-		}
-		if f != os.Stdout {
-			err := f.Close()
-			if err != nil {
-				log.Fatalf("Close error for %s: %v", jsonFileName, err)
-			}
+			log.Fatalf("Unable to save results: %v", err)
 		}
 		fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}

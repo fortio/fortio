@@ -45,6 +45,7 @@ import (
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
 	"istio.io/fortio/version"
+	"istio.io/fortio/results"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)
@@ -294,7 +295,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if !JSONOnly {
 			flusher.Flush()
 		}
-		var res periodic.HasRunnerResult
+		var res results.HasRunnerResult
 		var err error
 		if runner == modegrpc {
 			o := fgrpc.GRPCRunnerOptions{

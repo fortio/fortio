@@ -125,14 +125,14 @@ func (c *Counter) Transfer(src *Counter) {
 var (
 	histogramBucketValues = []int32{
 		0, 1, 2, 3, 4, 5, 6,
-		7, 8, 9, 10, 11, // initially increment buckets by 1, my amp goes to 11 !
-		12, 14, 16, 18, 20, // then by 2
-		25, 30, 35, 40, 45, 50, // then by 5
-		60, 70, 80, 90, 100, // then by 10
-		120, 140, 160, 180, 200, // line3 *10
-		250, 300, 350, 400, 450, 500, // line4 *10
-		600, 700, 800, 900, 1000, // line5 *10
-		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsly covered
+		7, 8, 9, 10, 11,                           // initially increment buckets by 1, my amp goes to 11 !
+		12, 14, 16, 18, 20,                        // then by 2
+		25, 30, 35, 40, 45, 50,                    // then by 5
+		60, 70, 80, 90, 100,                       // then by 10
+		120, 140, 160, 180, 200,                   // line3 *10
+		250, 300, 350, 400, 450, 500,              // line4 *10
+		600, 700, 800, 900, 1000,                  // line5 *10
+		2000, 3000, 4000, 5000, 7500, 10000,       // another order of magnitude coarsely covered
 		20000, 30000, 40000, 50000, 75000, 100000, // ditto, the end
 	}
 	numValues  = len(histogramBucketValues)

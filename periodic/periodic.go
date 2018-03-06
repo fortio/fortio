@@ -34,6 +34,7 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 	"istio.io/fortio/version"
+	"istio.io/fortio/results"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -119,37 +120,11 @@ type RunnerOptions struct {
 	Exactly int64
 }
 
-// RunnerResults encapsulates the actual QPS observed and duration histogram.
-type RunnerResults struct {
-	Labels            string
-	StartTime         time.Time
-	RequestedQPS      string
-	RequestedDuration string // String version of the requested duration or exact count
-	ActualQPS         float64
-	ActualDuration    time.Duration
-	NumThreads        int
-	Version           string
-	DurationHistogram *stats.HistogramData
-	Exactly           int64 // Echo back the requested count
-}
-
-// HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
-// and GrpcRunnerResults so the common results can ge extracted irrespective
-// of the type.
-type HasRunnerResult interface {
-	Result() *RunnerResults
-}
-
-// Result returns the common RunnerResults.
-func (r *RunnerResults) Result() *RunnerResults {
-	return r
-}
-
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
 type PeriodicRunner interface { // nolint: golint
 	// Starts the run. Returns actual QPS and Histogram of function durations.
-	Run() RunnerResults
+	Run() results.RunnerResults
 	// Returns the options normalized by constructor - do not mutate
 	// (where is const when you need it...)
 	Options() *RunnerOptions
@@ -275,7 +250,7 @@ func (r *periodicRunner) Options() *RunnerOptions {
 }
 
 // Run starts the runner.
-func (r *periodicRunner) Run() RunnerResults {
+func (r *periodicRunner) Run() results.RunnerResults {
 	r.Stop.Lock()
 	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
 	r.Stop.Unlock()
@@ -427,7 +402,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	if useExactly && actualCount != r.Exactly {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
-	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
+	result := results.RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
@@ -527,37 +502,3 @@ MainLoop:
 	}
 }
 
-func formatDate(d *time.Time) string {
-	return fmt.Sprintf("%d-%02d-%02d-%02d%02d%02d", d.Year(), d.Month(), d.Day(),
-		d.Hour(), d.Minute(), d.Second())
-}
-
-// ID Returns an id for the result: 64 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
-// where alpha_labels is the filtered labels with only alphanumeric characters
-// and all non alpha num replaced by _; truncated to 64 bytes.
-func (r *RunnerResults) ID() string {
-	base := formatDate(&r.StartTime)
-	if r.Labels == "" {
-		return base
-	}
-	last := '_'
-	base += string(last)
-	for _, rune := range r.Labels {
-		if (rune >= 'a' && rune <= 'z') || (rune >= 'A' && rune <= 'Z') || (rune >= '0' && rune <= '9') {
-			last = rune
-		} else {
-			if last == '_' {
-				continue // only 1 _ separator at a time
-			}
-			last = '_'
-		}
-		base += string(last)
-	}
-	if last == '_' {
-		base = base[:len(base)-1]
-	}
-	if len(base) > 64 {
-		return base[:64]
-	}
-	return base
-}

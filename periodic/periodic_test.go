@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"istio.io/fortio/log"
+	"istio.io/fortio/results"
 )
 
 type Noop struct{}
@@ -127,7 +128,7 @@ func TestStartMaxQps(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	var res1 HasRunnerResult // test that interface
+	var res1 results.HasRunnerResult // test that interface
 	res := r.Run()
 	res1 = res.Result()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
@@ -213,35 +214,6 @@ func TestExactlyMaxQps(t *testing.T) {
 	}
 	if count != expected {
 		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
-	}
-}
-
-func TestID(t *testing.T) {
-	var tests = []struct {
-		labels string // input
-		id     string // expected suffix after the date
-	}{
-		{"", ""},
-		{"abcDEF123", "_abcDEF123"},
-		{"A!@#$%^&*()-+=/'B", "_A_B"},
-		// Ends with non alpha, skip last _
-		{"A  ", "_A"},
-		{" ", ""},
-		// truncated to fit 64 (17 from date/time + _ + 46 from labels)
-		{"123456789012345678901234567890123456789012345678901234567890", "_1234567890123456789012345678901234567890123456"},
-	}
-	startTime := time.Date(2001, time.January, 2, 3, 4, 5, 0, time.Local)
-	prefix := "2001-01-02-030405"
-	for _, tst := range tests {
-		o := RunnerResults{
-			StartTime: startTime,
-			Labels:    tst.labels,
-		}
-		id := o.ID()
-		expected := prefix + tst.id
-		if id != expected {
-			t.Errorf("id: got %s, not as expected %s", id, expected)
-		}
 	}
 }
 
