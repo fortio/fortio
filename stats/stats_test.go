@@ -683,7 +683,6 @@ func TestParsePercentiles(t *testing.T) {
 	}
 }
 
-
 func TestRound(t *testing.T) {
 	var tests = []struct {
 		input    float64
