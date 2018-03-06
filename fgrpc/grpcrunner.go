@@ -166,6 +166,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 
 // grpcDestination parses dest and returns dest:port based on dest type
 // being a hostname, IP address or hostname/ip:port pair.
+// TODO: change/fix this (NormalizePort and more)
 func grpcDestination(dest string) string {
 	// strip any unintentional http/https scheme prefixes from destination
 	if strings.HasPrefix(dest, prefixHTTP) {

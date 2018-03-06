@@ -22,7 +22,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"time"
 
@@ -36,7 +35,6 @@ import (
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
-	"istio.io/fortio/version"
 )
 
 // To get most debugging/tracing:
@@ -59,18 +57,13 @@ func (s *pingSrv) Ping(c context.Context, in *fgrpc.PingMessage) (*fgrpc.PingMes
 }
 
 func pingServer(port string) {
-	port = fnet.NormalizePort(port)
-	socket, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
+	socket, _ := fnet.Listen("grpc ping", port)
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	fmt.Printf("Fortio %s grpc ping server listening on port %v\n", version.Short(), port)
 	if err := grpcServer.Serve(socket); err != nil {
 		log.Fatalf("failed to start grpc server: %v", err)
 	}
