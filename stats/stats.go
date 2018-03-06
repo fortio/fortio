@@ -312,7 +312,6 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 // an externally usable one. Calculates the request Percentiles.
 func (h *Histogram) Export() *HistogramData {
 	var res HistogramData
-	res.Percentiles = make([]Percentile, 0)
 	res.Count = h.Counter.Count
 	res.Min = h.Counter.Min
 	res.Max = h.Counter.Max
