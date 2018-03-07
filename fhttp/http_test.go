@@ -480,7 +480,7 @@ func TestGenerateSize(t *testing.T) {
 		{"512:45,512:55", 512},
 		{"0", 0}, // and not -1
 		{"262144", 262144},
-		{"262145", MaxPayloadSize}, // MaxSize test
+		{"262145", MaxPayloadSizeKb}, // MaxSize test
 		{"1000000:10,2000000:90", 262144},
 	}
 	for _, tst := range tests {

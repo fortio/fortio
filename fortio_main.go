@@ -120,6 +120,8 @@ func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
+	flag.IntVar(&fhttp.MaxPayloadSizeKb, "maxpayloadsizekb", fhttp.MaxPayloadSizeKb,
+                "Maximum paylaod size allowed for echo call in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fortio -version` and `--version` and `version` and ... work
