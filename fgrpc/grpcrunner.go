@@ -31,7 +31,6 @@ import (
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
-	"istio.io/fortio/results"
 )
 
 const (
@@ -61,7 +60,7 @@ func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
 // GRPCRunnerResults is the aggregated result of an GRPCRunner.
 // Also is the internal type used per thread/goroutine.
 type GRPCRunnerResults struct {
-	results.RunnerResults
+	periodic.RunnerResults
 	client      grpc_health_v1.HealthClient
 	req         grpc_health_v1.HealthCheckRequest
 	RetCodes    map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
@@ -160,7 +159,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 	}
 	for _, k := range keys {
-		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
+		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k]) // nolint:gas
 	}
 	return &total, nil
 }

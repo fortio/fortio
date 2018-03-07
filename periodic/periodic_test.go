@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"istio.io/fortio/log"
-	"istio.io/fortio/results"
 )
 
 type Noop struct{}
@@ -128,7 +127,7 @@ func TestStartMaxQps(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	var res1 results.HasRunnerResult // test that interface
+	var res1 HasRunnerResult // test that interface
 	res := r.Run()
 	res1 = res.Result()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads

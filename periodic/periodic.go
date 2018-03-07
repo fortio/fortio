@@ -34,7 +34,6 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 	"istio.io/fortio/version"
-	"istio.io/fortio/results"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).
@@ -124,7 +123,7 @@ type RunnerOptions struct {
 // statistics and histogram about the run.
 type PeriodicRunner interface { // nolint: golint
 	// Starts the run. Returns actual QPS and Histogram of function durations.
-	Run() results.RunnerResults
+	Run() RunnerResults
 	// Returns the options normalized by constructor - do not mutate
 	// (where is const when you need it...)
 	Options() *RunnerOptions
@@ -250,7 +249,7 @@ func (r *periodicRunner) Options() *RunnerOptions {
 }
 
 // Run starts the runner.
-func (r *periodicRunner) Run() results.RunnerResults {
+func (r *periodicRunner) Run() RunnerResults {
 	r.Stop.Lock()
 	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
 	r.Stop.Unlock()
@@ -402,7 +401,7 @@ func (r *periodicRunner) Run() results.RunnerResults {
 	if useExactly && actualCount != r.Exactly {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
-	result := results.RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
+	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
@@ -501,4 +500,3 @@ MainLoop:
 		}
 	}
 }
-

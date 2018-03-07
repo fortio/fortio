@@ -25,7 +25,6 @@ import (
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 	"istio.io/fortio/stats"
-	"istio.io/fortio/results"
 )
 
 // Most of the code in this file is the library-fication of code originally
@@ -34,7 +33,7 @@ import (
 // HTTPRunnerResults is the aggregated result of an HTTPRunner.
 // Also is the internal type used per thread/goroutine.
 type HTTPRunnerResults struct {
-	results.RunnerResults
+	periodic.RunnerResults
 	client   Fetcher
 	RetCodes map[int]int64
 	// internal type/data

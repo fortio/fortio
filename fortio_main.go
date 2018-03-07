@@ -32,7 +32,6 @@ import (
 	"istio.io/fortio/stats"
 	"istio.io/fortio/ui"
 	"istio.io/fortio/version"
-	"istio.io/fortio/results"
 )
 
 var httpOpts fhttp.HTTPOptions
@@ -145,7 +144,7 @@ func main() {
 	if err != nil {
 		usage("Unable to extract percentiles from -p: ", err)
 	}
-	filesList, err := results.ParseArgsForResultFiles(os.Args)
+	filesList, err := periodic.ParseArgsForResultFiles(os.Args)
 	if err != nil {
 		usage("Unable to parse files from args: ", err)
 	}
@@ -181,11 +180,11 @@ func main() {
 	case "grpcping":
 		grpcClient()
 	case "merge":
-		res, err := results.LoadResultFiles(filesList)
+		res, err := periodic.LoadResultFiles(filesList)
 		if err != nil {
 			os.Exit(1) // error logged already
 		}
-		results.MergeRunnerResults(res)
+		periodic.MergeRunnerResults(res)
 	default:
 		usage("Error: unknown command ", command)
 	}
@@ -271,7 +270,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
 	}
-	var res results.HasRunnerResult
+	var res periodic.HasRunnerResult
 	var err error
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
@@ -310,7 +309,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		if len(jsonFileName) == 0 {
 			jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
 		}
-		n, err := results.SaveJSON(res, jsonFileName)
+		n, err := periodic.SaveJSON(res, jsonFileName)
 		if err != nil {
 			log.Fatalf("Unable to save results: %v", err)
 		}

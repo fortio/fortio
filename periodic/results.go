@@ -1,4 +1,26 @@
-package results
+// Copyright 2017 Istio Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package periodic for fortio (from greek for load) is a set of utilities to
+// run a given task at a target rate (qps) and gather statistics - for instance
+// http requests.
+//
+// The main executable using the library is fortio but there
+// is also ../histogram to use the stats from the command line and ../echosrv
+// as a very light http server that can be used to test proxies etc like
+// the Istio components.
+package periodic // import "istio.io/fortio/periodic"
 
 import (
 	"encoding/json"
@@ -6,10 +28,11 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"os"
+	"time"
+
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
-	"time"
-	"os"
 )
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -69,7 +92,6 @@ func (r *RunnerResults) Result() *RunnerResults {
 }
 
 // SaveJSON saves the result as json to the provided file
-//
 func SaveJSON(res HasRunnerResult, fileName string) (int, error) {
 	var j []byte
 	j, err := json.MarshalIndent(res, "", "  ")
@@ -103,6 +125,8 @@ func SaveJSON(res HasRunnerResult, fileName string) (int, error) {
 	return n, nil
 }
 
+// ParseArgsForResultFiles accepts a list of string and filters it on
+// the suffix `.json` and returns the result
 func ParseArgsForResultFiles(args []string) ([]string, error) {
 	res := make([]string, 0, len(args))
 	for _, file := range args {
@@ -118,21 +142,31 @@ func ParseArgsForResultFiles(args []string) ([]string, error) {
 	return res, nil
 }
 
-func LoadResultFiles(files[] string) ([]*RunnerResults, error) {
+// LoadResultFiles accepts a list of filepaths and returns
+// marshaled list of RunnerResults
+func LoadResultFiles(files []string) ([]*RunnerResults, error) {
 	res := make([]*RunnerResults, 0, len(files))
 	for _, file := range files {
 		raw, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.Errf("Error reading file %s", file)
+			log.Errf("Error reading file %s: %v", file, err)
 			return nil, err
 		}
 		result := RunnerResults{}
-		json.Unmarshal(raw, &result)
+		err = json.Unmarshal(raw, &result)
+		if err != nil {
+			log.Errf("Error unmarshaling to Json %s: %v", file, err)
+			return nil, err
+		}
 		res = append(res, &result)
 	}
 	return res, nil
 }
 
+// MergeRunnerResults accepts a list of RunnerResults and
+// combines the data structure to yield a merged result
+// typically this should be used for merging results from
+// concurrent runs
 func MergeRunnerResults(results []*RunnerResults) {
 	// TODO determine if results are mergeable
 	// TODO specify type of results in the json file metadata
@@ -154,14 +188,20 @@ func MergeRunnerResults(results []*RunnerResults) {
 		mergedResults.NumThreads += result.NumThreads
 		// merge Version
 		// merge HistogramData
-		mergedResults.DurationHistogram = stats.MergeHistograms(mergedResults.DurationHistogram.Histogram(), result.DurationHistogram.Histogram()).Export()
+		mergedResults.DurationHistogram = stats.MergeHistograms(
+			mergedResults.DurationHistogram.Histogram(),
+			result.DurationHistogram.Histogram(),
+		).Export()
 
 		// merge RetCodes (needs parsing of results as http/grpc results)
 	}
 
 	mergedResults.ID()
 	fmt.Printf("merged: %v", mergedResults)
-	SaveJSON(mergedResults, "-")
+	_, err := SaveJSON(mergedResults, "-")
+	if err != nil {
+		log.Errf("error during save: %v", err)
+	}
 	// return combined results
 }
 
