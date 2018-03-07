@@ -308,6 +308,19 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 	return e.Max // not reached
 }
 
+func (hd *HistogramData) Histogram() *Histogram {
+	res := NewHistogram(0, 10)
+	res.Counter.Min = hd.Min
+	res.Counter.Max = hd.Max
+
+	for _, bucket := range hd.Data {
+		midpoint := (bucket.Start + bucket.End)/2
+		res.RecordN(midpoint, int(bucket.Count))
+	}
+
+	return res
+}
+
 // Export translate the internal representation of the histogram data in
 // an externally usable one. Calculates the request Percentiles.
 func (h *Histogram) Export() *HistogramData {
@@ -464,9 +477,9 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
-// Merge two different histogram with different scale parameters
+// MergeHistograms merges two different histogram with different scale parameters
 // Lowest offset and highest divider value will be selected on new Histogram as scale parameters
-func Merge(h1 *Histogram, h2 *Histogram) *Histogram {
+func MergeHistograms(h1 *Histogram, h2 *Histogram) *Histogram {
 	divider := h1.Divider
 	offset := h1.Offset
 	if h2.Divider > h1.Divider {

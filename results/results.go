@@ -154,13 +154,14 @@ func MergeRunnerResults(results []*RunnerResults) {
 		mergedResults.NumThreads += result.NumThreads
 		// merge Version
 		// merge HistogramData
-		//mergedResults.DurationHistogram = stats.Merge(mergedResults.DurationHistogram.Histogram(), result.DurationHistogram.Histogram()).Export()
+		mergedResults.DurationHistogram = stats.MergeHistograms(mergedResults.DurationHistogram.Histogram(), result.DurationHistogram.Histogram()).Export()
 
-		// merge RetCodes (dependent on identifying the type of result)
+		// merge RetCodes (needs parsing of results as http/grpc results)
 	}
 
 	mergedResults.ID()
 	fmt.Printf("merged: %v", mergedResults)
+	SaveJSON(mergedResults, "-")
 	// return combined results
 }
 
