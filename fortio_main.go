@@ -114,13 +114,14 @@ var (
 	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 	baseURLFlag = flag.String("base-url", "",
 		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
+	newMaxPayloadSizeKb int
 )
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.IntVar(&fhttp.MaxPayloadSizeKb, "maxpayloadsizekb", fhttp.MaxPayloadSizeKb,
+	flag.IntVar(&newMaxPayloadSizeKb, "maxpayloadsizekb", fhttp.MaxPayloadSizeKb,
 		"Maximum paylaod size allowed for echo call in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
@@ -140,6 +141,7 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	fhttp.ChangeMaxPayloadSize(newMaxPayloadSizeKb)
 	if *quietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}

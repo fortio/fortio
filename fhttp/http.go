@@ -1163,6 +1163,16 @@ func init() {
 	rand.Read(payload) // nolint:gas
 }
 
+// ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content
+func ChangeMaxPayloadSize(newMaxPayloadSizeKb int) {
+	MaxPayloadSizeKb = newMaxPayloadSizeKb
+	payload = make([]byte, changeKbToBytes(MaxPayloadSizeKb))
+	_, err := rand.Read(payload) // nolint:gas
+	if err != nil {
+		log.Errf("Error changing paylaod size, while generating random paylaod")
+	}
+}
+
 func writePayload(w http.ResponseWriter, status int, size int) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.Itoa(size))
