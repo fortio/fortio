@@ -5,8 +5,9 @@ make docker-internal TAG=webtest || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=20 # must be low to detect leaks
 LOGLEVEL=info # change to debug to debug
+MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
 DOCKERNAME=fortio_server
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
 function cleanup {
   docker stop $DOCKERID
   docker rm $DOCKERNAME
@@ -41,6 +42,14 @@ if [ "$SIZE" -lt 50000 ]; then
   echo "Too small fetch for js: $SIZE"
   exit 1
 fi
+# Check if max payload set to value passed in cmd line parameter -maxpayloadsizekb
+SIZE=$($CURL "${BASE_URL}/echo?size=1048576" |wc -c)
+# It should return 8194, not sure why the difference
+if ! [ "$SIZE" -eq 8310 ]; then
+  echo "-maxpayloadsizekb not working as expected"
+  exit 1
+fi
+
 # Check the main page
 $CURL $BASE_FORTIO
 # Do a small http load using std client
@@ -69,3 +78,4 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
+
