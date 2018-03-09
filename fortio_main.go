@@ -121,7 +121,7 @@ func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.IntVar(&newMaxPayloadSizeKb, "maxpayloadsizekb", fhttp.MaxPayloadSizeKb,
+	flag.IntVar(&newMaxPayloadSizeKb, "maxpayloadsizekb", fhttp.MaxPayloadSize/1024,
 		"Maximum paylaod size allowed for echo call in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
@@ -141,7 +141,7 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
-	fhttp.ChangeMaxPayloadSize(newMaxPayloadSizeKb)
+	fhttp.ChangeMaxPayloadSize(newMaxPayloadSizeKb * 1024)
 	if *quietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}
