@@ -48,6 +48,7 @@ lint: submodule vendor.check
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
+# this really also tests the release process and build on windows,mac,linux
 webtest:
 	./Webtest.sh
 

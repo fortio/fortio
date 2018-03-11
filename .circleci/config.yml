@@ -9,29 +9,28 @@ defaultEnv: &defaultEnv
       # specify the version
       - image: istio/fortio.build:v6
 
-commonSteps: &commonSteps
-    - setup_remote_docker:
-        version: 17.10.0-ce
-    - checkout
-    - run: make submodule
-
 jobs:
   build:
     <<: *defaultEnv
     steps:
-      <<: *commonSteps
+      - setup_remote_docker:
+            version: 17.10.0-ce
+      - checkout
+      - run: make submodule
       - run: make test
       - run: make webtest
   linters:
     <<: *defaultEnv
     steps:
-      <<: *commonSteps
+      - checkout
+      - run: make submodule
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
   codecov:
     <<: *defaultEnv
     steps:
-      <<: *commonSteps
+      - checkout
+      - run: make submodule
       - run: make coverage
 
 workflows:
