@@ -8,13 +8,14 @@ defaultEnv: &defaultEnv
     docker:
       # specify the version
       - image: istio/fortio.build:v6
+    working_directory: /go/src/istio.io/fortio
 
 jobs:
   build:
     <<: *defaultEnv
     steps:
       - setup_remote_docker:
-            version: 17.10.0-ce
+          version: 17.11.0-ce
       - checkout
       - run: make submodule
       - run: make test
