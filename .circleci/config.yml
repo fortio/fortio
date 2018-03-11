@@ -2,8 +2,9 @@
 #
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
-jobs:
-  build:
+
+# common setup and steps
+defaults: &defaults
     docker:
       # specify the version
       - image: istio/fortio.build:v6
@@ -13,10 +14,27 @@ jobs:
           version: 17.10.0-ce
       - checkout
       - run: make submodule # will run: (only if needed:)
-#      - run: git submodule sync
-#      - run: git submodule update --init
+
+jobs:
+  build:
+    <<: *defaults
+    steps:
       - run: make test
+      - run: make webtest
+  linters:
+    <<: *defaults
+    steps:
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
-      - run: make webtest
+  codecov:
+    <<: *defaults
+    steps:
       - run: make coverage
+
+workflows:
+  version: 2
+  all:
+    jobs:
+      - build
+      - codecov
+      - linters

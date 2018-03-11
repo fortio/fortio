@@ -565,6 +565,7 @@ func TestDefaultPort(t *testing.T) {
 	if code != 200 {
 		t.Errorf("Standard client http error code %d", code)
 	}
+	cli.Close()
 }
 
 // Test for bug #127
