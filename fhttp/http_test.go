@@ -517,7 +517,7 @@ func TestEchoBack(t *testing.T) {
 func TestH10Cli(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
-	url := fmt.Sprintf("http://localhost:%d/", a.Port) // trigger max delay
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
 	opts := NewHTTPOptions(url)
 	opts.HTTP10 = true
 	opts.AddAndValidateExtraHeader("Host: mhostname")
@@ -529,6 +529,23 @@ func TestH10Cli(t *testing.T) {
 	s := cli.(*FastClient).socket
 	if s != nil {
 		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
+	}
+	cli.Close()
+}
+
+func TestSmallBufferAndNoKeepAlive(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	BufferSizeKb = 16
+	sz := BufferSizeKb * 1024
+	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
+	opts := NewHTTPOptions(url)
+	opts.DisableKeepAlive = true
+	cli := NewFastClient(opts)
+	_, data, _ := cli.Fetch()
+	recSz := len(data)
+	if recSz > sz {
+		t.Errorf("was expecting truncated read, got %d", recSz)
 	}
 	cli.Close()
 }
