@@ -45,7 +45,9 @@ var (
 
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	if log.LogVerbose() {
+		LogRequest(r, "Echo") // will also print headers
+	}
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
@@ -69,11 +71,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: this easily lead to contention - use 'thread local'
 		rqNum := atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
-		for name, headers := range r.Header {
-			for _, h := range headers {
-				log.Debugf("Header %v: %v\n", name, h)
-			}
-		}
 	}
 	if r.FormValue("close") != "" {
 		log.Debugf("Adding Connection:close / will close socket")
@@ -225,7 +222,9 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	if log.LogVerbose() {
+		LogRequest(r, "Debug")
+	}
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
