@@ -540,14 +540,37 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	sz := BufferSizeKb * 1024
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
-	opts.DisableKeepAlive = true
 	cli := NewFastClient(opts)
 	_, data, _ := cli.Fetch()
 	recSz := len(data)
 	if recSz > sz {
-		t.Errorf("was expecting truncated read, got %d", recSz)
+		t.Errorf("config1: was expecting truncated read, got %d", recSz)
 	}
 	cli.Close()
+	// Same test without keepalive (exercises a different path)
+	opts.DisableKeepAlive = true
+	cli = NewFastClient(opts)
+	_, data, _ = cli.Fetch()
+	recSz = len(data)
+	if recSz > sz {
+		t.Errorf("config2: was expecting truncated read, got %d", recSz)
+	}
+	cli.Close()
+}
+
+func TestBadUrl(t *testing.T) {
+	opts := NewHTTPOptions("not a valid url")
+	cli := NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
+	opts.URL = "http://doesnotexist.istio.io"
+	cli = NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
 }
 
 func TestDefaultPort(t *testing.T) {
