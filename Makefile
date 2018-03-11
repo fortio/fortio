@@ -49,8 +49,11 @@ lint: submodule vendor.check
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # this really also tests the release process and build on windows,mac,linux
-webtest:
+release-test:
 	./Webtest.sh
+
+# old name for release-test
+webtest: release-test
 
 coverage: submodule
 	./.circleci/coverage.sh
@@ -136,6 +139,6 @@ authorize:
 
 .PHONY: all docker-internal docker-push-internal docker-version authorize test
 
-.PHONY: install lint install-linters coverage weblint update-build-image
+.PHONY: install lint install-linters coverage webtest release-test update-build-image
 
 .PHONY: local-lint update-build-image-tag release submodule submodule-sync pull

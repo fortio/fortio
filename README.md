@@ -388,7 +388,7 @@ And make sure to go format and run those commands successfully before sending yo
 ```
 make test
 make lint
-make webtest
+make release-test
 ```
 
 When modifying Javascript, check with [standard](https://github.com/standard/standard):

@@ -11,15 +11,20 @@ defaultEnv: &defaultEnv
     working_directory: /go/src/istio.io/fortio
 
 jobs:
-  build:
+  unit-tests:
+    <<: *defaultEnv
+    steps:
+      - checkout
+      - run: make submodule
+      - run: make test
+  release-tests:
     <<: *defaultEnv
     steps:
       - setup_remote_docker:
           version: 17.11.0-ce
       - checkout
       - run: make submodule
-      - run: make test
-      - run: make webtest
+      - run: make release-test
   linters:
     <<: *defaultEnv
     steps:
@@ -38,6 +43,7 @@ workflows:
   version: 2
   all:
     jobs:
-      - build
+      - unit-tests
+      - release-tests
       - codecov
       - linters
