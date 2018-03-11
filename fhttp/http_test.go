@@ -517,7 +517,7 @@ func TestEchoBack(t *testing.T) {
 func TestH10Cli(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
-	url := fmt.Sprintf("http://localhost:%d/", a.Port) // trigger max delay
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
 	opts := NewHTTPOptions(url)
 	opts.HTTP10 = true
 	opts.AddAndValidateExtraHeader("Host: mhostname")
@@ -531,6 +531,46 @@ func TestH10Cli(t *testing.T) {
 		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
 	}
 	cli.Close()
+}
+
+func TestSmallBufferAndNoKeepAlive(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	BufferSizeKb = 16
+	sz := BufferSizeKb * 1024
+	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
+	opts := NewHTTPOptions(url)
+	cli := NewFastClient(opts)
+	_, data, _ := cli.Fetch()
+	recSz := len(data)
+	if recSz > sz {
+		t.Errorf("config1: was expecting truncated read, got %d", recSz)
+	}
+	cli.Close()
+	// Same test without keepalive (exercises a different path)
+	opts.DisableKeepAlive = true
+	cli = NewFastClient(opts)
+	_, data, _ = cli.Fetch()
+	recSz = len(data)
+	if recSz > sz {
+		t.Errorf("config2: was expecting truncated read, got %d", recSz)
+	}
+	cli.Close()
+}
+
+func TestBadUrl(t *testing.T) {
+	opts := NewHTTPOptions("not a valid url")
+	cli := NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
+	opts.URL = "http://doesnotexist.istio.io"
+	cli = NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
 }
 
 func TestDefaultPort(t *testing.T) {
