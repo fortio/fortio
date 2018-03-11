@@ -513,6 +513,53 @@ func TestEchoBack(t *testing.T) {
 	}
 }
 
+func TestH10Cli(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port) // trigger max delay
+	opts := NewHTTPOptions(url)
+	opts.HTTP10 = true
+	opts.AddAndValidateExtraHeader("Host: mhostname")
+	cli := NewFastClient(opts)
+	code, _, _ := cli.Fetch()
+	if code != 200 {
+		t.Errorf("http 1.0 unexpected error %d", code)
+	}
+	s := cli.(*FastClient).socket
+	if s != nil {
+		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
+	}
+	cli.Close()
+}
+
+func TestDefaultPort(t *testing.T) {
+	url := "http://fortio.istio.io/" // shall imply port 80
+	opts := NewHTTPOptions(url)
+	cli := NewFastClient(opts)
+	code, _, _ := cli.Fetch()
+	if code != 303 {
+		t.Errorf("unexpected code for %s: %d (expecting 303 redirect to https)", url, code)
+	}
+	p := cli.(*FastClient).port
+	if p != "http" {
+		t.Errorf("unexpected port for %s: %s", url, p)
+	}
+	cli.Close()
+	opts.URL = "https://fortio.istio.io" // will be https port 443
+	opts.Insecure = true                 // not needed as we have valid certs but to exercise that code
+	cli = NewFastClient(opts)
+	if cli != nil {
+		// If https support was added, remove this whitebox/for coverage purpose assertion
+		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
+	}
+	cli = NewClient(opts)
+	// currently fast client fails with https:
+	code, _, _ = cli.Fetch()
+	if code != 200 {
+		t.Errorf("Standard client http error code %d", code)
+	}
+}
+
 // Test for bug #127
 
 var testBody = "delayedChunkedSize-body"
