@@ -114,6 +114,13 @@ var (
 	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 	baseURLFlag = flag.String("base-url", "",
 		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
+
+	// GRPC related flags
+	// To get most debugging/tracing:
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
+	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
+	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
+	payloadFlag   = flag.String("payload", "", "Payload string to send along")
 )
 
 func main() {
@@ -169,7 +176,7 @@ func main() {
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		isServer = true
-		go pingServer(*grpcPortFlag)
+		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
 			ui.RedirectToHTTPS(*redirectFlag)
 		}
@@ -325,5 +332,27 @@ func fortioLoad(justCurl bool, percList []float64) {
 			}
 		}
 		fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+	}
+}
+
+func grpcClient() {
+	if len(flag.Args()) != 1 {
+		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
+	}
+	host := flag.Arg(0)
+	count := int(*exactlyFlag)
+	if count <= 0 {
+		count = 1
+	}
+	tls := *grpcSecureFlag
+	var err error
+	if *doHealthFlag {
+		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
+	} else {
+		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag)
+	}
+	if err != nil {
+		// already logged
+		os.Exit(1)
 	}
 }

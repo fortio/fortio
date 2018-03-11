@@ -63,7 +63,7 @@ type GRPCRunnerResults struct {
 	periodic.RunnerResults
 	client      grpc_health_v1.HealthClient
 	req         grpc_health_v1.HealthCheckRequest
-	RetCodes    map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
+	RetCodes    HealthResultMap
 	Destination string
 }
 
@@ -72,9 +72,10 @@ type GRPCRunnerResults struct {
 func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
 	res, err := grpcstate.client.Check(context.Background(), &grpcstate.req)
-	log.Debugf("Got %v %v", res, err)
+	log.Debugf("Got %v %v", err, res)
 	if err != nil {
-		log.Errf("Error making health check %v", err)
+		log.Warnf("Error making health check %v", err)
+		grpcstate.RetCodes[-1]++
 	} else {
 		grpcstate.RetCodes[res.Status]++
 	}
@@ -97,7 +98,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
-		RetCodes:    make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
+		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
@@ -122,7 +123,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 		}
 		// Setup the stats for each 'thread'
-		grpcstate[i].RetCodes = make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64)
+		grpcstate[i].RetCodes = make(HealthResultMap)
 	}
 
 	if o.Profiler != "" {

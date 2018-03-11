@@ -13,14 +13,9 @@
 // limitations under the License.
 //
 
-// Adapted from istio/proxy/test/backend/echo with error handling and
-// concurrency fixes and making it as low overhead as possible
-// (no std output by default)
-
-package main
+package fgrpc
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -31,55 +26,61 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 )
 
-// To get most debugging/tracing:
-// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
-
-var (
-	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
-	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
-	payloadFlag   = flag.String("payload", "", "Payload string to send along")
+const (
+	// DefaultHealthServiceName is the default health service name used by fortio.
+	DefaultHealthServiceName = "ping"
 )
 
 type pingSrv struct {
 }
 
-func (s *pingSrv) Ping(c context.Context, in *fgrpc.PingMessage) (*fgrpc.PingMessage, error) {
+func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
 	out := *in
 	out.Ts = time.Now().UnixNano()
 	return &out, nil
 }
 
-func pingServer(port string) {
-	socket, _ := fnet.Listen("grpc ping", port)
+// PingServer starts a grpc ping (and health) echo server.
+// returns the port being bound (useful when passing "0" as the port to
+// get a dynamic server). Pass the healthServiceName to use for the
+// grpc service name health check (or pass DefaultHealthServiceName)
+// to be marked as SERVING.
+func PingServer(port string, healthServiceName string) int {
+	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
-	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
+	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fgrpc.RegisterPingServerServer(grpcServer, &pingSrv{})
-	if err := grpcServer.Serve(socket); err != nil {
-		log.Fatalf("failed to start grpc server: %v", err)
-	}
+	RegisterPingServerServer(grpcServer, &pingSrv{})
+	go func() {
+		if err := grpcServer.Serve(socket); err != nil {
+			log.Fatalf("failed to start grpc server: %v", err)
+		}
+	}()
+	return addr.Port
 }
 
-func pingClientCall(serverAddr string, tls bool, n int, payload string) {
-	conn, err := fgrpc.Dial(serverAddr, tls)
+// PingClientCall calls the ping service (presumably running as PingServer on
+// the destination).
+func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64, error) {
+	conn, err := Dial(serverAddr, tls)
 	if err != nil {
-		os.Exit(1) // error already logged
+		return -1, err // error already logged
 	}
-	msg := &fgrpc.PingMessage{Payload: payload}
-	cli := fgrpc.NewPingServerClient(conn)
+	msg := &PingMessage{Payload: payload}
+	cli := NewPingServerClient(conn)
 	// Warm up:
 	_, err = cli.Ping(context.Background(), msg)
 	if err != nil {
-		log.Fatalf("grpc error from Ping0 %v", err)
+		log.Errf("grpc error from Ping0 %v", err)
+		return -1, err
 	}
 	skewHistogram := stats.NewHistogram(-10, 2)
 	rttHistogram := stats.NewHistogram(0, 10)
@@ -90,14 +91,16 @@ func pingClientCall(serverAddr string, tls bool, n int, payload string) {
 		res1, err := cli.Ping(context.Background(), msg)
 		t2a := time.Now().UnixNano()
 		if err != nil {
-			log.Fatalf("grpc error from Ping1 %v", err)
+			log.Errf("grpc error from Ping1 iter %d: %v", i, err)
+			return -1, err
 		}
 		t1b := res1.Ts
 		res2, err := cli.Ping(context.Background(), msg)
 		t3a := time.Now().UnixNano()
 		t2b := res2.Ts
 		if err != nil {
-			log.Fatalf("grpc error from Ping2 %v", err)
+			log.Errf("grpc error from Ping2 iter %d: %v", i, err)
+			return -1, err
 		}
 		rt1 := t2a - t1a
 		rttHistogram.Record(float64(rt1) / 1000.)
@@ -115,45 +118,40 @@ func pingClientCall(serverAddr string, tls bool, n int, payload string) {
 	}
 	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", []float64{50})
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
+	return rttHistogram.Avg(), nil
 }
 
-func grpcHealthCheck(serverAddr string, tls bool, svcname string, n int) {
-	conn, err := fgrpc.Dial(serverAddr, tls)
+// HealthResultMap short cut for the map of results to count. -1 for errors.
+type HealthResultMap map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
+
+// GrpcHealthCheck makes a grpc client call to the standard grpc health check
+// service.
+func GrpcHealthCheck(serverAddr string, tls bool, svcname string, n int) (*HealthResultMap, error) {
+	log.Debugf("GrpcHealthCheck for %s tls %v svc '%s', %d iterations", serverAddr, tls, svcname, n)
+	conn, err := Dial(serverAddr, tls)
 	if err != nil {
-		os.Exit(1) // error already logged
+		return nil, err
 	}
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
 	rttHistogram := stats.NewHistogram(0, 10)
-	statuses := make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64)
+	statuses := make(HealthResultMap)
 
 	for i := 1; i <= n; i++ {
 		start := time.Now()
-		res1, err := cli.Check(context.Background(), msg)
+		res, err := cli.Check(context.Background(), msg)
 		dur := time.Since(start)
+		log.LogVf("Reply from health check %d: %+v", i, res)
 		if err != nil {
-			log.Fatalf("grpc error from Check %v", err)
+			log.Errf("grpc error from Check %v", err)
+			return nil, err
 		}
-		statuses[res1.Status]++
+		statuses[res.Status]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)
 	}
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
-	fmt.Printf("Statuses %v\n", statuses)
-}
-
-func grpcClient() {
-	if len(flag.Args()) != 1 {
-		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
+	for k, v := range statuses {
+		fmt.Printf("Health %s : %d\n", k.String(), v)
 	}
-	host := flag.Arg(0)
-	count := int(*exactlyFlag)
-	if count <= 0 {
-		count = 1
-	}
-	tls := *grpcSecureFlag
-	if *doHealthFlag {
-		grpcHealthCheck(host, tls, *healthSvcFlag, count)
-	} else {
-		pingClientCall(host, tls, count, *payloadFlag)
-	}
+	return &statuses, nil
 }
