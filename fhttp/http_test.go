@@ -17,6 +17,7 @@ package fhttp
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -540,9 +541,15 @@ func TestDefaultPort(t *testing.T) {
 	if code != 303 {
 		t.Errorf("unexpected code for %s: %d (expecting 303 redirect to https)", url, code)
 	}
-	p := cli.(*FastClient).port
-	if p != "http" {
-		t.Errorf("unexpected port for %s: %s", url, p)
+	conn := cli.(*FastClient).connect()
+	if conn != nil {
+		p := conn.RemoteAddr().(*net.TCPAddr).Port
+		if p != 80 {
+			t.Errorf("unexpected port for %s: %d", url, p)
+		}
+		conn.Close()
+	} else {
+		t.Errorf("unable to connect to %s", url)
 	}
 	cli.Close()
 	opts.URL = "https://fortio.istio.io" // will be https port 443
