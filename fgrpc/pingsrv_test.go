@@ -32,7 +32,10 @@ func TestPingServer(t *testing.T) {
 	addr := fmt.Sprintf("localhost:%d", port)
 	t.Logf("test grpc ping server running, will connect to %s", addr)
 	if latency, err := PingClientCall(addr, false, 7, "test payload"); err != nil || latency <= 0 {
-		t.Errorf("Unexpected result %+v, %v with ping calls", latency, err)
+		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
+	}
+	if latency, err := PingClientCall(addr, true, 1, ""); err == nil {
+		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
 	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
 	if r, err := GrpcHealthCheck(addr, false, "", 1); err != nil || (*r)[serving] != 1 {

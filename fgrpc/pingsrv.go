@@ -70,7 +70,7 @@ func PingServer(port string, healthServiceName string) int {
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination).
 func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64, error) {
-	conn, err := Dial(serverAddr, tls)
+	conn, err := Dial(serverAddr, tls) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}

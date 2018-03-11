@@ -85,10 +85,11 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 // options.
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
-	Destination string
-	Service     string
-	Profiler    string // file to save profiles to. defaults to no profiling
-	Secure      bool   // use tls transport
+	Destination        string
+	Service            string
+	Profiler           string // file to save profiles to. defaults to no profiling
+	Secure             bool   // use tls transport
+	AllowInitialErrors bool   // whether initial errors don't cause an abort
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -117,7 +118,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		grpcstate[i].req = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 		if o.Exactly <= 0 {
 			_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
-			if err != nil {
+			if !o.AllowInitialErrors && err != nil {
 				log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
 				return nil, err
 			}

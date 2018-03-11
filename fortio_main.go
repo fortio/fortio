@@ -272,10 +272,11 @@ func fortioLoad(justCurl bool, percList []float64) {
 	var err error
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
-			RunnerOptions: ro,
-			Destination:   url,
-			Secure:        *grpcSecureFlag,
-			Service:       *healthSvcFlag,
+			RunnerOptions:      ro,
+			Destination:        url,
+			Secure:             *grpcSecureFlag,
+			Service:            *healthSvcFlag,
+			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
