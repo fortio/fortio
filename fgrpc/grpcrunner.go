@@ -63,7 +63,7 @@ type GRPCRunnerResults struct {
 	periodic.RunnerResults
 	client      grpc_health_v1.HealthClient
 	req         grpc_health_v1.HealthCheckRequest
-	RetCodes    map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
+	RetCodes    HealthResultMap
 	Destination string
 }
 
@@ -72,9 +72,10 @@ type GRPCRunnerResults struct {
 func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
 	res, err := grpcstate.client.Check(context.Background(), &grpcstate.req)
-	log.Debugf("Got %v %v", res, err)
+	log.Debugf("Got %v %v", err, res)
 	if err != nil {
-		log.Errf("Error making health check %v", err)
+		log.Warnf("Error making health check %v", err)
+		grpcstate.RetCodes[-1]++
 	} else {
 		grpcstate.RetCodes[res.Status]++
 	}
@@ -84,10 +85,11 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 // options.
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
-	Destination string
-	Service     string
-	Profiler    string // file to save profiles to. defaults to no profiling
-	Secure      bool   // use tls transport
+	Destination        string
+	Service            string
+	Profiler           string // file to save profiles to. defaults to no profiling
+	Secure             bool   // use tls transport
+	AllowInitialErrors bool   // whether initial errors don't cause an abort
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -97,7 +99,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	total := GRPCRunnerResults{
-		RetCodes:    make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64),
+		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
@@ -116,13 +118,13 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		grpcstate[i].req = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 		if o.Exactly <= 0 {
 			_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
-			if err != nil {
+			if !o.AllowInitialErrors && err != nil {
 				log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
 				return nil, err
 			}
 		}
 		// Setup the stats for each 'thread'
-		grpcstate[i].RetCodes = make(map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64)
+		grpcstate[i].RetCodes = make(HealthResultMap)
 	}
 
 	if o.Profiler != "" {
