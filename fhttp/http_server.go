@@ -26,8 +26,8 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
-	// get /debug/pprof endpoints on default server - make sure report only doesn't have it
-	_ "net/http/pprof"
+	// get /debug/pprof endpoints on a mux through SetupPPROF
+	"net/http/pprof"
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
@@ -300,4 +300,52 @@ func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	}
 	mux.HandleFunc("/", EchoHandler)
 	return mux, addr
+}
+
+// -- formerly in ui handler
+
+// SetupPPROF add pprof to the mux (mirror the init() of http pprof).
+func SetupPPROF(mux *http.ServeMux) {
+	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
+}
+
+// -- Redirection to https feature --
+
+// RedirectToHTTPSHandler handler sends a redirect to same URL with https.
+func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
+	dest := "https://" + r.Host + r.URL.String()
+	LogRequest(r, "Redirecting to "+dest)
+	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// RedirectToHTTPS Sets up a redirector to https on the given port.
+// (Do not create a loop, make sure this is addressed from an ingress)
+func RedirectToHTTPS(port string) {
+	m, _ := HTTPServer("https redirector", port)
+	m.HandleFunc("/", RedirectToHTTPSHandler)
+}
+
+// LogRequest logs the incoming request, including headers when loglevel is verbose
+func LogRequest(r *http.Request, msg string) {
+	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+		r.Header.Get("X-Forwarded-Proto"))
+	if log.LogVerbose() {
+		for name, headers := range r.Header {
+			for _, h := range headers {
+				log.LogVf("Header %v: %v\n", name, h)
+			}
+		}
+	}
+}
+
+// LogAndCall wrapps an HTTP handler to log the request first.
+func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r, msg)
+		hf(w, r)
+	})
 }

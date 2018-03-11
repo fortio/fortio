@@ -167,18 +167,18 @@ func main() {
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
 		isServer = true
-		ui.RedirectToHTTPS(*redirectFlag)
+		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
 		isServer = true
 		if *redirectFlag != "disabled" {
-			ui.RedirectToHTTPS(*redirectFlag)
+			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		isServer = true
 		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
-			ui.RedirectToHTTPS(*redirectFlag)
+			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 	case "grpcping":
