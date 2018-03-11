@@ -68,12 +68,12 @@ func TestGRPCRunnerWithError(t *testing.T) {
 		Destination: destination,
 		Service:     "svc2",
 	}
-	res, err := RunGRPCTest(&opts)
+	_, err := RunGRPCTest(&opts)
 	if err == nil {
 		t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
 	}
 	opts.AllowInitialErrors = true
-	res, err = RunGRPCTest(&opts)
+	res, err := RunGRPCTest(&opts)
 	if err != nil {
 		t.Error(err)
 		return
