@@ -24,9 +24,9 @@ import (
 	"net"
 	"testing"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
-	"istio.io/fortio/version"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -36,22 +36,17 @@ import (
 // DynamicGRPCHealthServer starts and returns the port where a GRPC Health
 // server is running. It runs until error or program exit (separate go routine)
 func DynamicGRPCHealthServer() int {
-	socket, err := net.Listen("tcp", ":0")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	addr := socket.Addr()
+	listener, addr := fnet.Listen("grpc health", ":0")
 	grpcServer := grpc.NewServer()
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	fmt.Printf("Fortio %s grpc health server listening on port %v\n", version.Short(), addr)
 	go func(socket net.Listener) {
 		if e := grpcServer.Serve(socket); e != nil {
 			log.Fatalf("failed to start grpc server: %v", e)
 		}
-	}(socket)
-	return addr.(*net.TCPAddr).Port
+	}(listener)
+	return addr.Port
 }
 
 func TestGRPCRunner(t *testing.T) {

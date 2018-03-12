@@ -33,4 +33,5 @@ var (
 func main() {
 	flag.Parse()
 	fhttp.Serve(*port, *debugPath)
+	select {}
 }

@@ -152,29 +152,37 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
+	isServer := false
 	switch command {
 	case "curl":
 		fortioLoad(true, nil)
 	case "load":
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
+		isServer = true
 		ui.RedirectToHTTPS(*redirectFlag)
 	case "report":
+		isServer = true
 		if *redirectFlag != "disabled" {
-			go ui.RedirectToHTTPS(*redirectFlag)
+			ui.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
+		isServer = true
+		go pingServer(*grpcPortFlag)
 		if *redirectFlag != "disabled" {
-			go ui.RedirectToHTTPS(*redirectFlag)
+			ui.RedirectToHTTPS(*redirectFlag)
 		}
-		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList)
-		pingServer(*grpcPortFlag)
+		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
 	case "grpcping":
 		grpcClient()
 	default:
 		usage("Error: unknown command ", command)
+	}
+	if isServer {
+		// To get a start time log/timestamp in the logs
+		log.Infof("All fortio %s servers started!", version.Long())
+		select {}
 	}
 }
 
