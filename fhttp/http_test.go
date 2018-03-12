@@ -726,6 +726,31 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	}
 }
 
+func TestPPROF(t *testing.T) {
+	mux, addr := HTTPServer("test pprof", "0")
+	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)
+	code, _ := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusNotFound {
+		t.Errorf("Got %d instead of expected 404/not found for %s", code, url)
+	}
+	SetupPPROF(mux)
+	code, data := FetchURL(url)
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("TotalAlloc")) {
+		t.Errorf("Result %s doesn't contain expected TotalAlloc", DebugSummary(data, 1024))
+	}
+}
+
+/*
+func TestOnBehalfOf(t *testing.T) {
+	mux, addr := Serve("0", "")
+	url := fmt.Sprintf("localhost:%d/echo", addr.Port)
+	o := NewHTTPOptions(url)
+	OnBehalfOf(o, r)
+}
+*/
 // --- for bench mark/comparaison
 
 func asciiFold0(str string) []byte {
@@ -784,23 +809,6 @@ func FoldFind0(haystack []byte, needle []byte) (bool, int) {
 	offset := strings.Index(strings.ToUpper(string(haystack)), string(needle))
 	found := (offset >= 0)
 	return found, offset
-}
-
-func TestPPROF(t *testing.T) {
-	mux, addr := HTTPServer("test pprof", "0")
-	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)
-	code, _ := Fetch(&HTTPOptions{URL: url})
-	if code != http.StatusNotFound {
-		t.Errorf("Got %d instead of expected 404/not found for %s", code, url)
-	}
-	SetupPPROF(mux)
-	code, data := FetchURL(url)
-	if code != http.StatusOK {
-		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
-	}
-	if !bytes.Contains(data, []byte("TotalAlloc")) {
-		t.Errorf("Result %s doesn't contain expected TotalAlloc", DebugSummary(data, 1024))
-	}
 }
 
 // -- benchmarks --
