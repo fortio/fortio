@@ -15,7 +15,7 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
 # go test ./... and others run in vendor/ and cause problems (!)
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs)")
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json)")
 #PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already
@@ -29,17 +29,18 @@ install: submodule
 test: submodule
 	go test -timeout 60s -race $(PACKAGES)
 
-# To debug linters, uncomment
-#DEBUG_LINTERS="--debug"
+# To debug strange linter errors, uncomment
+# DEBUG_LINTERS="--debug"
 
 local-lint: submodule
 	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate \
-	--exclude=.pb.go --disable=gocyclo --line-length=132 $(LINT_PACKAGES)
+	--exclude=.pb.go --disable=gocyclo --disable=gas --line-length=132 \
+	$(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=$(PACKAGES)
-# TODO: do something about cyclomatic complexity
+# TODO: do something about cyclomatic complexity; maybe reenable gas
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
 lint: submodule vendor.check
@@ -47,8 +48,12 @@ lint: submodule vendor.check
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
-webtest:
+# this really also tests the release process and build on windows,mac,linux
+release-test:
 	./Webtest.sh
+
+# old name for release-test
+webtest: release-test
 
 coverage: submodule
 	./.circleci/coverage.sh
@@ -134,6 +139,6 @@ authorize:
 
 .PHONY: all docker-internal docker-push-internal docker-version authorize test
 
-.PHONY: install lint install-linters coverage weblint update-build-image
+.PHONY: install lint install-linters coverage webtest release-test update-build-image
 
 .PHONY: local-lint update-build-image-tag release submodule submodule-sync pull
