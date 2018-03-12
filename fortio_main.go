@@ -173,7 +173,7 @@ func main() {
 		if *redirectFlag != "disabled" {
 			ui.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
+		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList)
 	case "grpcping":
 		grpcClient()
 	default:
