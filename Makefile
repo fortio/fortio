@@ -32,7 +32,7 @@ test: submodule
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: submodule
+local-lint: submodule vendor.check
 	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate \
 	--exclude=.pb.go --disable=gocyclo --disable=gas --line-length=132 \
@@ -43,7 +43,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # TODO: do something about cyclomatic complexity; maybe reenable gas
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
-lint: submodule vendor.check
+lint: submodule
 	docker run -v $(shell pwd):/go/src/istio.io/fortio $(BUILD_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
