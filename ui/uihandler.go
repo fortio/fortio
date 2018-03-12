@@ -77,6 +77,8 @@ var (
 	runs           = make(map[int64]*periodic.RunnerOptions)
 	// Base URL used for index - useful when running under an ingress with prefix
 	baseURL string
+
+	defaultPercentileList []float64
 )
 
 const (
@@ -183,6 +185,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 	}
 	out := io.Writer(os.Stderr)
+	if len(percList) == 0 {
+		percList = defaultPercentileList
+	}
 	if !JSONOnly {
 		out = io.Writer(&HTMLEscapeWriter{NextWriter: w, Flusher: flusher})
 	}
@@ -849,7 +854,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
-func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string) {
+func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string, percentileList []float64) {
 	baseURL = baseurl
 	startTime = time.Now()
 	hostPort := fnet.NormalizePort(port)
@@ -912,6 +917,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		uiMsg += "   (or any host/ip reachable on this server)"
 	}
 	fmt.Printf(uiMsg + "\n")
+	defaultPercentileList = percentileList
 
 }
 

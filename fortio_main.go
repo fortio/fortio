@@ -169,7 +169,7 @@ func main() {
 		if *redirectFlag != "disabled" {
 			go ui.RedirectToHTTPS(*redirectFlag)
 		}
-		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag)
+		go ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList)
 		pingServer(*grpcPortFlag)
 	case "grpcping":
 		grpcClient()
