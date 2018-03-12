@@ -103,6 +103,7 @@ var (
 	headersFlags   flagList
 	defaultDataDir = "."
 
+	followRedirectsFlag    = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
@@ -114,7 +115,6 @@ var (
 	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 	baseURLFlag = flag.String("base-url", "",
 		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
-
 	// GRPC related flags
 	// To get most debugging/tracing:
 	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
@@ -222,6 +222,10 @@ func fortioLoad(justCurl bool, percList []float64) {
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
+	if *followRedirectsFlag {
+		httpOpts.FollowRedirects = true
+		httpOpts.DisableFastClient = true
+	}
 	if justCurl {
 		fetchURL(&httpOpts)
 		return

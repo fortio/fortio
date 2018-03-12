@@ -128,6 +128,7 @@ type HTTPOptions struct {
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
 	Insecure          bool // do not verify certs for https
+	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool // whether URLSchemeCheck determined this was an https:// call or not
 	// ExtraHeaders to be added to each request.
@@ -314,14 +315,36 @@ func NewStdClient(o *HTTPOptions) *Client {
 		&http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
-			// Lets us see the raw response instead of auto following redirects.
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
 		},
 		&tr,
 	}
+	if !o.FollowRedirects {
+		// Lets us see the raw response instead of auto following redirects.
+		client.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
 	return &client
+}
+
+// FetchURL fetches the data at the given url using the standard client and default options.
+// Returns the http status code (http.StatusOK == 200 for success) and the data.
+// To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+func FetchURL(url string) (int, []byte) {
+	o := NewHTTPOptions(url)
+	// Maximize chances of getting the data back, vs the raw payload like the fast client
+	o.DisableFastClient = true
+	o.FollowRedirects = true
+	return Fetch(o)
+}
+
+// Fetch creates a client an performs a fetch according to the http options passed in.
+// To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+func Fetch(httpOptions *HTTPOptions) (int, []byte) {
+	cli := NewClient(httpOptions)
+	code, data, _ := cli.Fetch()
+	cli.Close()
+	return code, data
 }
 
 // FastClient is a fast, lockfree single purpose http 1.0/1.1 client.
