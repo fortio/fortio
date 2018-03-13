@@ -934,7 +934,6 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	fmt.Printf(uiMsg + "\n")
 	defaultPercentileList = percentileList
-
 }
 
 // Report starts the browsing only UI server on the given port.
