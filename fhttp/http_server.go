@@ -24,6 +24,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 	// get /debug/pprof endpoints on a mux through SetupPPROF
@@ -310,6 +311,40 @@ func SetupPPROF(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
 	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
 	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
+}
+
+// -- Fetch er (simple http proxy) --
+
+// FetcherHandler is the handler for the fetcher/proxy.
+func FetcherHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Fetch (prefix stripped)")
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Critf("hijacking not supported")
+		return
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		log.Errf("hijacking error %v", err)
+		return
+	}
+	// Don't forget to close the connection:
+	defer conn.Close() // nolint: errcheck
+	// Stripped prefix gets replaced by ./ - sometimes...
+	url := strings.TrimPrefix(r.URL.String(), "./")
+	opts := NewHTTPOptions("http://" + url)
+	opts.HTTPReqTimeOut = 5 * time.Minute
+	OnBehalfOf(opts, r)
+	client := NewClient(opts)
+	if client == nil {
+		return // error logged already
+	}
+	_, data, _ := client.Fetch()
+	_, err = conn.Write(data)
+	if err != nil {
+		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
+	}
+	client.Close()
 }
 
 // -- Redirection to https feature --

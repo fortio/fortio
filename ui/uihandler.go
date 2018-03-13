@@ -549,37 +549,6 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	})
 }
 
-// FetcherHandler is the handler for the fetcher/proxy.
-func FetcherHandler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "Fetch")
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		log.Critf("hijacking not supported")
-		return
-	}
-	conn, _, err := hj.Hijack()
-	if err != nil {
-		log.Errf("hijacking error %v", err)
-		return
-	}
-	// Don't forget to close the connection:
-	defer conn.Close() // nolint: errcheck
-	url := r.URL.String()[len(fetchPath):]
-	opts := fhttp.NewHTTPOptions("http://" + url)
-	opts.HTTPReqTimeOut = 5 * time.Minute
-	fhttp.OnBehalfOf(opts, r)
-	client := fhttp.NewClient(opts)
-	if client == nil {
-		return // error logged already
-	}
-	_, data, _ := client.Fetch()
-	_, err = conn.Write(data)
-	if err != nil {
-		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
-	}
-	client.Close()
-}
-
 // TODO: move tsv/xml sync handling to their own file (and possibly package)
 
 // http.ResponseWriter + Flusher emulator - if we refactor the code this should
@@ -834,7 +803,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
-	mux.HandleFunc(fetchPath, FetcherHandler)
+	mux.Handle(fetchPath, http.StripPrefix(fetchPath, http.HandlerFunc(fhttp.FetcherHandler)))
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	logoPath = version.Short() + "/static/img/logo.svg"
