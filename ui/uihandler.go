@@ -185,7 +185,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
 	}
 	out := io.Writer(os.Stderr)
-	if len(percList) == 0 {
+	if len(percList) == 0 && !strings.Contains(r.URL.RawQuery,"p=") {
 		percList = defaultPercentileList
 	}
 	if !JSONOnly {
