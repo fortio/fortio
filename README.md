@@ -1,10 +1,9 @@
+# Fortio
 [![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
 [![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
 [![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=shield)](https://circleci.com/gh/istio/fortio)
-
-# Fortio
 <img src="https://github.com/istio/fortio/blob/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
 
 Fortio (Φορτίο) is [Istio](https://istio.io/)'s load testing tool. Fortio runs at a specified query per second (qps) and records an histogram of execution time and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)). It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
