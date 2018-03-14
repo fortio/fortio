@@ -117,7 +117,7 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	// One shared and 'constant' (over time) but pseudo random content for payload
 	// (to defeat compression). We don't need crypto strength here, just low cpu
 	// and speed:
-	_, err := rand.Read(payload) // nolint:gas
+	_, err := rand.Read(payload)
 	if err != nil {
 		log.Errf("Error changing paylaod size, while generating random paylaod")
 	}
