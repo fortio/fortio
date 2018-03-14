@@ -17,6 +17,7 @@ package fhttp
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -511,6 +512,100 @@ func TestEchoBack(t *testing.T) {
 	if string(b) != expected {
 		t.Errorf("Got %s while expected %s", DebugSummary(b, 128), expected)
 	}
+}
+
+func TestH10Cli(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	opts := NewHTTPOptions(url)
+	opts.HTTP10 = true
+	opts.AddAndValidateExtraHeader("Host: mhostname")
+	cli := NewFastClient(opts)
+	code, _, _ := cli.Fetch()
+	if code != 200 {
+		t.Errorf("http 1.0 unexpected error %d", code)
+	}
+	s := cli.(*FastClient).socket
+	if s != nil {
+		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
+	}
+	cli.Close()
+}
+
+func TestSmallBufferAndNoKeepAlive(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	BufferSizeKb = 16
+	sz := BufferSizeKb * 1024
+	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
+	opts := NewHTTPOptions(url)
+	cli := NewFastClient(opts)
+	_, data, _ := cli.Fetch()
+	recSz := len(data)
+	if recSz > sz {
+		t.Errorf("config1: was expecting truncated read, got %d", recSz)
+	}
+	cli.Close()
+	// Same test without keepalive (exercises a different path)
+	opts.DisableKeepAlive = true
+	cli = NewFastClient(opts)
+	_, data, _ = cli.Fetch()
+	recSz = len(data)
+	if recSz > sz {
+		t.Errorf("config2: was expecting truncated read, got %d", recSz)
+	}
+	cli.Close()
+}
+
+func TestBadUrl(t *testing.T) {
+	opts := NewHTTPOptions("not a valid url")
+	cli := NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
+	opts.URL = "http://doesnotexist.istio.io"
+	cli = NewFastClient(opts)
+	if cli != nil {
+		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
+}
+
+func TestDefaultPort(t *testing.T) {
+	url := "http://fortio.istio.io/" // shall imply port 80
+	opts := NewHTTPOptions(url)
+	cli := NewFastClient(opts)
+	code, _, _ := cli.Fetch()
+	if code != 303 {
+		t.Errorf("unexpected code for %s: %d (expecting 303 redirect to https)", url, code)
+	}
+	conn := cli.(*FastClient).connect()
+	if conn != nil {
+		p := conn.RemoteAddr().(*net.TCPAddr).Port
+		if p != 80 {
+			t.Errorf("unexpected port for %s: %d", url, p)
+		}
+		conn.Close()
+	} else {
+		t.Errorf("unable to connect to %s", url)
+	}
+	cli.Close()
+	opts.URL = "https://fortio.istio.io" // will be https port 443
+	opts.Insecure = true                 // not needed as we have valid certs but to exercise that code
+	cli = NewFastClient(opts)
+	if cli != nil {
+		// If https support was added, remove this whitebox/for coverage purpose assertion
+		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
+	}
+	cli = NewClient(opts)
+	// currently fast client fails with https:
+	code, _, _ = cli.Fetch()
+	if code != 200 {
+		t.Errorf("Standard client http error code %d", code)
+	}
+	cli.Close()
 }
 
 // Test for bug #127

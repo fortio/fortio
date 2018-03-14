@@ -5,3 +5,6 @@ test.profile.*
 # binary, in case of go build .
 fortio
 .DS_Store
+# Avoid accidental changes to vendor or Gopkg.*:
+vendor
+Gopkg.*

@@ -21,37 +21,18 @@ package fgrpc
 
 import (
 	"fmt"
-	"net"
 	"testing"
+	"time"
 
-	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-// DynamicGRPCHealthServer starts and returns the port where a GRPC Health
-// server is running. It runs until error or program exit (separate go routine)
-func DynamicGRPCHealthServer() int {
-	listener, addr := fnet.Listen("grpc health", ":0")
-	grpcServer := grpc.NewServer()
-	healthServer := health.NewServer()
-	healthServer.SetServingStatus("ping", grpc_health_v1.HealthCheckResponse_SERVING)
-	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-	go func(socket net.Listener) {
-		if e := grpcServer.Serve(socket); e != nil {
-			log.Fatalf("failed to start grpc server: %v", e)
-		}
-	}(listener)
-	return addr.Port
-}
-
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := DynamicGRPCHealthServer()
+	port := PingServer("0", "bar")
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -71,6 +52,36 @@ func TestGRPCRunner(t *testing.T) {
 	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
 	if totalReq != ok {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+}
+
+func TestGRPCRunnerWithError(t *testing.T) {
+	log.SetLogLevel(log.Info)
+	port := PingServer("0", "svc1")
+	destination := fmt.Sprintf("localhost:%d", port)
+
+	opts := GRPCRunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
+			QPS:      10,
+			Duration: 1 * time.Second,
+		},
+		Destination: destination,
+		Service:     "svc2",
+	}
+	_, err := RunGRPCTest(&opts)
+	if err == nil {
+		t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+	}
+	opts.AllowInitialErrors = true
+	res, err := RunGRPCTest(&opts)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq := res.DurationHistogram.Count
+	numErrors := res.RetCodes[-1]
+	if totalReq != numErrors {
+		t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
 	}
 }
 
