@@ -81,7 +81,7 @@ var (
 	profileFlag        = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	keepAliveFlag      = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
 	halfCloseFlag      = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
-	httpReqTimeoutFlag = flag.Duration("httpreqtimeout", fhttp.HTTPReqTimeOutDefaultValue, "Http request timeout value")
+	httpReqTimeoutFlag = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
 	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
