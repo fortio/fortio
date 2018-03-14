@@ -16,6 +16,7 @@
 package version // import "istio.io/fortio/version"
 import (
 	"fmt"
+	"runtime"
 
 	"istio.io/fortio/log"
 )
@@ -88,5 +89,5 @@ func init() {
 		buildInfo += "-dirty"
 		log.Debugf("gitstatus is %q, marking buildinfo as dirty: %v", gitstatus, buildInfo)
 	}
-	longVersion = version + " " + buildInfo
+	longVersion = version + " " + buildInfo + " " + runtime.Version()
 }
