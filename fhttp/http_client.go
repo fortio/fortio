@@ -44,7 +44,7 @@ type Fetcher interface {
 }
 
 var (
-	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 32k.
+	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 128k.
 	BufferSizeKb = 128
 	// CheckConnectionClosedHeader indicates whether to check for server side connection closed headers.
 	CheckConnectionClosedHeader = false
