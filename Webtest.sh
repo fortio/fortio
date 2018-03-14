@@ -44,8 +44,8 @@ if [ "$SIZE" -lt 50000 ]; then
 fi
 # Check if max payload set to value passed in cmd line parameter -maxpayloadsizekb
 SIZE=$($CURL "${BASE_URL}/echo?size=1048576" |wc -c)
-# It should return 8194, not sure why the difference
-if [ "$SIZE" -lt 8194 ] || [ "$SIZE" -gt 8400 ]; then
+# Payload is 8192 but between content chunking and headers fast client can return up to 8300 or so
+if [ "$SIZE" -lt 8191 ] || [ "$SIZE" -gt 8400 ]; then
   echo "-maxpayloadsizekb not working as expected"
   exit 1
 fi
@@ -78,4 +78,3 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
-
