@@ -88,10 +88,10 @@ func TestNewHTTPRequest(t *testing.T) {
 }
 
 func TestMultiInitAndEscape(t *testing.T) {
-	// one escaped already 2 not
-	o := NewHTTPOptions("localhost:8080/?delay=10ms:10%,0.5s:15%25,0.25s:5%")
+	// 2 escaped already
+	o := NewHTTPOptions("localhost%3A8080/?delay=10ms:10,0.5s:15%25,0.25s:5")
 	// shouldn't perform any escapes
-	expected := "http://localhost:8080/?delay=10ms:10%,0.5s:15%25,0.25s:5%"
+	expected := "http://localhost%3A8080/?delay=10ms:10,0.5s:15%25,0.25s:5"
 	if o.URL != expected {
 		t.Errorf("Got initially '%s', expected '%s'", o.URL, expected)
 	}
