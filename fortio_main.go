@@ -163,7 +163,7 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
+		fgrpc.PingServer(*grpcPortFlag, *grpcSecureFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}

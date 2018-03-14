@@ -66,6 +66,11 @@ docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 # pprof should be there, no 404/error
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
+# switch to secure grpc and do a grpcping
+docker stop $DOCKERID
+docker rm $DOCKERNAME
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -grpc-secure -loglevel $LOGLEVEL)
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -grpc-secure localhost
 # switch to report mode
 docker stop $DOCKERID
 docker rm $DOCKERNAME

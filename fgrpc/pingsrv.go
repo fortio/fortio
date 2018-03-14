@@ -22,11 +22,13 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	"istio.io/fortio/fnet"
+	"istio.io/fortio/ftls"
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 )
@@ -51,12 +53,22 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING.
-func PingServer(port string, healthServiceName string) int {
+func PingServer(port string, secure bool, healthServiceName string) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return -1
 	}
-	grpcServer := grpc.NewServer()
+	var opts []grpc.ServerOption
+	if secure {
+		tlsCfg, err := ftls.NewCredentials(false, ftls.DefaultServerCert, ftls.DefaultServerKey,
+			ftls.DefaultCACert)
+		if err != nil {
+			fmt.Printf("Invalid TLS credentials: %v\n", err)
+			os.Exit(1)
+		}
+		opts = append(opts, grpc.Creds(credentials.NewTLS(tlsCfg)))
+	}
+	grpcServer := grpc.NewServer(opts...)
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)

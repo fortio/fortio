@@ -32,7 +32,7 @@ import (
 
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "bar")
+	port := PingServer("0", false, "bar")
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -57,7 +57,7 @@ func TestGRPCRunner(t *testing.T) {
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "svc1")
+	port := PingServer("0", false, "svc1")
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{

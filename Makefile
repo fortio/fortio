@@ -15,7 +15,7 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
 # go test ./... and others run in vendor/ and cause problems (!)
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json)")
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json|tools)")
 #PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already
