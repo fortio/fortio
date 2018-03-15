@@ -18,6 +18,8 @@
 
 - Once the release is deemed good/stable: move the git tag `latest_release` to the same as the release. Also push `latest_release` docker tag/image.
 
+- To update the command line flags in the ../README.md; go install the right version of fortio so it is in your path and run updateFlags.sh
+
 ## How to change the build image
 
 Update [../Dockerfile.build](../Dockerfile.build)
