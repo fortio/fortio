@@ -16,6 +16,8 @@ package fhttp // import "istio.io/fortio/fhttp"
 
 import (
 	"fmt"
+	"html/template"
+	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -414,4 +416,36 @@ func RoundDuration(d time.Duration) time.Duration {
 	tenthSec := int64(100 * time.Millisecond)
 	r := int64(d+50*time.Millisecond) / tenthSec
 	return time.Duration(tenthSec * r)
+}
+
+// -- formerly in uihandler:
+
+// HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
+type HTMLEscapeWriter struct {
+	NextWriter io.Writer
+	Flusher    http.Flusher
+}
+
+func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
+	template.HTMLEscape(w.NextWriter, p)
+	if w.Flusher != nil {
+		w.Flusher.Flush()
+	}
+	return len(p), nil
+}
+
+// NewHTMLEscapeWriter creates a io.Writer that can safely output
+// to an http.ResponseWrite with HTMLEscape-ing.
+func NewHTMLEscapeWriter(w io.Writer) io.Writer {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Errf("expected writer %+v to be an http.ResponseWriter and thus a http.Flusher", w)
+		flusher = nil
+	}
+	return &HTMLEscapeWriter{NextWriter: w, Flusher: flusher}
+}
+
+// OnBehalfOf adds a header with the remote addr to an http options object.
+func OnBehalfOf(o *HTTPOptions, r *http.Request) {
+	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }

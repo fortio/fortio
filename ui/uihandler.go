@@ -29,7 +29,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"os"
 	"path"
@@ -106,20 +105,6 @@ func getResourcesDir(override string) string {
 	return ""
 }
 
-// HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
-type HTMLEscapeWriter struct {
-	NextWriter io.Writer
-	Flusher    http.Flusher
-}
-
-func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
-	template.HTMLEscape(w.NextWriter, p)
-	if w.Flusher != nil {
-		w.Flusher.Flush()
-	}
-	return len(p), nil
-}
-
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
 
@@ -139,7 +124,7 @@ const (
 
 // Handler is the main UI handler creating the web forms and processing them.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "UI")
+	fhttp.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
 	DoSave := (r.FormValue("save") == "on")
@@ -189,7 +174,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		percList = defaultPercentileList
 	}
 	if !JSONOnly {
-		out = io.Writer(&HTMLEscapeWriter{NextWriter: w, Flusher: flusher})
+		out = fhttp.NewHTMLEscapeWriter(w)
 	}
 	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
 	if strings.TrimSpace(url) == "" {
@@ -295,7 +280,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				log.Errf("Error adding custom headers: %v", err)
 			}
 		}
-		onBehalfOf(httpopts, r)
+		fhttp.OnBehalfOf(httpopts, r)
 		if !JSONOnly {
 			flusher.Flush()
 		}
@@ -407,7 +392,7 @@ func DataList() (dataList []string) {
 
 // BrowseHandler handles listing and rendering the JSON results.
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Browse")
+	fhttp.LogRequest(r, "Browse")
 	path := r.URL.Path
 	if (path != uiPath) && (path != (uiPath + "browse")) {
 		if strings.HasPrefix(path, "/fortio") {
@@ -443,23 +428,10 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LogRequest logs the incoming request, including headers when loglevel is verbose
-func LogRequest(r *http.Request, msg string) {
-	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
-		r.Header.Get("X-Forwarded-Proto"))
-	if log.LogVerbose() {
-		for name, headers := range r.Header {
-			for _, h := range headers {
-				log.LogVf("Header %v: %v\n", name, h)
-			}
-		}
-	}
-}
-
 // LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r, "Static")
+		fhttp.LogRequest(r, "Static")
 		path := r.URL.Path
 		if path == faviconPath {
 			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
@@ -548,7 +520,7 @@ func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 // LogAndFilterDataRequest logs the data request.
 func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r, "Data")
+		fhttp.LogRequest(r, "Data")
 		path := r.URL.Path
 		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
 			sendHTMLDataIndex(w)
@@ -580,41 +552,6 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
-}
-
-// FetcherHandler is the handler for the fetcher/proxy.
-func FetcherHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Fetch")
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		log.Critf("hijacking not supported")
-		return
-	}
-	conn, _, err := hj.Hijack()
-	if err != nil {
-		log.Errf("hijacking error %v", err)
-		return
-	}
-	// Don't forget to close the connection:
-	defer conn.Close() // nolint: errcheck
-	url := r.URL.String()[len(fetchPath):]
-	opts := fhttp.NewHTTPOptions("http://" + url)
-	opts.HTTPReqTimeOut = 5 * time.Minute
-	onBehalfOf(opts, r)
-	client := fhttp.NewClient(opts)
-	if client == nil {
-		return // error logged already
-	}
-	_, data, _ := client.Fetch()
-	_, err = conn.Write(data)
-	if err != nil {
-		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
-	}
-	client.Close()
-}
-
-func onBehalfOf(o *fhttp.HTTPOptions, r *http.Request) {
-	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr) // nolint: gas
 }
 
 // TODO: move tsv/xml sync handling to their own file (and possibly package)
@@ -658,7 +595,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Sync")
+	fhttp.LogRequest(r, "Sync")
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
@@ -677,7 +614,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Fetch of index/bucket url ... ")) // nolint: gas, errcheck
 	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
-	onBehalfOf(o, r)
+	fhttp.OnBehalfOf(o, r)
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
 	// use std client to change the url and handle https:
@@ -851,23 +788,6 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
 }
 
-// LogAndCall wrapps an HTTP handler to log the request first.
-func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r, msg)
-		hf(w, r)
-	})
-}
-
-// SetupPPROF add pprof to the mux (mirror the init() of http pprof).
-func SetupPPROF(mux *http.ServeMux) {
-	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
-	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
-	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
-	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
-	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
-}
-
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path)
@@ -878,7 +798,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	if uipath == "" {
 		return
 	}
-	SetupPPROF(mux)
+	fhttp.SetupPPROF(mux)
 	uiPath = uipath
 	dataDir = datadir
 	if uiPath[len(uiPath)-1] != '/' {
@@ -888,7 +808,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
-	mux.HandleFunc(fetchPath, FetcherHandler)
+	mux.Handle(fetchPath, http.StripPrefix(fetchPath, http.HandlerFunc(fhttp.FetcherHandler)))
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	logoPath = version.Short() + "/static/img/logo.svg"
@@ -968,22 +888,6 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
-}
-
-// -- Redirection to https feature --
-
-// RedirectToHTTPSHandler handler sends a redirect to same URL with https.
-func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
-	dest := "https://" + r.Host + r.URL.String()
-	LogRequest(r, "Redirecting to "+dest)
-	http.Redirect(w, r, dest, http.StatusSeeOther)
-}
-
-// RedirectToHTTPS Sets up a redirector to https on the given port.
-// (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port string) {
-	m, _ := fhttp.HTTPServer("https redirector", port)
-	m.HandleFunc("/", RedirectToHTTPSHandler)
 }
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,

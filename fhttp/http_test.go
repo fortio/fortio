@@ -15,11 +15,13 @@
 package fhttp
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -722,6 +724,82 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 		"body:\n\n\n", a.Port, userAgent)
 	if body != expected {
 		t.Errorf("Get body: %s not as expected: %s", body, expected)
+	}
+}
+
+func TestPPROF(t *testing.T) {
+	mux, addr := HTTPServer("test pprof", "0")
+	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)
+	code, _ := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusNotFound {
+		t.Errorf("Got %d instead of expected 404/not found for %s", code, url)
+	}
+	SetupPPROF(mux)
+	code, data := FetchURL(url)
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("TotalAlloc")) {
+		t.Errorf("Result %s doesn't contain expected TotalAlloc", DebugSummary(data, 1024))
+	}
+}
+
+func TestFetchAndOnBehalfOf(t *testing.T) {
+	mux, addr := Serve("0", "/debug")
+	mux.Handle("/fetch/", http.StripPrefix("/fetch/", http.HandlerFunc(FetcherHandler)))
+	url := fmt.Sprintf("localhost:%d/fetch/localhost:%d/debug", addr.Port, addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	// ideally we'd check more of the header but it can be 127.0.0.1:port or [::1]:port depending on ipv6 support etc...
+	if !bytes.Contains(data, []byte("X-On-Behalf-Of: ")) {
+		t.Errorf("Result %s doesn't contain expected On-Behalf-Of:", DebugSummary(data, 1024))
+	}
+}
+
+func TestRedirector(t *testing.T) {
+	addr := RedirectToHTTPS(":0")
+	relativeURL := "/foo/bar?some=param&anotherone"
+	url := fmt.Sprintf("http://localhost:%d%s", addr.Port, relativeURL)
+	opts := NewHTTPOptions(url)
+	opts.AddAndValidateExtraHeader("Host: foo.istio.io")
+	code, data := Fetch(opts)
+	if code != http.StatusSeeOther {
+		t.Errorf("Got %d %s instead of %d for %s", code, DebugSummary(data, 256), http.StatusSeeOther, url)
+	}
+	if !bytes.Contains(data, []byte("Location: https://foo.istio.io"+relativeURL)) {
+		t.Errorf("Result %s doesn't contain Location: redirect", DebugSummary(data, 1024))
+	}
+}
+
+var testNeedEscape = "<a href='http://google.com'>link</a>"
+
+func escapeTestHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "escapeTestHandler")
+	out := NewHTMLEscapeWriter(w)
+	fmt.Fprintln(out, testNeedEscape)
+}
+
+func TestHTMLEscapeWriter(t *testing.T) {
+	mux, addr := HTTPServer("test escape", ":0")
+	mux.HandleFunc("/", escapeTestHandler)
+	url := fmt.Sprintf("http://localhost:%d/", addr.Port)
+	code, data := FetchURL(url)
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("&lt;a href=&#39;http://google.com&#39;&gt;link")) {
+		t.Errorf("Result %s doesn't contain expected escaped html:", DebugSummary(data, 1024))
+	}
+}
+
+func TestNewHTMLEscapeWriterError(t *testing.T) {
+	log.Infof("Expect error complaining about not an http/flusher:")
+	out := NewHTMLEscapeWriter(os.Stdout) // should cause flusher to be null
+	hw := out.(*HTMLEscapeWriter)
+	if hw.Flusher != nil {
+		t.Errorf("Shouldn't have a flusher when not passing in an http: %+v", hw.Flusher)
 	}
 }
 

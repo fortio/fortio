@@ -81,7 +81,7 @@ var (
 	profileFlag        = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	keepAliveFlag      = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
 	halfCloseFlag      = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
-	httpReqTimeoutFlag = flag.Duration("httpreqtimeout", fhttp.HTTPReqTimeOutDefaultValue, "Http request timeout value")
+	httpReqTimeoutFlag = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
 	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
@@ -103,6 +103,7 @@ var (
 	headersFlags   flagList
 	defaultDataDir = "."
 
+	followRedirectsFlag    = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
@@ -170,18 +171,18 @@ func main() {
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
 		isServer = true
-		ui.RedirectToHTTPS(*redirectFlag)
+		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
 		isServer = true
 		if *redirectFlag != "disabled" {
-			ui.RedirectToHTTPS(*redirectFlag)
+			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
 	case "server":
 		isServer = true
 		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
-			ui.RedirectToHTTPS(*redirectFlag)
+			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList)
 	case "grpcping":
@@ -225,6 +226,10 @@ func fortioLoad(justCurl bool, percList []float64) {
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
+	if *followRedirectsFlag {
+		httpOpts.FollowRedirects = true
+		httpOpts.DisableFastClient = true
+	}
 	if justCurl {
 		fetchURL(&httpOpts)
 		return

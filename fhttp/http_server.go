@@ -24,10 +24,11 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
-	// get /debug/pprof endpoints on default server - make sure report only doesn't have it
-	_ "net/http/pprof"
+	// get /debug/pprof endpoints on a mux through SetupPPROF
+	"net/http/pprof"
 
 	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
@@ -50,7 +51,9 @@ var (
 
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	if log.LogVerbose() {
+		LogRequest(r, "Echo") // will also print headers
+	}
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
@@ -74,11 +77,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: this easily lead to contention - use 'thread local'
 		rqNum := atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
-		for name, headers := range r.Header {
-			for _, h := range headers {
-				log.Debugf("Header %v: %v\n", name, h)
-			}
-		}
 	}
 	if r.FormValue("close") != "" {
 		log.Debugf("Adding Connection:close / will close socket")
@@ -238,7 +236,9 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
+	if log.LogVerbose() {
+		LogRequest(r, "Debug")
+	}
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
@@ -313,4 +313,87 @@ func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	}
 	mux.HandleFunc("/", EchoHandler)
 	return mux, addr
+}
+
+// -- formerly in ui handler
+
+// SetupPPROF add pprof to the mux (mirror the init() of http pprof).
+func SetupPPROF(mux *http.ServeMux) {
+	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
+}
+
+// -- Fetch er (simple http proxy) --
+
+// FetcherHandler is the handler for the fetcher/proxy.
+func FetcherHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "Fetch (prefix stripped)")
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Critf("hijacking not supported")
+		return
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		log.Errf("hijacking error %v", err)
+		return
+	}
+	// Don't forget to close the connection:
+	defer conn.Close() // nolint: errcheck
+	// Stripped prefix gets replaced by ./ - sometimes...
+	url := strings.TrimPrefix(r.URL.String(), "./")
+	opts := NewHTTPOptions("http://" + url)
+	opts.HTTPReqTimeOut = 5 * time.Minute
+	OnBehalfOf(opts, r)
+	client := NewClient(opts)
+	if client == nil {
+		return // error logged already
+	}
+	_, data, _ := client.Fetch()
+	_, err = conn.Write(data)
+	if err != nil {
+		log.Errf("Error writing fetched data to %v: %v", r.RemoteAddr, err)
+	}
+	client.Close()
+}
+
+// -- Redirection to https feature --
+
+// RedirectToHTTPSHandler handler sends a redirect to same URL with https.
+func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
+	dest := "https://" + r.Host + r.URL.String()
+	LogRequest(r, "Redirecting to "+dest)
+	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// RedirectToHTTPS Sets up a redirector to https on the given port.
+// (Do not create a loop, make sure this is addressed from an ingress)
+func RedirectToHTTPS(port string) *net.TCPAddr {
+	m, a := HTTPServer("https redirector", port)
+	m.HandleFunc("/", RedirectToHTTPSHandler)
+	return a
+}
+
+// LogRequest logs the incoming request, including headers when loglevel is verbose
+func LogRequest(r *http.Request, msg string) {
+	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+		r.Header.Get("X-Forwarded-Proto"))
+	if log.LogVerbose() {
+		for name, headers := range r.Header {
+			for _, h := range headers {
+				log.LogVf("Header %v: %v\n", name, h)
+			}
+		}
+	}
+}
+
+// LogAndCall wrapps an HTTP handler to log the request first.
+func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r, msg)
+		hf(w, r)
+	})
 }
