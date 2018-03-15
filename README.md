@@ -28,7 +28,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v0.7.3/fortio-linux_x64-0.7.3.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v0.8.0/fortio-linux_x64-0.8.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -152,11 +152,12 @@ target is a url (http load tests) or host:port (grpc health test) and flags are:
 * Start the internal servers:
 ```
 $ fortio server &
-Https redirector running on :8081
-UI starting - visit:
+Fortio 0.8.0 grpc 'ping' server listening on [::]:8079
+Fortio 0.8.0 https redirector server listening on [::]:8081
+Fortio 0.8.0 echo server listening on [::]:8080
+UI started - visit:
 http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-Fortio 0.7.3 grpc ping server listening on port :8079
-Fortio 0.7.3 echo server listening on port :8080
+21:45:23 I fortio_main.go:195> All fortio 0.8.0 buildinfo go1.10 servers started!
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -166,8 +167,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 0.7.3 grpc ping server listening on port :8079
-Fortio 0.7.3 echo server listening on port 10.10.10.10:8088
+Fortio 0.8.0 grpc ping server listening on port :8079
+Fortio 0.8.0 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -237,14 +238,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.7.3 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.8.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.7.3
+User-Agent: istio/fortio-0.8.0
 Foo: Bar
 
 body:
