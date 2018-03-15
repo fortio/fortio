@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -790,6 +791,15 @@ func TestHTMLEscapeWriter(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("&lt;a href=&#39;http://google.com&#39;&gt;link")) {
 		t.Errorf("Result %s doesn't contain expected escaped html:", DebugSummary(data, 1024))
+	}
+}
+
+func TestNewHTMLEscapeWriterError(t *testing.T) {
+	log.Infof("Expect error complaining about not an http/flusher:")
+	out := NewHTMLEscapeWriter(os.Stdout) // should cause flusher to be null
+	hw := out.(*HTMLEscapeWriter)
+	if hw.Flusher != nil {
+		t.Errorf("Shouldn't have a flusher when not passing in an http: %+v", hw.Flusher)
 	}
 }
 

@@ -436,10 +436,11 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 
 // NewHTMLEscapeWriter creates a io.Writer that can safely output
 // to an http.ResponseWrite with HTMLEscape-ing.
-func NewHTMLEscapeWriter(w http.ResponseWriter) io.Writer {
+func NewHTMLEscapeWriter(w io.Writer) io.Writer {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+		log.Errf("expected writer %+v to be an http.ResponseWriter and thus a http.Flusher", w)
+		flusher = nil
 	}
 	return &HTMLEscapeWriter{NextWriter: w, Flusher: flusher}
 }
