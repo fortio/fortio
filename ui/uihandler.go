@@ -174,7 +174,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		percList = defaultPercentileList
 	}
 	if !JSONOnly {
-		out = io.Writer(&fhttp.HTMLEscapeWriter{NextWriter: w, Flusher: flusher})
+		out = fhttp.NewHTMLEscapeWriter(w)
 	}
 	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
 	if strings.TrimSpace(url) == "" {

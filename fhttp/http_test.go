@@ -743,14 +743,55 @@ func TestPPROF(t *testing.T) {
 	}
 }
 
-/*
-func TestOnBehalfOf(t *testing.T) {
-	mux, addr := Serve("0", "")
-	url := fmt.Sprintf("localhost:%d/echo", addr.Port)
-	o := NewHTTPOptions(url)
-	OnBehalfOf(o, r)
+func TestFetchAndOnBehalfOf(t *testing.T) {
+	mux, addr := Serve("0", "/debug")
+	mux.Handle("/fetch/", http.StripPrefix("/fetch/", http.HandlerFunc(FetcherHandler)))
+	url := fmt.Sprintf("localhost:%d/fetch/localhost:%d/debug", addr.Port, addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("X-On-Behalf-Of: [::1]:")) {
+		t.Errorf("Result %s doesn't contain expected On-Behalf-Of:", DebugSummary(data, 1024))
+	}
 }
-*/
+
+func TestRedirector(t *testing.T) {
+	addr := RedirectToHTTPS(":0")
+	relativeURL := "/foo/bar?some=param&anotherone"
+	url := fmt.Sprintf("http://localhost:%d%s", addr.Port, relativeURL)
+	opts := NewHTTPOptions(url)
+	opts.AddAndValidateExtraHeader("Host: foo.istio.io")
+	code, data := Fetch(opts)
+	if code != http.StatusSeeOther {
+		t.Errorf("Got %d %s instead of %d for %s", code, DebugSummary(data, 256), http.StatusSeeOther, url)
+	}
+	if !bytes.Contains(data, []byte("Location: https://foo.istio.io"+relativeURL)) {
+		t.Errorf("Result %s doesn't contain Location: redirect", DebugSummary(data, 1024))
+	}
+}
+
+var testNeedEscape = "<a href='http://google.com'>link</a>"
+
+func escapeTestHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "escapeTestHandler")
+	out := NewHTMLEscapeWriter(w)
+	fmt.Fprintln(out, testNeedEscape)
+}
+
+func TestHTMLEscapeWriter(t *testing.T) {
+	mux, addr := HTTPServer("test escape", ":0")
+	mux.HandleFunc("/", escapeTestHandler)
+	url := fmt.Sprintf("http://localhost:%d/", addr.Port)
+	code, data := FetchURL(url)
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("&lt;a href=&#39;http://google.com&#39;&gt;link")) {
+		t.Errorf("Result %s doesn't contain expected escaped html:", DebugSummary(data, 1024))
+	}
+}
+
 // --- for bench mark/comparaison
 
 func asciiFold0(str string) []byte {

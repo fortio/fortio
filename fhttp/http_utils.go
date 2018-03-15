@@ -434,6 +434,16 @@ func (w *HTMLEscapeWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// NewHTMLEscapeWriter creates a io.Writer that can safely output
+// to an http.ResponseWrite with HTMLEscape-ing.
+func NewHTMLEscapeWriter(w http.ResponseWriter) io.Writer {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
+	}
+	return &HTMLEscapeWriter{NextWriter: w, Flusher: flusher}
+}
+
 // OnBehalfOf adds a header with the remote addr to an http options object.
 func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
