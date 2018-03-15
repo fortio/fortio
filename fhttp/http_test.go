@@ -751,7 +751,8 @@ func TestFetchAndOnBehalfOf(t *testing.T) {
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
 	}
-	if !bytes.Contains(data, []byte("X-On-Behalf-Of: [::1]:")) {
+	// ideally we'd check more of the header but it can be 127.0.0.1:port or [::1]:port depending on ipv6 support etc...
+	if !bytes.Contains(data, []byte("X-On-Behalf-Of: ")) {
 		t.Errorf("Result %s doesn't contain expected On-Behalf-Of:", DebugSummary(data, 1024))
 	}
 }
