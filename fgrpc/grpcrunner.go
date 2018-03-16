@@ -43,31 +43,29 @@ const (
 )
 
 // Dial dials grpc either using insecure or using default tls setup.
-func Dial(serverAddr string, tls bool, ca []string, cert, key string) (*grpc.ClientConn, error) {
-	var opts grpc.DialOption
+func Dial(serverAddr string, cert string) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
 	var creds credentials.TransportCredentials
+	var err error
 	switch {
-	case tls:
-		tlsCfg, err := fnet.NewCredentials(true, ca, cert, key)
+	case cert != "":
+		creds, err = credentials.NewClientTLSFromFile(cert, "")
 		if err != nil {
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
-		log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
-		log.Infof("Using TLS client certificate: %v", cert)
-		log.Infof("Using TLS client key: %v", key)
-		creds = credentials.NewTLS(tlsCfg)
-		opts = grpc.WithTransportCredentials(creds)
+		log.Infof("Using server certificate %v to construct TLS credentials", cert)
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	case strings.HasPrefix(serverAddr, "https://"):
 		creds = credentials.NewTLS(nil)
-		opts = grpc.WithTransportCredentials(creds)
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
-		opts = grpc.WithInsecure()
+		opts = append(opts, grpc.WithInsecure())
 	}
 	serverAddr = grpcDestination(serverAddr)
-	conn, err := grpc.Dial(serverAddr, opts)
+	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
-		log.Errf("failed to connect to %s with tls %v: %v", serverAddr, tls, err)
+		log.Errf("failed to connect to %s with tls %v: %v", serverAddr, err)
 	}
 	return conn, err
 }
@@ -104,12 +102,9 @@ type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
 	Destination        string
 	Service            string
-	Profiler           string   // file to save profiles to. defaults to no profiling
-	AllowInitialErrors bool     // whether initial errors don't cause an abort
-	Secure             bool     // use tls transport
-	Cert               string   // Path to client certificate for secure grpc
-	Key                string   // Path to client key for secure grpc
-	CA                 []string // Path to CA certificates for secure grpc
+	Profiler           string // file to save profiles to. defaults to no profiling
+	AllowInitialErrors bool   // whether initial errors don't cause an abort
+	Cert               string // Path to server certificate for secure grpc
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -126,7 +121,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		conn, err := Dial(o.Destination, o.Secure, o.CA, o.Cert, o.Key)
+		conn, err := Dial(o.Destination, o.Cert)
 		if err != nil {
 			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err

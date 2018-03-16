@@ -30,58 +30,94 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+var (
+	svrCrt = "../testdata/server.crt"
+	svrKey = "../testdata/server.key"
+)
+
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", false, nil, "", "", "bar")
-	destination := fmt.Sprintf("localhost:%d", port)
 
-	opts := GRPCRunnerOptions{
+	iPort := PingServer("0", "", "", "bar")
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "bar")
+	sDest := fmt.Sprintf("localhost:%d", sPort)
+
+	iOpts := GRPCRunnerOptions{
 		RunnerOptions: periodic.RunnerOptions{
 			QPS:        100,
 			Resolution: 0.00001,
 		},
-		Destination: destination,
+		Destination: iDest,
 		Profiler:    "test.profile",
 	}
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
+
+	sOpts := GRPCRunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
+			QPS:        100,
+			Resolution: 0.00001,
+		},
+		Cert:        svrCrt,
+		Destination: sDest,
+		Profiler:    "test.profile",
 	}
-	totalReq := res.DurationHistogram.Count
-	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
-	if totalReq != ok {
-		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	opts := []GRPCRunnerOptions{iOpts, sOpts}
+	for _, o := range opts {
+		res, err := RunGRPCTest(&o)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		totalReq := res.DurationHistogram.Count
+		ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+		if totalReq != ok {
+			t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+		}
 	}
 }
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", false, nil, "", "", "svc1")
-	destination := fmt.Sprintf("localhost:%d", port)
+	iPort := PingServer("0", "", "", "svc1")
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "svc1")
+	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	opts := GRPCRunnerOptions{
+	iOpts := GRPCRunnerOptions{
 		RunnerOptions: periodic.RunnerOptions{
 			QPS:      10,
 			Duration: 1 * time.Second,
 		},
-		Destination: destination,
+		Destination: iDest,
 		Service:     "svc2",
 	}
-	_, err := RunGRPCTest(&opts)
-	if err == nil {
-		t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+
+	sOpts := GRPCRunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
+			QPS:      10,
+			Duration: 1 * time.Second,
+		},
+		Destination: sDest,
+		Cert:        svrCrt,
+		Service:     "svc2",
 	}
-	opts.AllowInitialErrors = true
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	totalReq := res.DurationHistogram.Count
-	numErrors := res.RetCodes[-1]
-	if totalReq != numErrors {
-		t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
+	opts := []GRPCRunnerOptions{iOpts, sOpts}
+	for _, o := range opts {
+		_, err := RunGRPCTest(&o)
+		if err == nil {
+			t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+		}
+		o.AllowInitialErrors = true
+		res, err := RunGRPCTest(&o)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		totalReq := res.DurationHistogram.Count
+		numErrors := res.RetCodes[-1]
+		if totalReq != numErrors {
+			t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
+		}
 	}
 }
 

@@ -12,7 +12,7 @@ function cleanup {
   docker stop $DOCKERID
   docker rm $DOCKERNAME
 }
-trap cleanup EXIT
+#trap cleanup EXIT
 set -e
 set -o pipefail
 docker ps

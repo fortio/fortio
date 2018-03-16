@@ -52,22 +52,21 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING.
-func PingServer(port string, secure bool, ca []string, cert, key string, healthServiceName string) int {
+func PingServer(port string, cert, key, healthServiceName string) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return -1
 	}
 	var opts []grpc.ServerOption
-	if secure {
-		tlsCfg, err := fnet.NewCredentials(false, ca, cert, key)
+	if cert != "" && key != "" {
+		creds, err := credentials.NewServerTLSFromFile(cert, key)
 		if err != nil {
 			fmt.Printf("Invalid TLS credentials: %v\n", err)
 			os.Exit(1)
 		}
-		log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
-		log.Infof("Using TLS server certificate: %v", cert)
-		log.Infof("Using TLS server key: %v", key)
-		opts = append(opts, grpc.Creds(credentials.NewTLS(tlsCfg)))
+		log.Infof("Using server certificate %v to construct TLS credentials", cert)
+		log.Infof("Using server key %v to construct TLS credentials", key)
+		opts = append(opts, grpc.Creds(creds))
 	}
 	grpcServer := grpc.NewServer(opts...)
 	reflection.Register(grpcServer)
@@ -85,8 +84,8 @@ func PingServer(port string, secure bool, ca []string, cert, key string, healthS
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination).
-func PingClientCall(serverAddr string, tls bool, ca []string, cert, key string, n int, payload string) (float64, error) {
-	conn, err := Dial(serverAddr, tls, ca, cert, key) // somehow this never seem to error out, error comes later
+func PingClientCall(serverAddr string, cert string, n int, payload string) (float64, error) {
+	conn, err := Dial(serverAddr, cert) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
@@ -142,9 +141,9 @@ type HealthResultMap map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
 
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
-func GrpcHealthCheck(serverAddr string, tls bool, ca []string, cert, key string, svcname string, n int) (*HealthResultMap, error) {
-	log.Debugf("GrpcHealthCheck for %s tls %v svc '%s', %d iterations", serverAddr, tls, svcname, n)
-	conn, err := Dial(serverAddr, tls, ca, cert, key)
+func GrpcHealthCheck(serverAddr string, cert, svcname string, n int) (*HealthResultMap, error) {
+	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
+	conn, err := Dial(serverAddr, cert)
 	if err != nil {
 		return nil, err
 	}

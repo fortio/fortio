@@ -56,6 +56,7 @@ Use standard go client instead of fastclient <input type="checkbox" name="stdcli
 Load using http: <input type="radio" name="runner" value="http" checked/> or
 grpc: <input type="radio" name="runner" value="grpc"/>
 (grpc secure transport (tls): <input type="checkbox" name="grpc-secure"/>) <br />
+Server Certificate to use when grpc secure transport is selected: <input type="text" name="cert" size="64" value="/etc/ssl/certs/server.crt" /> <br />
 JSON output: <input type="checkbox" name="json" />,
 Save output: <input type="checkbox" name="save" checked /> <br />
 <input type="submit" name="load" value="Start"/>

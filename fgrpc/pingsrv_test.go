@@ -25,61 +25,53 @@ import (
 	"istio.io/fortio/log"
 )
 
-var (
-	caCrt  = []string{"../testdata/ca.crt"}
-	cliCrt = "../testdata/client.crt"
-	cliKey = "../testdata/client.key"
-)
-
 func init() {
 	log.SetLogLevel(log.Debug)
 }
 
 func TestPingServer(t *testing.T) {
-	iPort := PingServer("0", false, nil, "", "", "foo")
+	iPort := PingServer("0", "", "", "foo")
 	iAddr := fmt.Sprintf("localhost:%d", iPort)
 	t.Logf("test insecure grpc ping server running, will connect to %s", iAddr)
-	sPort := PingServer("0", true, caCrt, "../testdata/server.crt", "../testdata/server.key",
+	sPort := PingServer("0", "../testdata/server.crt", "../testdata/server.key",
 		"foo")
 	sAddr := fmt.Sprintf("localhost:%d", sPort)
 	t.Logf("test secure grpc ping server running, will connect to %s", sAddr)
-	if latency, err := PingClientCall(iAddr, false, nil, "", "", 7, "test payload"); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(iAddr, "", 7, "test payload"); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	if latency, err := PingClientCall(prefixHTTPS+"fortio.istio.io:443", false, nil, "", "", 7,
-		"test payload"); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(prefixHTTPS+"fortio.istio.io:443", "", 7, "test payload"); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	if latency, err := PingClientCall(sAddr, true, caCrt, cliCrt, cliKey, 7, "test payload"); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(sAddr, svrCrt, 7, "test payload"); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	if latency, err := PingClientCall(iAddr, true, caCrt, cliCrt, cliKey, 1, ""); err == nil {
+	if latency, err := PingClientCall(iAddr, svrCrt, 1, ""); err == nil {
 		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
 	}
-	if latency, err := PingClientCall(sAddr, false, nil, "", "", 1, ""); err == nil {
+	if latency, err := PingClientCall(sAddr, "", 1, ""); err == nil {
 		t.Errorf("Should have had an error instead of result %f for insecure ping to secure port", latency)
 	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
-	if r, err := GrpcHealthCheck(iAddr, false, nil, "", "", "", 1); err != nil || (*r)[serving] != 1 {
+	if r, err := GrpcHealthCheck(iAddr, "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
-	if r, err := GrpcHealthCheck(sAddr, true, caCrt, cliCrt, cliKey, "", 1); err != nil || (*r)[serving] != 1 {
+	if r, err := GrpcHealthCheck(sAddr, svrCrt, "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
-	if r, err := GrpcHealthCheck(prefixHTTPS+"fortio.istio.io:443", false, caCrt, cliCrt, cliKey,
-		"", 1); err != nil || (*r)[serving] != 1 {
+	if r, err := GrpcHealthCheck(prefixHTTPS+"fortio.istio.io:443", "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
-	if r, err := GrpcHealthCheck(iAddr, false, nil, "", "", "foo", 3); err != nil || (*r)[serving] != 3 {
+	if r, err := GrpcHealthCheck(iAddr, "", "foo", 3); err != nil || (*r)[serving] != 3 {
 		t.Errorf("Unexpected result %+v, %v with health check for same service as started (foo)", r, err)
 	}
-	if r, err := GrpcHealthCheck(sAddr, true, caCrt, cliCrt, cliKey, "foo", 3); err != nil || (*r)[serving] != 3 {
+	if r, err := GrpcHealthCheck(sAddr, svrCrt, "foo", 3); err != nil || (*r)[serving] != 3 {
 		t.Errorf("Unexpected result %+v, %v with health check for same service as started (foo)", r, err)
 	}
-	if r, err := GrpcHealthCheck(iAddr, false, nil, "", "", "willfail", 1); err == nil || r != nil {
+	if r, err := GrpcHealthCheck(iAddr, "", "willfail", 1); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
-	if r, err := GrpcHealthCheck(sAddr, true, caCrt, cliCrt, cliKey, "willfail", 1); err == nil || r != nil {
+	if r, err := GrpcHealthCheck(sAddr, svrCrt, "willfail", 1); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
