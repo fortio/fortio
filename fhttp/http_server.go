@@ -379,6 +379,9 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 // (Do not create a loop, make sure this is addressed from an ingress)
 func RedirectToHTTPS(port string) *net.TCPAddr {
 	m, a := HTTPServer("https redirector", port)
+	if m == nil {
+		return nil // error already logged
+	}
 	m.HandleFunc("/", RedirectToHTTPSHandler)
 	return a
 }

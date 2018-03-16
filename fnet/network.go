@@ -68,17 +68,28 @@ func ResolveDestination(dest string) *net.TCPAddr {
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
 func Resolve(host string, port string) *net.TCPAddr {
-	addrs, err := net.LookupIP(host)
-	if err != nil {
-		log.Errf("Unable to lookup '%s' : %v", host, err)
-		return nil
-	}
-	if len(addrs) > 1 && log.LogDebug() {
-		log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
-	}
-	log.Debugf("Will go to %s", addrs[0])
 	dest := &net.TCPAddr{}
-	dest.IP = addrs[0]
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		log.Debugf("host %s looks like an IPv6, stripping []", host)
+		host = host[1 : len(host)-1]
+	}
+	isAddr := net.ParseIP(host)
+	var err error
+	if isAddr != nil {
+		log.Debugf("Host already an IP, will go to %s", isAddr)
+		dest.IP = isAddr
+	} else {
+		addrs, err := net.LookupIP(host)
+		if err != nil {
+			log.Errf("Unable to lookup '%s' : %v", host, err)
+			return nil
+		}
+		if len(addrs) > 1 && log.LogDebug() {
+			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
+		}
+		log.Debugf("Will go to %s", addrs[0])
+		dest.IP = addrs[0]
+	}
 	dest.Port, err = net.LookupPort("tcp", port)
 	if err != nil {
 		log.Errf("Unable to resolve port '%s' : %v", port, err)
@@ -89,7 +100,7 @@ func Resolve(host string, port string) *net.TCPAddr {
 
 func transfer(dst net.Conn, src net.Conn) {
 	n, err := io.Copy(dst, src)
-	log.LogVf("Transferred %d from %v to %v: %v", n, src.RemoteAddr(), dst.RemoteAddr(), err)
+	log.LogVf("Transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), err)
 }
 
 func handleProxyRequest(conn net.Conn, dest *net.TCPAddr) {
