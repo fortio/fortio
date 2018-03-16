@@ -61,7 +61,7 @@ func TestNormalizePort(t *testing.T) {
 }
 
 func TestListen(t *testing.T) {
-	l, a := Listen("test listen", "0")
+	l, a := Listen("test listen1", "0")
 	if l == nil || a == nil {
 		t.Fatalf("Unexpected nil in Listen() %v %v", l, a)
 	}
@@ -72,7 +72,7 @@ func TestListen(t *testing.T) {
 }
 
 func TestListenFailure(t *testing.T) {
-	_, a1 := Listen("test listen1", "0")
+	_, a1 := Listen("test listen2", "0")
 	if a1.Port == 0 {
 		t.Errorf("Unexpected 0 port after listen %+v", a1)
 	}
@@ -120,9 +120,10 @@ func TestResolveDestinationMultipleIps(t *testing.T) {
 
 func TestProxy(t *testing.T) {
 	addr := ProxyToDestination(":0", "www.google.com:80")
-	d, err := net.DialTCP("tcp", nil, addr)
+	dAddr := net.TCPAddr{Port: addr.Port}
+	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
-		t.Errorf("can't connect to our proxy: %v", err)
+		t.Fatalf("can't connect to our proxy: %v", err)
 	}
 	defer d.Close()
 	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
