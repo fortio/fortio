@@ -63,15 +63,12 @@ func NewHTTPOptions(url string) *HTTPOptions {
 }
 
 // Init initializes the headers in an HTTPOptions (User-Agent).
-// It replaces plain % to %25 in the url. If you already have properly
-// escaped URLs use o.URL = to set it.
 func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	if h.initDone {
 		return h
 	}
 	h.initDone = true
-	// unescape then rescape % to %25 (so if it was already %25 it stays)
-	h.URL = strings.Replace(strings.Replace(url, "%25", "%", -1), "%", "%25", -1)
+	h.URL = url
 	h.NumConnections = 1
 	if h.HTTPReqTimeOut <= 0 {
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
