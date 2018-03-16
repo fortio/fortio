@@ -79,7 +79,8 @@ func Resolve(host string, port string) *net.TCPAddr {
 		log.Debugf("Host already an IP, will go to %s", isAddr)
 		dest.IP = isAddr
 	} else {
-		addrs, err := net.LookupIP(host)
+		var addrs []net.IP
+		addrs, err = net.LookupIP(host)
 		if err != nil {
 			log.Errf("Unable to lookup '%s' : %v", host, err)
 			return nil
