@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"istio.io/fortio/fnet"
-	"istio.io/fortio/ftls"
 	"istio.io/fortio/log"
 	"istio.io/fortio/stats"
 )
@@ -53,19 +52,21 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING.
-func PingServer(port string, secure bool, healthServiceName string) int {
+func PingServer(port string, secure bool, ca []string, cert, key string, healthServiceName string) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return -1
 	}
 	var opts []grpc.ServerOption
 	if secure {
-		tlsCfg, err := ftls.NewCredentials(false, ftls.DefaultServerCert, ftls.DefaultServerKey,
-			ftls.DefaultCACert)
+		tlsCfg, err := fnet.NewCredentials(false, ca, cert, key)
 		if err != nil {
 			fmt.Printf("Invalid TLS credentials: %v\n", err)
 			os.Exit(1)
 		}
+		log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
+		log.Infof("Using TLS server certificate: %v", cert)
+		log.Infof("Using TLS server key: %v", key)
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tlsCfg)))
 	}
 	grpcServer := grpc.NewServer(opts...)
@@ -84,11 +85,14 @@ func PingServer(port string, secure bool, healthServiceName string) int {
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination).
-func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64, error) {
-	conn, err := Dial(serverAddr, tls) // somehow this never seem to error out, error comes later
+func PingClientCall(serverAddr string, tls bool, ca []string, cert, key string, n int, payload string) (float64, error) {
+	conn, err := Dial(serverAddr, tls, ca, cert, key) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
+	log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
+	log.Infof("Using TLS client certificate: %v", cert)
+	log.Infof("Using TLS client key: %v", key)
 	msg := &PingMessage{Payload: payload}
 	cli := NewPingServerClient(conn)
 	// Warm up:
@@ -141,12 +145,15 @@ type HealthResultMap map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
 
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
-func GrpcHealthCheck(serverAddr string, tls bool, svcname string, n int) (*HealthResultMap, error) {
+func GrpcHealthCheck(serverAddr string, tls bool, ca []string, cert, key string, svcname string, n int) (*HealthResultMap, error) {
 	log.Debugf("GrpcHealthCheck for %s tls %v svc '%s', %d iterations", serverAddr, tls, svcname, n)
-	conn, err := Dial(serverAddr, tls)
+	conn, err := Dial(serverAddr, tls, ca, cert, key)
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
+	log.Infof("Using TLS client certificate: %v", cert)
+	log.Infof("Using TLS client key: %v", key)
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
 	rttHistogram := stats.NewHistogram(0, 10)

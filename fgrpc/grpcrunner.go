@@ -29,7 +29,6 @@ import (
 	"strings"
 
 	"istio.io/fortio/fnet"
-	"istio.io/fortio/ftls"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 )
@@ -44,27 +43,28 @@ const (
 )
 
 // Dial dials grpc either using insecure or using default tls setup.
-func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
+func Dial(serverAddr string, tls bool, ca []string, cert, key string) (*grpc.ClientConn, error) {
 	var opts grpc.DialOption
+	var creds credentials.TransportCredentials
 	switch {
 	case tls:
-		tlsCfg, err := ftls.NewCredentials(true, ftls.DefaultClientCert, ftls.DefaultClientKey,
-			ftls.DefaultCACert)
+		tlsCfg, err := fnet.NewCredentials(true, ca, cert, key)
 		if err != nil {
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
-		creds := credentials.NewTLS(tlsCfg)
+		creds = credentials.NewTLS(tlsCfg)
 		opts = grpc.WithTransportCredentials(creds)
 	case strings.HasPrefix(serverAddr, "https://"):
-		opts = grpc.WithTransportCredentials(credentials.NewTLS(nil))
+		creds = credentials.NewTLS(nil)
+		opts = grpc.WithTransportCredentials(creds)
 	default:
 		opts = grpc.WithInsecure()
 	}
 	serverAddr = grpcDestination(serverAddr)
-	conn, err = grpc.Dial(serverAddr, opts)
+	conn, err := grpc.Dial(serverAddr, opts)
 	if err != nil {
-		log.Errf("failed to conect to %s with tls %v: %v", serverAddr, tls, err)
+		log.Errf("failed to connect to %s with tls %v: %v", serverAddr, tls, err)
 	}
 	return conn, err
 }
@@ -101,9 +101,12 @@ type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
 	Destination        string
 	Service            string
-	Profiler           string // file to save profiles to. defaults to no profiling
-	Secure             bool   // use tls transport
-	AllowInitialErrors bool   // whether initial errors don't cause an abort
+	Profiler           string   // file to save profiles to. defaults to no profiling
+	AllowInitialErrors bool     // whether initial errors don't cause an abort
+	Secure             bool     // use tls transport
+	Cert               string   // Path to client certificate for secure grpc
+	Key                string   // Path to client key for secure grpc
+	CA                 []string // Path to CA certificates for secure grpc
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -120,7 +123,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		conn, err := Dial(o.Destination, o.Secure)
+		conn, err := Dial(o.Destination, o.Secure, o.CA, o.Cert, o.Key)
 		if err != nil {
 			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err

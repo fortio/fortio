@@ -70,15 +70,18 @@ func usage(msgs ...interface{}) {
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
-	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
-	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
-	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
-	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
-	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
-	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
-	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
-	grpcSecureFlag    = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
+	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
+	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
+	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
+	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
+	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
+	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to file")
+	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	serverCertFlag  = flag.String("server-cert", "",
+		"Full path to the server certificate required for secure grpc client or server")
+	serverKeyFlag = flag.String("server-key", "",
+		"Full path to the server key required for secure grpc server")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
@@ -163,7 +166,7 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, *grpcSecureFlag, fgrpc.DefaultHealthServiceName)
+		fgrpc.PingServer(*grpcPortFlag, *serverCertFlag, *serverKeyFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -250,7 +253,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			Secure:             *grpcSecureFlag,
+			Cert:               *serverCertFlag,
 			Service:            *healthSvcFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
@@ -314,7 +317,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 }
 
 func grpcClient() {
-	if len(flag.Args()) != 1 {
+	if len(flag.Args()) < 1 {
 		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
@@ -322,12 +325,11 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
-	tls := *grpcSecureFlag
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(host, *serverCertFlag, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(host, *serverCertFlag, count, *payloadFlag)
 	}
 	if err != nil {
 		// already logged

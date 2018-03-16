@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ftls
+package fnet
 
 import (
 	"crypto/tls"
-
-	"istio.io/fortio/log"
+	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 )
 
 const (
@@ -29,13 +30,11 @@ const (
 	DefaultClientCert = "/etc/ssl/certs/client.crt"
 	// DefaultClientKey is the default full path of the client-side key.
 	DefaultClientKey = "/etc/ssl/certs/client.key"
-	// DefaultCACert is the default full path of the Certificate Authority certificate.
-	DefaultCACert = "/etc/ssl/certs/ca.crt"
 )
 
 // TLSInfo prepares tls.Config's from TLS filename inputs.
 type TLSInfo struct {
-	CAFile   string
+	CAFiles  []string
 	CertFile string
 	KeyFile  string
 }
@@ -43,13 +42,10 @@ type TLSInfo struct {
 // ClientConfig returns a tls.Config for client use.
 func (info *TLSInfo) ClientConfig() (*tls.Config, error) {
 	// CA for verifying the server
-	pool, err := NewCertPool([]string{info.CAFile})
+	pool, err := NewCertPool(info.CAFiles)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Using TLS client certificate: %v", DefaultClientCert)
-	log.Infof("Using TLS client key: %v", DefaultClientKey)
-	log.Infof("Using CA certificate: %v to authenticate server certificate", DefaultCACert)
 	// client certificate (for authentication)
 	cert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
 	if err != nil {
@@ -58,10 +54,8 @@ func (info *TLSInfo) ClientConfig() (*tls.Config, error) {
 	return &tls.Config{
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: false,
-		// CA bundle the client should trust when verifying a server
-		RootCAs: pool,
-		// Client certificates to authenticate to the server
-		Certificates: []tls.Certificate{cert},
+		RootCAs:            pool,                    // CA bundle the client should trust when verifying a server
+		Certificates:       []tls.Certificate{cert}, // Client certificates to authenticate to the server
 	}, nil
 }
 
@@ -72,22 +66,16 @@ func (info *TLSInfo) ServerConfig() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Using TLS server certificate: %v", DefaultServerCert)
-	log.Infof("Using TLS server key: %v", DefaultServerKey)
-	log.Infof("Using CA certificate: %v to authenticate server certificate", DefaultCACert)
 	// CA for authenticating clients
-	pool, err := NewCertPool([]string{info.CAFile})
+	pool, err := NewCertPool(info.CAFiles)
 	if err != nil {
 		return nil, err
 	}
 	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		// Certificates the server should present to clients
-		Certificates: []tls.Certificate{cert},
-		// Client Authentication (required)
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		// CA for verifying and authorizing client certificates
-		ClientCAs: pool,
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{cert},        // Certificates the server should present to clients
+		ClientAuth:   tls.RequireAndVerifyClientCert, // Client Authentication (required)
+		ClientCAs:    pool,                           // CA for verifying and authorizing client certificates
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -95,4 +83,44 @@ func (info *TLSInfo) ServerConfig() (*tls.Config, error) {
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 		},
 	}, nil
+}
+
+// NewCertPool creates an x509 certPool with the provided CA files.
+func NewCertPool(CAFiles []string) (*x509.CertPool, error) {
+	certPool := x509.NewCertPool()
+
+	for _, CAFile := range CAFiles {
+		pemByte, err := ioutil.ReadFile(CAFile)
+		if err != nil {
+			return nil, err
+		}
+
+		for {
+			var block *pem.Block
+			block, pemByte = pem.Decode(pemByte)
+			if block == nil {
+				break
+			}
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			certPool.AddCert(cert)
+		}
+	}
+
+	return certPool, nil
+}
+
+// NewCredentials creates new client/server TlS credentials based on provided type and files.
+func NewCredentials(client bool, ca []string, cert, key string) (tls *tls.Config, err error) {
+	tlsInfo := TLSInfo{
+		CAFiles:  ca,
+		CertFile: cert,
+		KeyFile:  key,
+	}
+	if client {
+		return tlsInfo.ClientConfig()
+	}
+	return tlsInfo.ServerConfig()
 }
