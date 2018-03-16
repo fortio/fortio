@@ -263,8 +263,8 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 		r.Options().Abort()
 	}()
 	r.Run()
-	if count < 9 || count > 12 {
-		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	if count < 9 || count > 13 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-13", count)
 	}
 	// Same with infinite qps
 	count = 0
@@ -279,8 +279,8 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 		gAbortMutex.Unlock()
 	}()
 	r.Run()
-	if count != 3 { // should get 3 in 140ms
-		t.Errorf("Test executed unexpected number of times %d instead of %d", count, 3)
+	if count < 2 || count > 4 { // should get 3 in 140ms
+		t.Errorf("Test executed unexpected number of times %d instead of 3 (2-4)", count)
 	}
 }
 
