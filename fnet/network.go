@@ -16,6 +16,7 @@ package fnet // import "istio.io/fortio/fnet"
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strings"
 
@@ -35,14 +36,14 @@ func NormalizePort(port string) string {
 // Listen returns a listener for the port. Port can be a port or a
 // bind address and a port (e.g. "8080" or "[::1]:8080"...). If the
 // port component is 0 a free port will be returned by the system.
-// This logs fatal on error and is meant for servers that must start.
-// For library use, we could extract into 2 functions, one returning
-// error,... if needed.
+// This logs critical on error and returns nil (is meant for servers
+// that must start).
 func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	nPort := NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
 	if err != nil {
-		log.Fatalf("Can't listen to %v: %v", nPort, err)
+		log.Critf("Can't listen to %v: %v", nPort, err)
+		return nil, nil
 	}
 	addr := listener.Addr().(*net.TCPAddr)
 	if len(name) > 0 {
@@ -54,7 +55,7 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
 func ResolveDestination(dest string) *net.TCPAddr {
-	i := strings.LastIndex(dest, ":")
+	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
 		return nil
@@ -86,15 +87,43 @@ func Resolve(host string, port string) *net.TCPAddr {
 	return dest
 }
 
-/*
-// Proxy starts a tcp proxy.
-func Proxy(port string, dest *net.TCPAddr) {
-	l, a := Listen("proxy", port)
+func transfer(dst net.Conn, src net.Conn) {
+	n, err := io.Copy(dst, src)
+	log.LogVf("Transferred %d from %v to %v: %v", n, src.RemoteAddr(), dst.RemoteAddr(), err)
+}
+
+func handleProxyRequest(conn net.Conn, dest *net.TCPAddr) {
 	d, err := net.DialTCP("tcp", nil, dest)
 	if err != nil {
-		log.Errf("Unable to connect to %v : %v", dest, err)
-		return nil
+		log.Errf("Unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
+		return
 	}
-
+	go transfer(d, conn)
+	transfer(conn, d)
 }
-*/
+
+// Proxy starts a tcp proxy.
+func Proxy(port string, dest *net.TCPAddr) *net.TCPAddr {
+	listener, addr := Listen("proxy for "+dest.String(), port)
+	if addr == nil {
+		return nil // error already logged
+	}
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Critf("Error accepting: %v", err)
+			}
+			log.LogVf("Accepted proxy connection from %v for %v", conn.RemoteAddr(), dest)
+			// TODO limit number of go request, use worker pool, etc...
+			go handleProxyRequest(conn, dest)
+		}
+	}()
+	return addr
+}
+
+// ProxyToDestination opens a proxy from the listenPort (or addr:port) and forwards
+// all traffic to destination (host:port)
+func ProxyToDestination(listenPort string, destination string) *net.TCPAddr {
+	return Proxy(listenPort, ResolveDestination(destination))
+}

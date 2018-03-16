@@ -158,6 +158,9 @@ func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 		Handler: m,
 	}
 	listener, addr := fnet.Listen(name, port)
+	if addr == nil {
+		return nil, nil // error already logged
+	}
 	go func() {
 		err := s.Serve(listener)
 		if err != nil {
@@ -308,6 +311,9 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	startTime = time.Now()
 	mux, addr := HTTPServer("echo", port)
+	if addr == nil {
+		return nil, nil // error already logged
+	}
 	if debugPath != "" {
 		mux.HandleFunc(debugPath, DebugHandler)
 	}

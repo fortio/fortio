@@ -53,6 +53,9 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // to be marked as SERVING.
 func PingServer(port string, healthServiceName string) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
+	if addr == nil {
+		return -1
+	}
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()

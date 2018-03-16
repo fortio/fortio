@@ -21,6 +21,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"istio.io/fortio/fhttp"
 )
@@ -32,6 +33,8 @@ var (
 
 func main() {
 	flag.Parse()
-	fhttp.Serve(*port, *debugPath)
+	if _, addr := fhttp.Serve(*port, *debugPath); addr == nil {
+		os.Exit(1) // error already logged
+	}
 	select {}
 }
