@@ -90,9 +90,6 @@ func PingClientCall(serverAddr string, tls bool, ca []string, cert, key string, 
 	if err != nil {
 		return -1, err // error already logged
 	}
-	log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
-	log.Infof("Using TLS client certificate: %v", cert)
-	log.Infof("Using TLS client key: %v", key)
 	msg := &PingMessage{Payload: payload}
 	cli := NewPingServerClient(conn)
 	// Warm up:
@@ -151,9 +148,6 @@ func GrpcHealthCheck(serverAddr string, tls bool, ca []string, cert, key string,
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
-	log.Infof("Using TLS client certificate: %v", cert)
-	log.Infof("Using TLS client key: %v", key)
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
 	rttHistogram := stats.NewHistogram(0, 10)

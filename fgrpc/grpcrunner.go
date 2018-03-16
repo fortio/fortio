@@ -53,6 +53,9 @@ func Dial(serverAddr string, tls bool, ca []string, cert, key string) (*grpc.Cli
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
+		log.Infof("Using CA certificate: %v to authenticate server certificate", ca)
+		log.Infof("Using TLS client certificate: %v", cert)
+		log.Infof("Using TLS client key: %v", key)
 		creds = credentials.NewTLS(tlsCfg)
 		opts = grpc.WithTransportCredentials(creds)
 	case strings.HasPrefix(serverAddr, "https://"):
