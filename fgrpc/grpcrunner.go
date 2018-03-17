@@ -64,7 +64,7 @@ func Dial(serverAddr string, cert string) (conn *grpc.ClientConn, err error) {
 	serverAddr = grpcDestination(serverAddr)
 	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
-		log.Errf("failed to connect to %s with tls %v: %v", serverAddr, err)
+		log.Errf("failed to connect to %s: %v", serverAddr, err)
 	}
 	return conn, err
 }
