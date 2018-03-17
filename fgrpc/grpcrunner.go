@@ -43,10 +43,9 @@ const (
 )
 
 // Dial dials grpc either using insecure or using default tls setup.
-func Dial(serverAddr string, cert string) (*grpc.ClientConn, error) {
+func Dial(serverAddr string, cert string) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
 	var creds credentials.TransportCredentials
-	var err error
 	switch {
 	case cert != "":
 		creds, err = credentials.NewClientTLSFromFile(cert, "")
@@ -63,7 +62,7 @@ func Dial(serverAddr string, cert string) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithInsecure())
 	}
 	serverAddr = grpcDestination(serverAddr)
-	conn, err := grpc.Dial(serverAddr, opts...)
+	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with tls %v: %v", serverAddr, err)
 	}

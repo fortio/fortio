@@ -80,8 +80,12 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
-  -grpc-secure
-	Use secure transport (tls) for GRPC
+  -server-cert
+	Full path to the server certificate required for secure grpc.
+	Used by grpcping and server. (default "") means secure grpc is disabled.
+  -server-key
+	Full path to the server key required for secure grpc.
+	(default "") means secure grpc is disabled.
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
