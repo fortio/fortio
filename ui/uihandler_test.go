@@ -36,23 +36,20 @@ func TestSetHostAndPort(t *testing.T) {
 		expected  string
 	}{
 		{":8080", &net.TCPAddr{
-			[]byte{192, 168, 2, 3},
-			8081,
-			"",
+			IP:   []byte{192, 168, 2, 3},
+			Port: 8081,
 		}, "192.168.2.3:8081"},
 		{":8081", &net.TCPAddr{
-			[]byte{192, 168, 30, 14},
-			8080,
-			"",
+			IP:   []byte{192, 168, 30, 14},
+			Port: 8080,
 		}, "192.168.30.14:8080"},
 		{":8080",
 			nil,
 			"localhost:8080"},
 		{"",
 			&net.TCPAddr{
-				[]byte{192, 168, 30, 14},
-				9090,
-				"",
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
 			}, "192.168.30.14:9090"},
 	}
 	for _, test := range tests {
@@ -172,7 +169,7 @@ func TestServe(t *testing.T) {
 		percentileList         []float64
 		expectedPercentileList []float64
 		expectedDataDir        string
-		expectedUiPath         string
+		expectedUIPath         string
 	}{
 		{
 			"", "9090", "", "/fortio/", "", "test",
@@ -201,8 +198,8 @@ func TestServe(t *testing.T) {
 		if dataDir != test.expectedDataDir {
 			t.Errorf("%v is expected to be equal to %v", dataDir, test.datadir)
 		}
-		if uiPath != test.expectedUiPath {
-			t.Errorf("%v is expected to be equal to %v", uiPath, test.uipath)
+		if uiPath != test.expectedUIPath {
+			t.Errorf("%v is expected to be equal to %v", uiPath, test.expectedUIPath)
 		}
 	}
 }
@@ -213,8 +210,8 @@ func TestReport(t *testing.T) {
 		port                string
 		staticRsrcDir       string
 		datadir             string
-		expectedUiPath      string
-		expectedUrlHostPort string
+		expectedUIPath      string
+		expectedURLHostPort string
 	}{
 		{
 			"", "8080", "test", "test", "/", "[::]:8080",
@@ -227,11 +224,11 @@ func TestReport(t *testing.T) {
 		if dataDir != test.datadir {
 			t.Errorf("%v is expected to be equal to %v", dataDir, test.datadir)
 		}
-		if uiPath != test.expectedUiPath {
-			t.Errorf("%v is expected to be equal to %v", uiPath, test.expectedUiPath)
+		if uiPath != test.expectedUIPath {
+			t.Errorf("%v is expected to be equal to %v", uiPath, test.expectedUIPath)
 		}
-		if urlHostPort != test.expectedUrlHostPort {
-			t.Errorf("%v is expected to be equal to %v", urlHostPort, test.expectedUrlHostPort)
+		if urlHostPort != test.expectedURLHostPort {
+			t.Errorf("%v is expected to be equal to %v", urlHostPort, test.expectedURLHostPort)
 		}
 	}
 }
@@ -244,21 +241,24 @@ func TestPercentilesForHandler(t *testing.T) {
 	portT := "8181"
 	var tests = []struct {
 		url                   string
-		expectedJsonBodyTexts []string
-		expectedHtmlBodyTexts []string
+		expectedJSONBodyTexts []string
+		expectedHTMLBodyTexts []string
 	}{
 		{
-			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&save=on&r=0.0001&load=Start",
+			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&" +
+				"save=on&r=0.0001&load=Start",
 			[]string{"\"Percentile\": 50", "\"Percentile\": 75", "\"Percentile\": 90", "\"Percentile\": 99", "\"Percentile\": 99.9"},
 			[]string{"target 50%", "target 75%", "target 90%", "target 99%", "target 99.9%"},
 		},
 		{
-			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&save=on&r=0.0001&p=&load=Start",
+			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&" +
+				"save=on&r=0.0001&p=&load=Start",
 			[]string{},
 			[]string{},
 		},
 		{
-			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&save=on&r=0.0001&p=50,60,99&load=Start",
+			"http://localhost:8181/fortio/?labels=Fortio&url=http%3A%2F%2Flocalhost%3A8181%2Fecho&t=3s&qps=1000&" +
+				"save=on&r=0.0001&p=50,60,99&load=Start",
 			[]string{"\"Percentile\": 50", "\"Percentile\": 60", "\"Percentile\": 99"},
 			[]string{"target 50%", "target 60", "target 99"},
 		},
@@ -270,23 +270,24 @@ func TestPercentilesForHandler(t *testing.T) {
 			log.Fatalf("Error is occurred while %s. Error message: %v", test.url, err)
 		}
 		if resp != nil {
-			checkResponseBodyForPercentiles(t, resp, test.expectedJsonBodyTexts, test.expectedHtmlBodyTexts)
+			checkResponseBodyForPercentiles(t, resp, test.expectedJSONBodyTexts, test.expectedHTMLBodyTexts)
 		}
 	}
 }
 
-func checkResponseBodyForPercentiles(t *testing.T, res *http.Response, expectedJsonBodyTexts []string, expectedHtmlBodyTexts []string) {
+func checkResponseBodyForPercentiles(t *testing.T, res *http.Response, expectedJSONBodyTexts []string,
+	expectedHTMLBodyTexts []string) {
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Fatalf("while decoding the response, error is occured: %v", err)
+		log.Fatalf("while decoding the response, error is occurred: %v", err)
 	}
 	bodyText := string(b)
-	for _, expectedText := range expectedJsonBodyTexts {
+	for _, expectedText := range expectedJSONBodyTexts {
 		if !strings.Contains(bodyText, expectedText) {
 			t.Errorf("%s was expected to be in %s", expectedText, bodyText)
 		}
 	}
-	for _, expectedText := range expectedHtmlBodyTexts {
+	for _, expectedText := range expectedHTMLBodyTexts {
 		if !strings.Contains(bodyText, expectedText) {
 			t.Errorf("%s was expected to be in %s", expectedText, bodyText)
 		}
