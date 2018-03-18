@@ -18,6 +18,7 @@ package ui
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -266,7 +267,7 @@ func TestPercentilesForHandler(t *testing.T) {
 	for _, test := range tests {
 		resp, err := http.Get(test.url)
 		if err != nil {
-			t.Errorf("Error is occurred while %s. Error message: %s", test.url, err)
+			log.Fatalf("Error is occurred while %s. Error message: %v", test.url, err)
 		}
 		if resp != nil {
 			checkResponseBodyForPercentiles(t, resp, test.expectedJsonBodyTexts, test.expectedHtmlBodyTexts)
@@ -277,7 +278,7 @@ func TestPercentilesForHandler(t *testing.T) {
 func checkResponseBodyForPercentiles(t *testing.T, res *http.Response, expectedJsonBodyTexts []string, expectedHtmlBodyTexts []string) {
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		t.Error("Error is occured: %s while decoding the response", err)
+		log.Fatalf("while decoding the response, error is occured: %v", err)
 	}
 	bodyText := string(b)
 	for _, expectedText := range expectedJsonBodyTexts {
