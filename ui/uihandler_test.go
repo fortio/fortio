@@ -266,7 +266,7 @@ func TestPercentilesForHandler(t *testing.T) {
 	for _, test := range tests {
 		resp, err := http.Get(test.url)
 		if err != nil {
-			t.Errorf("Error is occurred while %s. Error message: %v", test.url, err)
+			t.Errorf("Error is occurred while %s. Error message: %s", test.url, err)
 		}
 		if resp != nil {
 			checkResponseBodyForPercentiles(t, resp, test.expectedJsonBodyTexts, test.expectedHtmlBodyTexts)
@@ -277,7 +277,7 @@ func TestPercentilesForHandler(t *testing.T) {
 func checkResponseBodyForPercentiles(t *testing.T, res *http.Response, expectedJsonBodyTexts []string, expectedHtmlBodyTexts []string) {
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		t.Error("Error is occured: %v while decoding the response", err)
+		t.Error("Error is occured: %s while decoding the response", err)
 	}
 	bodyText := string(b)
 	for _, expectedText := range expectedJsonBodyTexts {
