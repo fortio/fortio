@@ -894,7 +894,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 // sets the urlHostPort variable.
 func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	urlHostPort = inputPort
-	portStr := inputPort
+	portStr := ""
 	if addr != nil {
 		urlHostPort = addr.String()
 		portStr = fmt.Sprintf(":%d", addr.Port)
@@ -902,7 +902,7 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	if !strings.Contains(inputPort, ":") {
 		inputPort = ":" + inputPort
 	}
-	if strings.HasPrefix(inputPort, ":") {
-		urlHostPort = "localhost" + portStr
+	if !strings.HasPrefix(portStr, ":") {
+		urlHostPort = "localhost" + inputPort
 	}
 }
