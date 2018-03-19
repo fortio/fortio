@@ -127,14 +127,9 @@ func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
 	transfer(&wg, conn, d)
 	wg.Wait()
 	log.LogVf("Both sides of transfer to %v for %v done", dest, conn.RemoteAddr())
-	err = d.Close()
-	if err != nil {
-		log.Errf("Error closing dest socket %v: %v", dest, err)
-	}
-	err = conn.Close()
-	if err != nil {
-		log.Errf("Error closing source socket %v: %v", conn.RemoteAddr(), err)
-	}
+	// Not checking as we are closing/ending anyway - note: bad side effect of coverage...
+	_ = d.Close()
+	_ = conn.Close()
 }
 
 // Proxy starts a tcp proxy.
