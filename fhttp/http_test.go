@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -752,6 +753,14 @@ func TestFetchAndOnBehalfOf(t *testing.T) {
 	// ideally we'd check more of the header but it can be 127.0.0.1:port or [::1]:port depending on ipv6 support etc...
 	if !bytes.Contains(data, []byte("X-On-Behalf-Of: ")) {
 		t.Errorf("Result %s doesn't contain expected On-Behalf-Of:", DebugSummary(data, 1024))
+	}
+}
+
+func TestServeError(t *testing.T) {
+	_, addr := Serve("0", "")
+	mux2, addr2 := Serve(strconv.Itoa(addr.Port), "")
+	if mux2 != nil || addr2 != nil {
+		t.Errorf("2nd Serve() on same port %d should have failed: %v %v", addr.Port, mux2, addr2)
 	}
 }
 

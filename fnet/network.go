@@ -19,6 +19,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
@@ -99,20 +100,41 @@ func Resolve(host string, port string) *net.TCPAddr {
 	return dest
 }
 
-func transfer(dst net.Conn, src net.Conn) {
-	n, err := io.Copy(dst, src)
-	log.LogVf("Transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), err)
+func transfer(wg *sync.WaitGroup, dst *net.TCPConn, src *net.TCPConn) {
+	n, oErr := io.Copy(dst, src) // keep original error for logs below
+	log.LogVf("Transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), oErr)
+	err := src.CloseRead()
+	if err != nil { // We got an eof so it's already half closed.
+		log.LogVf("Semi expected error CloseRead on src %v: %v,%v", src.RemoteAddr(), err, oErr)
+	}
+	err = dst.CloseWrite()
+	if err != nil {
+		log.Errf("Error CloseWrite on dst %v: %v,%v", dst.RemoteAddr(), err, oErr)
+	}
+	wg.Done()
 }
 
-func handleProxyRequest(conn net.Conn, dest *net.TCPAddr) {
+func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
 	d, err := net.DialTCP("tcp", nil, dest)
 	if err != nil {
 		log.Errf("Unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
 		_ = conn.Close()
 		return
 	}
-	go transfer(d, conn)
-	transfer(conn, d)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go transfer(&wg, d, conn)
+	transfer(&wg, conn, d)
+	wg.Wait()
+	log.LogVf("Both sides of transfer to %v for %v done", dest, conn.RemoteAddr())
+	err = d.Close()
+	if err != nil {
+		log.Errf("Error closing dest socket %v: %v", dest, err)
+	}
+	err = conn.Close()
+	if err != nil {
+		log.Errf("Error closing source socket %v: %v", conn.RemoteAddr(), err)
+	}
 }
 
 // Proxy starts a tcp proxy.
@@ -127,9 +149,10 @@ func Proxy(port string, dest *net.TCPAddr) *net.TCPAddr {
 			if err != nil {
 				log.Critf("Error accepting: %v", err)
 			}
+			tcpConn := conn.(*net.TCPConn)
 			log.LogVf("Accepted proxy connection from %v for %v", conn.RemoteAddr(), dest)
 			// TODO limit number of go request, use worker pool, etc...
-			go handleProxyRequest(conn, dest)
+			go handleProxyRequest(tcpConn, dest)
 		}
 	}()
 	return addr
