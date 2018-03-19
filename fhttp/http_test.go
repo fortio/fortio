@@ -777,6 +777,12 @@ func TestRedirector(t *testing.T) {
 	if !bytes.Contains(data, []byte("Location: https://foo.istio.io"+relativeURL)) {
 		t.Errorf("Result %s doesn't contain Location: redirect", DebugSummary(data, 1024))
 	}
+	// 2nd one should fail
+	addr2 := RedirectToHTTPS(strconv.Itoa(addr.Port))
+	if addr2 != nil {
+		t.Errorf("2nd RedirectToHTTPS() on same port %d should have failed: %v", addr.Port, addr2)
+
+	}
 }
 
 var testNeedEscape = "<a href='http://google.com'>link</a>"
