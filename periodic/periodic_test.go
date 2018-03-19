@@ -302,8 +302,8 @@ func TestExactlyAndAbort(t *testing.T) {
 		r.Options().Abort()
 	}()
 	res := r.Run()
-	if count < 9 || count > 12 {
-		t.Errorf("Test executed unexpected number of times %d instead of 9-12", count)
+	if count < 9 || count > 13 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-13", count)
 	}
 	if !strings.Contains(res.RequestedDuration, "exactly 100 calls, interrupted after") {
 		t.Errorf("Got '%s' and didn't find expected aborted", res.RequestedDuration)
@@ -326,11 +326,12 @@ func TestSleepFallingBehind(t *testing.T) {
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
 	actual := res.DurationHistogram.Count
-	if actual != expected {
+	if actual > expected+2 || actual < expected-2 {
 		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", actual, expected)
 	}
-	if count != expected {
-		t.Errorf("Extra high qps executed unexpected number of times %d instead %d", count, expected)
+	// check histogram and our counter got same result
+	if count != actual {
+		t.Errorf("Extra high qps internal counter %d doesn't match histogram %d for expected %d", count, actual, expected)
 	}
 }
 

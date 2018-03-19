@@ -141,6 +141,34 @@ func TestProxy(t *testing.T) {
 	}
 }
 
+func TestProxyErrors(t *testing.T) {
+	addr := ProxyToDestination(":0", "doesnotexist.istio.io:80")
+	dAddr := net.TCPAddr{Port: addr.Port}
+	d, err := net.DialTCP("tcp", nil, &dAddr)
+	if err != nil {
+		t.Fatalf("can't connect to our proxy: %v", err)
+	}
+	defer d.Close()
+	res := make([]byte, 4096)
+	n, err := d.Read(res)
+	if err == nil {
+		t.Errorf("didn't get expected error with proxy %d", n)
+	}
+	// 2nd proxy on same port should fail
+	addr2 := ProxyToDestination(strconv.Itoa(addr.Port), "www.google.com:80")
+	if addr2 != nil {
+		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
+	}
+}
+func TestResolveIpV6(t *testing.T) {
+	addr := Resolve("[::1]", "http")
+	addrStr := addr.String()
+	expected := "[::1]:80"
+	if addrStr != expected {
+		t.Errorf("Got '%s' instead of '%s'", addrStr, expected)
+	}
+}
+
 // --- max logging for tests
 
 func init() {

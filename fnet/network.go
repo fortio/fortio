@@ -108,6 +108,7 @@ func handleProxyRequest(conn net.Conn, dest *net.TCPAddr) {
 	d, err := net.DialTCP("tcp", nil, dest)
 	if err != nil {
 		log.Errf("Unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
+		_ = conn.Close()
 		return
 	}
 	go transfer(d, conn)
