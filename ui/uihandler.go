@@ -790,13 +790,16 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
-// (be a 'directory' path)
-func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string, percentileList []float64) {
+// (be a 'directory' path). Returns true if server is started successfully.
+func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string, percentileList []float64) bool {
 	baseURL = baseurl
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
+	if addr == nil {
+		return false // Error already logged
+	}
 	if uipath == "" {
-		return
+		return true
 	}
 	fhttp.SetupPPROF(mux)
 	uiPath = uipath
@@ -854,16 +857,20 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	}
 	fmt.Printf(uiMsg + "\n")
 	defaultPercentileList = percentileList
+	return true
 }
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(baseurl, port, staticRsrcDir string, datadir string) {
+func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
 	http.DefaultServeMux = http.NewServeMux()
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	mux, addr := fhttp.HTTPServer("report", port)
+	if addr == nil {
+		return false
+	}
 	setHostAndPort(port, addr)
 	uiMsg := fmt.Sprintf("Browse only UI started - visit:\nhttp://%s/", urlHostPort)
 	if !strings.Contains(port, ":") {
@@ -888,6 +895,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	return true
 }
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,

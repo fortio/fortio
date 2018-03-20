@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -755,6 +756,14 @@ func TestFetchAndOnBehalfOf(t *testing.T) {
 	}
 }
 
+func TestServeError(t *testing.T) {
+	_, addr := Serve("0", "")
+	mux2, addr2 := Serve(strconv.Itoa(addr.Port), "")
+	if mux2 != nil || addr2 != nil {
+		t.Errorf("2nd Serve() on same port %d should have failed: %v %v", addr.Port, mux2, addr2)
+	}
+}
+
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"
@@ -767,6 +776,12 @@ func TestRedirector(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("Location: https://foo.istio.io"+relativeURL)) {
 		t.Errorf("Result %s doesn't contain Location: redirect", DebugSummary(data, 1024))
+	}
+	// 2nd one should fail
+	addr2 := RedirectToHTTPS(strconv.Itoa(addr.Port))
+	if addr2 != nil {
+		t.Errorf("2nd RedirectToHTTPS() on same port %d should have failed: %v", addr.Port, addr2)
+
 	}
 }
 

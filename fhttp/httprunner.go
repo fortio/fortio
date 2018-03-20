@@ -141,6 +141,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
+	// Cleanup state:
+	r.Options().ReleaseRunners()
 	sort.Ints(keys)
 	totalCount := float64(total.DurationHistogram.Count)
 	fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)

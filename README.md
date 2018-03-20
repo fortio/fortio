@@ -10,7 +10,7 @@ Fortio (Φορτίο) is [Istio](https://istio.io/)'s load testing tool. Fortio 
 
 The name fortio comes from greek [φορτίο](https://translate.google.com/translate_tts?q=Φορτίο&tl=el&tk=452076.38818&client=t) which means load/burden.
 
-Fortio is a fast, small, reusable, embeddable go library as well as a command line tool and server process, the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg and percentiles graphs).
+Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process, the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg and percentiles graphs).
 
 ## Installation
 
@@ -44,12 +44,15 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 Φορτίο 0.8.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http
-echo/ui/redirect servers), grpcping (grpc client), report (report only UI
+echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
 server), redirect (redirect only server), or curl (single URL debug).  where
 target is a url (http load tests) or host:port (grpc health test) and flags are:
   -H value
 	Additional Header(s)
   -L	Follow redirects (implies -std-client) - do not use for load test
+  -P value
+	Proxies to run, e.g -P "localport1 dest_host1:dest_port1" 
+	-P "[::1]:0 www.google.com:443" ...
   -a	Automatically save JSON result with filename based on labels & timestamp
   -allow-initial-errors
 	Allow and don't abort on initial warmup errors

@@ -26,6 +26,8 @@ import (
 	"runtime"
 	"strings"
 
+	"istio.io/fortio/fnet"
+
 	"istio.io/fortio/fgrpc"
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
@@ -35,21 +37,31 @@ import (
 	"istio.io/fortio/version"
 )
 
-var httpOpts fhttp.HTTPOptions
-
 // -- Support for multiple instances of -H flag on cmd line:
-type flagList struct {
+type headersFlagList struct {
 }
 
-// Unclear when/why this is called and necessary
-func (f *flagList) String() string {
+func (f *headersFlagList) String() string {
 	return ""
 }
-func (f *flagList) Set(value string) error {
+func (f *headersFlagList) Set(value string) error {
 	return httpOpts.AddAndValidateExtraHeader(value)
 }
 
 // -- end of functions for -H support
+// -- Support for multiple proxies (-P) flags on cmd line:
+type proxiesFlagList struct {
+}
+
+func (f *proxiesFlagList) String() string {
+	return ""
+}
+func (f *proxiesFlagList) Set(value string) error {
+	proxies = append(proxies, value)
+	return nil
+}
+
+// -- end of functions for -P support
 
 // Prints usage
 func usage(msgs ...interface{}) {
@@ -58,7 +70,7 @@ func usage(msgs ...interface{}) {
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect servers), grpcping (grpc client), report (report only UI",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
 		"server), redirect (redirect only server), or curl (single URL debug).",
 		"where target is a url (http load tests) or host:port (grpc health test)",
 		"and flags are:")
@@ -98,9 +110,13 @@ var (
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
-	staticDirFlag  = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
-	dataDirFlag    = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
-	headersFlags   flagList
+	staticDirFlag = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
+	dataDirFlag   = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
+	headersFlags  headersFlagList
+	httpOpts      fhttp.HTTPOptions
+	proxiesFlags  proxiesFlagList
+	proxies       = make([]string, 0)
+
 	defaultDataDir = "."
 
 	followRedirectsFlag    = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
@@ -128,6 +144,7 @@ var (
 
 func main() {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
+	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
@@ -177,14 +194,25 @@ func main() {
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
+		if !ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag) {
+			os.Exit(1) // error already logged
+		}
 	case "server":
 		isServer = true
 		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList)
+		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList) {
+			os.Exit(1) // error already logged
+		}
+		for _, proxy := range proxies {
+			s := strings.SplitN(proxy, " ", 2)
+			if len(s) != 2 {
+				log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
+			}
+			fnet.ProxyToDestination(s[0], s[1])
+		}
 	case "grpcping":
 		grpcClient()
 	default:

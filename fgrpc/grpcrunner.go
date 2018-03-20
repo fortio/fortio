@@ -159,7 +159,10 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			total.RetCodes[k] += grpcstate[i].RetCodes[k]
 		}
+		// TODO: if grpc client needs 'cleanup'/Close like http one, do it on original NumThreads
 	}
+	// Cleanup state:
+	r.Options().ReleaseRunners()
 	for _, k := range keys {
 		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
 	}

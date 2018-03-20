@@ -103,6 +103,7 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	res, err = RunHTTPTest(opts)
 	// it takes a while for the connections to close with std client (!) why isn't CloseIdleConnections() synchronous
 	runtime.GC()
+	runtime.GC() // 2x to clean up more... (#178)
 	ngAfter := runtime.NumGoroutine()
 	t.Logf("Number of go routine after 2nd test %d", ngAfter)
 	if err != nil {
@@ -113,8 +114,8 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	if opts.Exactly != httpOk {
 		t.Errorf("Run2: Mismatch between requested calls %d and ok %v", numCalls, res.RetCodes)
 	}
-	// allow for ~5 goroutine variance, as we use 50 if we leak it will show (was failing before #167)
-	if ngAfter > ngBefore2+5 {
+	// allow for ~8 goroutine variance, as we use 50 if we leak it will show (was failing before #167)
+	if ngAfter > ngBefore2+8 {
 		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
 	}
 	if !opts.DisableFastClient {

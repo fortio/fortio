@@ -17,6 +17,7 @@ package fgrpc
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -46,5 +47,10 @@ func TestPingServer(t *testing.T) {
 	}
 	if r, err := GrpcHealthCheck(addr, false, "willfail", 1); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
+	}
+	// 2nd server on same port should fail to bind:
+	newPort := PingServer(strconv.Itoa(port), "will fail")
+	if newPort != -1 {
+		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, port)
 	}
 }
