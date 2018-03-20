@@ -65,6 +65,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 			t.Errorf("threads: with %d input got %d, not as expected %d",
 				tst.numThreads, r.NumThreads, tst.expectedNumThreads)
 		}
+		r.ReleaseRunners()
 	}
 }
 
@@ -113,6 +114,7 @@ func TestStart(t *testing.T) {
 	if count != 2 {
 		t.Errorf("Test executed unexpected number of times %d instead minimum 2", count)
 	}
+	r.Options().ReleaseRunners()
 }
 
 func TestStartMaxQps(t *testing.T) {
@@ -139,6 +141,7 @@ func TestStartMaxQps(t *testing.T) {
 	if count != expected {
 		t.Errorf("MaxQpsTest executed unexpected number of times %d instead %d", count, expected)
 	}
+	r.Options().ReleaseRunners()
 }
 
 func TestExactlyLargeDur(t *testing.T) {
@@ -164,6 +167,7 @@ func TestExactlyLargeDur(t *testing.T) {
 	if count != expected {
 		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
 	}
+	r.Options().ReleaseRunners()
 }
 
 func TestExactlySmallDur(t *testing.T) {
@@ -189,6 +193,7 @@ func TestExactlySmallDur(t *testing.T) {
 	if count != expected {
 		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
 	}
+	r.Options().ReleaseRunners()
 }
 
 func TestExactlyMaxQps(t *testing.T) {
@@ -214,6 +219,7 @@ func TestExactlyMaxQps(t *testing.T) {
 	if count != expected {
 		t.Errorf("Exact count executed unexpected number of times %d instead %d", count, expected)
 	}
+	r.Options().ReleaseRunners()
 }
 
 func TestID(t *testing.T) {
@@ -269,6 +275,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 	// Same with infinite qps
 	count = 0
 	o.QPS = -1 // infinite qps
+	r.Options().ReleaseRunners()
 	r = NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	go func() {
@@ -279,6 +286,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 		gAbortMutex.Unlock()
 	}()
 	r.Run()
+	r.Options().ReleaseRunners()
 	if count < 2 || count > 4 { // should get 3 in 140ms
 		t.Errorf("Test executed unexpected number of times %d instead of 3 (2-4)", count)
 	}
@@ -302,6 +310,7 @@ func TestExactlyAndAbort(t *testing.T) {
 		r.Options().Abort()
 	}()
 	res := r.Run()
+	r.Options().ReleaseRunners()
 	if count < 9 || count > 13 {
 		t.Errorf("Test executed unexpected number of times %d instead of 9-13", count)
 	}
@@ -323,6 +332,7 @@ func TestSleepFallingBehind(t *testing.T) {
 	r.Options().MakeRunners(&c)
 	count = 0
 	res := r.Run()
+	r.Options().ReleaseRunners()
 	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
 	actual := res.DurationHistogram.Count
