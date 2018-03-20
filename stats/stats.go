@@ -132,7 +132,7 @@ var (
 		120, 140, 160, 180, 200, // line3 *10
 		250, 300, 350, 400, 450, 500, // line4 *10
 		600, 700, 800, 900, 1000, // line5 *10
-		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsly covered
+		2000, 3000, 4000, 5000, 7500, 10000, // another order of magnitude coarsely covered
 		20000, 30000, 40000, 50000, 75000, 100000, // ditto, the end
 	}
 	numValues  = len(histogramBucketValues)
@@ -286,26 +286,41 @@ func (h *Histogram) record(v float64, count int) {
 // TODO: consider spreading the count of the bucket evenly from start to end
 // so the % grows by at least to 1/N on start of range, and for last range
 // when start == end we should get to that % faster
-func (e *HistogramData) CalcPercentile(percentile float64) float64 {
-	if len(e.Data) == 0 {
+func (hd *HistogramData) CalcPercentile(percentile float64) float64 {
+	if len(hd.Data) == 0 {
 		log.Errf("Unexpected call to CalcPercentile(%g) with no data", percentile)
 		return 0
 	}
 	if percentile >= 100 {
-		return e.Max
+		return hd.Max
 	}
 	// We assume Min is at least a single point so at least covers 1/Count %
-	pp := 100. / float64(e.Count) // previous percentile
+	pp := 100. / float64(hd.Count) // previous percentile
 	if percentile <= pp {
-		return e.Min
+		return hd.Min
 	}
-	for _, cur := range e.Data {
+	for _, cur := range hd.Data {
 		if percentile <= cur.Percent {
 			return cur.Start + (percentile-pp)/(cur.Percent-pp)*(cur.End-cur.Start)
 		}
 		pp = cur.Percent
 	}
-	return e.Max // not reached
+	return hd.Max // not reached
+}
+
+// Histogram converts the HistogramData object and returns its
+// equivalent Histogram representation
+func (hd *HistogramData) Histogram() *Histogram {
+	res := NewHistogram(0, 10)
+	res.Counter.Min = hd.Min
+	res.Counter.Max = hd.Max
+
+	for _, bucket := range hd.Data {
+		midpoint := (bucket.Start + bucket.End) / 2
+		res.RecordN(midpoint, int(bucket.Count))
+	}
+
+	return res
 }
 
 // Export translate the internal representation of the histogram data in
@@ -373,29 +388,29 @@ func (h *Histogram) Export() *HistogramData {
 // CalcPercentiles calculates the requested percentile and add them to the
 // HistogramData. Potential TODO: sort or assume sorting and calculate all
 // the percentiles in 1 pass (greater and greater values).
-func (e *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
-	if e.Count == 0 {
-		return e
+func (hd *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
+	if hd.Count == 0 {
+		return hd
 	}
 	for _, p := range percentiles {
-		e.Percentiles = append(e.Percentiles, Percentile{p, e.CalcPercentile(p)})
+		hd.Percentiles = append(hd.Percentiles, Percentile{p, hd.CalcPercentile(p)})
 	}
-	return e
+	return hd
 }
 
 // Print dumps the histogram (and counter) to the provided writer.
 // Also calculates the percentile.
-func (e *HistogramData) Print(out io.Writer, msg string) {
-	if len(e.Data) == 0 {
+func (hd *HistogramData) Print(out io.Writer, msg string) {
+	if len(hd.Data) == 0 {
 		fmt.Fprintf(out, "%s : no data\n", msg) // nolint: gas
 		return
 	}
 	// the base counter part:
 	fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", // nolint(errorcheck)
-		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
+		msg, hd.Count, hd.Avg, hd.StdDev, hd.Min, hd.Max, hd.Sum)
 	fmt.Fprintln(out, "# range, mid point, percentile, count") // nolint: gas
 	sep := ">="
-	for i, b := range e.Data {
+	for i, b := range hd.Data {
 		if i > 0 {
 			sep = ">" // last interval is inclusive (of max value)
 		}
@@ -404,7 +419,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 	}
 
 	// print the information of target percentiles
-	for _, p := range e.Percentiles {
+	for _, p := range hd.Percentiles {
 		fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
 	}
 }
@@ -464,9 +479,9 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
-// Merge two different histogram with different scale parameters
+// MergeHistograms merges two different histogram with different scale parameters
 // Lowest offset and highest divider value will be selected on new Histogram as scale parameters
-func Merge(h1 *Histogram, h2 *Histogram) *Histogram {
+func MergeHistograms(h1 *Histogram, h2 *Histogram) *Histogram {
 	divider := h1.Divider
 	offset := h1.Offset
 	if h2.Divider > h1.Divider {

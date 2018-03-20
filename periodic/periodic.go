@@ -126,32 +126,6 @@ type RunnerOptions struct {
 	Exactly int64
 }
 
-// RunnerResults encapsulates the actual QPS observed and duration histogram.
-type RunnerResults struct {
-	Labels            string
-	StartTime         time.Time
-	RequestedQPS      string
-	RequestedDuration string // String version of the requested duration or exact count
-	ActualQPS         float64
-	ActualDuration    time.Duration
-	NumThreads        int
-	Version           string
-	DurationHistogram *stats.HistogramData
-	Exactly           int64 // Echo back the requested count
-}
-
-// HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
-// and GrpcRunnerResults so the common results can ge extracted irrespective
-// of the type.
-type HasRunnerResult interface {
-	Result() *RunnerResults
-}
-
-// Result returns the common RunnerResults.
-func (r *RunnerResults) Result() *RunnerResults {
-	return r
-}
-
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
 type PeriodicRunner interface { // nolint: golint
@@ -536,39 +510,4 @@ MainLoop:
 			sleepTimes.Counter.Log(tIDStr + " Sleep time")
 		}
 	}
-}
-
-func formatDate(d *time.Time) string {
-	return fmt.Sprintf("%d-%02d-%02d-%02d%02d%02d", d.Year(), d.Month(), d.Day(),
-		d.Hour(), d.Minute(), d.Second())
-}
-
-// ID Returns an id for the result: 64 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
-// where alpha_labels is the filtered labels with only alphanumeric characters
-// and all non alpha num replaced by _; truncated to 64 bytes.
-func (r *RunnerResults) ID() string {
-	base := formatDate(&r.StartTime)
-	if r.Labels == "" {
-		return base
-	}
-	last := '_'
-	base += string(last)
-	for _, rune := range r.Labels {
-		if (rune >= 'a' && rune <= 'z') || (rune >= 'A' && rune <= 'Z') || (rune >= '0' && rune <= '9') {
-			last = rune
-		} else {
-			if last == '_' {
-				continue // only 1 _ separator at a time
-			}
-			last = '_'
-		}
-		base += string(last)
-	}
-	if last == '_' {
-		base = base[:len(base)-1]
-	}
-	if len(base) > 64 {
-		return base[:64]
-	}
-	return base
 }

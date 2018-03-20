@@ -177,6 +177,19 @@ func TestHistogram(t *testing.T) {
 	}
 }
 
+func TestHistogramDataToHistogram(t *testing.T) {
+	h := NewHistogram(0, 10)
+	h.Record(1)
+	h.Record(251)
+	h.Record(501)
+	h.Record(751)
+	h.Record(1001)
+	h.Print(os.Stdout, "TestHistogram", []float64{50})
+	e := h.Export()
+	hcopy := e.Histogram()
+	hcopy.Print(os.Stdout, "TestHistogramCopy", []float64{50})
+}
+
 func TestPercentiles1(t *testing.T) {
 	h := NewHistogram(0, 10)
 	h.Record(10)
@@ -480,7 +493,7 @@ func TestMergeHistogramsWithDifferentScales(t *testing.T) {
 	h2.Record(30)
 	h2.Record(40)
 	h2.Record(50)
-	newH := Merge(h1, h2)
+	newH := MergeHistograms(h1, h2)
 	newH.Print(w, "h1 and h2 merged", tP)
 	w.Flush()
 	actual := b.String()
@@ -508,7 +521,7 @@ func TestMergeHistogramsWithDifferentScales(t *testing.T) {
 	h4.Record(300)
 	h4.Record(400)
 	h4.Record(50)
-	newH = Merge(h3, h4)
+	newH = MergeHistograms(h3, h4)
 	newH.Print(w, "h3 and h4 merged", tP)
 	w.Flush()
 	actual = b.String()

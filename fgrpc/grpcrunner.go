@@ -92,7 +92,7 @@ type GRPCRunnerOptions struct {
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
 }
 
-// RunGRPCTest runs an http test and returns the aggregated stats.
+// RunGRPCTest runs a grpc test and returns the aggregated stats.
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
@@ -164,7 +164,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	for _, k := range keys {
-		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
+		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k]) // nolint:gas
 	}
 	return &total, nil
 }
