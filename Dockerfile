@@ -6,19 +6,20 @@ COPY . fortio
 RUN make -C fortio submodule
 # Putting spaces in linker replaced variables is hard but does work.
 RUN echo "$(date +'%Y-%m-%d %H:%M') $(cd fortio; git rev-parse HEAD)" > /build-info.txt
+# Sets up the static directory outside of the go source tree and
+# the default data directory to a /var/lib/... volume
+# + rest of build time/git/version magic.
 RUN echo "-s -X istio.io/fortio/ui.resourcesDir=/usr/local/lib/fortio -X main.defaultDataDir=/var/lib/istio/fortio \
   -X \"istio.io/fortio/version.buildInfo=$(cat /build-info.txt)\" \
   -X istio.io/fortio/version.tag=$(cd fortio; git describe --tags) \
   -X istio.io/fortio/version.gitstatus=$(cd fortio; git status --porcelain | wc -l)" > /link-flags.txt
-# Sets up the static directory outside of the go source tree and
-# the default data directory to a /var/lib/... volume
 RUN go version
 RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags "$(cat /link-flags.txt)" -o fortio_go1.10.bin istio.io/fortio
 RUN ./fortio_go1.10.bin version
 # Check we still build with go 1.8 (and macos does not break)
 RUN /usr/local/go/bin/go version
 RUN CGO_ENABLED=0 GOOS=darwin /usr/local/go/bin/go build -a -ldflags "$(cat /link-flags.txt)" -o fortio_go1.8.mac istio.io/fortio
-# Build with 1.8 for perf comparaison
+# Build with 1.8 for perf comparison
 #RUN CGO_ENABLED=0 GOOS=linux /usr/local/go/bin/go build -a -ldflags "$(cat /link-flags.txt)" -o fortio_go1.8.bin istio.io/fortio
 #RUN ./fortio_go1.8.bin version
 # Just check it stays compiling on Windows (would need to set the rsrcDir too)
