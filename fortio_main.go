@@ -64,7 +64,8 @@ func usage(msgs ...interface{}) {
 	bincommon.FlagsUsage(msgs...)
 }
 
-// Attention: changes here should also be reflected in fcurl/fcurl.go
+// Attention: every flag that is common to http client goes to bincommon/
+// for sharing between fortio and fcurl binaries
 
 var (
 	defaults = &periodic.DefaultRunnerOptions

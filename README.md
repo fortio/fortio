@@ -46,12 +46,12 @@ Fortio can be an http or grpc load generator, gathering statistics using the `lo
 where command is one of: load (load testing), server (starts grpc ping and http
 echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
 server), redirect (redirect only server), or curl (single URL debug).  where
-target is a url (http load tests) or host:port (grpc health test) and flags are:
+target is a url (http load tests) or host:port (grpc health test).  flags are:
   -H value
 	Additional Header(s)
   -L	Follow redirects (implies -std-client) - do not use for load test
   -P value
-	Proxies to run, e.g -P "localport1 dest_host1:dest_port1" 
+	Proxies to run, e.g -P "localport1 dest_host1:dest_port1"
 	-P "[::1]:0 www.google.com:443" ...
   -a	Automatically save JSON result with filename based on labels & timestamp
   -allow-initial-errors
@@ -97,10 +97,11 @@ target is a url (http load tests) or host:port (grpc health test) and flags are:
   -httpccch
 	Check for Connection: Close Header
   -https-insecure
-	Do not verify certs in https connections
+	Long form of the -k flag
   -json string
 	Json output to provided file or '-' for stdout (empty = no json output,
 	unless -a is used)
+  -k	Do not verify certs in https connections
   -keepalive
 	Keep connection alive (only for fast http 1.1) (default true)
   -labels string
