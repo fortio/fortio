@@ -862,12 +862,15 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(baseurl, port, staticRsrcDir string, datadir string) {
+func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
 	http.DefaultServeMux = http.NewServeMux()
 	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	mux, addr := fhttp.HTTPServer("report", port)
+	if addr == nil {
+		return false
+	}
 	setHostAndPort(port, addr)
 	uiMsg := fmt.Sprintf("Browse only UI started - visit:\nhttp://%s/", urlHostPort)
 	if !strings.Contains(port, ":") {
@@ -892,6 +895,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) {
 	}
 	fsd := http.FileServer(http.Dir(dataDir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	return true
 }
 
 // setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,

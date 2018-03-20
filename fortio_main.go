@@ -194,7 +194,9 @@ func main() {
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag)
+		if !ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag) {
+			os.Exit(1) // error already logged
+		}
 	case "server":
 		isServer = true
 		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
