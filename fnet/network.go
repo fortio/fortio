@@ -102,14 +102,14 @@ func Resolve(host string, port string) *net.TCPAddr {
 
 func transfer(wg *sync.WaitGroup, dst *net.TCPConn, src *net.TCPConn) {
 	n, oErr := io.Copy(dst, src) // keep original error for logs below
-	log.LogVf("Transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), oErr)
+	log.LogVf("Proxy: transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), oErr)
 	err := src.CloseRead()
 	if err != nil { // We got an eof so it's already half closed.
-		log.LogVf("Semi expected error CloseRead on src %v: %v,%v", src.RemoteAddr(), err, oErr)
+		log.LogVf("Proxy: semi expected error CloseRead on src %v: %v,%v", src.RemoteAddr(), err, oErr)
 	}
 	err = dst.CloseWrite()
 	if err != nil {
-		log.Errf("Error CloseWrite on dst %v: %v,%v", dst.RemoteAddr(), err, oErr)
+		log.Errf("Proxy: error CloseWrite on dst %v: %v,%v", dst.RemoteAddr(), err, oErr)
 	}
 	wg.Done()
 }
@@ -117,7 +117,7 @@ func transfer(wg *sync.WaitGroup, dst *net.TCPConn, src *net.TCPConn) {
 func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
 	d, err := net.DialTCP("tcp", nil, dest)
 	if err != nil {
-		log.Errf("Unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
+		log.Errf("Proxy: unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
 		_ = conn.Close()
 		return
 	}
@@ -126,7 +126,7 @@ func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
 	go transfer(&wg, d, conn)
 	transfer(&wg, conn, d)
 	wg.Wait()
-	log.LogVf("Both sides of transfer to %v for %v done", dest, conn.RemoteAddr())
+	log.LogVf("Proxy: both sides of transfer to %v for %v done", dest, conn.RemoteAddr())
 	// Not checking as we are closing/ending anyway - note: bad side effect of coverage...
 	_ = d.Close()
 	_ = conn.Close()
@@ -142,10 +142,10 @@ func Proxy(port string, dest *net.TCPAddr) *net.TCPAddr {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Critf("Error accepting: %v", err)
+				log.Critf("Proxy: error accepting: %v", err)
 			}
 			tcpConn := conn.(*net.TCPConn)
-			log.LogVf("Accepted proxy connection from %v for %v", conn.RemoteAddr(), dest)
+			log.LogVf("Proxy: Accepted proxy connection from %v for %v", conn.RemoteAddr(), dest)
 			// TODO limit number of go request, use worker pool, etc...
 			go handleProxyRequest(tcpConn, dest)
 		}

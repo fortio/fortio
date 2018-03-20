@@ -66,6 +66,13 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 	}
 }
 
+// ReleaseRunners clear the runners state.
+func (r *RunnerOptions) ReleaseRunners() {
+	for idx := range r.Runners {
+		r.Runners[idx] = nil
+	}
+}
+
 // Aborter is the object controlling Abort() of the runs.
 type Aborter struct {
 	sync.Mutex
@@ -256,14 +263,18 @@ func (r *RunnerOptions) Abort() {
 	}
 }
 
-// internal version, returning the concrete implementation.
+// internal version, returning the concrete implementation. logical std::move
 func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	r := &periodicRunner{*opts} // by default just copy the input params
+	opts.ReleaseRunners()
+	opts.Stop = nil
 	r.Normalize()
 	return r
 }
 
 // NewPeriodicRunner constructs a runner from input parameters/options.
+// The options will be moved and normalized to the returned object, do
+// not use the original options after this call, call Options() instead.
 // Abort() must be called if Run() is not called.
 func NewPeriodicRunner(params *RunnerOptions) PeriodicRunner {
 	return newPeriodicRunner(params)
