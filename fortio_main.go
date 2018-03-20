@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
 	"strings"
 
+	"istio.io/fortio/bincommon"
 	"istio.io/fortio/fnet"
 
 	"istio.io/fortio/fgrpc"
@@ -37,18 +37,6 @@ import (
 	"istio.io/fortio/version"
 )
 
-// -- Support for multiple instances of -H flag on cmd line:
-type headersFlagList struct {
-}
-
-func (f *headersFlagList) String() string {
-	return ""
-}
-func (f *headersFlagList) Set(value string) error {
-	return httpOpts.AddAndValidateExtraHeader(value)
-}
-
-// -- end of functions for -H support
 // -- Support for multiple proxies (-P) flags on cmd line:
 type proxiesFlagList struct {
 }
@@ -66,41 +54,34 @@ func (f *proxiesFlagList) Set(value string) error {
 // Prints usage
 func usage(msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n",
+	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
 		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
 		"server), redirect (redirect only server), or curl (single URL debug).",
-		"where target is a url (http load tests) or host:port (grpc health test)",
-		"and flags are:")
-	flag.PrintDefaults()
-	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
-	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
-	os.Exit(1)
+		"where target is a url (http load tests) or host:port (grpc health test).")
+	bincommon.FlagsUsage(msgs...)
 }
+
+// Attention: every flag that is common to http client goes to bincommon/
+// for sharing between fortio and fcurl binaries
 
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
-	qpsFlag            = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
-	numThreadsFlag     = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag       = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
-	percentilesFlag    = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
-	resolutionFlag     = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
-	compressionFlag    = flag.Bool("compression", false, "Enable http compression")
-	goMaxProcsFlag     = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
-	profileFlag        = flag.String("profile", "", "write .cpu and .mem profiles to file")
-	keepAliveFlag      = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
-	halfCloseFlag      = flag.Bool("halfclose", false, "When not keepalive, whether to half close the connection (only for fast http)")
-	httpReqTimeoutFlag = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
-	stdClientFlag      = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
-	http10Flag         = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
-	grpcFlag           = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
-	grpcSecureFlag     = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
-	httpsInsecureFlag  = flag.Bool("https-insecure", false, "Do not verify certs in https connections")
-	echoPortFlag       = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
-	grpcPortFlag       = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
+	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
+	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
+	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
+	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
+	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
+	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
+	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	grpcSecureFlag    = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
+	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
+	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
+	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
@@ -112,14 +93,11 @@ var (
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
 	staticDirFlag = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
 	dataDirFlag   = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
-	headersFlags  headersFlagList
-	httpOpts      fhttp.HTTPOptions
 	proxiesFlags  proxiesFlagList
 	proxies       = make([]string, 0)
 
 	defaultDataDir = "."
 
-	followRedirectsFlag    = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
@@ -127,7 +105,6 @@ var (
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
-	quietFlag   = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
 	baseURLFlag = flag.String("base-url", "",
 		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
@@ -143,22 +120,8 @@ var (
 )
 
 func main() {
-	flag.Var(&headersFlags, "H", "Additional Header(s)")
+	bincommon.SharedMain()
 	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
-	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
-		"Size of the buffer (max data size) for the optimized http client in kbytes")
-	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
-		"Check for Connection: Close Header")
-	// Special case so `fortio -version` and `--version` and `version` and ... work
-	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
-		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
-			// so `fortio version -s` is the short version; everything else is long/full
-			fmt.Println(version.Short())
-		} else {
-			fmt.Println(version.Long())
-		}
-		os.Exit(0)
-	}
 	if len(os.Args) < 2 {
 		usage("Error: need at least 1 command parameter")
 	}
@@ -166,7 +129,7 @@ func main() {
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
 	fhttp.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * 1024)
-	if *quietFlag {
+	if *bincommon.QuietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
@@ -225,43 +188,19 @@ func main() {
 	}
 }
 
-func fetchURL(o *fhttp.HTTPOptions) {
-	// keepAlive could be just false when making 1 fetch but it helps debugging
-	// the http client when making a single request if using the flags
-	client := fhttp.NewClient(o)
-	if client == nil {
-		return // error logged already
-	}
-	code, data, header := client.Fetch()
-	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	os.Stdout.Write(data) //nolint: errcheck
-	if code != http.StatusOK {
-		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
-		os.Exit(1)
-	}
-}
-
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usage("Error: fortio load/curl needs a url or destination")
 	}
-	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
-	httpOpts.URL = url
-	httpOpts.HTTP10 = *http10Flag
-	httpOpts.DisableFastClient = *stdClientFlag
-	httpOpts.DisableKeepAlive = !*keepAliveFlag
-	httpOpts.AllowHalfClose = *halfCloseFlag
-	httpOpts.Compression = *compressionFlag
-	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
-	httpOpts.Insecure = *httpsInsecureFlag
-	if *followRedirectsFlag {
-		httpOpts.FollowRedirects = true
-		httpOpts.DisableFastClient = true
+	httpOpts := bincommon.SharedHTTPOptions()
+	if *httpsInsecureFlag {
+		httpOpts.Insecure = true
 	}
 	if justCurl {
-		fetchURL(&httpOpts)
+		bincommon.FetchURL(httpOpts)
 		return
 	}
+	url := httpOpts.URL
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
@@ -317,7 +256,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
-			HTTPOptions:        httpOpts,
+			HTTPOptions:        *httpOpts,
 			RunnerOptions:      ro,
 			Profiler:           *profileFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,

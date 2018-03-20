@@ -4,7 +4,7 @@
 # See also release/README.md
 #
 
-IMAGES=echosrv # plus the combo image / Dockerfile without ext.
+IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
 BUILD_IMAGE_TAG := v6
@@ -110,7 +110,7 @@ all: test install lint docker-version docker-push-internal
 
 # Makefile should be edited first
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
-	Dockerfile.test release/Dockerfile.in
+	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in
 # Ran make update-build-image BUILD_IMAGE_TAG=v1 DOCKER_PREFIX=fortio/fortio
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)

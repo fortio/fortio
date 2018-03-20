@@ -600,6 +600,9 @@ func TestDefaultPort(t *testing.T) {
 		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
 	}
 	cli = NewClient(opts)
+	if cli == nil {
+		t.Fatalf("Couldn't get a client using NewClient on modified opts.")
+	}
 	// currently fast client fails with https:
 	code, _, _ = cli.Fetch()
 	if code != 200 {
@@ -812,6 +815,31 @@ func TestNewHTMLEscapeWriterError(t *testing.T) {
 	hw := out.(*HTMLEscapeWriter)
 	if hw.Flusher != nil {
 		t.Errorf("Shouldn't have a flusher when not passing in an http: %+v", hw.Flusher)
+	}
+}
+
+func TestDefaultHeadersAndOptionsInit(t *testing.T) {
+	_, addr := Serve("0", "/debug")
+	// Un initialized http options:
+	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
+	o1 := o
+	cli1 := NewStdClient(&o1)
+	code, data, _ := cli1.Fetch()
+	if code != 200 {
+		t.Errorf("Non ok code %d for debug default fetch1", code)
+	}
+	expected := []byte("User-Agent: istio/fortio-")
+	if !bytes.Contains(data, expected) {
+		t.Errorf("Didn't find default header echoed back in std client1 %s (expecting %s)", DebugSummary(data, 512), expected)
+	}
+	o2 := o
+	cli2 := NewFastClient(&o2)
+	code, data, _ = cli2.Fetch()
+	if code != 200 {
+		t.Errorf("Non ok code %d for debug default fetch2", code)
+	}
+	if !bytes.Contains(data, expected) {
+		t.Errorf("Didn't find default header echoed back in fast client1 %s (expecting %s)", DebugSummary(data, 512), expected)
 	}
 }
 

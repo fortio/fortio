@@ -272,7 +272,8 @@ func (c *Client) Fetch() (int, []byte, int) {
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag)
 func NewClient(o *HTTPOptions) Fetcher {
-	o.URLSchemeCheck()
+	o.Init(o.URL)      // For completely new options
+	o.URLSchemeCheck() // For changes to options after init
 	if o.DisableFastClient {
 		return NewStdClient(o)
 	}
@@ -281,6 +282,7 @@ func NewClient(o *HTTPOptions) Fetcher {
 
 // NewStdClient creates a client object that wraps the net/http standard client.
 func NewStdClient(o *HTTPOptions) *Client {
+	o.Init(o.URL)
 	req := newHTTPRequest(o)
 	if req == nil {
 		return nil
@@ -382,6 +384,7 @@ func (c *FastClient) Close() int {
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
 func NewFastClient(o *HTTPOptions) Fetcher {
+	o.Init(o.URL)
 	proto := "1.1"
 	if o.HTTP10 {
 		proto = "1.0"
