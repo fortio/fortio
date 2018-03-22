@@ -8,3 +8,4 @@ fortio
 # Avoid accidental changes to vendor or Gopkg.*:
 vendor
 Gopkg.*
+.idea
