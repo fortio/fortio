@@ -75,8 +75,8 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
-	newPort := PingServer(strconv.Itoa(port), "will fail")
+	newPort := PingServer(strconv.Itoa(iPort), "", "", "will fail")
 	if newPort != -1 {
-		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, port)
+		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}
 }
