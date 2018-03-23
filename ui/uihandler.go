@@ -437,7 +437,7 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
 			log.LogVf("Changed favicon internal path to %s", r.URL.Path)
 		}
-		w.Header().Set("Cache-Control", "max-age=365000000, immutable")
+		fhttp.CacheOn(w)
 		h.ServeHTTP(w, r)
 	})
 }
@@ -550,6 +550,7 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		fhttp.CacheOn(w)
 		h.ServeHTTP(w, r)
 	})
 }

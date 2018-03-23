@@ -767,6 +767,35 @@ func TestServeError(t *testing.T) {
 	}
 }
 
+func testCacheHeaderHandler(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, "testCacheHeader")
+	CacheOn(w)
+	w.Write([]byte("cache me"))
+}
+
+func TestCache(t *testing.T) {
+	mux, addr := Serve("0", "")
+	mux.HandleFunc("/cached", testCacheHeaderHandler)
+	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
+	o := NewHTTPOptions(baseURL)
+	code, data := Fetch(o)
+	if code != 200 {
+		t.Errorf("error fetching %s: %v %s", o.URL, code, DebugSummary(data, 256))
+	}
+	expectedWithCache := []byte("Cache-Control:")
+	if bytes.Contains(data, expectedWithCache) {
+		t.Errorf("Got %s when shouldn't have for %s: %v", expectedWithCache, o.URL, DebugSummary(data, 256))
+	}
+	o.URL += "cached"
+	code, data = Fetch(o)
+	if code != 200 {
+		t.Errorf("error fetching %s: %v %s", o.URL, code, DebugSummary(data, 256))
+	}
+	if !bytes.Contains(data, expectedWithCache) {
+		t.Errorf("Didn't get %s when should have for %s: %v", expectedWithCache, o.URL, DebugSummary(data, 256))
+	}
+}
+
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"

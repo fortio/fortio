@@ -304,6 +304,11 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CacheOn sets the header for indefinite caching.
+func CacheOn(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
+}
+
 // Serve starts a debug / echo http server on the given port.
 // Returns the mux and addr where the listening socket is bound.
 // The .Port can be retrieved from it when requesting the 0 port as
