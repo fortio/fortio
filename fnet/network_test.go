@@ -60,6 +60,105 @@ func TestNormalizePort(t *testing.T) {
 	}
 }
 
+func TestBracketizeIPv6Address(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		output string
+	}{
+		{
+			"valid IPv4 address",
+			"1.2.3.4",
+			"1.2.3.4",
+		},
+		{
+			"valid IPv6 address",
+			"2001:db8::1",
+			"[2001:db8::1]",
+		},
+		{
+			"invalid IPv4 address",
+			"1.2...4",
+			"1.2...4",
+		},
+		{
+			"invalid IPv6 address",
+			"2001:db8:::1",
+			"2001:db8:::1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Logf("Running test: %s", tc.name)
+		out := BracketizeIPv6Address(tc.input)
+		if out != tc.output {
+			t.Errorf("Test case %s failed to bracketize address %s\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.input,
+				tc.output,
+				out,
+			)
+		}
+	}
+}
+
+func TestAppendPort(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		output string
+	}{
+		{
+			"valid http url with domain name",
+			"http://example.org",
+			"http://example.org:80",
+		},
+		{
+			"valid http url with invalid domain name",
+			"http://example..org",
+			"http://example..org",
+		},
+		{
+			"valid https url with IPv4 address",
+			"https://10.10.10.1",
+			"https://10.10.10.1:443",
+		},
+		{
+			"valid https url with bracketed IPv6 address",
+			"https://[2001:db1::1]",
+			"https://[2001:db1::1]:443",
+		},
+		{
+			"valid http url with IPv6 address without brackets (rfc 2732)",
+			"http://2001:db2::1",
+			"http://[2001:db2::1]:80",
+		},
+		{
+			"valid https url with IPv6 address without brackets",
+			"https://2001:db3::1",
+			"https://[2001:db3::1]:443",
+		},
+		{
+			"invalid https url with IPv4 address",
+			"https:/10.10..1",
+			"https:/10.10..1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Logf("Running test: %s", tc.name)
+		out := AppendPort(tc.input)
+		if out != tc.output {
+			t.Errorf("Test case %s failed to append port to %s\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.input,
+				tc.output,
+				out,
+			)
+		}
+	}
+}
+
 func TestListen(t *testing.T) {
 	l, a := Listen("test listen1", "0")
 	if l == nil || a == nil {
