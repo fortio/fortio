@@ -325,9 +325,9 @@ func grpcClient() {
 	tls := *grpcSecureFlag
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(fnet.AppendPort(host), tls, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(fnet.AppendPort(host), tls, count, *payloadFlag)
 	}
 	if err != nil {
 		// already logged
