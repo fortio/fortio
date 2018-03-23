@@ -78,32 +78,38 @@ func AppendPort(s string) string {
 	if ip != nil {
 		switch {
 		case ip.To4() != nil:
-			// The host portion of s is an IPv4 address, so append port.
+			// The host portion of s is an IPv4 address,
+			// append port.
 			log.Infof("Appending %s with port %s", u.Host, port)
 			u.Host += NormalizePort(port)
 		case ip.To16() != nil:
-			// The host portion of s is an IPv6 address without brackets, bracketize and append port.
+			// The host portion of s is an IPv6 address without brackets,
+			// bracketize and append port.
 			log.Infof("Appending %s with port %s", u.Host, NormalizePort(port))
 			u.Host = BracketizeIPv6Address(u.Host) + NormalizePort(port)
 		}
 	} else {
-		// Check if the host portion of s is an IPv6 address wrapped in brackets (rfc 2732)
+		// Check if the host portion of s is an IPv6 address
+		// wrapped in brackets (i.e. rfc 2732)
 		if strings.HasPrefix(u.Host, "[") && strings.HasSuffix(u.Host, "]") {
 			trimHost := strings.TrimSuffix(strings.TrimPrefix(u.Host, "["), "]")
 			ip := net.ParseIP(trimHost)
 			if ip != nil {
-				// The host portion of s is valid IPv6 address wrapped in brackets
+				// The host portion of s is valid IPv6 address
+				// wrapped in brackets
 				log.Infof("Appending %s with port %s", u.Host, port)
 				u.Host += NormalizePort(port)
 				return u.String()
 			}
-			// The bracketed IPv6 address is invalid, return s unmodified.
+			// The bracketed IPv6 address is invalid,
+			// return s unmodified.
 			log.Errf("Invalid IPv6 address wrapped in brackets: %v", u.Host)
 			return s
 		}
 		// Check if the host portion of s is a valid domain name.
 		_, err := net.LookupHost(u.Host)
-		// The host portion of s is an invalid domain name or invalid IP address, return s unmodified.
+		// The host portion of s is an invalid domain name or invalid IP address,
+		// return s unmodified.
 		if err != nil {
 			log.Errf("Invalid domain name or IP address in URL: %s", u.String())
 			return s
