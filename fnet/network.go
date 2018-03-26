@@ -25,15 +25,6 @@ import (
 	"istio.io/fortio/version"
 )
 
-const (
-	// DefaultGRPCPort is the Fortio gRPC server default port number.
-	DefaultGRPCPort  = "8079"
-	defaultHTTPPort  = "80"
-	defaultHTTPSPort = "443"
-	prefixHTTP       = "http://"
-	prefixHTTPS      = "https://"
-)
-
 // NormalizePort parses port and returns host:port if port is in the form
 // of host:port already or :port if port is only a port (doesn't contain :).
 func NormalizePort(port string) string {
@@ -73,64 +64,6 @@ func ResolveDestination(dest string) *net.TCPAddr {
 	host := dest[0:i]
 	port := dest[i+1:]
 	return Resolve(host, port)
-}
-
-// SetGRPCDestination parses dest and returns dest:port based on dest being
-// a hostname, IP address, hostname:port, or ip:port. The original dest is
-// returned if dest is an invalid hostname or invalid IP address. An http/https
-// prefix is removed from dest if one exists and the port number is set to
-// DefaultHTTPPort for http, DefaultHTTPSPort for https, or DefaultGRPCPort
-// if http, https, or :port is not specified in dest.
-// TODO: change/fix this (NormalizePort and more)
-func SetGRPCDestination(dest string) (parsedDest string) {
-	var port string
-	// strip any unintentional http/https scheme prefixes from dest
-	// and set the port number.
-	switch {
-	case strings.HasPrefix(dest, prefixHTTP):
-		parsedDest = strings.Replace(dest, prefixHTTP, "", 1)
-		port = defaultHTTPPort
-		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
-			parsedDest, port)
-	case strings.HasPrefix(dest, prefixHTTPS):
-		parsedDest = strings.Replace(dest, prefixHTTPS, "", 1)
-		port = defaultHTTPSPort
-		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
-			parsedDest, port)
-	default:
-		parsedDest = dest
-		port = DefaultGRPCPort
-		log.Infof("grpc destination: %v. grpc port: %s", parsedDest, port)
-	}
-	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
-		log.Infof("grpc destination set to: %v", parsedDest)
-		return parsedDest
-	}
-	if ip := net.ParseIP(parsedDest); ip != nil {
-		switch {
-		case ip.To4() != nil:
-			parsedDest = ip.String() + NormalizePort(port)
-			log.Infof("grpc destination set to: %v", parsedDest)
-			return parsedDest
-		case ip.To16() != nil:
-			parsedDest = "[" + ip.String() + "]" + NormalizePort(port)
-			log.Infof("grpc destination set to: %v", parsedDest)
-			return parsedDest
-		}
-	} else {
-		// Check if parsedDest is a valid domain name.
-		_, err := net.LookupHost(parsedDest)
-		if err != nil {
-			// parsedDest is an invalid domain name or invalid IP
-			// address, return dest unmodified.
-			log.Infof("Invalid grpc destination: %v", dest)
-			return dest
-		}
-	}
-	// // parsedDest is a valid domain name, append ":port" and return.
-	parsedDest += NormalizePort(port)
-	log.Infof("grpc destination set to: %v", parsedDest)
-	return parsedDest
 }
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.

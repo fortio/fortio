@@ -84,3 +84,123 @@ func TestGRPCRunnerWithError(t *testing.T) {
 		t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
 	}
 }
+
+func TestGRPCDestination(t *testing.T) {
+	tests := []struct {
+		name   string
+		dest   string
+		output string
+	}{
+		{
+			"valid hostname",
+			"localhost",
+			"localhost:8079",
+		},
+		{
+			"invalid hostname",
+			"lclhst",
+			"lclhst",
+		},
+		{
+			"valid hostname and port",
+			"localhost:1234",
+			"localhost:1234",
+		},
+		{
+			"invalid hostname with port",
+			"lclhst:1234",
+			"lclhst:1234",
+		},
+		{
+			"valid hostname with http prefix",
+			"http://localhost",
+			"localhost:80",
+		},
+		{
+			"invalid hostname with http prefix",
+			"http://lclhst",
+			"http://lclhst",
+		},
+		{
+			"valid hostname with https prefix",
+			"https://localhost",
+			"localhost:443",
+		},
+		{
+			"invalid hostname with https prefix",
+			"https://loclhst",
+			"https://loclhst",
+		},
+		{
+			"valid IPv4 address",
+			"1.2.3.4",
+			"1.2.3.4:8079",
+		},
+		{
+			"invalid IPv4 address",
+			"1.2.3..4",
+			"1.2.3..4",
+		},
+		{
+			"valid IPv4 address and port",
+			"1.2.3.4:5678",
+			"1.2.3.4:5678",
+		},
+		{
+			"invalid IPv4 address with port",
+			"1.2.3..4:1234",
+			"1.2.3..4:1234",
+		},
+		{
+			"valid IPv6 address",
+			"2001:dba::1",
+			"[2001:dba::1]:8079",
+		},
+		{
+			"invalid IPv6 address",
+			"2001:dba:::1",
+			"2001:dba:::1",
+		},
+		{
+			"valid IPv6 address and port",
+			"[2001:dba::1]:1234",
+			"[2001:dba::1]:1234",
+		},
+		{
+			"invalid IPv6 address and port",
+			"[2001:dba:::1]:1234",
+			"[2001:dba:::1]:1234",
+		},
+		{
+			"valid IPv6 address with http prefix",
+			"http://2001:dba::1",
+			"[2001:dba::1]:80",
+		},
+		{
+			"invalid IPv6 address with http prefix",
+			"http://2001:dba:::1",
+			"http://2001:dba:::1",
+		},
+		{
+			"valid IPv6 address and port with https prefix",
+			"https://2001:dba::1",
+			"[2001:dba::1]:443",
+		},
+		{
+			"invalid IPv6 address and port with https prefix",
+			"https://2001:dba:::1",
+			"https://2001:dba:::1",
+		},
+	}
+
+	for _, tc := range tests {
+		dest := grpcDestination(tc.dest)
+		if dest != tc.output {
+			t.Errorf("Test case: %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.output,
+				dest,
+			)
+		}
+	}
+}
