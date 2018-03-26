@@ -196,7 +196,7 @@ func grpcDestination(dest string) (parsedDest string) {
 	default:
 		parsedDest = dest
 		port = DefaultGRPCPort
-		log.Infof("grpc destination: %v. grpc port: %s", parsedDest, port)
+		log.Infof("grpc destination: %v", parsedDest)
 	}
 	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
 		log.Infof("grpc destination set to: %v", parsedDest)
