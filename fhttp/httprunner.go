@@ -72,7 +72,8 @@ type HTTPRunnerOptions struct {
 	HTTPOptions               // Need to call Init() to initialize
 	Profiler           string // file to save profiles to. defaults to no profiling
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
-	AbortOn            int    // Which status code cause an abort of the run (default 0 = don't abort; reminder -1 is returned for socket errors)
+	// Which status code cause an abort of the run (default 0 = don't abort; reminder -1 is returned for socket errors)
+	AbortOn int
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
