@@ -137,22 +137,22 @@ func TestSetGRPCDestination(t *testing.T) {
 			"lclhst:1234",
 		},
 		{
-			"valid http hostname and port",
+			"valid hostname with http prefix",
 			"http://localhost",
 			"localhost:80",
 		},
 		{
-			"invalid http hostname and port",
+			"invalid hostname with http prefix",
 			"http://lclhst",
 			"http://lclhst",
 		},
 		{
-			"valid https hostname and port",
+			"valid hostname with https prefix",
 			"https://localhost",
 			"localhost:443",
 		},
 		{
-			"invalid https hostname and port",
+			"invalid hostname with https prefix",
 			"https://loclhst",
 			"https://loclhst",
 		},
