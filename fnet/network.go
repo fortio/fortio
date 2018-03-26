@@ -18,12 +18,20 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"strings"
 	"sync"
 
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
+)
+
+const (
+	// DefaultGRPCPort is the Fortio gRPC server default port number.
+	DefaultGRPCPort  = "8079"
+	defaultHTTPPort  = "80"
+	defaultHTTPSPort = "443"
+	prefixHTTP       = "http://"
+	prefixHTTPS      = "https://"
 )
 
 // NormalizePort parses port and returns host:port if port is in the form
@@ -33,91 +41,6 @@ func NormalizePort(port string) string {
 		return port
 	}
 	return ":" + port
-}
-
-// BracketizeIPv6Address returns s in brackets if s is an IPv6 address.
-func BracketizeIPv6Address(s string) string {
-	ip := net.ParseIP(s)
-	switch {
-	case ip == nil:
-		// s is not a valid ip.
-		log.Errf("Invalid IP address: %s", s)
-		return s
-	case ip.To4() != nil:
-		// s is an IPv4 address, do not wrap s in brackets.
-		log.Errf("Address is IPv4, not wrapping %s in brackets.", s)
-		return s
-	default:
-		// s must be an IPv6 address, so wrap s in brackets.
-		log.Infof("Address is IPv6, wrapping %s in brackets.", s)
-		return "[" + s + "]"
-	}
-}
-
-// AppendPort parses s as a url and returns s with the host-portion of s as s:port.
-// s is returned unmodified if s cannot be parsed or the host-portion of s is an
-// invalid domain name or invalid IP address.
-func AppendPort(s string) string {
-	u, err := url.Parse(s)
-	if err != nil {
-		log.Errf("Unable to Parse URL %s: %v", err)
-		return s
-	}
-	var port string
-	switch {
-	case u.Scheme == "http":
-		port = "80"
-	case u.Scheme == "https":
-		port = "443"
-	default:
-		// Unsupported scheme for valid url s
-		log.Errf("Unsupported URL scheme: %s", u.Scheme)
-		return s
-	}
-	ip := net.ParseIP(u.Host)
-	if ip != nil {
-		switch {
-		case ip.To4() != nil:
-			// The host portion of s is an IPv4 address,
-			// append port.
-			log.Infof("Appending %s with port %s", u.Host, port)
-			u.Host += NormalizePort(port)
-		case ip.To16() != nil:
-			// The host portion of s is an IPv6 address without brackets,
-			// bracketize and append port.
-			log.Infof("Appending %s with port %s", u.Host, NormalizePort(port))
-			u.Host = BracketizeIPv6Address(u.Host) + NormalizePort(port)
-		}
-	} else {
-		// Check if the host portion of s is an IPv6 address
-		// wrapped in brackets (i.e. rfc 2732)
-		if strings.HasPrefix(u.Host, "[") && strings.HasSuffix(u.Host, "]") {
-			trimHost := strings.TrimSuffix(strings.TrimPrefix(u.Host, "["), "]")
-			ip := net.ParseIP(trimHost)
-			if ip != nil {
-				// The host portion of s is valid IPv6 address
-				// wrapped in brackets
-				log.Infof("Appending %s with port %s", u.Host, port)
-				u.Host += NormalizePort(port)
-				return u.String()
-			}
-			// The bracketed IPv6 address is invalid,
-			// return s unmodified.
-			log.Errf("Invalid IPv6 address wrapped in brackets: %v", u.Host)
-			return s
-		}
-		// Check if the host portion of s is a valid domain name.
-		_, err := net.LookupHost(u.Host)
-		// The host portion of s is an invalid domain name or invalid IP address,
-		// return s unmodified.
-		if err != nil {
-			log.Errf("Invalid domain name or IP address in URL: %s", u.String())
-			return s
-		}
-		log.Infof("Appending %s with port %s", u.Host, NormalizePort(port))
-		u.Host += NormalizePort(port)
-	}
-	return u.String()
 }
 
 // Listen returns a listener for the port. Port can be a port or a
@@ -150,6 +73,64 @@ func ResolveDestination(dest string) *net.TCPAddr {
 	host := dest[0:i]
 	port := dest[i+1:]
 	return Resolve(host, port)
+}
+
+// SetGRPCDestination parses dest and returns dest:port based on dest being
+// a hostname, IP address, hostname:port, or ip:port. The original dest is
+// returned if dest is an invalid hostname or invalid IP address. An http/https
+// prefix is removed from dest if one exists and the port number is set to
+// DefaultHTTPPort for http, DefaultHTTPSPort for https, or DefaultGRPCPort
+// if http, https, or :port is not specified in dest.
+// TODO: change/fix this (NormalizePort and more)
+func SetGRPCDestination(dest string) (parsedDest string) {
+	var port string
+	// strip any unintentional http/https scheme prefixes from dest
+	// and set the port number.
+	switch {
+	case strings.HasPrefix(dest, prefixHTTP):
+		parsedDest = strings.Replace(dest, prefixHTTP, "", 1)
+		port = defaultHTTPPort
+		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
+			parsedDest, port)
+	case strings.HasPrefix(dest, prefixHTTPS):
+		parsedDest = strings.Replace(dest, prefixHTTPS, "", 1)
+		port = defaultHTTPSPort
+		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
+			parsedDest, port)
+	default:
+		parsedDest = dest
+		port = DefaultGRPCPort
+		log.Infof("grpc destination: %v. grpc port: %s", parsedDest, port)
+	}
+	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
+		log.Infof("grpc destination set to: %v", parsedDest)
+		return parsedDest
+	}
+	if ip := net.ParseIP(parsedDest); ip != nil {
+		switch {
+		case ip.To4() != nil:
+			parsedDest = ip.String() + NormalizePort(port)
+			log.Infof("grpc destination set to: %v", parsedDest)
+			return parsedDest
+		case ip.To16() != nil:
+			parsedDest = "[" + ip.String() + "]" + NormalizePort(port)
+			log.Infof("grpc destination set to: %v", parsedDest)
+			return parsedDest
+		}
+	} else {
+		// Check if parsedDest is a valid domain name.
+		_, err := net.LookupHost(parsedDest)
+		if err != nil {
+			// parsedDest is an invalid domain name or invalid IP
+			// address, return dest unmodified.
+			log.Infof("Invalid grpc destination: %v", dest)
+			return dest
+		}
+	}
+	// // parsedDest is a valid domain name, append ":port" and return.
+	parsedDest += NormalizePort(port)
+	log.Infof("grpc destination set to: %v", parsedDest)
+	return parsedDest
 }
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.

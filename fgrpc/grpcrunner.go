@@ -17,7 +17,6 @@ package fgrpc // import "istio.io/fortio/fgrpc"
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -33,13 +32,6 @@ import (
 	"istio.io/fortio/periodic"
 )
 
-const (
-	// DefaultGRPCPort is the Fortio gRPC server default port number.
-	DefaultGRPCPort = "8079"
-	prefixHTTP      = "http://"
-	prefixHTTPS     = "https://"
-)
-
 // Dial dials grpc either using insecure or using default tls setup.
 // TODO: option to specify certs.
 func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
@@ -47,7 +39,7 @@ func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
 	if tls || (strings.HasPrefix(serverAddr, "https://")) {
 		opts = grpc.WithTransportCredentials(credentials.NewTLS(nil))
 	}
-	serverAddr = grpcDestination(serverAddr)
+	serverAddr = fnet.SetGRPCDestination(serverAddr)
 	conn, err = grpc.Dial(serverAddr, opts)
 	if err != nil {
 		log.Errf("failed to conect to %s with tls %v: %v", serverAddr, tls, err)
@@ -167,33 +159,4 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
 	}
 	return &total, nil
-}
-
-// grpcDestination parses dest and returns dest:port based on dest type
-// being a hostname, IP address or hostname/ip:port pair.
-// TODO: change/fix this (NormalizePort and more)
-func grpcDestination(dest string) string {
-	// strip any unintentional http/https scheme prefixes from destination
-	if strings.HasPrefix(dest, prefixHTTP) {
-		dest = strings.Replace(dest, prefixHTTP, "", 1)
-		log.Infof("stripping http scheme. grpc destination: %v", dest)
-	} else if strings.HasPrefix(dest, prefixHTTPS) {
-		dest = strings.Replace(dest, prefixHTTPS, "", 1)
-		log.Infof("stripping https scheme. grpc destination: %v", dest)
-	}
-
-	if _, _, err := net.SplitHostPort(dest); err == nil {
-		return dest
-	}
-	if ip := net.ParseIP(dest); ip != nil {
-		switch {
-		case ip.To4() != nil:
-			return ip.String() + fnet.NormalizePort(DefaultGRPCPort)
-		case ip.To16() != nil:
-			return "[" + ip.String() + "]" + fnet.NormalizePort(DefaultGRPCPort)
-		}
-
-	}
-	// dest must be in the form of hostname
-	return dest + fnet.NormalizePort(DefaultGRPCPort)
 }

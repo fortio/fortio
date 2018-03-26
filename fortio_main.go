@@ -81,7 +81,7 @@ var (
 	grpcSecureFlag    = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
-	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
+	grpcPortFlag      = flag.String("grpc-port", fnet.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
@@ -325,9 +325,9 @@ func grpcClient() {
 	tls := *grpcSecureFlag
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(fnet.AppendPort(host), tls, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(fnet.AppendPort(host), tls, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag)
 	}
 	if err != nil {
 		// already logged

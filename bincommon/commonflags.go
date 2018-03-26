@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"istio.io/fortio/fhttp"
-	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
 )
@@ -111,7 +110,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 // fortio_main and fcurl.
 func SharedHTTPOptions() *fhttp.HTTPOptions {
 	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
-	httpOpts.URL = fnet.AppendPort(url)
+	httpOpts.URL = url
 	httpOpts.HTTP10 = *http10Flag
 	httpOpts.DisableFastClient = *stdClientFlag
 	httpOpts.DisableKeepAlive = !*keepAliveFlag

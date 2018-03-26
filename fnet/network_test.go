@@ -60,105 +60,6 @@ func TestNormalizePort(t *testing.T) {
 	}
 }
 
-func TestBracketizeIPv6Address(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  string
-		output string
-	}{
-		{
-			"valid IPv4 address",
-			"1.2.3.4",
-			"1.2.3.4",
-		},
-		{
-			"valid IPv6 address",
-			"2001:db8::1",
-			"[2001:db8::1]",
-		},
-		{
-			"invalid IPv4 address",
-			"1.2...4",
-			"1.2...4",
-		},
-		{
-			"invalid IPv6 address",
-			"2001:db8:::1",
-			"2001:db8:::1",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Logf("Running test: %s", tc.name)
-		out := BracketizeIPv6Address(tc.input)
-		if out != tc.output {
-			t.Errorf("Test case %s failed to bracketize address %s\n\texpected: %s\n\t  actual: %s",
-				tc.name,
-				tc.input,
-				tc.output,
-				out,
-			)
-		}
-	}
-}
-
-func TestAppendPort(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  string
-		output string
-	}{
-		{
-			"valid http url with domain name",
-			"http://example.org",
-			"http://example.org:80",
-		},
-		{
-			"valid http url with invalid domain name",
-			"http://example..org",
-			"http://example..org",
-		},
-		{
-			"valid https url with IPv4 address",
-			"https://10.10.10.1",
-			"https://10.10.10.1:443",
-		},
-		{
-			"valid https url with bracketed IPv6 address",
-			"https://[2001:db1::1]",
-			"https://[2001:db1::1]:443",
-		},
-		{
-			"valid http url with IPv6 address without brackets (rfc 2732)",
-			"http://2001:db2::1",
-			"http://[2001:db2::1]:80",
-		},
-		{
-			"valid https url with IPv6 address without brackets",
-			"https://2001:db3::1",
-			"https://[2001:db3::1]:443",
-		},
-		{
-			"invalid https url with IPv4 address",
-			"https:/10.10..1",
-			"https:/10.10..1",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Logf("Running test: %s", tc.name)
-		out := AppendPort(tc.input)
-		if out != tc.output {
-			t.Errorf("Test case %s failed to append port to %s\n\texpected: %s\n\t  actual: %s",
-				tc.name,
-				tc.input,
-				tc.output,
-				out,
-			)
-		}
-	}
-}
-
 func TestListen(t *testing.T) {
 	l, a := Listen("test listen1", "0")
 	if l == nil || a == nil {
@@ -206,6 +107,126 @@ func TestResolveDestination(t *testing.T) {
 				t.Errorf("ResolveDestination(%s) = %v, want %s", tt.destination, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSetGRPCDestination(t *testing.T) {
+	tests := []struct {
+		name   string
+		dest   string
+		output string
+	}{
+		{
+			"valid hostname",
+			"localhost",
+			"localhost:8079",
+		},
+		{
+			"invalid hostname",
+			"lclhst",
+			"lclhst",
+		},
+		{
+			"valid hostname and port",
+			"localhost:1234",
+			"localhost:1234",
+		},
+		{
+			"invalid hostname with port",
+			"lclhst:1234",
+			"lclhst:1234",
+		},
+		{
+			"valid http hostname and port",
+			"http://localhost",
+			"localhost:80",
+		},
+		{
+			"invalid http hostname and port",
+			"http://lclhst",
+			"http://lclhst",
+		},
+		{
+			"valid https hostname and port",
+			"https://localhost",
+			"localhost:443",
+		},
+		{
+			"invalid https hostname and port",
+			"https://loclhst",
+			"https://loclhst",
+		},
+		{
+			"valid IPv4 address",
+			"1.2.3.4",
+			"1.2.3.4:8079",
+		},
+		{
+			"invalid IPv4 address",
+			"1.2.3..4",
+			"1.2.3..4",
+		},
+		{
+			"valid IPv4 address and port",
+			"1.2.3.4:5678",
+			"1.2.3.4:5678",
+		},
+		{
+			"invalid IPv4 address with port",
+			"1.2.3..4:1234",
+			"1.2.3..4:1234",
+		},
+		{
+			"valid IPv6 address",
+			"2001:dba::1",
+			"[2001:dba::1]:8079",
+		},
+		{
+			"invalid IPv6 address",
+			"2001:dba:::1",
+			"2001:dba:::1",
+		},
+		{
+			"valid IPv6 address and port",
+			"[2001:dba::1]:1234",
+			"[2001:dba::1]:1234",
+		},
+		{
+			"invalid IPv6 address and port",
+			"[2001:dba:::1]:1234",
+			"[2001:dba:::1]:1234",
+		},
+		{
+			"valid IPv6 address with http prefix",
+			"http://2001:dba::1",
+			"[2001:dba::1]:80",
+		},
+		{
+			"invalid IPv6 address with http prefix",
+			"http://2001:dba:::1",
+			"http://2001:dba:::1",
+		},
+		{
+			"valid IPv6 address and port with https prefix",
+			"https://2001:dba::1",
+			"[2001:dba::1]:443",
+		},
+		{
+			"invalid IPv6 address and port with https prefix",
+			"https://2001:dba:::1",
+			"https://2001:dba:::1",
+		},
+	}
+
+	for _, tc := range tests {
+		dest := SetGRPCDestination(tc.dest)
+		if dest != tc.output {
+			t.Errorf("Test case: %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
+				tc.name,
+				tc.output,
+				dest,
+			)
+		}
 	}
 }
 
