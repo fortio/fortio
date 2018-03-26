@@ -44,6 +44,9 @@ type HTTPRunnerResults struct {
 	HeaderSizes *stats.HistogramData
 	URL         string
 	SocketCount int
+	// http code to abort the run on (-1 for connection or other socket error)
+	AbortOn int
+	aborter *periodic.Aborter
 }
 
 // Run tests http request fetching. Main call being run at the target QPS.
@@ -52,10 +55,14 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
 	code, body, headerSize := httpstate.client.Fetch()
 	size := len(body)
-	log.Debugf("Got in %3d hsz %d sz %d", code, headerSize, size)
+	log.Debugf("Got in %3d hsz %d sz %d - will abort on %d", code, headerSize, size, httpstate.AbortOn)
 	httpstate.RetCodes[code]++
 	httpstate.sizes.Record(float64(size))
 	httpstate.headerSizes.Record(float64(headerSize))
+	if httpstate.AbortOn == code {
+		log.Infof("Aborting run because of code %d", code)
+		httpstate.aborter.Abort()
+	}
 }
 
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
@@ -65,6 +72,7 @@ type HTTPRunnerOptions struct {
 	HTTPOptions               // Need to call Init() to initialize
 	Profiler           string // file to save profiles to. defaults to no profiling
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
+	AbortOn            int    // Which status code cause an abort of the run (default 0 = don't abort; reminder -1 is returned for socket errors)
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
@@ -81,6 +89,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		URL:         o.URL,
+		AbortOn:     o.AbortOn,
+		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
@@ -103,6 +113,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].sizes = total.sizes.Clone()
 		httpstate[i].headerSizes = total.headerSizes.Clone()
 		httpstate[i].RetCodes = make(map[int]int64)
+		httpstate[i].AbortOn = total.AbortOn
+		httpstate[i].aborter = total.aborter
 	}
 
 	if o.Profiler != "" {
