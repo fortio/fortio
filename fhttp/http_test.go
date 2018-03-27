@@ -728,6 +728,51 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	}
 }
 
+func TestEchoHeaders(t *testing.T) {
+	_, a := Serve("0", "")
+	var headers = []struct {
+		key   string
+		value string
+	}{
+		{"Foo", "Bar1"},
+		{"Foo", "Bar2"}, // Test multiple same header
+		{"X", "Y"},
+		{"Z", "abc def:xyz"},
+	}
+	v := url.Values{}
+	for _, pair := range headers {
+		v.Add("header", pair.key+":"+pair.value)
+	}
+	// minimal manual encoding (only escape the space)
+	var urls []string
+	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?header=Foo:Bar1&header=Foo:Bar2&header=X:Y&header=Z:abc+def:xyz", a.Port))
+	// proper encoding
+	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
+	for _, url := range urls {
+		resp, err := http.Get(url)
+		if err != nil {
+			t.Fatalf("Failed get for %s : %v", url, err)
+		}
+		t.Logf("TestEchoHeaders url = %s : status %s", url, resp.Status)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Got %d instead of 200", resp.StatusCode)
+		}
+		for _, pair := range headers {
+			got := resp.Header[pair.key]
+			found := false
+			for _, v := range got {
+				if v == pair.value {
+					found = true
+					break // found == good
+				}
+			}
+			if !found {
+				t.Errorf("Mismatch: got %+v and didn't find \"%s\" for header %s (url %s)", got, pair.value, pair.key, url)
+			}
+		}
+	}
+}
+
 func TestPPROF(t *testing.T) {
 	mux, addr := HTTPServer("test pprof", "0")
 	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)

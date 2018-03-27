@@ -94,6 +94,19 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(k, v)
 		}
 	}
+	// process header(s) args:
+	for _, hdr := range r.Form["header"] {
+		log.LogVf("Adding requested header %s", hdr)
+		if len(hdr) == 0 {
+			continue
+		}
+		s := strings.SplitN(hdr, ":", 2)
+		if len(s) != 2 {
+			log.Errf("invalid extra header '%s', expecting Key: Value", hdr)
+			continue
+		}
+		w.Header().Add(s[0], s[1])
+	}
 	w.WriteHeader(status)
 	if _, err = w.Write(data); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
