@@ -97,94 +97,49 @@ func TestGRPCDestination(t *testing.T) {
 			"localhost:8079",
 		},
 		{
-			"valid hostname and port",
+			"hostname and port",
 			"localhost:1234",
 			"localhost:1234",
 		},
 		{
-			"invalid hostname with port",
-			"lclhst:1234",
-			"lclhst:1234",
-		},
-		{
-			"valid hostname with http prefix",
+			"hostname with http prefix",
 			"http://localhost",
 			"localhost:80",
 		},
 		{
-			"invalid hostname with http prefix",
-			"http://lclhst",
-			"http://lclhst",
-		},
-		{
-			"valid hostname with https prefix",
+			"Hostname with https prefix",
 			"https://localhost",
 			"localhost:443",
 		},
 		{
-			"invalid hostname with https prefix",
-			"https://loclhst",
-			"https://loclhst",
-		},
-		{
-			"valid IPv4 address",
+			"IPv4 address",
 			"1.2.3.4",
 			"1.2.3.4:8079",
 		},
 		{
-			"invalid IPv4 address",
-			"1.2.3..4",
-			"1.2.3..4",
-		},
-		{
-			"valid IPv4 address and port",
+			"IPv4 address and port",
 			"1.2.3.4:5678",
 			"1.2.3.4:5678",
 		},
 		{
-			"invalid IPv4 address with port",
-			"1.2.3..4:1234",
-			"1.2.3..4:1234",
-		},
-		{
-			"valid IPv6 address",
+			"IPv6 address",
 			"2001:dba::1",
 			"[2001:dba::1]:8079",
 		},
 		{
-			"invalid IPv6 address",
-			"2001:dba:::1",
-			"2001:dba:::1",
-		},
-		{
-			"valid IPv6 address and port",
+			"IPv6 address and port",
 			"[2001:dba::1]:1234",
 			"[2001:dba::1]:1234",
 		},
 		{
-			"invalid IPv6 address and port",
-			"[2001:dba:::1]:1234",
-			"[2001:dba:::1]:1234",
-		},
-		{
-			"valid IPv6 address with http prefix",
+			"IPv6 address with http prefix",
 			"http://2001:dba::1",
 			"[2001:dba::1]:80",
 		},
 		{
-			"invalid IPv6 address with http prefix",
-			"http://2001:dba:::1",
-			"http://2001:dba:::1",
-		},
-		{
-			"valid IPv6 address and port with https prefix",
+			"IPv6 address with https prefix",
 			"https://2001:dba::1",
 			"[2001:dba::1]:443",
-		},
-		{
-			"invalid IPv6 address and port with https prefix",
-			"https://2001:dba:::1",
-			"https://2001:dba:::1",
 		},
 	}
 

@@ -196,34 +196,22 @@ func grpcDestination(dest string) (parsedDest string) {
 	default:
 		parsedDest = dest
 		port = DefaultGRPCPort
-		log.LogVf("grpc destination: %v", parsedDest)
 	}
 	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
-		log.LogVf("grpc destination set to: %v", parsedDest)
 		return parsedDest
 	}
 	if ip := net.ParseIP(parsedDest); ip != nil {
 		switch {
 		case ip.To4() != nil:
 			parsedDest = ip.String() + fnet.NormalizePort(port)
-			log.LogVf("grpc destination set to: %v", parsedDest)
 			return parsedDest
 		case ip.To16() != nil:
 			parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(port)
-			log.LogVf("grpc destination set to: %v", parsedDest)
 			return parsedDest
 		}
 	}
-	// Check if parsedDest is a valid domain name.
-	_, err := net.LookupHost(parsedDest)
-	if err != nil {
-		// parsedDest is an invalid domain name or invalid IP
-		// address, return dest unmodified.
-		log.Infof("Invalid grpc destination: %v", dest)
-		return dest
-	}
-	// parsedDest is a valid domain name, append ":port" and return.
+	// parsedDest is in the form of a domain name,
+	// append ":port" and return.
 	parsedDest += fnet.NormalizePort(port)
-	log.LogVf("grpc destination set to: %v", parsedDest)
 	return parsedDest
 }
