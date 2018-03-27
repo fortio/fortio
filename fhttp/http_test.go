@@ -745,7 +745,9 @@ func TestEchoHeaders(t *testing.T) {
 	}
 	// minimal manual encoding (only escape the space)
 	var urls []string
-	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?header=Foo:Bar1&header=Foo:Bar2&header=X:Y&header=Z:abc+def:xyz", a.Port))
+	urls = append(urls,
+		fmt.Sprintf("http://localhost:%d/echo?header=Foo:Bar1&header=Foo:Bar2&header=X:Y&header=Z:abc+def:xyz",
+			a.Port))
 	// proper encoding
 	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
 	for _, url := range urls {
