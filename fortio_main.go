@@ -99,6 +99,7 @@ var (
 	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
+	abortOnFlag            = flag.Int("abort-on", 0, "Http code that if encountered aborts the run. e.g. 503 or -1 for socket errors.")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
 		" (need ingress to work properly). Can be in the form of host:port, ip:port, port or \"disabled\" to disable the feature.")
@@ -260,6 +261,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			RunnerOptions:      ro,
 			Profiler:           *profileFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
+			AbortOn:            *abortOnFlag,
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}

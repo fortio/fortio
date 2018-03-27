@@ -225,3 +225,41 @@ func TestServe(t *testing.T) {
 		t.Errorf("Multi header not found in %s", DebugSummary(data, 1024))
 	}
 }
+
+func TestAbortOn(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/foo/", EchoHandler)
+	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
+	o := HTTPRunnerOptions{}
+	o.URL = baseURL
+	o.AbortOn = 404
+	o.Exactly = 40
+	o.NumThreads = 4
+	o.QPS = 10
+	r, err := RunHTTPTest(&o)
+	if err != nil {
+		t.Errorf("Error while starting runner1: %v", err)
+	}
+	count := r.Result().DurationHistogram.Count
+	if count > int64(o.NumThreads) {
+		t.Errorf("Abort1 not working, did %d requests expecting ideally 1 and <= %d", count, o.NumThreads)
+	}
+	o.URL += "foo/"
+	r, err = RunHTTPTest(&o)
+	if err != nil {
+		t.Errorf("Error while starting runner2: %v", err)
+	}
+	count = r.Result().DurationHistogram.Count
+	if count != o.Exactly {
+		t.Errorf("Did %d requests when expecting all %d (non matching AbortOn)", count, o.Exactly)
+	}
+	o.AbortOn = 200
+	r, err = RunHTTPTest(&o)
+	if err != nil {
+		t.Errorf("Error while starting runner3: %v", err)
+	}
+	count = r.Result().DurationHistogram.Count
+	if count > int64(o.NumThreads) {
+		t.Errorf("Abort2 not working, did %d requests expecting ideally 1 and <= %d", count, o.NumThreads)
+	}
+}
