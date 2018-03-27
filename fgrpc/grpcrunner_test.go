@@ -97,11 +97,6 @@ func TestGRPCDestination(t *testing.T) {
 			"localhost:8079",
 		},
 		{
-			"invalid hostname",
-			"lclhst",
-			"lclhst",
-		},
-		{
 			"valid hostname and port",
 			"localhost:1234",
 			"localhost:1234",
