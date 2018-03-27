@@ -82,19 +82,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
-	size := generateSize(r.FormValue("size"))
-	if size >= 0 {
-		log.LogVf("Writing %d size with %d status", size, status)
-		writePayload(w, status, size)
-		return
-	}
-	// echo back the Content-Type and Content-Length in the response
-	for _, k := range []string{"Content-Type", "Content-Length"} {
-		if v := r.Header.Get(k); v != "" {
-			w.Header().Set(k, v)
-		}
-	}
-	// process header(s) args:
+	// process header(s) args, must be before size to compose properly
 	for _, hdr := range r.Form["header"] {
 		log.LogVf("Adding requested header %s", hdr)
 		if len(hdr) == 0 {
@@ -106,6 +94,18 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		w.Header().Add(s[0], s[1])
+	}
+	size := generateSize(r.FormValue("size"))
+	if size >= 0 {
+		log.LogVf("Writing %d size with %d status", size, status)
+		writePayload(w, status, size)
+		return
+	}
+	// echo back the Content-Type and Content-Length in the response
+	for _, k := range []string{"Content-Type", "Content-Length"} {
+		if v := r.Header.Get(k); v != "" {
+			w.Header().Set(k, v)
+		}
 	}
 	w.WriteHeader(status)
 	if _, err = w.Write(data); err != nil {
