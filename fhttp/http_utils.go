@@ -41,7 +41,7 @@ func toUpper(b byte) byte {
 }
 
 // ASCIIToUpper returns a byte array equal to the input string but in lowercase.
-// Only wotks for ASCII, not meant for unicode.
+// Only works for ASCII, not meant for unicode.
 func ASCIIToUpper(str string) []byte {
 	numChars := utf8.RuneCountInString(str)
 	if numChars != len(str) && log.LogVerbose() {
@@ -266,7 +266,7 @@ func generateStatus(status string) int {
 // generateSize from string, format: "size=512" for 100% 512 bytes body replies,
 // size="512:20,16384:10" for 20% 512 bytes, 10% 16k, 70% default echo back.
 // returns -1 for the default case, so one can specify 0 and force no payload
-// even if it's a post request with a payload (to test asymetric large inbound
+// even if it's a post request with a payload (to test asymmetric large inbound
 // small outbound).
 // TODO: refactor similarities with status and delay
 func generateSize(sizeInput string) (size int) {
