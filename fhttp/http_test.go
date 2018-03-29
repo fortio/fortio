@@ -728,6 +728,53 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	}
 }
 
+func TestEchoHeaders(t *testing.T) {
+	_, a := Serve("0", "")
+	var headers = []struct {
+		key   string
+		value string
+	}{
+		{"Foo", "Bar1"},
+		{"Foo", "Bar2"}, // Test multiple same header
+		{"X", "Y"},
+		{"Z", "abc def:xyz"},
+	}
+	v := url.Values{}
+	for _, pair := range headers {
+		v.Add("header", pair.key+":"+pair.value)
+	}
+	// minimal manual encoding (only escape the space) + errors for coverage sake
+	var urls []string
+	urls = append(urls,
+		fmt.Sprintf("http://localhost:%d/echo?size=10&header=Foo:Bar1&header=Foo:Bar2&header=X:Y&header=Z:abc+def:xyz&header=&header=Foo",
+			a.Port))
+	// proper encoding
+	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
+	for _, url := range urls {
+		resp, err := http.Get(url)
+		if err != nil {
+			t.Fatalf("Failed get for %s : %v", url, err)
+		}
+		t.Logf("TestEchoHeaders url = %s : status %s", url, resp.Status)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Got %d instead of 200", resp.StatusCode)
+		}
+		for _, pair := range headers {
+			got := resp.Header[pair.key]
+			found := false
+			for _, v := range got {
+				if v == pair.value {
+					found = true
+					break // found == good
+				}
+			}
+			if !found {
+				t.Errorf("Mismatch: got %+v and didn't find \"%s\" for header %s (url %s)", got, pair.value, pair.key, url)
+			}
+		}
+	}
+}
+
 func TestPPROF(t *testing.T) {
 	mux, addr := HTTPServer("test pprof", "0")
 	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)
@@ -872,7 +919,29 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	}
 }
 
-// --- for bench mark/comparaison
+func TestChangeMaxPayloadSize(t *testing.T) {
+	var tests = []struct {
+		input    int
+		expected int
+	}{
+		// negative test cases
+		{-1, 0},
+		// lesser than current default
+		{0, 0},
+		{64, 64},
+		// Greater than current default
+		{987 * 1024, 987 * 1024},
+	}
+	for _, tst := range tests {
+		ChangeMaxPayloadSize(tst.input)
+		actual := len(payload)
+		if len(payload) != tst.expected {
+			t.Errorf("Got %d, expected %d for ChangeMaxPayloadSize(%d)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+// --- for bench mark/comparison
 
 func asciiFold0(str string) []byte {
 	return []byte(strings.ToUpper(str))
@@ -948,24 +1017,4 @@ func BenchmarkFoldFind(b *testing.B) {
 	}
 }
 
-func TestChangeMaxPayloadSize(t *testing.T) {
-	var tests = []struct {
-		input    int
-		expected int
-	}{
-		// negative test cases
-		{-1, 0},
-		// lesser than current default
-		{0, 0},
-		{64, 64},
-		// Greater than current default
-		{987 * 1024, 987 * 1024},
-	}
-	for _, tst := range tests {
-		ChangeMaxPayloadSize(tst.input)
-		actual := len(payload)
-		if len(payload) != tst.expected {
-			t.Errorf("Got %d, expected %d for ChangeMaxPayloadSize(%d)", actual, tst.expected, tst.input)
-		}
-	}
-}
+// -- end of benchmark tests / end of this file
