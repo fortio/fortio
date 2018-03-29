@@ -80,10 +80,10 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
-  -server-cert
+  -cert
 	Full path to the server certificate required for secure grpc.
 	Used by grpcping and server. (default "") means secure grpc is disabled.
-  -server-key
+  -key
 	Full path to the server key required for secure grpc.
 	(default "") means secure grpc is disabled.
   -halfclose
@@ -210,6 +210,35 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 250 < 300 , 275 , 66.67, 2
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
+```
+* A grpc ping using TLS. First, start Fortio server with the `-cert` and `-key` flags.
+__Note:__ `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are the paths to the certificate and key that
+you are responsible for providing. Creating TLS certificates is outside the scope of this document. This example uses
+`localhost` in the `Subject Alternative Name` of the certificate.
+```
+$ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
+UI starting - visit:
+http://localhost:8080/fortio/
+Https redirector running on :8081
+Fortio 0.8.1 grpc ping server listening on port :8079
+Fortio 0.8.1 echo server listening on port localhost:8080
+Using server certificate /path/to/fortio/server.crt to construct TLS credentials
+Using server key /path/to/fortio/server.key to construct TLS credentials
+```
+Next, use `grpcping` with the `-cert` flag:
+```
+$ fortio grpcping -cert /path/to/fortio/server.crt localhost
+Using server certificate /path/to/fortio/server.crt to construct TLS credentials
+16:00:10 I pingsrv.go:129> Ping RTT 501452 (avg of 595441, 537088, 371828 ns) clock skew 31094
+Clock skew histogram usec : count 1 avg 31.094 +/- 0 min 31.094 max 31.094 sum 31.094
+# range, mid point, percentile, count
+>= 31.094 <= 31.094 , 31.094 , 100.00, 1
+# target 50% 31.094
+RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 1504.357
+# range, mid point, percentile, count
+>= 371.828 <= 400 , 385.914 , 33.33, 1
+> 500 <= 595.441 , 547.721 , 100.00, 2
+# target 50% 523.86
 ```
 * Load (low default qps/threading) test:
 ```

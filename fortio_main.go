@@ -79,8 +79,8 @@ var (
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	serverCertFlag    = flag.String("server-cert", "", "Path to the server certificate required for secure grpc client or server")
-	serverKeyFlag     = flag.String("server-key", "", "Path to the server key for secure grpc server")
+	certFlag          = flag.String("cert", "", "Path to the server certificate required for secure grpc client or server")
+	keyFlag           = flag.String("key", "", "Path to the server key for secure grpc server")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port.")
@@ -164,7 +164,7 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, *serverCertFlag, *serverKeyFlag, fgrpc.DefaultHealthServiceName)
+		fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName)
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -251,7 +251,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			Cert:               *serverCertFlag,
+			Cert:               *certFlag,
 			Service:            *healthSvcFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
@@ -315,7 +315,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 }
 
 func grpcClient() {
-	if len(flag.Args()) < 1 {
+	if len(flag.Args()) != 1 {
 		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
@@ -324,10 +324,11 @@ func grpcClient() {
 		count = 1
 	}
 	var err error
+	cert := *certFlag
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, *serverCertFlag, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, *serverCertFlag, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag)
 	}
 	if err != nil {
 		// already logged
