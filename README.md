@@ -81,10 +81,13 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
   -cert
-	Full path to the server certificate required for secure grpc.
-	Used by grpcping and server. (default "") means secure grpc is disabled.
+	Full path to the TLS certificate for secure grpc. Used by Fortio load,
+	grpcping, and server commands. Standard TLS (i.e. valid server
+	certificate signed by a trusted CA) is used instead of -cert by grpcping
+	and load commands when "https://" prefaces the destination.
+	(default "") means secure grpc is disabled.
   -key
-	Full path to the server key required for secure grpc.
+	Full path to the TLS key required for secure grpc. Used by Fortio server.
 	(default "") means secure grpc is disabled.
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
@@ -211,10 +214,11 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
-* A grpc ping using TLS. First, start Fortio server with the `-cert` and `-key` flags.
-__Note:__ `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are the paths to the certificate and key that
-you are responsible for providing. Creating TLS certificates is outside the scope of this document. This example uses
-`localhost` in the `Subject Alternative Name` of the certificate.
+* A `grpcping` using TLS. First, start Fortio server with the `-cert` and `-key` flags.
+`/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
+you are responsible for providing. Creating a TLS certificate is outside the scope of this document. This example uses
+`localhost` in the `Subject Alternative Name` (SAN) of the certificate. The SAN should match the domain name that
+clients connect to.
 ```
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
@@ -225,7 +229,7 @@ Fortio 0.8.1 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
-Next, use `grpcping` with the `-cert` flag:
+* Next, use `grpcping` with the `-cert` flag:
 ```
 $ fortio grpcping -cert /path/to/fortio/server.crt localhost
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
@@ -240,6 +244,18 @@ RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 
 > 500 <= 595.441 , 547.721 , 100.00, 2
 # target 50% 523.86
 ```
+
+* `grpcping` can connect to a non-Fortio TLS server by prefacing the destination with
+`https://`:
+```
+$ fortio grpcping https://fortio.istio.io:443
+16:26:47 I grpcrunner.go:194> stripping https scheme. grpc destination: fortio.istio.io:443
+Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.795 sum 12329.795
+# range, mid point, percentile, count
+>= 12329.8 <= 12329.8 , 12329.8 , 100.00, 1
+# target 50% 12329.8
+```
+
 * Load (low default qps/threading) test:
 ```
 $ fortio load http://www.google.com
@@ -266,6 +282,15 @@ Code 200 : 40
 Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
 Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
+```
+
+* Load test using gRPC and TLS security. First, start Fortio server with the `-cert` and `-key` flags:
+```
+$ fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
+```
+Next, run the `load` command with the `-cert` flag:
+```
+$ fortio load -cert /etc/ssl/certs/server.crt -grpc localhost:8079
 ```
 
 * Curl like (single request) mode
