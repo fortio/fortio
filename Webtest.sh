@@ -58,8 +58,11 @@ docker exec $DOCKERNAME /usr/local/bin/fortio load -stdclient -qps 1 -t 2s -c 1 
 docker exec $DOCKERNAME /usr/local/bin/fortio load -H Foo:Bar -H Blah:Blah -qps 1 -t 2s -c 2 http://www.google.com/
 # Do a grpcping
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
-# Do a grpcping to a scheme-prefixed destination
-docker exec $DOCKERNAME /usr/local/bin/fortio grpcping https://fortio.istio.io:443
+# Do a grpcping to a scheme-prefixed destination. Fortio should append port number
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping https://fortio.istio.io
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping http://fortio.istio.io
+# Do a local grpcping. Fortio should append default grpc port number to destination
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 # pprof should be there, no 404/error
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile

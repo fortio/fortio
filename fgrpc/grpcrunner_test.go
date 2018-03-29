@@ -92,7 +92,7 @@ func TestGRPCDestination(t *testing.T) {
 		output string
 	}{
 		{
-			"hostname",
+			"valid hostname",
 			"localhost",
 			"localhost:8079",
 		},
@@ -102,14 +102,14 @@ func TestGRPCDestination(t *testing.T) {
 			"localhost:1234",
 		},
 		{
-			"http hostname and port",
-			"http://localhost:1234",
-			"localhost:1234",
+			"hostname with http prefix",
+			"http://localhost",
+			"localhost:80",
 		},
 		{
-			"https hostname and port",
-			"https://localhost:1234",
-			"localhost:1234",
+			"Hostname with https prefix",
+			"https://localhost",
+			"localhost:443",
 		},
 		{
 			"IPv4 address",
@@ -132,31 +132,21 @@ func TestGRPCDestination(t *testing.T) {
 			"[2001:dba::1]:1234",
 		},
 		{
-			"http hostname and port",
-			"http://foo.bar:2567",
-			"foo.bar:2567",
+			"IPv6 address with http prefix",
+			"http://2001:dba::1",
+			"[2001:dba::1]:80",
 		},
 		{
-			"https hostname and port",
-			"https://foo.bar:2567",
-			"foo.bar:2567",
-		},
-		{
-			"hostname and no port",
-			"foo.bar.com",
-			"foo.bar.com:8079",
-		},
-		{
-			"hostname and port",
-			"foo.bar.com:123",
-			"foo.bar.com:123",
+			"IPv6 address with https prefix",
+			"https://2001:dba::1",
+			"[2001:dba::1]:443",
 		},
 	}
 
 	for _, tc := range tests {
 		dest := grpcDestination(tc.dest)
 		if dest != tc.output {
-			t.Errorf("Test case %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
+			t.Errorf("Test case: %s failed to set gRPC destination\n\texpected: %s\n\t  actual: %s",
 				tc.name,
 				tc.output,
 				dest,

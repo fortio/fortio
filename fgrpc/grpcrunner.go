@@ -35,9 +35,11 @@ import (
 
 const (
 	// DefaultGRPCPort is the Fortio gRPC server default port number.
-	DefaultGRPCPort = "8079"
-	prefixHTTP      = "http://"
-	prefixHTTPS     = "https://"
+	DefaultGRPCPort  = "8079"
+	defaultHTTPPort  = "80"
+	defaultHTTPSPort = "443"
+	prefixHTTP       = "http://"
+	prefixHTTPS      = "https://"
 )
 
 // Dial dials grpc either using insecure or using default tls setup.
@@ -169,31 +171,47 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	return &total, nil
 }
 
-// grpcDestination parses dest and returns dest:port based on dest type
-// being a hostname, IP address or hostname/ip:port pair.
+// grpcDestination parses dest and returns dest:port based on dest being
+// a hostname, IP address, hostname:port, or ip:port. The original dest is
+// returned if dest is an invalid hostname or invalid IP address. An http/https
+// prefix is removed from dest if one exists and the port number is set to
+// DefaultHTTPPort for http, DefaultHTTPSPort for https, or DefaultGRPCPort
+// if http, https, or :port is not specified in dest.
 // TODO: change/fix this (NormalizePort and more)
-func grpcDestination(dest string) string {
-	// strip any unintentional http/https scheme prefixes from destination
-	if strings.HasPrefix(dest, prefixHTTP) {
-		dest = strings.Replace(dest, prefixHTTP, "", 1)
-		log.Infof("stripping http scheme. grpc destination: %v", dest)
-	} else if strings.HasPrefix(dest, prefixHTTPS) {
-		dest = strings.Replace(dest, prefixHTTPS, "", 1)
-		log.Infof("stripping https scheme. grpc destination: %v", dest)
+func grpcDestination(dest string) (parsedDest string) {
+	var port string
+	// strip any unintentional http/https scheme prefixes from dest
+	// and set the port number.
+	switch {
+	case strings.HasPrefix(dest, prefixHTTP):
+		parsedDest = strings.Replace(dest, prefixHTTP, "", 1)
+		port = defaultHTTPPort
+		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
+			parsedDest, port)
+	case strings.HasPrefix(dest, prefixHTTPS):
+		parsedDest = strings.Replace(dest, prefixHTTPS, "", 1)
+		port = defaultHTTPSPort
+		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
+			parsedDest, port)
+	default:
+		parsedDest = dest
+		port = DefaultGRPCPort
 	}
-
-	if _, _, err := net.SplitHostPort(dest); err == nil {
-		return dest
+	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
+		return parsedDest
 	}
-	if ip := net.ParseIP(dest); ip != nil {
+	if ip := net.ParseIP(parsedDest); ip != nil {
 		switch {
 		case ip.To4() != nil:
-			return ip.String() + fnet.NormalizePort(DefaultGRPCPort)
+			parsedDest = ip.String() + fnet.NormalizePort(port)
+			return parsedDest
 		case ip.To16() != nil:
-			return "[" + ip.String() + "]" + fnet.NormalizePort(DefaultGRPCPort)
+			parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(port)
+			return parsedDest
 		}
-
 	}
-	// dest must be in the form of hostname
-	return dest + fnet.NormalizePort(DefaultGRPCPort)
+	// parsedDest is in the form of a domain name,
+	// append ":port" and return.
+	parsedDest += fnet.NormalizePort(port)
+	return parsedDest
 }
