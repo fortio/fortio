@@ -42,20 +42,22 @@ const (
 	prefixHTTPS      = "https://"
 )
 
-// Dial dials grpc either using insecure or using default tls setup.
-func Dial(serverAddr string, cert string) (conn *grpc.ClientConn, err error) {
+// Dial dials grpc using insecure or tls transport security when serverAddr
+// has prefixHTTPS or cert is provided. override is for testing only.
+// If set to a non empty string, it will override the virtual host name
+// of authority in requests.
+func Dial(serverAddr string, cert, override string) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
-	//var creds credentials.TransportCredentials
 	switch {
 	case cert != "":
-		creds, err := credentials.NewClientTLSFromFile(cert, "")
+		creds, err := credentials.NewClientTLSFromFile(cert, override)
 		if err != nil {
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
 		log.Infof("Using server certificate %v to construct TLS credentials", cert)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
-	case strings.HasPrefix(serverAddr, "https://"):
+	case strings.HasPrefix(serverAddr, prefixHTTPS):
 		creds := credentials.NewTLS(nil)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
@@ -104,6 +106,7 @@ type GRPCRunnerOptions struct {
 	Profiler           string // file to save profiles to. defaults to no profiling
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
 	Cert               string // Path to server certificate for secure grpc
+	CertOverride       string // Override the cert vhost of authority for testing
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -120,7 +123,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		conn, err := Dial(o.Destination, o.Cert)
+		conn, err := Dial(o.Destination, o.Cert, o.CertOverride)
 		if err != nil {
 			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err

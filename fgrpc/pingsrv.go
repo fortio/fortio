@@ -85,7 +85,7 @@ func PingServer(port string, cert, key, healthServiceName string) int {
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination).
 func PingClientCall(serverAddr string, cert string, n int, payload string) (float64, error) {
-	conn, err := Dial(serverAddr, cert) // somehow this never seem to error out, error comes later
+	conn, err := Dial(serverAddr, cert, "") // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
@@ -143,7 +143,7 @@ type HealthResultMap map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
 // service.
 func GrpcHealthCheck(serverAddr string, cert, svcname string, n int) (*HealthResultMap, error) {
 	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
-	conn, err := Dial(serverAddr, cert)
+	conn, err := Dial(serverAddr, cert, "")
 	if err != nil {
 		return nil, err
 	}

@@ -81,14 +81,14 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
   -cert
-	Full path to the TLS certificate for secure grpc. Used by Fortio load,
-	grpcping, and server commands. Standard TLS (i.e. valid server
-	certificate signed by a trusted CA) is used instead of -cert by grpcping
-	and load commands when "https://" prefaces the destination.
-	(default "") means secure grpc is disabled.
+	Full path to the certificate used for grpc TLS. Applicable to Fortio
+	load, grpcping, and server commands. Preface the grpc destination with
+	"https://" if standard TLS (i.e. valid server certificate signed by a
+	trusted CA) is desired. -cert will override "https://" if both are provided.
+	(default "") means no user-provided cert.
   -key
-	Full path to the TLS key required for secure grpc. Used by Fortio server.
-	(default "") means secure grpc is disabled.
+	Full path to the key required for grpc TLS. Applicable to Fortio server.
+	(default "") means no user-provided key.
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
