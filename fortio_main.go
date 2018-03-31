@@ -79,8 +79,9 @@ var (
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	certFlag          = flag.String("cert", "", "Path to the server certificate required for secure grpc client or server")
-	keyFlag           = flag.String("key", "", "Path to the server key for secure grpc server")
+	certFlag          = flag.String("cert", "", "Path to the server certificate used for grpc TLS")
+	keyFlag           = flag.String("key", "", "Path to the server key used for grpc TLS")
+	caCertFlag        = flag.String("ca-cert", "", "Path to the CA certificate used for grpc TLS")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port.")
@@ -251,7 +252,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			Cert:               *certFlag,
+			CACert:             *caCertFlag,
 			Service:            *healthSvcFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
@@ -324,7 +325,7 @@ func grpcClient() {
 		count = 1
 	}
 	var err error
-	cert := *certFlag
+	cert := *caCertFlag
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {

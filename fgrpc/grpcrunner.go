@@ -46,16 +46,16 @@ const (
 // has prefixHTTPS or cert is provided. override is for testing only.
 // If set to a non empty string, it will override the virtual host name
 // of authority in requests.
-func Dial(serverAddr string, cert, override string) (conn *grpc.ClientConn, err error) {
+func Dial(serverAddr string, cacert, override string) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
 	switch {
-	case cert != "":
-		creds, err := credentials.NewClientTLSFromFile(cert, override)
+	case cacert != "":
+		creds, err := credentials.NewClientTLSFromFile(cacert, override)
 		if err != nil {
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
-		log.Infof("Using server certificate %v to construct TLS credentials", cert)
+		log.Infof("Using CA certificate %v to construct TLS credentials", cacert)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	case strings.HasPrefix(serverAddr, prefixHTTPS):
 		creds := credentials.NewTLS(nil)
@@ -105,7 +105,7 @@ type GRPCRunnerOptions struct {
 	Service            string
 	Profiler           string // file to save profiles to. defaults to no profiling
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
-	Cert               string // Path to server certificate for secure grpc
+	CACert             string // Path to CA certificate for grpc TLS
 	CertOverride       string // Override the cert vhost of authority for testing
 }
 
@@ -123,7 +123,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		conn, err := Dial(o.Destination, o.Cert, o.CertOverride)
+		conn, err := Dial(o.Destination, o.CACert, o.CertOverride)
 		if err != nil {
 			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 			return nil, err

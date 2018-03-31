@@ -63,8 +63,8 @@ docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping https://fortio.istio.io
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping http://fortio.istio.io
 # Do a grpcping with -cert flag. Fortio should use valid cert.
-docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -cert $CERT fortio.istio.io:443
-docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -cert $CERT https://fortio.istio.io
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -ca-cert $CERT fortio.istio.io:443
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -ca-cert $CERT https://fortio.istio.io
 # Do a local grpcping. Fortio should append default grpc port number to destination
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 # pprof should be there, no 404/error
