@@ -2,11 +2,16 @@
 set -x
 # Check we can build the image
 make docker-internal TAG=webtest || exit 1
+# Generate the certs
+make certs
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=20 # must be low to detect leaks
 LOGLEVEL=info # change to debug to debug
 MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
 CERT=/etc/ssl/certs/ca-certificates.crt
+TESTCACERT=/etc/ssl/certs/ca.crt
+TESTCERT=/etc/ssl/certs/server.crt
+TESTKEY=/etc/ssl/certs/server.key
 DOCKERNAME=fortio_server
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
 function cleanup {
@@ -63,13 +68,19 @@ docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping https://fortio.istio.io
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping http://fortio.istio.io
 # Do a grpcping with -cert flag. Fortio should use valid cert.
-docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -ca-cert $CERT fortio.istio.io:443
-docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -ca-cert $CERT https://fortio.istio.io
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -cacert $CERT fortio.istio.io:443
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -cacert $CERT https://fortio.istio.io
 # Do a local grpcping. Fortio should append default grpc port number to destination
 docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 # pprof should be there, no 404/error
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
+# switch to secure grpc mode and run grpcping and load test
+docker stop $DOCKERID
+docker rm $DOCKERNAME
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME --mount type=bind,source=$PWD/ca.crt,target=$TESTCACERT --mount type=bind,source=$PWD/server.crt,target=$TESTCERT --mount type=bind,source=$PWD/server.key,target=$TESTKEY istio/fortio:webtest server -cert $TESTCERT -key $TESTKEY -loglevel $LOGLEVEL)
+docker exec $DOCKERNAME /usr/local/bin/fortio grpcping -cacert $TESTCACERT localhost
+docker exec $DOCKERNAME /usr/local/bin/fortio load -grpc -cacert $TESTCACERT localhost:8079
 # switch to report mode
 docker stop $DOCKERID
 docker rm $DOCKERNAME
@@ -85,3 +96,5 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
+# remove TLS assets
+rm -f server.* ca.crt

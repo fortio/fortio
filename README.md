@@ -86,11 +86,11 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -key
 	Full path to the key required for grpc TLS. Applicable to the server command.
 	(default "") means no user-provided key.
-  -ca-cert
+  -cacert
 	Full path to the CA certificate required for grpc TLS. Applicable to the grpcping
 	and load commands. Preface the grpc destination with "https://" if standard TLS
 	(i.e. valid server certificate signed by a trusted CA) is desired.
-	-ca-cert will override "https://" if both are provided.
+	-cacert will override "https://" if both are provided.
 	(default "") means no user-provided ca certificate.
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
@@ -232,10 +232,10 @@ Fortio 0.8.1 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
-* Next, use `grpcping` with the `-ca-cert` flag. `/path/to/fortio/ca.crt` is the path to the CA certificate
+* Next, use `grpcping` with the `-cacert` flag. `/path/to/fortio/ca.crt` is the path to the CA certificate
 that issued the server certificate:
 ```
-$ fortio grpcping -ca-cert /path/to/fortio/ca.crt localhost
+$ fortio grpcping -cacert /path/to/fortio/ca.crt localhost
 Using server certificate /path/to/fortio/ca.crt to construct TLS credentials
 16:00:10 I pingsrv.go:129> Ping RTT 501452 (avg of 595441, 537088, 371828 ns) clock skew 31094
 Clock skew histogram usec : count 1 avg 31.094 +/- 0 min 31.094 max 31.094 sum 31.094
@@ -292,9 +292,9 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
 $ fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
 ```
-Next, run the `load` command with the `-ca-cert` flag:
+Next, run the `load` command with the `-cacert` flag:
 ```
-$ fortio load -ca-cert /etc/ssl/certs/ca.crt -grpc localhost:8079
+$ fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
 ```
 
 * Curl like (single request) mode

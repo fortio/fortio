@@ -31,9 +31,10 @@ import (
 )
 
 var (
-	caCrt  = "../testdata/ca.crt"
-	svrCrt = "../testdata/server.crt"
-	svrKey = "../testdata/server.key"
+	// Generated from "make cert"
+	caCrt  = "../ca.crt"
+	svrCrt = "../server.crt"
+	svrKey = "../server.key"
 )
 
 func TestGRPCRunner(t *testing.T) {

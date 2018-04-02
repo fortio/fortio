@@ -15,7 +15,7 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
 # go test ./... and others run in vendor/ and cause problems (!)
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json|testdata)")
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json)")
 #PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already
@@ -25,9 +25,14 @@ GRPC_DIR:=./vendor/google.golang.org/grpc
 install: submodule
 	go install $(PACKAGES)
 
+# Generate certs for unit and release tests.
+certs:
+	./cert-gen
+
 # Local test
-test: submodule
+test: submodule certs
 	go test -timeout 60s -race $(PACKAGES)
+	rm -f ca.crt server.crt server.key
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
@@ -141,4 +146,4 @@ authorize:
 
 .PHONY: install lint install-linters coverage webtest release-test update-build-image
 
-.PHONY: local-lint update-build-image-tag release submodule submodule-sync pull
+.PHONY: local-lint update-build-image-tag release submodule submodule-sync pull certs

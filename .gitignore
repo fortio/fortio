@@ -9,3 +9,6 @@ fortio
 vendor
 Gopkg.*
 .idea
+# TLS assets
+*.crt
+*.key

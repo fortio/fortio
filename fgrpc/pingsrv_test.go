@@ -33,7 +33,7 @@ func TestPingServer(t *testing.T) {
 	iPort := PingServer("0", "", "", "foo")
 	iAddr := fmt.Sprintf("localhost:%d", iPort)
 	t.Logf("test insecure grpc ping server running, will connect to %s", iAddr)
-	sPort := PingServer("0", "../testdata/server.crt", "../testdata/server.key",
+	sPort := PingServer("0", svrCrt, svrKey,
 		"foo")
 	sAddr := fmt.Sprintf("localhost:%d", sPort)
 	t.Logf("test secure grpc ping server running, will connect to %s", sAddr)
