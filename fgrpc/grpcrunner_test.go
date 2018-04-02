@@ -42,6 +42,7 @@ func TestGRPCRunner(t *testing.T) {
 		},
 		Destination: destination,
 		Profiler:    "test.profile",
+		Streams:     3,
 	}
 	res, err := RunGRPCTest(&opts)
 	if err != nil {

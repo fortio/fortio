@@ -67,6 +67,7 @@ type GRPCRunnerResults struct {
 	req         grpc_health_v1.HealthCheckRequest
 	RetCodes    HealthResultMap
 	Destination string
+	Streams     int
 }
 
 // Run exercises GRPC health check at the target QPS.
@@ -104,19 +105,14 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		o.NumThreads = 1 // sort of todo, this is different from the other default in periodic
 	}
 	log.Infof("Starting grpc test for %s with %d*%d threads at %.1f qps", o.Destination, o.Streams, o.NumThreads, o.QPS)
-	expected := o.NumThreads * o.Streams
-	o.NumThreads = expected
+	o.NumThreads *= o.Streams
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
-	numThreads := r.Options().NumThreads
-	if numThreads != expected && o.Streams > 1 {
-		log.Warnf("Not enough qps/time to do requested streams*connection, reduced from %d to %d", expected, numThreads)
-	} else {
-		log.Debugf("num threads now %d", numThreads)
-	}
+	numThreads := r.Options().NumThreads // may change
 	total := GRPCRunnerResults{
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
+		Streams:     o.Streams,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
