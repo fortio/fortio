@@ -118,6 +118,7 @@ var (
 	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
 	payloadFlag   = flag.String("payload", "", "Payload string to send along")
+	pingDelayFlag = flag.Duration("grpc-ping-delay", 0, "grpc ping delay in response")
 	streamsFlag   = flag.Int("s", 1, "Number of streams per grpc connection")
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
@@ -332,7 +333,7 @@ func grpcClient() {
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag, *pingDelayFlag)
 	}
 	if err != nil {
 		// already logged

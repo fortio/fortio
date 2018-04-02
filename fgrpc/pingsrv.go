@@ -43,6 +43,11 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
 	out := *in
 	out.Ts = time.Now().UnixNano()
+	if in.DelayNanos > 0 {
+		s := time.Duration(in.DelayNanos)
+		log.LogVf("GRPC ping: sleeping for %v", s)
+		time.Sleep(s)
+	}
 	return &out, nil
 }
 
@@ -77,12 +82,12 @@ func PingServer(port string, healthServiceName string, maxConcurrentStreams uint
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination).
-func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64, error) {
+func PingClientCall(serverAddr string, tls bool, n int, payload string, delay time.Duration) (float64, error) {
 	conn, err := Dial(serverAddr, tls) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
-	msg := &PingMessage{Payload: payload}
+	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)
 	// Warm up:
 	_, err = cli.Ping(context.Background(), msg)
