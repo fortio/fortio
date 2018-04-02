@@ -81,7 +81,7 @@ func PingServer(port string, healthServiceName string, maxConcurrentStreams uint
 }
 
 // PingClientCall calls the ping service (presumably running as PingServer on
-// the destination).
+// the destination). returns the average round trip in seconds.
 func PingClientCall(serverAddr string, tls bool, n int, payload string, delay time.Duration) (float64, error) {
 	conn, err := Dial(serverAddr, tls) // somehow this never seem to error out, error comes later
 	if err != nil {
@@ -131,7 +131,7 @@ func PingClientCall(serverAddr string, tls bool, n int, payload string, delay ti
 	}
 	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", []float64{50})
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
-	return rttHistogram.Avg(), nil
+	return rttHistogram.Avg() / 1e6, nil
 }
 
 // HealthResultMap short cut for the map of results to count. -1 for errors.
