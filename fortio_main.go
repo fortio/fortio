@@ -114,10 +114,11 @@ var (
 
 	// GRPC related flags
 	// To get most debugging/tracing:
-	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug
 	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
 	payloadFlag   = flag.String("payload", "", "Payload string to send along")
+	streamsFlag   = flag.Int("s", 1, "Number of streams per grpc connection")
 )
 
 func main() {
@@ -252,6 +253,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Destination:        url,
 			Secure:             *grpcSecureFlag,
 			Service:            *healthSvcFlag,
+			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)

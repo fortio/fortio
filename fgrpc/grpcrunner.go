@@ -90,28 +90,48 @@ type GRPCRunnerOptions struct {
 	Destination        string
 	Service            string
 	Profiler           string // file to save profiles to. defaults to no profiling
+	Streams            int    // number of streams. total go routines and data streams will be streams*numthreads.
 	Secure             bool   // use tls transport
 	AllowInitialErrors bool   // whether initial errors don't cause an abort
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
-	log.Infof("Starting grpc test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
+	if o.Streams < 1 {
+		o.Streams = 1
+	}
+	if o.NumThreads < 1 {
+		o.NumThreads = 1 // sort of todo, this is different from the other default in periodic
+	}
+	log.Infof("Starting grpc test for %s with %d*%d threads at %.1f qps", o.Destination, o.Streams, o.NumThreads, o.QPS)
+	expected := o.NumThreads * o.Streams
+	o.NumThreads = expected
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
+	if numThreads != expected && o.Streams > 1 {
+		log.Warnf("Not enough qps/time to do requested streams*connection, reduced from %d to %d", expected, numThreads)
+	} else {
+		log.Debugf("num threads now %d", numThreads)
+	}
 	total := GRPCRunnerResults{
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
+	var conn *grpc.ClientConn
+	var err error
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		conn, err := Dial(o.Destination, o.Secure)
-		if err != nil {
-			log.Errf("Error in grpc dial for %s %v", o.Destination, err)
-			return nil, err
+		if (i % o.Streams) == 0 {
+			conn, err = Dial(o.Destination, o.Secure)
+			if err != nil {
+				log.Errf("Error in grpc dial for %s %v", o.Destination, err)
+				return nil, err
+			}
+		} else {
+			log.Debugf("Reusing previous client connection for %d", i)
 		}
 		grpcstate[i].client = grpc_health_v1.NewHealthClient(conn)
 		if grpcstate[i].client == nil {
