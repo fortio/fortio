@@ -50,13 +50,18 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // returns the port being bound (useful when passing "0" as the port to
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
-// to be marked as SERVING.
-func PingServer(port string, healthServiceName string) int {
+// to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
+func PingServer(port string, healthServiceName string, maxConcurrentStreams uint32) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return -1
 	}
-	grpcServer := grpc.NewServer()
+	var grpcOptions []grpc.ServerOption
+	if maxConcurrentStreams > 0 {
+		log.Infof("Setting grpc.MaxConcurrentStreams server to %d", maxConcurrentStreams)
+		grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(maxConcurrentStreams))
+	}
+	grpcServer := grpc.NewServer(grpcOptions...)
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)

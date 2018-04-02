@@ -43,7 +43,7 @@ func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
 	nPort := NormalizePort(port)
 	listener, err := net.Listen("tcp", nPort)
 	if err != nil {
-		log.Critf("Can't listen to %v: %v", nPort, err)
+		log.Critf("Can't listen to %v for %s: %v", nPort, name, err)
 		return nil, nil
 	}
 	addr := listener.Addr().(*net.TCPAddr)

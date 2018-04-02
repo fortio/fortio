@@ -75,7 +75,7 @@ type GRPCRunnerResults struct {
 func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
 	res, err := grpcstate.client.Check(context.Background(), &grpcstate.req)
-	log.Debugf("Got %v %v", err, res)
+	log.Debugf("For %d got %v %v", t, err, res)
 	if err != nil {
 		log.Warnf("Error making health check %v", err)
 		grpcstate.RetCodes[-1]++
@@ -102,7 +102,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		o.Streams = 1
 	}
 	if o.NumThreads < 1 {
-		o.NumThreads = 1 // sort of todo, this is different from the other default in periodic
+		// sort of todo, this redoing some of periodic normalize (but we can't use normalize which does too much)
+		o.NumThreads = periodic.DefaultRunnerOptions.NumThreads
 	}
 	log.Infof("Starting grpc test for %s with %d*%d threads at %.1f qps", o.Destination, o.Streams, o.NumThreads, o.QPS)
 	o.NumThreads *= o.Streams

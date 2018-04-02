@@ -119,6 +119,9 @@ var (
 	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
 	payloadFlag   = flag.String("payload", "", "Payload string to send along")
 	streamsFlag   = flag.Int("s", 1, "Number of streams per grpc connection")
+
+	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
+		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 )
 
 func main() {
@@ -164,7 +167,7 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName)
+		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}

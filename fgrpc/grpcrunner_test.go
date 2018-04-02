@@ -32,7 +32,7 @@ import (
 
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "bar")
+	port := PingServer("0", "bar", 0)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -42,7 +42,6 @@ func TestGRPCRunner(t *testing.T) {
 		},
 		Destination: destination,
 		Profiler:    "test.profile",
-		Streams:     3,
 	}
 	res, err := RunGRPCTest(&opts)
 	if err != nil {
@@ -56,9 +55,53 @@ func TestGRPCRunner(t *testing.T) {
 	}
 }
 
+//TODO : find something that actually fails based on MAXSTREAM
+func TestGRPCRunnerMaxStreams(t *testing.T) {
+	log.SetLogLevel(log.Info)
+	port := PingServer("0", "maxstream", 10)
+	destination := fmt.Sprintf("localhost:%d", port)
+
+	opts := GRPCRunnerOptions{
+		RunnerOptions: periodic.RunnerOptions{
+			QPS:        100,
+			NumThreads: 1,
+		},
+		Destination: destination,
+		Streams:     10, // will be batches of 10 max
+	}
+	o1 := opts
+	res, err := RunGRPCTest(&o1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq := res.DurationHistogram.Count
+	avg10 := res.DurationHistogram.Avg
+	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+	if totalReq != ok {
+		t.Errorf("Mismatch1 between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+	o2 := opts
+	o2.Streams = 100
+	res, err = RunGRPCTest(&o2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq = res.DurationHistogram.Count
+	avg100 := res.DurationHistogram.Avg
+	ok = res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+	if totalReq != ok {
+		t.Errorf("Mismatch2 between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+	if avg100 < 2*avg10 {
+		t.Errorf("Expecting much slower average with 100/10 %v %v", avg100, avg10)
+	}
+}
+
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "svc1")
+	port := PingServer("0", "svc1", 0)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{

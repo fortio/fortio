@@ -29,7 +29,7 @@ func init() {
 }
 
 func TestPingServer(t *testing.T) {
-	port := PingServer("0", "foo")
+	port := PingServer("0", "foo", 0)
 	addr := fmt.Sprintf("localhost:%d", port)
 	t.Logf("test grpc ping server running, will connect to %s", addr)
 	if latency, err := PingClientCall(addr, false, 7, "test payload"); err != nil || latency <= 0 {
@@ -49,7 +49,7 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
-	newPort := PingServer(strconv.Itoa(port), "will fail")
+	newPort := PingServer(strconv.Itoa(port), "will fail", 5)
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, port)
 	}
