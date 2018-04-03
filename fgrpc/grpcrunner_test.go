@@ -99,7 +99,7 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 		t.Errorf("Mismatch2 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
 	// Half of the calls should take 2x (delayed behind maxstreams)
-	if avg20 < 1.5*avg10 {
+	if avg20 < 1.5*opts.Delay.Seconds() {
 		t.Errorf("Expecting much slower average with 20/10 %v %v", avg20, avg10)
 	}
 }

@@ -34,7 +34,8 @@ func TestPingServer(t *testing.T) {
 	addr := fmt.Sprintf("localhost:%d", port)
 	t.Logf("test grpc ping server running, will connect to %s", addr)
 	delay := 100 * time.Millisecond
-	if latency, err := PingClientCall(addr, false, 7, "test payload", delay); err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
+	latency, err := PingClientCall(addr, false, 7, "test payload", delay)
+	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
 		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
 	}
 	if latency, err := PingClientCall(addr, true, 1, "", 0); err == nil {
