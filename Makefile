@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
-BUILD_IMAGE_TAG := v6
+BUILD_IMAGE_TAG := v7
 BUILD_IMAGE := istio/fortio.build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
