@@ -68,7 +68,7 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 		Destination: destination,
 		Streams:     10, // will be batches of 10 max
 		UsePing:     true,
-		Delay:       10 * time.Millisecond,
+		Delay:       20 * time.Millisecond,
 	}
 	o1 := opts
 	res, err := RunGRPCTest(&o1)
@@ -82,7 +82,7 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 	if totalReq != ok {
 		t.Errorf("Mismatch1 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
-	if avg10 < opts.Delay.Seconds() || avg10 > 2*opts.Delay.Seconds() {
+	if avg10 < opts.Delay.Seconds() || avg10 > 3*opts.Delay.Seconds() {
 		t.Errorf("Ping delay not working, got %v for %v", avg10, opts.Delay)
 	}
 	o2 := opts
