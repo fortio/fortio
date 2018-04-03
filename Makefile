@@ -27,7 +27,7 @@ install: submodule
 
 # Generate certs for unit and release tests.
 certs:
-	./cert-gen
+	go run certgen/certgen.go
 
 # Local test
 test: submodule certs
