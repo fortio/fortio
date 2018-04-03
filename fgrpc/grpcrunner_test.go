@@ -55,7 +55,6 @@ func TestGRPCRunner(t *testing.T) {
 	}
 }
 
-//TODO : find something that actually fails based on MAXSTREAM
 func TestGRPCRunnerMaxStreams(t *testing.T) {
 	log.SetLogLevel(log.Info)
 	port := PingServer("0", "maxstream", 10)
