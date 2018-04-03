@@ -74,28 +74,29 @@ type GRPCRunnerResults struct {
 	Ping        bool
 }
 
-// Run exercises GRPC health check at the target QPS.
+// Run exercises GRPC health check or ping at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
+	var err error
+	var res interface{}
+	status := grpc_health_v1.HealthCheckResponse_SERVING
 	if grpcstate.Ping {
-		res, err := grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
-		log.Debugf("For %d got ping %v %+v", t, err, res)
-		if err != nil {
-			log.Warnf("Error making ping call %v", err)
-			grpcstate.RetCodes[-1]++
-		} else {
-			grpcstate.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]++
-		}
+		res, err = grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
 	} else {
-		res, err := grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
-		log.Debugf("For %d got health %v %v", t, err, res)
-		if err != nil {
-			log.Warnf("Error making health check %v", err)
-			grpcstate.RetCodes[-1]++
-		} else {
-			grpcstate.RetCodes[res.Status]++
+		var r *grpc_health_v1.HealthCheckResponse
+		r, err = grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
+		if r != nil {
+			status = r.Status
+			res = r
 		}
+	}
+	log.Debugf("For %d (ping=%v) got %v %v", t, grpcstate.Ping, err, res)
+	if err != nil {
+		log.Warnf("Error making grpc call: %v", err)
+		grpcstate.RetCodes[-1]++
+	} else {
+		grpcstate.RetCodes[status]++
 	}
 }
 
@@ -151,6 +152,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			log.Debugf("Reusing previous client connection for %d", i)
 		}
 		grpcstate[i].Ping = o.UsePing
+		var err error
 		if o.UsePing {
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
@@ -159,10 +161,6 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
 			if o.Exactly <= 0 {
 				_, err = grpcstate[i].clientP.Ping(context.Background(), &grpcstate[i].reqP)
-				if !o.AllowInitialErrors && err != nil {
-					log.Errf("Error in first grpc ping call for %s %v", o.Destination, err)
-					return nil, err
-				}
 			}
 		} else {
 			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)
@@ -172,11 +170,11 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 			if o.Exactly <= 0 {
 				_, err = grpcstate[i].clientH.Check(context.Background(), &grpcstate[i].reqH)
-				if !o.AllowInitialErrors && err != nil {
-					log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
-					return nil, err
-				}
 			}
+		}
+		if !o.AllowInitialErrors && err != nil {
+			log.Errf("Error in first grpc call (ping = %v) for %s: %v", o.UsePing, o.Destination, err)
+			return nil, err
 		}
 		// Setup the stats for each 'thread'
 		grpcstate[i].RetCodes = make(HealthResultMap)
