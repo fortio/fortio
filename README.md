@@ -76,7 +76,7 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -gomaxprocs int
 	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-	Use GRPC (health check) for load testing
+	Use GRPC (health check by default, add -ping for ping) for load testing
   -grpc-max-streams uint
 	MaxConcurrentStreams for the grpc server. Default (0) is to leave the
 	option unset.
@@ -242,6 +242,98 @@ Code 200 : 40
 Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
 Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
+```
+
+* Grpc load test with delay, multiple streams
+
+Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hit the fortio ping grpc endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the json result:
+```bash
+$ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
+Fortio 0.9.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
+16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
+16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
+Starting at 8 qps with 8 thread(s) [gomax 8] for 5s : 5 calls each (total 40)
+16:33:04 I periodic.go:533> T005 ended after 5.283227589s : 5 calls. qps=0.9463911814835126
+16:33:04 I periodic.go:533> T004 ended after 5.28322456s : 5 calls. qps=0.9463917240723911
+16:33:04 I periodic.go:533> T007 ended after 5.283190069s : 5 calls. qps=0.9463979025358817
+16:33:04 I periodic.go:533> T006 ended after 5.283201068s : 5 calls. qps=0.9463959322473395
+16:33:04 I periodic.go:533> T003 ended after 5.285025049s : 5 calls. qps=0.9460693097275045
+16:33:04 I periodic.go:533> T000 ended after 5.285041154s : 5 calls. qps=0.9460664267894554
+16:33:04 I periodic.go:533> T001 ended after 5.285061297s : 5 calls. qps=0.9460628210382703
+16:33:04 I periodic.go:533> T002 ended after 5.285081735s : 5 calls. qps=0.946059162507919
+Ended after 5.28514474s : 40 calls. qps=7.5684
+Sleep times : count 32 avg 0.97034752 +/- 0.002338 min 0.967323561 max 0.974838789 sum 31.0511206
+Aggregated Function Time : count 40 avg 0.27731944 +/- 0.001606 min 0.2741372 max 0.280604967 sum 11.0927778
+# range, mid point, percentile, count
+>= 0.274137 <= 0.280605 , 0.277371 , 100.00, 40
+# target 50% 0.277288
+# target 75% 0.278947
+# target 90% 0.279942
+# target 99% 0.280539
+# target 99.9% 0.280598
+Ping SERVING : 40
+All done 40 calls (plus 2 warmup) 277.319 ms avg, 7.6 qps
+Successfully wrote 1210 bytes of Json data to 2018-04-03-163258_fortio_stage_istio_io_ldemailly_macbookpro.json
+```
+And the JSON saved is
+```json
+{
+  "RunType": "GRPC Ping Delay=250ms PayloadLength=11",
+  "Labels": "fortio-stage.istio.io , ldemailly-macbookpro",
+  "StartTime": "2018-04-03T16:32:58.895472681-07:00",
+  "RequestedQPS": "8",
+  "RequestedDuration": "5s",
+  "ActualQPS": 7.568383075162479,
+  "ActualDuration": 5285144740,
+  "NumThreads": 8,
+  "Version": "0.9.0",
+  "DurationHistogram": {
+    "Count": 40,
+    "Min": 0.2741372,
+    "Max": 0.280604967,
+    "Sum": 11.092777797,
+    "Avg": 0.277319444925,
+    "StdDev": 0.0016060870789948905,
+    "Data": [
+      {
+        "Start": 0.2741372,
+        "End": 0.280604967,
+        "Percent": 100,
+        "Count": 40
+      }
+    ],
+    "Percentiles": [
+      {
+        "Percentile": 50,
+        "Value": 0.2772881634102564
+      },
+      {
+        "Percentile": 75,
+        "Value": 0.27894656520512817
+      },
+      {
+        "Percentile": 90,
+        "Value": 0.2799416062820513
+      },
+      {
+        "Percentile": 99,
+        "Value": 0.28053863092820513
+      },
+      {
+        "Percentile": 99.9,
+        "Value": 0.2805983333928205
+      }
+    ]
+  },
+  "Exactly": 0,
+  "RetCodes": {
+    "1": 40
+  },
+  "Destination": "https://fortio-stage.istio.io",
+  "Streams": 4,
+  "Ping": true
+}
 ```
 
 * Curl like (single request) mode

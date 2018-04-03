@@ -77,7 +77,7 @@ var (
 	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
-	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	grpcSecureFlag    = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
