@@ -26,10 +26,9 @@
     "lex/httplex",
     "trace"
   ]
-  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
+  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -47,13 +46,14 @@
     "unicode/norm",
     "unicode/rangetable"
   ]
-  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "2b5a72b8730b0b16380010cfe5286c42108d88e7"
+  revision = "ab0870e398d5dd054b868c0db1481ab029b9a9f2"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -66,6 +66,7 @@
     "connectivity",
     "credentials",
     "encoding",
+    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "health",
@@ -85,12 +86,12 @@
     "tap",
     "transport"
   ]
-  revision = "6b51017f791ae1cfbec89c52efdf444b13b550ef"
-  version = "v1.9.2"
+  revision = "1e2570b1b19ade82d8dbb31bba4e65e9f9ef5b34"
+  version = "v1.11.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "609bfbdf38285567deed0838cd25fb06e5c090268c34b50f2da0873547106580"
+  inputs-digest = "4c2472fe33dd7fb3d9d79064d1a2ff66172bd3073c8c3a8094d17142687a3849"
   solver-name = "gps-cdcl"
   solver-version = 1

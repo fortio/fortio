@@ -41,8 +41,13 @@ type pingSrv struct {
 
 func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
-	out := *in
+	out := *in // copy the input including the payload etc
 	out.Ts = time.Now().UnixNano()
+	if in.DelayNanos > 0 {
+		s := time.Duration(in.DelayNanos)
+		log.LogVf("GRPC ping: sleeping for %v", s)
+		time.Sleep(s)
+	}
 	return &out, nil
 }
 
@@ -50,13 +55,18 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // returns the port being bound (useful when passing "0" as the port to
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
-// to be marked as SERVING.
-func PingServer(port string, healthServiceName string) int {
+// to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
+func PingServer(port string, healthServiceName string, maxConcurrentStreams uint32) int {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return -1
 	}
-	grpcServer := grpc.NewServer()
+	var grpcOptions []grpc.ServerOption
+	if maxConcurrentStreams > 0 {
+		log.Infof("Setting grpc.MaxConcurrentStreams server to %d", maxConcurrentStreams)
+		grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(maxConcurrentStreams))
+	}
+	grpcServer := grpc.NewServer(grpcOptions...)
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
@@ -71,13 +81,13 @@ func PingServer(port string, healthServiceName string) int {
 }
 
 // PingClientCall calls the ping service (presumably running as PingServer on
-// the destination).
-func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64, error) {
+// the destination). returns the average round trip in seconds.
+func PingClientCall(serverAddr string, tls bool, n int, payload string, delay time.Duration) (float64, error) {
 	conn, err := Dial(serverAddr, tls) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
-	msg := &PingMessage{Payload: payload}
+	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)
 	// Warm up:
 	_, err = cli.Ping(context.Background(), msg)
@@ -121,7 +131,7 @@ func PingClientCall(serverAddr string, tls bool, n int, payload string) (float64
 	}
 	skewHistogram.Print(os.Stdout, "Clock skew histogram usec", []float64{50})
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
-	return rttHistogram.Avg(), nil
+	return rttHistogram.Avg() / 1e6, nil
 }
 
 // HealthResultMap short cut for the map of results to count. -1 for errors.

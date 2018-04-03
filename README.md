@@ -28,7 +28,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v0.8.2/fortio-linux_x64-0.8.2.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v0.9.0/fortio-linux_x64-0.9.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -41,7 +41,7 @@ You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 <!-- use release/updateFlags.sh to update this section -->
 ```
-Φορτίο 0.8.2 usage:
+Φορτίο 0.9.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http
 echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
@@ -51,8 +51,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Additional Header(s)
   -L	Follow redirects (implies -std-client) - do not use for load test
   -P value
-	Proxies to run, e.g -P "localport1 dest_host1:dest_port1"
-	-P "[::1]:0 www.google.com:443" ...
+	Proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
+	www.google.com:443" ...
   -a	Automatically save JSON result with filename based on labels & timestamp
   -abort-on int
 	Http code that if encountered aborts the run. e.g. 503 or -1 for socket
@@ -76,7 +76,12 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -gomaxprocs int
 	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-	Use GRPC (health check) for load testing
+	Use GRPC (health check by default, add -ping for ping) for load testing
+  -grpc-max-streams uint
+	MaxConcurrentStreams for the grpc server. Default (0) is to leave the
+	option unset.
+  -grpc-ping-delay duration
+	grpc ping delay in response
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
@@ -127,6 +132,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
 	Payload string to send along
+  -ping
+	grpc load test: use ping instead of health
   -profile string
 	write .cpu and .mem profiles to file
   -qps float
@@ -139,6 +146,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Redirect all incoming traffic to https URL (need ingress to work
 	properly). Can be in the form of host:port, ip:port, port or "disabled"
 	to disable the feature. (default "8081")
+  -s int
+	Number of streams per grpc connection (default 1)
   -static-dir string
 	Absolute path to the dir containing the static files dir
   -stdclient
@@ -159,12 +168,12 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 * Start the internal servers:
 ```
 $ fortio server &
-Fortio 0.8.2 grpc 'ping' server listening on [::]:8079
-Fortio 0.8.2 https redirector server listening on [::]:8081
-Fortio 0.8.2 echo server listening on [::]:8080
+Fortio 0.9.0 grpc 'ping' server listening on [::]:8079
+Fortio 0.9.0 https redirector server listening on [::]:8081
+Fortio 0.9.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-21:45:23 I fortio_main.go:195> All fortio 0.8.2 buildinfo go1.10 servers started!
+21:45:23 I fortio_main.go:195> All fortio 0.9.0 buildinfo go1.10 servers started!
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -174,8 +183,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 0.8.2 grpc ping server listening on port :8079
-Fortio 0.8.2 echo server listening on port 10.10.10.10:8088
+Fortio 0.9.0 grpc ping server listening on port :8079
+Fortio 0.9.0 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -235,6 +244,98 @@ Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 s
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
 
+* Grpc load test with delay, multiple streams
+
+Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hit the fortio ping grpc endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the json result:
+```bash
+$ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
+Fortio 0.9.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
+16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
+16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
+Starting at 8 qps with 8 thread(s) [gomax 8] for 5s : 5 calls each (total 40)
+16:33:04 I periodic.go:533> T005 ended after 5.283227589s : 5 calls. qps=0.9463911814835126
+16:33:04 I periodic.go:533> T004 ended after 5.28322456s : 5 calls. qps=0.9463917240723911
+16:33:04 I periodic.go:533> T007 ended after 5.283190069s : 5 calls. qps=0.9463979025358817
+16:33:04 I periodic.go:533> T006 ended after 5.283201068s : 5 calls. qps=0.9463959322473395
+16:33:04 I periodic.go:533> T003 ended after 5.285025049s : 5 calls. qps=0.9460693097275045
+16:33:04 I periodic.go:533> T000 ended after 5.285041154s : 5 calls. qps=0.9460664267894554
+16:33:04 I periodic.go:533> T001 ended after 5.285061297s : 5 calls. qps=0.9460628210382703
+16:33:04 I periodic.go:533> T002 ended after 5.285081735s : 5 calls. qps=0.946059162507919
+Ended after 5.28514474s : 40 calls. qps=7.5684
+Sleep times : count 32 avg 0.97034752 +/- 0.002338 min 0.967323561 max 0.974838789 sum 31.0511206
+Aggregated Function Time : count 40 avg 0.27731944 +/- 0.001606 min 0.2741372 max 0.280604967 sum 11.0927778
+# range, mid point, percentile, count
+>= 0.274137 <= 0.280605 , 0.277371 , 100.00, 40
+# target 50% 0.277288
+# target 75% 0.278947
+# target 90% 0.279942
+# target 99% 0.280539
+# target 99.9% 0.280598
+Ping SERVING : 40
+All done 40 calls (plus 2 warmup) 277.319 ms avg, 7.6 qps
+Successfully wrote 1210 bytes of Json data to 2018-04-03-163258_fortio_stage_istio_io_ldemailly_macbookpro.json
+```
+And the JSON saved is
+```json
+{
+  "RunType": "GRPC Ping Delay=250ms PayloadLength=11",
+  "Labels": "fortio-stage.istio.io , ldemailly-macbookpro",
+  "StartTime": "2018-04-03T16:32:58.895472681-07:00",
+  "RequestedQPS": "8",
+  "RequestedDuration": "5s",
+  "ActualQPS": 7.568383075162479,
+  "ActualDuration": 5285144740,
+  "NumThreads": 8,
+  "Version": "0.9.0",
+  "DurationHistogram": {
+    "Count": 40,
+    "Min": 0.2741372,
+    "Max": 0.280604967,
+    "Sum": 11.092777797,
+    "Avg": 0.277319444925,
+    "StdDev": 0.0016060870789948905,
+    "Data": [
+      {
+        "Start": 0.2741372,
+        "End": 0.280604967,
+        "Percent": 100,
+        "Count": 40
+      }
+    ],
+    "Percentiles": [
+      {
+        "Percentile": 50,
+        "Value": 0.2772881634102564
+      },
+      {
+        "Percentile": 75,
+        "Value": 0.27894656520512817
+      },
+      {
+        "Percentile": 90,
+        "Value": 0.2799416062820513
+      },
+      {
+        "Percentile": 99,
+        "Value": 0.28053863092820513
+      },
+      {
+        "Percentile": 99.9,
+        "Value": 0.2805983333928205
+      }
+    ]
+  },
+  "Exactly": 0,
+  "RetCodes": {
+    "1": 40
+  },
+  "Destination": "https://fortio-stage.istio.io",
+  "Streams": 4,
+  "Ping": true
+}
+```
+
 * Curl like (single request) mode
 
 ```
@@ -245,14 +346,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.8.2 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.9.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.8.2
+User-Agent: istio/fortio-0.9.0
 Foo: Bar
 
 body:

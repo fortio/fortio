@@ -7,7 +7,7 @@ version: 2
 defaultEnv: &defaultEnv
     docker:
       # specify the version
-      - image: istio/fortio.build:v6
+      - image: istio/fortio.build:v7
     working_directory: /go/src/istio.io/fortio
 
 jobs:

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"istio.io/fortio/log"
@@ -29,13 +30,15 @@ func init() {
 }
 
 func TestPingServer(t *testing.T) {
-	port := PingServer("0", "foo")
+	port := PingServer("0", "foo", 0)
 	addr := fmt.Sprintf("localhost:%d", port)
 	t.Logf("test grpc ping server running, will connect to %s", addr)
-	if latency, err := PingClientCall(addr, false, 7, "test payload"); err != nil || latency <= 0 {
-		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
+	delay := 100 * time.Millisecond
+	latency, err := PingClientCall(addr, false, 7, "test payload", delay)
+	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
+		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
 	}
-	if latency, err := PingClientCall(addr, true, 1, ""); err == nil {
+	if latency, err := PingClientCall(addr, true, 1, "", 0); err == nil {
 		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
 	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
@@ -49,7 +52,7 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
-	newPort := PingServer(strconv.Itoa(port), "will fail")
+	newPort := PingServer(strconv.Itoa(port), "will fail", 5)
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, port)
 	}

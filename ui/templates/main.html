@@ -55,7 +55,9 @@ Headers: <br />
 Use standard go client instead of fastclient <input type="checkbox" name="stdclient"/> <br />
 Load using http: <input type="radio" name="runner" value="http" checked/> or
 grpc: <input type="radio" name="runner" value="grpc"/>
-(grpc secure transport (tls): <input type="checkbox" name="grpc-secure"/>) <br />
+(grpc secure transport (tls): <input type="checkbox" name="grpc-secure" />,
+using ping backend: <input type="checkbox" name="ping" />,
+ping delay: <input type="text" name="grpc-ping-delay" size="6" value="0" />) <br />
 JSON output: <input type="checkbox" name="json" />,
 Save output: <input type="checkbox" name="save" checked /> <br />
 <input type="submit" name="load" value="Start"/>
