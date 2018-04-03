@@ -124,7 +124,19 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		// sort of todo, this redoing some of periodic normalize (but we can't use normalize which does too much)
 		o.NumThreads = periodic.DefaultRunnerOptions.NumThreads
 	}
-	log.Infof("Starting grpc test for %s with %d*%d threads at %.1f qps", o.Destination, o.Streams, o.NumThreads, o.QPS)
+	if o.UsePing {
+		o.RunType = "GRPC Ping"
+		if o.Delay > 0 {
+			o.RunType += fmt.Sprintf(" Delay=%v", o.Delay)
+		}
+	} else {
+		o.RunType = "GRPC Health"
+	}
+	pll := len(o.Payload)
+	if pll > 0 {
+		o.RunType += fmt.Sprintf(" PayloadLength=%d", pll)
+	}
+	log.Infof("Starting %s test for %s with %d*%d threads at %.1f qps", o.RunType, o.Destination, o.Streams, o.NumThreads, o.QPS)
 	o.NumThreads *= o.Streams
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()

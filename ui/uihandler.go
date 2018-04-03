@@ -153,6 +153,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
+	grpcPing := (r.FormValue("ping") == "on")
+	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
+
 	stdClient := (r.FormValue("stdclient") == "on")
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
@@ -291,6 +294,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				RunnerOptions: ro,
 				Destination:   url,
 				Secure:        grpcSecure,
+				UsePing:       grpcPing,
+				Delay:         grpcPingDelay,
 			}
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else {

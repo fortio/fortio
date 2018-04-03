@@ -78,7 +78,7 @@ type HTTPRunnerOptions struct {
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
-	// TODO 1. use std client automatically when https url
+	o.RunType = "HTTP"
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
