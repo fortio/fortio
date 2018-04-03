@@ -41,7 +41,7 @@ type pingSrv struct {
 
 func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
-	out := *in
+	out := *in // copy the input including the payload etc
 	out.Ts = time.Now().UnixNano()
 	if in.DelayNanos > 0 {
 		s := time.Duration(in.DelayNanos)

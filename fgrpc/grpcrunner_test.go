@@ -68,6 +68,8 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 		},
 		Destination: destination,
 		Streams:     10, // will be batches of 10 max
+		UsePing:     true,
+		Delay:       10 * time.Millisecond,
 	}
 	o1 := opts
 	res, err := RunGRPCTest(&o1)
@@ -81,21 +83,25 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 	if totalReq != ok {
 		t.Errorf("Mismatch1 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
+	if avg10 < opts.Delay.Seconds() || avg10 > 2*opts.Delay.Seconds() {
+		t.Errorf("Ping delay not working, got %v for %v", avg10, opts.Delay)
+	}
 	o2 := opts
-	o2.Streams = 100
+	o2.Streams = 20
 	res, err = RunGRPCTest(&o2)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	totalReq = res.DurationHistogram.Count
-	avg100 := res.DurationHistogram.Avg
+	avg20 := res.DurationHistogram.Avg
 	ok = res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
 	if totalReq != ok {
 		t.Errorf("Mismatch2 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
-	if avg100 < 2*avg10 {
-		t.Errorf("Expecting much slower average with 100/10 %v %v", avg100, avg10)
+	// Half of the calls should take 2x (delayed behind maxstreams)
+	if avg20 < 1.5*avg10 {
+		t.Errorf("Expecting much slower average with 20/10 %v %v", avg20, avg10)
 	}
 }
 

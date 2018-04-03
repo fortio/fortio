@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -63,24 +64,38 @@ func Dial(serverAddr string, tls bool) (conn *grpc.ClientConn, err error) {
 // Also is the internal type used per thread/goroutine.
 type GRPCRunnerResults struct {
 	periodic.RunnerResults
-	client      grpc_health_v1.HealthClient
-	req         grpc_health_v1.HealthCheckRequest
+	clientH     grpc_health_v1.HealthClient
+	reqH        grpc_health_v1.HealthCheckRequest
+	clientP     PingServerClient
+	reqP        PingMessage
 	RetCodes    HealthResultMap
 	Destination string
 	Streams     int
+	Ping        bool
 }
 
 // Run exercises GRPC health check at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
-	res, err := grpcstate.client.Check(context.Background(), &grpcstate.req)
-	log.Debugf("For %d got %v %v", t, err, res)
-	if err != nil {
-		log.Warnf("Error making health check %v", err)
-		grpcstate.RetCodes[-1]++
+	if grpcstate.Ping {
+		res, err := grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
+		log.Debugf("For %d got ping %v %+v", t, err, res)
+		if err != nil {
+			log.Warnf("Error making ping call %v", err)
+			grpcstate.RetCodes[-1]++
+		} else {
+			grpcstate.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]++
+		}
 	} else {
-		grpcstate.RetCodes[res.Status]++
+		res, err := grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
+		log.Debugf("For %d got health %v %v", t, err, res)
+		if err != nil {
+			log.Warnf("Error making health check %v", err)
+			grpcstate.RetCodes[-1]++
+		} else {
+			grpcstate.RetCodes[res.Status]++
+		}
 	}
 }
 
@@ -89,11 +104,14 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
 	Destination        string
-	Service            string
-	Profiler           string // file to save profiles to. defaults to no profiling
-	Streams            int    // number of streams. total go routines and data streams will be streams*numthreads.
-	Secure             bool   // use tls transport
-	AllowInitialErrors bool   // whether initial errors don't cause an abort
+	Service            string        // Service to be checked when using grpc health check
+	Profiler           string        // file to save profiles to. defaults to no profiling
+	Payload            string        // Payload to be sent for grpc ping service
+	Streams            int           // number of streams. total go routines and data streams will be streams*numthreads.
+	Delay              time.Duration // Delay to be sent when using grpc ping service
+	Secure             bool          // use tls transport
+	AllowInitialErrors bool          // whether initial errors don't cause an abort
+	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -114,11 +132,13 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
 		Streams:     o.Streams,
+		Ping:        o.UsePing,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	var conn *grpc.ClientConn
 	var err error
+	ts := time.Now().UnixNano()
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
 		if (i % o.Streams) == 0 {
@@ -130,16 +150,32 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		} else {
 			log.Debugf("Reusing previous client connection for %d", i)
 		}
-		grpcstate[i].client = grpc_health_v1.NewHealthClient(conn)
-		if grpcstate[i].client == nil {
-			return nil, fmt.Errorf("unable to create client %d for %s", i, o.Destination)
-		}
-		grpcstate[i].req = grpc_health_v1.HealthCheckRequest{Service: o.Service}
-		if o.Exactly <= 0 {
-			_, err = grpcstate[i].client.Check(context.Background(), &grpcstate[i].req)
-			if !o.AllowInitialErrors && err != nil {
-				log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
-				return nil, err
+		grpcstate[i].Ping = o.UsePing
+		if o.UsePing {
+			grpcstate[i].clientP = NewPingServerClient(conn)
+			if grpcstate[i].clientP == nil {
+				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
+			}
+			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
+			if o.Exactly <= 0 {
+				_, err = grpcstate[i].clientP.Ping(context.Background(), &grpcstate[i].reqP)
+				if !o.AllowInitialErrors && err != nil {
+					log.Errf("Error in first grpc ping call for %s %v", o.Destination, err)
+					return nil, err
+				}
+			}
+		} else {
+			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)
+			if grpcstate[i].clientH == nil {
+				return nil, fmt.Errorf("unable to create health client %d for %s", i, o.Destination)
+			}
+			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
+			if o.Exactly <= 0 {
+				_, err = grpcstate[i].clientH.Check(context.Background(), &grpcstate[i].reqH)
+				if !o.AllowInitialErrors && err != nil {
+					log.Errf("Error in first grpc health check call for %s %v", o.Destination, err)
+					return nil, err
+				}
 			}
 		}
 		// Setup the stats for each 'thread'
@@ -182,8 +218,12 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	}
 	// Cleanup state:
 	r.Options().ReleaseRunners()
+	which := "Health"
+	if o.UsePing {
+		which = "Ping"
+	}
 	for _, k := range keys {
-		fmt.Fprintf(out, "Health %s : %d\n", k.String(), total.RetCodes[k])
+		fmt.Fprintf(out, "%s %s : %d\n", which, k.String(), total.RetCodes[k])
 	}
 	return &total, nil
 }
