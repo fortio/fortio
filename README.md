@@ -28,7 +28,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v0.8.2/fortio-linux_x64-0.8.2.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v0.9.0/fortio-linux_x64-0.9.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -41,7 +41,7 @@ You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand, or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector, with the `server` command or issue grpc ping messages using the `grpcping` command. It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command). You can run just the redirector with `redirect`. Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 <!-- use release/updateFlags.sh to update this section -->
 ```
-Φορτίο 0.8.2 usage:
+Φορτίο 0.9.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http
 echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
@@ -51,8 +51,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Additional Header(s)
   -L	Follow redirects (implies -std-client) - do not use for load test
   -P value
-	Proxies to run, e.g -P "localport1 dest_host1:dest_port1"
-	-P "[::1]:0 www.google.com:443" ...
+	Proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
+	www.google.com:443" ...
   -a	Automatically save JSON result with filename based on labels & timestamp
   -abort-on int
 	Http code that if encountered aborts the run. e.g. 503 or -1 for socket
@@ -77,6 +77,11 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
 	Use GRPC (health check) for load testing
+  -grpc-max-streams uint
+	MaxConcurrentStreams for the grpc server. Default (0) is to leave the
+	option unset.
+  -grpc-ping-delay duration
+	grpc ping delay in response
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
@@ -127,6 +132,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
 	Payload string to send along
+  -ping
+	grpc load test: use ping instead of health
   -profile string
 	write .cpu and .mem profiles to file
   -qps float
@@ -139,6 +146,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Redirect all incoming traffic to https URL (need ingress to work
 	properly). Can be in the form of host:port, ip:port, port or "disabled"
 	to disable the feature. (default "8081")
+  -s int
+	Number of streams per grpc connection (default 1)
   -static-dir string
 	Absolute path to the dir containing the static files dir
   -stdclient
@@ -159,12 +168,12 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 * Start the internal servers:
 ```
 $ fortio server &
-Fortio 0.8.2 grpc 'ping' server listening on [::]:8079
-Fortio 0.8.2 https redirector server listening on [::]:8081
-Fortio 0.8.2 echo server listening on [::]:8080
+Fortio 0.9.0 grpc 'ping' server listening on [::]:8079
+Fortio 0.9.0 https redirector server listening on [::]:8081
+Fortio 0.9.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-21:45:23 I fortio_main.go:195> All fortio 0.8.2 buildinfo go1.10 servers started!
+21:45:23 I fortio_main.go:195> All fortio 0.9.0 buildinfo go1.10 servers started!
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -174,8 +183,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 0.8.2 grpc ping server listening on port :8079
-Fortio 0.8.2 echo server listening on port 10.10.10.10:8088
+Fortio 0.9.0 grpc ping server listening on port :8079
+Fortio 0.9.0 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -245,14 +254,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 0.8.2 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 0.9.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-0.8.2
+User-Agent: istio/fortio-0.9.0
 Foo: Bar
 
 body:
