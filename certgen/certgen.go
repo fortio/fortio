@@ -17,6 +17,8 @@ package main
 import (
 	"io/ioutil"
 	"os"
+
+	"istio.io/fortio/log"
 )
 
 const (
@@ -111,21 +113,30 @@ sLoII402XJ/WfXir6sWi9pjJyTFi03gXltq17WQspd3DpqHp2G34gw==
 -----END RSA PRIVATE KEY-----`
 )
 
+var (
+	caFile  = "ca.crt"
+	crtFile = "server.crt"
+	keyFile = "server.key"
+)
+
 func main() {
 	caBytes := []byte(caCrt)
 	crtBytes := []byte(svrCrt)
 	keyBytes := []byte(svrKey)
 
-	err := ioutil.WriteFile("ca.crt", caBytes, 0644)
+	err := ioutil.WriteFile(caFile, caBytes, 0644)
 	if err != nil {
+		log.Errf("Error writing file: %s", caFile)
 		os.Exit(1)
 	}
-	err = ioutil.WriteFile("server.crt", crtBytes, 0644)
+	err = ioutil.WriteFile(crtFile, crtBytes, 0644)
 	if err != nil {
+		log.Errf("Error writing file: %s", crtFile)
 		os.Exit(1)
 	}
-	err = ioutil.WriteFile("server.key", keyBytes, 0644)
+	err = ioutil.WriteFile(keyFile, keyBytes, 0644)
 	if err != nil {
+		log.Errf("Error writing file: %s", keyFile)
 		os.Exit(1)
 	}
 }
