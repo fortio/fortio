@@ -153,7 +153,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
-	cacert := r.FormValue("cacert")
 	stdClient := (r.FormValue("stdclient") == "on")
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
@@ -293,7 +292,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				Destination:   url,
 			}
 			if grpcSecure {
-				o.CACert = cacert
+				o.Destination = httpToHTTPS(url)
 			}
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else {
@@ -917,4 +916,15 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	if strings.HasPrefix(inputPort, ":") {
 		urlHostPort = "localhost" + portStr
 	}
+}
+
+// httpToHTTPS replaces "http://" in url with "https://".
+func httpToHTTPS(url string) (parsedURL string) {
+	if strings.HasPrefix(url, "http://") {
+		parsedURL = strings.Replace(url, "http://", "https://", 1)
+		log.Infof("replacing http scheme with https for url: %s", url)
+	} else {
+		parsedURL = url
+	}
+	return parsedURL
 }

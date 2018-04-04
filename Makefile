@@ -27,12 +27,11 @@ install: submodule
 
 # Generate certs for unit and release tests.
 certs:
-	go run certgen/certgen.go
+	./cert-gen
 
 # Local test
 test: submodule certs
 	go test -timeout 60s -race $(PACKAGES)
-	rm -f ca.crt server.crt server.key
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
