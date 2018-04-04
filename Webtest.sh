@@ -104,5 +104,3 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
-# remove TLS assets
-rm -f server.* ca.crt

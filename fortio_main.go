@@ -77,7 +77,7 @@ var (
 	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
-	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check) for load testing")
+	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	certFlag          = flag.String("cert", "", "Path to the certificate used for GRPC server TLS")
 	keyFlag           = flag.String("key", "", "Path to the key used for GRPC server TLS")
@@ -116,10 +116,16 @@ var (
 
 	// GRPC related flags
 	// To get most debugging/tracing:
-	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info grpcping -loglevel debug
-	doHealthFlag  = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
-	healthSvcFlag = flag.String("healthservice", "", "which service string to pass to health check")
-	payloadFlag   = flag.String("payload", "", "Payload string to send along")
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug
+	doHealthFlag   = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
+	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
+	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
+	payloadFlag    = flag.String("payload", "", "Payload string to send along")
+	pingDelayFlag  = flag.Duration("grpc-ping-delay", 0, "grpc ping delay in response")
+	streamsFlag    = flag.Int("s", 1, "Number of streams per grpc connection")
+
+	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
+		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 )
 
 func main() {
@@ -165,7 +171,7 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName)
+		fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -254,7 +260,11 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Destination:        url,
 			CACert:             *caCertFlag,
 			Service:            *healthSvcFlag,
+			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
+			Payload:            *payloadFlag,
+			Delay:              *pingDelayFlag,
+			UsePing:            *doPingLoadFlag,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {
@@ -324,12 +334,12 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
-	var err error
 	cert := *caCertFlag
+	var err error
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag)
+		_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *pingDelayFlag)
 	}
 	if err != nil {
 		// already logged

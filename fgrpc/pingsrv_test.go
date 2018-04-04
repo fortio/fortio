@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
-
 	"istio.io/fortio/log"
 )
 
@@ -30,26 +30,28 @@ func init() {
 }
 
 func TestPingServer(t *testing.T) {
-	iPort := PingServer("0", "", "", "foo")
+	iPort := PingServer("0", "", "", "foo", 0)
 	iAddr := fmt.Sprintf("localhost:%d", iPort)
-	t.Logf("test insecure grpc ping server running, will connect to %s", iAddr)
-	sPort := PingServer("0", svrCrt, svrKey,
-		"foo")
+	t.Logf("insecure grpc ping server running, will connect to %s", iAddr)
+	sPort := PingServer("0", svrCrt, svrKey, "foo", 0)
 	sAddr := fmt.Sprintf("localhost:%d", sPort)
-	t.Logf("test secure grpc ping server running, will connect to %s", sAddr)
-	if latency, err := PingClientCall(iAddr, "", 7, "test payload"); err != nil || latency <= 0 {
+	t.Logf("secure grpc ping server running, will connect to %s", sAddr)
+	delay := 100 * time.Millisecond
+	latency, err := PingClientCall(iAddr, "", 7, "test payload", delay)
+	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
+		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
+	}
+	if latency, err := PingClientCall(prefixHTTPS+"fortio.istio.io:443", "", 7,
+		"test payload", 0); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	if latency, err := PingClientCall(prefixHTTPS+"fortio.istio.io:443", "", 7, "test payload"); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(sAddr, caCrt, 7, "test payload", 0); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	if latency, err := PingClientCall(sAddr, caCrt, 7, "test payload"); err != nil || latency <= 0 {
-		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
-	}
-	if latency, err := PingClientCall(iAddr, caCrt, 1, ""); err == nil {
+	if latency, err := PingClientCall(iAddr, caCrt, 1, "", 0); err == nil {
 		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
 	}
-	if latency, err := PingClientCall(sAddr, "", 1, ""); err == nil {
+	if latency, err := PingClientCall(sAddr, "", 1, "", 0); err == nil {
 		t.Errorf("Should have had an error instead of result %f for insecure ping to secure port", latency)
 	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
@@ -75,7 +77,7 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
-	newPort := PingServer(strconv.Itoa(iPort), "", "", "will fail")
+	newPort := PingServer(strconv.Itoa(iPort), "", "", "will fail", 0)
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}

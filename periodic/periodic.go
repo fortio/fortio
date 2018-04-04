@@ -100,6 +100,8 @@ func NewAborter() *Aborter {
 
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
+	// Type of run (to be copied into results)
+	RunType string
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
 	Runners []Runnable
 	// At which (target) rate to run the Runners across NumThreads.
@@ -128,6 +130,7 @@ type RunnerOptions struct {
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
 type RunnerResults struct {
+	RunType           string
 	Labels            string
 	StartTime         time.Time
 	RequestedQPS      string
@@ -438,7 +441,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	if useExactly && actualCount != r.Exactly {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
-	result := RunnerResults{r.Labels, start, requestedQPS, requestedDuration,
+	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
