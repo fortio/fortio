@@ -251,12 +251,12 @@ func grpcDestination(dest string) (parsedDest string) {
 	// and set the port number.
 	switch {
 	case strings.HasPrefix(dest, prefixHTTP):
-		parsedDest = strings.Replace(dest, prefixHTTP, "", 1)
+		parsedDest = strings.TrimSuffix(strings.Replace(dest, prefixHTTP, "", 1), "/")
 		port = defaultHTTPPort
 		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
 			parsedDest, port)
 	case strings.HasPrefix(dest, prefixHTTPS):
-		parsedDest = strings.Replace(dest, prefixHTTPS, "", 1)
+		parsedDest = strings.TrimSuffix(strings.Replace(dest, prefixHTTPS, "", 1), "/")
 		port = defaultHTTPSPort
 		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
 			parsedDest, port)
@@ -264,21 +264,36 @@ func grpcDestination(dest string) (parsedDest string) {
 		parsedDest = dest
 		port = DefaultGRPCPort
 	}
-	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
+	host, sPort, err := net.SplitHostPort(parsedDest)
+	// parsedDest is in the form of host:port or ip:port
+	if err == nil {
+		if ip := net.ParseIP(host); ip != nil {
+			switch {
+			case ip.To4() != nil:
+				parsedDest = ip.String() + fnet.NormalizePort(sPort)
+				return parsedDest
+			case ip.To16() != nil:
+				parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(sPort)
+				return parsedDest
+			}
+		}
+		parsedDest = strings.TrimSuffix(host, "/") + fnet.NormalizePort(sPort)
 		return parsedDest
 	}
-	if ip := net.ParseIP(parsedDest); ip != nil {
+	ip := net.ParseIP(parsedDest)
+	if ip != nil {
+		// parsedDest is in the form of an IP address
 		switch {
 		case ip.To4() != nil:
 			parsedDest = ip.String() + fnet.NormalizePort(port)
 			return parsedDest
 		case ip.To16() != nil:
 			parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(port)
-			return parsedDest
 		}
+	} else {
+		// parsedDest is in the form of a domain name,
+		// append ":port" and return.
+		parsedDest += fnet.NormalizePort(port)
 	}
-	// parsedDest is in the form of a domain name,
-	// append ":port" and return.
-	parsedDest += fnet.NormalizePort(port)
 	return parsedDest
 }
