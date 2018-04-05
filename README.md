@@ -238,8 +238,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 0.8.1 grpc ping server listening on port :8079
-Fortio 0.8.1 echo server listening on port localhost:8080
+Fortio 0.9.0 grpc ping server listening on port :8079
+Fortio 0.9.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```

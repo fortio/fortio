@@ -9,6 +9,5 @@ fortio
 vendor
 Gopkg.*
 .idea
-# TLS assets
-*.crt
-*.key
+# certs for testing
+cert-tmp/

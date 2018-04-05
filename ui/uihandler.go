@@ -297,7 +297,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				Delay:         grpcPingDelay,
 			}
 			if grpcSecure {
-				o.Destination = httpToHTTPS(url)
+				o.Destination = addHTTPS(url)
 			}
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else {
@@ -923,13 +923,17 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	}
 }
 
-// httpToHTTPS replaces "http://" in url with "https://".
-func httpToHTTPS(url string) (parsedURL string) {
+// addHTTPS replaces "http://" in url with "https://" or prepends "https://"
+// if url does not contain prefix "http://".
+func addHTTPS(url string) string {
 	if strings.HasPrefix(url, "http://") {
-		parsedURL = strings.Replace(url, "http://", "https://", 1)
 		log.Infof("replacing http scheme with https for url: %s", url)
-	} else {
-		parsedURL = url
+		return strings.Replace(url, "http://", "https://", 1)
 	}
-	return parsedURL
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		log.Infof("Prepending https:// to url: %s", url)
+		return "https://" + url
+	}
+	// url already has "https://"
+	return url
 }
