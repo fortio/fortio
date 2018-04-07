@@ -251,12 +251,12 @@ func grpcDestination(dest string) (parsedDest string) {
 	// and set the port number.
 	switch {
 	case strings.HasPrefix(dest, prefixHTTP):
-		parsedDest = strings.Replace(dest, prefixHTTP, "", 1)
+		parsedDest = strings.TrimSuffix(strings.Replace(dest, prefixHTTP, "", 1), "/")
 		port = defaultHTTPPort
 		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
 			parsedDest, port)
 	case strings.HasPrefix(dest, prefixHTTPS):
-		parsedDest = strings.Replace(dest, prefixHTTPS, "", 1)
+		parsedDest = strings.TrimSuffix(strings.Replace(dest, prefixHTTPS, "", 1), "/")
 		port = defaultHTTPSPort
 		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
 			parsedDest, port)
