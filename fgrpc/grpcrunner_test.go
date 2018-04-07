@@ -200,6 +200,11 @@ func TestGRPCDestination(t *testing.T) {
 			"https://2001:dba::1",
 			"[2001:dba::1]:443",
 		},
+		{
+			"IPv6 address with https prefix and trailing /",
+			"https://2001:dba::1/",
+			"[2001:dba::1]:443",
+		},
 	}
 
 	for _, tc := range tests {
