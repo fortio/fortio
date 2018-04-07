@@ -181,11 +181,6 @@ func TestGRPCDestination(t *testing.T) {
 			"1.2.3.4:5678",
 		},
 		{
-			"IPv4 address:port with http prefix and trailing /",
-			"http://1.2.3.4/:80",
-			"1.2.3.4:80",
-		},
-		{
 			"IPv6 address",
 			"2001:dba::1",
 			"[2001:dba::1]:8079",
@@ -203,11 +198,6 @@ func TestGRPCDestination(t *testing.T) {
 		{
 			"IPv6 address with https prefix",
 			"https://2001:dba::1",
-			"[2001:dba::1]:443",
-		},
-		{
-			"IPv6 address with https prefix and trailing /",
-			"https://2001:dba::1/",
 			"[2001:dba::1]:443",
 		},
 	}

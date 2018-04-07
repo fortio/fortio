@@ -264,36 +264,21 @@ func grpcDestination(dest string) (parsedDest string) {
 		parsedDest = dest
 		port = DefaultGRPCPort
 	}
-	host, sPort, err := net.SplitHostPort(parsedDest)
-	// parsedDest is in the form of host:port or ip:port
-	if err == nil {
-		if ip := net.ParseIP(host); ip != nil {
-			switch {
-			case ip.To4() != nil:
-				parsedDest = ip.String() + fnet.NormalizePort(sPort)
-				return parsedDest
-			case ip.To16() != nil:
-				parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(sPort)
-				return parsedDest
-			}
-		}
-		parsedDest = strings.TrimSuffix(host, "/") + fnet.NormalizePort(sPort)
+	if _, _, err := net.SplitHostPort(parsedDest); err == nil {
 		return parsedDest
 	}
-	ip := net.ParseIP(parsedDest)
-	if ip != nil {
-		// parsedDest is in the form of an IP address
+	if ip := net.ParseIP(parsedDest); ip != nil {
 		switch {
 		case ip.To4() != nil:
 			parsedDest = ip.String() + fnet.NormalizePort(port)
 			return parsedDest
 		case ip.To16() != nil:
 			parsedDest = "[" + ip.String() + "]" + fnet.NormalizePort(port)
+			return parsedDest
 		}
-	} else {
-		// parsedDest is in the form of a domain name,
-		// append ":port" and return.
-		parsedDest += fnet.NormalizePort(port)
 	}
+	// parsedDest is in the form of a domain name,
+	// append ":port" and return.
+	parsedDest += fnet.NormalizePort(port)
 	return parsedDest
 }
