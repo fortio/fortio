@@ -925,15 +925,18 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 
 // addHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
-func addHTTPS(url string) string {
+func addHTTPS(url string) (pURL string) {
 	if strings.HasPrefix(url, "http://") {
-		log.Infof("replacing http scheme with https for url: %s", url)
-		return strings.Replace(url, "http://", "https://", 1)
+		log.Infof("Replacing http scheme with https for url: %s", url)
+		pURL = strings.TrimPrefix(url, "http://")
+		return "https://" + pURL
 	}
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		log.Infof("Prepending https:// to url: %s", url)
-		return "https://" + url
+	// return url unchanged since it already has "https://"
+	if strings.HasPrefix(url, "https://") {
+		return url
 	}
-	// url already has "https://"
-	return url
+	// url must not contain any prefix, so add https prefix
+	log.Infof("Prepending https:// to url: %s", url)
+	pURL = "https://" + url
+	return pURL
 }

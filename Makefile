@@ -30,8 +30,11 @@ dependencies: submodule certs
 install: dependencies
 	go install $(PACKAGES)
 
+# Only generate certs if needed
+certs: $(CERT_TEMP)/server.cert
+
 # Generate certs for unit and release tests.
-certs:
+$(CERT_TEMP)/server.cert: cert-gen
 	./cert-gen
 
 # Remove certificates
