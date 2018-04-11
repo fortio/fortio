@@ -369,8 +369,18 @@ func TestGRPCDestination(t *testing.T) {
 			"localhost:80",
 		},
 		{
+			"Hostname with http prefix and trailing /",
+			"http://localhost/",
+			"localhost:80",
+		},
+		{
 			"Hostname with https prefix",
 			"https://localhost",
+			"localhost:443",
+		},
+		{
+			"Hostname with https prefix and trailing /",
+			"https://localhost/",
 			"localhost:443",
 		},
 		{
@@ -401,6 +411,11 @@ func TestGRPCDestination(t *testing.T) {
 		{
 			"IPv6 address with https prefix",
 			"https://2001:dba::1",
+			"[2001:dba::1]:443",
+		},
+		{
+			"IPv6 address with https prefix and trailing /",
+			"https://2001:dba::1/",
 			"[2001:dba::1]:443",
 		},
 	}
