@@ -76,6 +76,9 @@ func TestPingServer(t *testing.T) {
 	if r, err := GrpcHealthCheck(sAddr, caCrt, "willfail", 1); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
+	if r, err := GrpcHealthCheck(sAddr, "../missing/cert.crt", "willfail", 1); err == nil {
+		t.Errorf("Was expecting dial error when using invalid certificate, didn't get one, got %+v", r)
+	}
 	// 2nd server on same port should fail to bind:
 	newPort := PingServer(strconv.Itoa(iPort), "", "", "will fail", 0)
 	if newPort != -1 {

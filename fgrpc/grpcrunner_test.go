@@ -50,7 +50,7 @@ func TestGRPCRunner(t *testing.T) {
 		expect     bool
 	}{
 		{
-			name: "insecure runner",
+			name: "insecure runner with payload",
 			runnerOpts: GRPCRunnerOptions{
 				RunnerOptions: periodic.RunnerOptions{
 					QPS:        100,
@@ -58,6 +58,7 @@ func TestGRPCRunner(t *testing.T) {
 				},
 				Destination: iDest,
 				Profiler:    "test.profile",
+				Payload:     "test",
 			},
 			expect: true,
 		},
@@ -148,6 +149,19 @@ func TestGRPCRunner(t *testing.T) {
 				CACert:       caCrt,
 				CertOverride: "invalidName",
 				Profiler:     "test.profile",
+			},
+			expect: false,
+		},
+		{
+			name: "invalid cert for secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: periodic.RunnerOptions{
+					QPS:        100,
+					Resolution: 0.00001,
+				},
+				Destination: sDest,
+				CACert:      "../missing/cert.crt",
+				Profiler:    "test.profile",
 			},
 			expect: false,
 		},
