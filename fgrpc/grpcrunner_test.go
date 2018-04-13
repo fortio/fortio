@@ -408,6 +408,11 @@ func TestGRPCDestination(t *testing.T) {
 			"1.2.3.4:5678",
 		},
 		{
+			"IPv4 address with http prefix and trailing /",
+			"http://1.2.3.4/",
+			"1.2.3.4:80",
+		},
+		{
 			"IPv6 address",
 			"2001:dba::1",
 			"[2001:dba::1]:8079",
