@@ -82,7 +82,7 @@ var (
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
-		"grpc server port. Can be in the form of host:port, ip:port or port.")
+		"grpc server port. Can be in the form of host:port, ip:port or port or \"disabled\".")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
@@ -169,7 +169,9 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+		if *grpcPortFlag != "disabled" {
+			fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+		}
 		if *redirectFlag != "disabled" {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
