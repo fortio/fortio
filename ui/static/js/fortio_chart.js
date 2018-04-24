@@ -363,41 +363,34 @@ function makeChart (data) {
   }
 }
 
-function setChartOptions (chart) {
+function setQueryString (min, max, xIsLogarithmic, yIsLogarithmic) {
+  var location = document.location
+  var params = new URLSearchParams(location.search)
+  params.set('xMin', min)
+  params.set('xMax', max)
+  params.set('xLog', xIsLogarithmic)
+  params.set('yLog', yIsLogarithmic)
+  window.history.replaceState({}, '', `${location.pathname}?${params}`)
+}
+
+function setChartOptions (chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic) {
   var form = document.getElementById('updtForm')
   var formMin = form.xmin.value.trim()
   var formMax = form.xmax.value.trim()
   var scales = chart.config.options.scales
-  var newXAxis
   var newXMin = parseFloat(formMin)
-  if (form.xlog.checked) {
-    newXAxis = logXAxe
-  } else {
-    newXAxis = linearXAxe
-  }
-  if (form.ylog.checked) {
-    chart.config.options.scales = {
-      xAxes: [newXAxis],
-      yAxes: [scales.yAxes[0], logYAxe]
-    }
-  } else {
-    chart.config.options.scales = {
-      xAxes: [newXAxis],
-      yAxes: [scales.yAxes[0], linearYAxe]
-    }
+  var newXAxis = xIsLogarithmic ? logXAxe : linearXAxe
+  var newYAxis = yIsLogarithmic ? logYAxe : linearYAxe
+  chart.config.options.scales = {
+    xAxes: [newXAxis],
+    yAxes: [scales.yAxes[0], newYAxis]
   }
   chart.update() // needed for scales.xAxes[0] to exist
   var newNewXAxis = chart.config.options.scales.xAxes[0]
-  if (formMin !== '') {
-    newNewXAxis.ticks.min = newXMin
-  } else {
-    delete newNewXAxis.ticks.min
-  }
-  if (formMax !== '' && formMax !== 'max') {
-    newNewXAxis.ticks.max = parseFloat(formMax)
-  } else {
-    delete newNewXAxis.ticks.max
-  }
+  newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
+  newNewXAxis.ticks.max = formMax === '' || formMax === 'max' ?
+      undefined :
+      parseFloat(formMax)
 }
 
 function objHasProps (obj) {
@@ -419,7 +412,13 @@ function getCurrentChart () {
 }
 
 function updateChart (chart = getCurrentChart()) {
-  setChartOptions(chart)
+  var form = document.getElementById('updtForm')
+  var formMin = form.xmin.value.trim()
+  var formMax = form.xmax.value.trim()
+  var xIsLogarithmic = form.xlog.checked
+  var yIsLogarithmic = form.ylog.checked
+  setQueryString(formMin, formMax, xIsLogarithmic, yIsLogarithmic)
+  setChartOptions(chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic)
   chart.update()
 }
 

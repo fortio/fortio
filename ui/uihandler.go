@@ -411,6 +411,11 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	url := r.FormValue("url")
 	search := r.FormValue("s")
+	xMin := r.FormValue("xMin")
+	xMax := r.FormValue("xMax")
+	// Ignore error, xLog == nil is the same as xLog being unspecified.
+	xLog, _ := strconv.ParseBool(r.FormValue("xLog"))
+	yLog, _ := strconv.ParseBool(r.FormValue("yLog"))
 	doRender := (url != "")
 	dataList := DataList()
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
@@ -422,12 +427,17 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		ChartJSPath string
 		URL         string
 		Search      string
+		XMin        string
+		XMax        string
+		XIsLog      bool
+		YIsLog      bool
 		DataList    []string
 		URLHostPort string
 		DoRender    bool
 		DoSearch    bool
 	}{r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
-		url, search, dataList, urlHostPort, doRender, (search != "")})
+		url, search, xMin, xMax, xLog, yLog, dataList, urlHostPort,
+		doRender, (search != "")})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
