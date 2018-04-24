@@ -372,7 +372,7 @@ function deleteSingleChart () {
   chart = {}
 }
 
-function makeMultiChart (data) {
+function makeMultiChart () {
   document.getElementById('running').style.display = 'none'
   document.getElementById('update').style.visibility = 'hidden'
   var chartEl = document.getElementById('chart1')
