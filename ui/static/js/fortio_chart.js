@@ -346,6 +346,7 @@ function fortioAddToMultiResult (i, res) {
   findData(5, i, res, '99')
   findData(6, i, res, '99.9')
   mchart.data.datasets[7].data[i] = 1000.0 * res.DurationHistogram.Max
+  mchart.data.datasets[8].data[i] = res.ActualQPS
 }
 
 function endMultiChart (len) {
@@ -443,6 +444,14 @@ function makeMultiChart () {
           stepped: true,
           borderColor: 'hsla(0, 100%, 40%, .8)',
           backgroundColor: 'hsla(0, 100%, 40%, .8)'
+        },
+        {
+          label: 'QPS',
+          yAxisID: 'qps',
+          fill: false,
+          stepped: true,
+          borderColor: 'rgba(0, 0, 0, .8)',
+          backgroundColor: 'rgba(0, 0, 0, .8)'
         }
       ]
     },
@@ -469,8 +478,17 @@ function makeMultiChart () {
             display: true,
             labelString: 'ms'
           }
-        }
-        ]
+        }, {
+          id: 'qps',
+          position: 'right',
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'QPS'
+          }
+        }]
       }
     }
   })
