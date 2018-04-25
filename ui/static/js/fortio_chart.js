@@ -189,7 +189,13 @@ function fortioResultToJsChartData (res) {
 
 function showChart (data) {
   toggleVisibility()
-  deleteSingleChart()
+  var isCurrentlyOverlayChart =
+      chart && chart.data && chart.data.datasets &&
+      chart.data.datasets.length > 2
+  // Reset the chart's data if previously showing overlay chart
+  if (isCurrentlyOverlayChart) {
+    deleteSingleChart()
+  }
   makeChart(data)
 }
 
