@@ -374,6 +374,22 @@ function getUpdateForm () {
   return { xMin, xMax, xIsLogarithmic, yIsLogarithmic }
 }
 
+function getSelectedResults () {
+  // Undefined if on "graph-only" page
+  var select = document.getElementById('files')
+  var selectedResults
+  if (select) {
+    var selectedOptions = select.selectedOptions
+    selectedResults = []
+    for (var option of selectedOptions) {
+      selectedResults.push(option.text)
+    }
+  } else {
+    selectedResults = undefined
+  }
+  return selectedResults
+}
+
 function updateQueryString () {
   var location = document.location
   var params = new URLSearchParams(location.search)
@@ -382,6 +398,13 @@ function updateQueryString () {
   params.set('xMax', form.xMax)
   params.set('xLog', form.xIsLogarithmic)
   params.set('yLog', form.yIsLogarithmic)
+  var selectedResults = getSelectedResults()
+  params.delete('sel')
+  if (selectedResults) {
+    for (var result of selectedResults) {
+      params.append('sel', result)
+    }
+  }
   window.history.replaceState({}, '', `${location.pathname}?${params}`)
 }
 
