@@ -189,8 +189,10 @@ function fortioResultToJsChartData (res) {
 }
 
 function showChart (data) {
-  toggleVisibility()
   makeChart(data)
+  // Load configuration (min, max, isLogarithmic, ...) from the update form.
+  updateChartOptions()
+  toggleVisibility()
 }
 
 function toggleVisibility () {

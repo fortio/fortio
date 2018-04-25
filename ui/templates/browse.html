@@ -36,8 +36,6 @@ function fortio_load(url) {
       res = out
       data = fortioResultToJsChartData(res)
       showChart(data)
-      // Load configuration (min, max, isLogarithmic, ...) from the update form.
-      updateChart()
       var urldiv = document.getElementById('url')
       urldiv.innerHTML = "<a href='browse?url=" + url + "'>" + url + "</a> (<a href='data/" + url +"'>json</a>)"
     }).catch(err => { throw err })
