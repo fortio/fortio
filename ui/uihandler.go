@@ -374,6 +374,33 @@ func SaveJSON(name string, json []byte) string {
 	return "data/" + name
 }
 
+// SelectableValue represets an entry in the <select> of results.
+type SelectableValue struct {
+	Value    string
+	Selected bool
+}
+
+// SelectValues maps the list of values (from DataList) to a list of SelectableValues.
+// Each returned SelectableValue is selected if its value is contained in selectedValues.
+// It is assumed that values does not contain duplicates.
+func SelectValues(values []string, selectedValues []string) (selectableValues []SelectableValue, numSelected int) {
+	set := make(map[string]bool, len(selectedValues))
+	for _, selectedValue := range selectedValues {
+		set[selectedValue] = true
+	}
+
+	for _, value := range values {
+		_, selected := set[value]
+		if selected {
+			numSelected++
+			delete(set, value)
+		}
+		selectableValue := SelectableValue{Value: value, Selected: selected}
+		selectableValues = append(selectableValues, selectableValue)
+	}
+	return
+}
+
 // DataList returns the .json files/entries in data dir.
 func DataList() (dataList []string) {
 	files, err := ioutil.ReadDir(dataDir)
@@ -416,28 +443,35 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	// Ignore error, xLog == nil is the same as xLog being unspecified.
 	xLog, _ := strconv.ParseBool(r.FormValue("xLog"))
 	yLog, _ := strconv.ParseBool(r.FormValue("yLog"))
-	doRender := (url != "")
 	dataList := DataList()
+	selectedValues := r.URL.Query()["sel"]
+	preselectedDataList, numSelected := SelectValues(dataList, selectedValues)
+
+	doRender := url != ""
+	doSearch := search != ""
+	doLoadSelected := doSearch || numSelected > 0
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+
 	err := browseTemplate.Execute(w, &struct {
-		R           *http.Request
-		Extra       string
-		Version     string
-		LogoPath    string
-		ChartJSPath string
-		URL         string
-		Search      string
-		XMin        string
-		XMax        string
-		XIsLog      bool
-		YIsLog      bool
-		DataList    []string
-		URLHostPort string
-		DoRender    bool
-		DoSearch    bool
+		R                   *http.Request
+		Extra               string
+		Version             string
+		LogoPath            string
+		ChartJSPath         string
+		URL                 string
+		Search              string
+		XMin                string
+		XMax                string
+		XIsLog              bool
+		YIsLog              bool
+		PreselectedDataList []SelectableValue
+		URLHostPort         string
+		DoRender            bool
+		DoSearch            bool
+		DoLoadSelected      bool
 	}{r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
-		url, search, xMin, xMax, xLog, yLog, dataList, urlHostPort,
-		doRender, (search != "")})
+		url, search, xMin, xMax, xLog, yLog, preselectedDataList, urlHostPort,
+		doRender, doSearch, doLoadSelected})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
