@@ -131,10 +131,10 @@ Select or multi select to graph...
 <div id="update">
 <form id="updtForm" action="javascript:updateChart()">
 <input type="submit" value="Update:" />
-Time axis min <input type="text" name="xmin" value="{{.XMin}}" size="5" /> ms,
-max <input type="text" name="xmax" value="{{.XMax}}" size="5" /> ms,
-logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" {{if .XIsLog}} checked {{end}} /> -
-Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" {{if .YIsLog}} checked {{end}} />
+Time axis min <input type="text" name="xmin" value="{{.ChartOptions.XMin}}" size="5" /> ms,
+max <input type="text" name="xmax" value="{{.ChartOptions.XMax}}" size="5" /> ms,
+logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.XIsLog}} checked {{end}} /> -
+Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.YIsLog}} checked {{end}} />
 </form>
 </div>
 {{if .DoSearch}}

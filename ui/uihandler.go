@@ -422,6 +422,14 @@ func DataList() (dataList []string) {
 	return dataList
 }
 
+// ChartOptions describes the user-configurable options for a chart
+type ChartOptions struct {
+	XMin   string
+	XMax   string
+	XIsLog bool
+	YIsLog bool
+}
+
 // BrowseHandler handles listing and rendering the JSON results.
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "Browse")
@@ -452,6 +460,12 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	doLoadSelected := doSearch || numSelected > 0
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 
+	chartOptions := ChartOptions{
+		XMin:   xMin,
+		XMax:   xMax,
+		XIsLog: xLog,
+		YIsLog: yLog,
+	}
 	err := browseTemplate.Execute(w, &struct {
 		R                   *http.Request
 		Extra               string
@@ -460,17 +474,14 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		ChartJSPath         string
 		URL                 string
 		Search              string
-		XMin                string
-		XMax                string
-		XIsLog              bool
-		YIsLog              bool
+		ChartOptions        ChartOptions
 		PreselectedDataList []SelectableValue
 		URLHostPort         string
 		DoRender            bool
 		DoSearch            bool
 		DoLoadSelected      bool
 	}{r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
-		url, search, xMin, xMax, xLog, yLog, preselectedDataList, urlHostPort,
+		url, search, chartOptions, preselectedDataList, urlHostPort,
 		doRender, doSearch, doLoadSelected})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
