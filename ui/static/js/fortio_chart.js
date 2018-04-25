@@ -363,24 +363,32 @@ function makeChart (data) {
   }
 }
 
-function setQueryString (min, max, xIsLogarithmic, yIsLogarithmic) {
+function getUpdateForm () {
+  var form = document.getElementById('updtForm')
+  var xMin = form.xmin.value.trim()
+  var xMax = form.xmax.value.trim()
+  var xIsLogarithmic = form.xlog.checked
+  var yIsLogarithmic = form.ylog.checked
+  return { xMin, xMax, xIsLogarithmic, yIsLogarithmic }
+}
+
+function updateQueryString () {
   var location = document.location
   var params = new URLSearchParams(location.search)
-  params.set('xMin', min)
-  params.set('xMax', max)
-  params.set('xLog', xIsLogarithmic)
-  params.set('yLog', yIsLogarithmic)
+  var form = getUpdateForm()
+  params.set('xMin', form.xMin)
+  params.set('xMax', form.xMax)
+  params.set('xLog', form.xIsLogarithmic)
+  params.set('yLog', form.yIsLogarithmic)
   window.history.replaceState({}, '', `${location.pathname}?${params}`)
 }
 
-function setChartOptions (chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic) {
-  var form = document.getElementById('updtForm')
-  var formMin = form.xmin.value.trim()
-  var formMax = form.xmax.value.trim()
+function updateChartOptions (chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic) {
+  var form = getUpdateForm()
   var scales = chart.config.options.scales
-  var newXMin = parseFloat(formMin)
-  var newXAxis = xIsLogarithmic ? logXAxe : linearXAxe
-  var newYAxis = yIsLogarithmic ? logYAxe : linearYAxe
+  var newXMin = parseFloat(form.xMin)
+  var newXAxis = form.xIsLogarithmic ? logXAxe : linearXAxe
+  var newYAxis = form.yIsLogarithmic ? logYAxe : linearYAxe
   chart.config.options.scales = {
     xAxes: [newXAxis],
     yAxes: [scales.yAxes[0], newYAxis]
@@ -388,9 +396,11 @@ function setChartOptions (chart, formMin, formMax, xIsLogarithmic, yIsLogarithmi
   chart.update() // needed for scales.xAxes[0] to exist
   var newNewXAxis = chart.config.options.scales.xAxes[0]
   newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
-  newNewXAxis.ticks.max = formMax === '' || formMax === 'max' ?
+  var formXMax = form.xMax
+  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max' ?
       undefined :
-      parseFloat(formMax)
+      parseFloat(formXMax)
+  chart.update()
 }
 
 function objHasProps (obj) {
@@ -412,14 +422,8 @@ function getCurrentChart () {
 }
 
 function updateChart (chart = getCurrentChart()) {
-  var form = document.getElementById('updtForm')
-  var formMin = form.xmin.value.trim()
-  var formMax = form.xmax.value.trim()
-  var xIsLogarithmic = form.xlog.checked
-  var yIsLogarithmic = form.ylog.checked
-  setQueryString(formMin, formMax, xIsLogarithmic, yIsLogarithmic)
-  setChartOptions(chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic)
-  chart.update()
+  updateQueryString()
+  updateChartOptions(chart)
 }
 
 function multiLabel (res) {
