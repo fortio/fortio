@@ -492,6 +492,18 @@ function makeMultiChart () {
       }
     }
   })
+  // Hide QPS axis on clicking QPS dataset.
+  mchart.options.legend.onClick = (event, legendItem) => {
+    // Toggle dataset hidden (default behavior).
+    var dataset = mchart.data.datasets[legendItem.datasetIndex]
+    dataset.hidden = !dataset.hidden
+    if (dataset.label === 'QPS') {
+      // Toggle QPS y-axis.
+      var qpsYAxis = mchart.options.scales.yAxes[1]
+      qpsYAxis.display = !qpsYAxis.display
+    }
+    mchart.update()
+  }
 }
 
 function runTestForDuration (durationInSeconds) {
