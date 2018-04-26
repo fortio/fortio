@@ -67,6 +67,7 @@ var logYAxe = {
 }
 
 var chart = {}
+var overlayChart = {}
 var mchart = {}
 
 function myRound (v, digits = 6) {
@@ -189,13 +190,6 @@ function fortioResultToJsChartData (res) {
 
 function showChart (data) {
   toggleVisibility()
-  var isCurrentlyOverlayChart =
-      chart && chart.data && chart.data.datasets &&
-      chart.data.datasets.length > 2
-  // Reset the chart's data if previously showing overlay chart
-  if (isCurrentlyOverlayChart) {
-    deleteSingleChart()
-  }
   makeChart(data)
 }
 
@@ -219,9 +213,14 @@ function makeOverlayChartTitle (titleA, titleB) {
 function makeOverlayChart (dataA, dataB) {
   var chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
+  if (Object.keys(overlayChart).length !== 0) {
+    return
+  }
+  deleteSingleChart()
+  deleteMultiChart()
   var ctx = chartEl.getContext('2d')
   var title = makeOverlayChartTitle(dataA.title, dataB.title)
-  chart = new Chart(ctx, {
+  overlayChart = new Chart(ctx, {
     type: 'line',
     data: {
       // "Cumulative %" datasets are listed first so they are drawn on top of the histograms.
@@ -292,13 +291,14 @@ function makeOverlayChart (dataA, dataB) {
       }
     }
   })
-  updateChart()
+  updateChart(overlayChart)
 }
 
 function makeChart (data) {
   var chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(chart).length === 0) {
+    deleteOverlayChart()
     deleteMultiChart()
       // Creation (first or switch) time
     var ctx = chartEl.getContext('2d')
@@ -361,11 +361,11 @@ function makeChart (data) {
     chart.data.datasets[0].data = data.dataP
     chart.data.datasets[1].data = data.dataH
     chart.options.title.text = data.title
-    updateChart()
+    updateChart(chart)
   }
 }
 
-function setChartOptions () {
+function setChartOptions (chart) {
   var form = document.getElementById('updtForm')
   var formMin = form.xmin.value.trim()
   var formMax = form.xmax.value.trim()
@@ -402,8 +402,8 @@ function setChartOptions () {
   }
 }
 
-function updateChart () {
-  setChartOptions()
+function updateChart (chart) {
+  setChartOptions(chart)
   chart.update()
 }
 
@@ -454,6 +454,14 @@ function endMultiChart (len) {
   mchart.update()
 }
 
+function deleteOverlayChart () {
+  if (Object.keys(overlayChart).length === 0) {
+    return
+  }
+  overlayChart.destroy()
+  overlayChart = {}
+}
+
 function deleteMultiChart () {
   if (Object.keys(mchart).length === 0) {
     return
@@ -479,6 +487,7 @@ function makeMultiChart () {
     return
   }
   deleteSingleChart()
+  deleteOverlayChart()
   var ctx = chartEl.getContext('2d')
   mchart = new Chart(ctx, {
     type: 'line',
