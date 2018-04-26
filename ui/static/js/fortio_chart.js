@@ -205,10 +205,22 @@ function toggleVisibility () {
   document.getElementById('update').style.visibility = 'visible'
 }
 
+function makeOverlayChartTitle (titleA, titleB) {
+  // Each string in the array is a separate line
+  return [
+    'A',
+    ...titleA,
+    '',
+    'B',
+    ...titleB
+  ]
+}
+
 function makeOverlayChart (dataA, dataB) {
   var chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   var ctx = chartEl.getContext('2d')
+  var title = makeOverlayChartTitle(dataA.title, dataB.title)
   chart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -257,7 +269,7 @@ function makeOverlayChart (dataA, dataB) {
       title: {
         display: true,
         fontStyle: 'normal',
-        text: data.title
+        text: title
       },
       scales: {
         xAxes: [
