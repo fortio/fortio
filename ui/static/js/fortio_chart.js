@@ -408,7 +408,7 @@ function updateQueryString () {
   window.history.replaceState({}, '', `${location.pathname}?${params}`)
 }
 
-function updateChartOptions (chart, formMin, formMax, xIsLogarithmic, yIsLogarithmic) {
+function updateChartOptions (chart) {
   var form = getUpdateForm()
   var scales = chart.config.options.scales
   var newXMin = parseFloat(form.xMin)
