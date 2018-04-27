@@ -202,11 +202,9 @@ function toggleVisibility () {
 function makeOverlayChartTitle (titleA, titleB) {
   // Each string in the array is a separate line
   return [
-    'A',
-    ...titleA,
+    'A: ' + titleA[0], titleA[1], // Skip 3rd line.
     '',
-    'B',
-    ...titleB
+    'B: ' + titleB[0], titleB[1], // Skip 3rd line.
   ]
 }
 
