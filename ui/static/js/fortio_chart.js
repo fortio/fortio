@@ -67,6 +67,7 @@ var logYAxe = {
 }
 
 var chart = {}
+var overlayChart = {}
 var mchart = {}
 
 function myRound (v, digits = 6) {
@@ -198,10 +199,104 @@ function toggleVisibility () {
   document.getElementById('update').style.visibility = 'visible'
 }
 
+function makeOverlayChartTitle (titleA, titleB) {
+  // Each string in the array is a separate line
+  return [
+    'A: ' + titleA[0], titleA[1], // Skip 3rd line.
+    '',
+    'B: ' + titleB[0], titleB[1], // Skip 3rd line.
+  ]
+}
+
+function makeOverlayChart (dataA, dataB) {
+  var chartEl = document.getElementById('chart1')
+  chartEl.style.visibility = 'visible'
+  if (Object.keys(overlayChart).length !== 0) {
+    return
+  }
+  deleteSingleChart()
+  deleteMultiChart()
+  var ctx = chartEl.getContext('2d')
+  var title = makeOverlayChartTitle(dataA.title, dataB.title)
+  overlayChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      // "Cumulative %" datasets are listed first so they are drawn on top of the histograms.
+      datasets: [{
+        label: 'A: Cumulative %',
+        data: dataA.dataP,
+        fill: false,
+        yAxisID: 'P',
+        stepped: true,
+        backgroundColor: 'rgba(134, 87, 167, 1)',
+        borderColor: 'rgba(134, 87, 167, 1)',
+        cubicInterpolationMode: 'monotone'
+      }, {
+        label: 'B: Cumulative %',
+        data: dataB.dataP,
+        fill: false,
+        yAxisID: 'P',
+        stepped: true,
+        backgroundColor: 'rgba(204, 102, 0)',
+        borderColor: 'rgba(204, 102, 0)',
+        cubicInterpolationMode: 'monotone'
+      }, {
+        label: 'A: Histogram: Count',
+        data: dataA.dataH,
+        yAxisID: 'H',
+        pointStyle: 'rect',
+        radius: 1,
+        borderColor: 'rgba(87, 167, 134, .9)',
+        backgroundColor: 'rgba(87, 167, 134, .75)',
+        lineTension: 0
+      }, {
+        label: 'B: Histogram: Count',
+        data: dataB.dataH,
+        yAxisID: 'H',
+        pointStyle: 'rect',
+        radius: 1,
+        borderColor: 'rgba(36, 64, 238, .9)',
+        backgroundColor: 'rgba(36, 64, 238, .75)',
+        lineTension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      title: {
+        display: true,
+        fontStyle: 'normal',
+        text: title
+      },
+      scales: {
+        xAxes: [
+          linearXAxe
+        ],
+        yAxes: [{
+          id: 'P',
+          position: 'right',
+          ticks: {
+            beginAtZero: true,
+            max: 100
+          },
+          scaleLabel: {
+            display: true,
+            labelString: '%'
+          }
+        },
+          linearYAxe
+        ]
+      }
+    }
+  })
+  updateChart(overlayChart)
+}
+
 function makeChart (data) {
   var chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(chart).length === 0) {
+    deleteOverlayChart()
     deleteMultiChart()
       // Creation (first or switch) time
     var ctx = chartEl.getContext('2d')
@@ -264,11 +359,11 @@ function makeChart (data) {
     chart.data.datasets[0].data = data.dataP
     chart.data.datasets[1].data = data.dataH
     chart.options.title.text = data.title
-    updateChart()
+    updateChart(chart)
   }
 }
 
-function setChartOptions () {
+function setChartOptions (chart) {
   var form = document.getElementById('updtForm')
   var formMin = form.xmin.value.trim()
   var formMax = form.xmax.value.trim()
@@ -305,8 +400,26 @@ function setChartOptions () {
   }
 }
 
-function updateChart () {
-  setChartOptions()
+function objHasProps (obj) {
+  return Object.keys(obj).length > 0
+}
+
+function getCurrentChart () {
+  var currentChart
+  if (objHasProps(chart)) {
+    currentChart = chart
+  } else if (objHasProps(overlayChart)) {
+    currentChart = overlayChart
+  } else if (objHasProps(mchart)) {
+    currentChart = mchart
+  } else {
+    currentChart = undefined
+  }
+  return currentChart
+}
+
+function updateChart (chart = getCurrentChart()) {
+  setChartOptions(chart)
   chart.update()
 }
 
@@ -357,6 +470,14 @@ function endMultiChart (len) {
   mchart.update()
 }
 
+function deleteOverlayChart () {
+  if (Object.keys(overlayChart).length === 0) {
+    return
+  }
+  overlayChart.destroy()
+  overlayChart = {}
+}
+
 function deleteMultiChart () {
   if (Object.keys(mchart).length === 0) {
     return
@@ -382,6 +503,7 @@ function makeMultiChart () {
     return
   }
   deleteSingleChart()
+  deleteOverlayChart()
   var ctx = chartEl.getContext('2d')
   mchart = new Chart(ctx, {
     type: 'line',

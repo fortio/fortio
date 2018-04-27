@@ -42,19 +42,37 @@ function fortio_load(url) {
   } else {
     var urldiv = document.getElementById('url')
     urldiv.innerHTML = "Multiple runs..."
-    makeMultiChart()
-    var promises = []
-    for (var i = 0, len = list.length; i < len; i++) {
-      var v = list[len-i-1].value;
-      (function (idx, u) {
-        promises.push(fetch("data/"+u).then(doc => doc.json()).then((out) => {
-          fortioAddToMultiResult(idx, out)
-        }))
-      })(i, v)
+    if (list.length == 2) {
+      var urlA = list[0].value
+      var dataPromiseA = fetch("data/"+urlA)
+          .then(response => response.json())
+          .then(fortioResult => fortioResultToJsChartData(fortioResult))
+
+      var urlB = list[1].value
+      var dataPromiseB = fetch("data/"+urlB)
+          .then(response => response.json())
+          .then(fortioResult => fortioResultToJsChartData(fortioResult))
+
+      Promise.all([dataPromiseA, dataPromiseB]).then(dataArray => {
+        var dataA = dataArray[0]
+        var dataB = dataArray[1]
+        makeOverlayChart(dataA, dataB)
+      })
+    } else {
+      makeMultiChart()
+      var promises = []
+      for (var i = 0, len = list.length; i < len; i++) {
+        var v = list[len-i-1].value;
+        (function (idx, u) {
+          promises.push(fetch("data/"+u).then(doc => doc.json()).then((out) => {
+            fortioAddToMultiResult(idx, out)
+          }))
+        })(i, v)
+      }
+      Promise.all(promises).then( () => {
+        endMultiChart(list.length)
+      }).catch(err => { throw err })
     }
-    Promise.all(promises).then( () => {
-      endMultiChart(list.length)
-    }).catch(err => { throw err })
   }
 }
 </script>
