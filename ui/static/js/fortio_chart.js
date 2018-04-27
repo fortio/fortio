@@ -400,7 +400,25 @@ function setChartOptions (chart) {
   }
 }
 
-function updateChart (chart) {
+function objHasProps (obj) {
+  return Object.keys(obj).length > 0
+}
+
+function getCurrentChart () {
+  var currentChart
+  if (objHasProps(chart)) {
+    currentChart = chart
+  } else if (objHasProps(overlayChart)) {
+    currentChart = overlayChart
+  } else if (objHasProps(mchart)) {
+    currentChart = mchart
+  } else {
+    currentChart = undefined
+  }
+  return currentChart
+}
+
+function updateChart (chart = getCurrentChart()) {
   setChartOptions(chart)
   chart.update()
 }
