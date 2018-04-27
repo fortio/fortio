@@ -398,7 +398,7 @@ func SelectValues(values []string, selectedValues []string) (selectableValues []
 		selectableValue := SelectableValue{Value: value, Selected: selected}
 		selectableValues = append(selectableValues, selectableValue)
 	}
-	return
+	return selectableValues, numSelected
 }
 
 // DataList returns the .json files/entries in data dir.
