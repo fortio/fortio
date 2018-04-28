@@ -189,8 +189,10 @@ function fortioResultToJsChartData (res) {
 }
 
 function showChart (data) {
-  toggleVisibility()
   makeChart(data)
+  // Load configuration (min, max, isLogarithmic, ...) from the update form.
+  updateChartOptions(chart)
+  toggleVisibility()
 }
 
 function toggleVisibility () {
@@ -363,41 +365,67 @@ function makeChart (data) {
   }
 }
 
-function setChartOptions (chart) {
+function getUpdateForm () {
   var form = document.getElementById('updtForm')
-  var formMin = form.xmin.value.trim()
-  var formMax = form.xmax.value.trim()
-  var scales = chart.config.options.scales
-  var newXAxis
-  var newXMin = parseFloat(formMin)
-  if (form.xlog.checked) {
-    newXAxis = logXAxe
+  var xMin = form.xmin.value.trim()
+  var xMax = form.xmax.value.trim()
+  var xIsLogarithmic = form.xlog.checked
+  var yIsLogarithmic = form.ylog.checked
+  return { xMin, xMax, xIsLogarithmic, yIsLogarithmic }
+}
+
+function getSelectedResults () {
+  // Undefined if on "graph-only" page
+  var select = document.getElementById('files')
+  var selectedResults
+  if (select) {
+    var selectedOptions = select.selectedOptions
+    selectedResults = []
+    for (var option of selectedOptions) {
+      selectedResults.push(option.text)
+    }
   } else {
-    newXAxis = linearXAxe
+    selectedResults = undefined
   }
-  if (form.ylog.checked) {
-    chart.config.options.scales = {
-      xAxes: [newXAxis],
-      yAxes: [scales.yAxes[0], logYAxe]
+  return selectedResults
+}
+
+function updateQueryString () {
+  var location = document.location
+  var params = new URLSearchParams(location.search)
+  var form = getUpdateForm()
+  params.set('xMin', form.xMin)
+  params.set('xMax', form.xMax)
+  params.set('xLog', form.xIsLogarithmic)
+  params.set('yLog', form.yIsLogarithmic)
+  var selectedResults = getSelectedResults()
+  params.delete('sel')
+  if (selectedResults) {
+    for (var result of selectedResults) {
+      params.append('sel', result)
     }
-  } else {
-    chart.config.options.scales = {
-      xAxes: [newXAxis],
-      yAxes: [scales.yAxes[0], linearYAxe]
-    }
+  }
+  window.history.replaceState({}, '', `${location.pathname}?${params}`)
+}
+
+function updateChartOptions (chart) {
+  var form = getUpdateForm()
+  var scales = chart.config.options.scales
+  var newXMin = parseFloat(form.xMin)
+  var newXAxis = form.xIsLogarithmic ? logXAxe : linearXAxe
+  var newYAxis = form.yIsLogarithmic ? logYAxe : linearYAxe
+  chart.config.options.scales = {
+    xAxes: [newXAxis],
+    yAxes: [scales.yAxes[0], newYAxis]
   }
   chart.update() // needed for scales.xAxes[0] to exist
   var newNewXAxis = chart.config.options.scales.xAxes[0]
-  if (formMin !== '') {
-    newNewXAxis.ticks.min = newXMin
-  } else {
-    delete newNewXAxis.ticks.min
-  }
-  if (formMax !== '' && formMax !== 'max') {
-    newNewXAxis.ticks.max = parseFloat(formMax)
-  } else {
-    delete newNewXAxis.ticks.max
-  }
+  newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
+  var formXMax = form.xMax
+  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max' ?
+      undefined :
+      parseFloat(formXMax)
+  chart.update()
 }
 
 function objHasProps (obj) {
@@ -419,8 +447,8 @@ function getCurrentChart () {
 }
 
 function updateChart (chart = getCurrentChart()) {
-  setChartOptions(chart)
-  chart.update()
+  updateQueryString()
+  updateChartOptions(chart)
 }
 
 function multiLabel (res) {

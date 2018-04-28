@@ -91,9 +91,9 @@ List of saved results:<br />
 <br />
 Filter:<form><input id="searchinp" name="s" type="text" size=20 value="{{.Search}}" /></form>
 </td><td>
-<select id="files" size=7 onchange="fortio_load(value);" multiple>
-{{range $f := .DataList}}
-  <option value="{{$f}}.json">{{$f}}</option>
+<select id="files" size=7 onchange="updateQueryString(); fortio_load(value);" multiple>
+{{range .PreselectedDataList}}
+  <option value="{{.Value}}.json" {{if .Selected}} selected {{end}}>{{.Value}}</option>
 {{end}}
 </select>
 </td><td valign="top">
@@ -131,10 +131,10 @@ Select or multi select to graph...
 <div id="update">
 <form id="updtForm" action="javascript:updateChart()">
 <input type="submit" value="Update:" />
-Time axis min <input type="text" name="xmin" size="5" /> ms,
-max <input type="text" name="xmax" size="5" /> ms,
-logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" /> -
-Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" />
+Time axis min <input type="text" name="xmin" value="{{.ChartOptions.XMin}}" size="5" /> ms,
+max <input type="text" name="xmax" value="{{.ChartOptions.XMax}}" size="5" /> ms,
+logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.XIsLog}} checked {{end}} /> -
+Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.YIsLog}} checked {{end}} />
 </form>
 </div>
 {{if .DoSearch}}
@@ -143,6 +143,10 @@ filterFiles.call(search)
 for (var i = 0; i < files.options.length; i++) {
   files.options[i].selected = true;
 }
+</script>
+{{end}}
+{{if .DoLoadSelected}}
+<script>
 fortio_load(files.value)
 </script>
 {{end}}
