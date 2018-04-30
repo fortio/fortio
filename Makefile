@@ -17,7 +17,7 @@ DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 CERT_TEMP := ./cert-tmp/
 
 # go test ./... and others run in vendor/ and cause problems (!)
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|static|templates|release|docs|json|cert-tmp)")
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp)")
 #PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already

@@ -67,6 +67,10 @@ func usage(msgs ...interface{}) {
 // Attention: every flag that is common to http client goes to bincommon/
 // for sharing between fortio and fcurl binaries
 
+const (
+	disabled = "disabled"
+)
+
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
@@ -84,7 +88,7 @@ var (
 	caCertFlag        = flag.String("cacert", "", "Path to the CA certificate used for GRPC client TLS")
 	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
 	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
-		"grpc server port. Can be in the form of host:port, ip:port or port.")
+		"grpc server port. Can be in the form of host:port, ip:port or port or \""+disabled+"\" to not start the grpc server.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
@@ -104,7 +108,7 @@ var (
 	abortOnFlag            = flag.Int("abort-on", 0, "Http code that if encountered aborts the run. e.g. 503 or -1 for socket errors.")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
-		" (need ingress to work properly). Can be in the form of host:port, ip:port, port or \"disabled\" to disable the feature.")
+		" (need ingress to work properly). Can be in the form of host:port, ip:port, port or \""+disabled+"\" to disable the feature.")
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
@@ -163,7 +167,7 @@ func main() {
 		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
 		isServer = true
-		if *redirectFlag != "disabled" {
+		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		if !ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag) {
@@ -171,8 +175,10 @@ func main() {
 		}
 	case "server":
 		isServer = true
-		fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
-		if *redirectFlag != "disabled" {
+		if *grpcPortFlag != disabled {
+			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+		}
+		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList) {
