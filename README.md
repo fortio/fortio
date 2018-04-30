@@ -64,6 +64,15 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	url from the first request is used)
   -c int
 	Number of connections/goroutine/threads (default 4)
+  -cacert
+	Full path to the CA certificate required for grpc TLS. Applicable to the grpcping
+	and load commands. Prepend the grpc destination with "https://" if standard TLS
+	(i.e. valid server certificate signed by a trusted CA) is desired.
+	-cacert will override "https://" if both are provided.
+	(default "") means no user-provided ca certificate.
+  -cert
+	Full path to the certificate used for grpc TLS. Applicable to the server command.
+	(default "") means no user-provided certificate.
   -compression
 	Enable http compression
   -curl
@@ -87,18 +96,6 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	"disabled" to not start the grpc server. (default "8079")
 	grpc server port. Can be in the form of host:port, ip:port or port.
 	(default "8079")
-  -cert
-	Full path to the certificate used for grpc TLS. Applicable to the server command.
-	(default "") means no user-provided certificate.
-  -key
-	Full path to the key required for grpc TLS. Applicable to the server command.
-	(default "") means no user-provided key.
-  -cacert
-	Full path to the CA certificate required for grpc TLS. Applicable to the grpcping
-	and load commands. Preface the grpc destination with "https://" if standard TLS
-	(i.e. valid server certificate signed by a trusted CA) is desired.
-	-cacert will override "https://" if both are provided.
-	(default "") means no user-provided ca certificate.
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
@@ -124,6 +121,9 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -k	Do not verify certs in https connections
   -keepalive
 	Keep connection alive (only for fast http 1.1) (default true)
+  -key
+	Full path to the key required for grpc TLS. Applicable to the server command.
+	(default "") means no user-provided key.
   -labels string
 	Additional config data/labels to add to the resulting JSON, defaults to
 	target URL and hostname
@@ -230,16 +230,14 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 ```
 * A `grpcping` using TLS. First, start Fortio server with the `-cert` and `-key` flags.
 `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
-you are responsible for providing. Creating a TLS certificate is outside the scope of this document. This example uses
-`localhost` in the `Subject Alternative Name` (SAN) of the certificate. The SAN should match the domain name that
-clients connect to.
+you are responsible for providing.
 ```
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 0.9.0 grpc ping server listening on port :8079
-Fortio 0.9.0 echo server listening on port localhost:8080
+Fortio 0.10.0 grpc ping server listening on port :8079
+Fortio 0.10.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -395,9 +393,11 @@ And the JSON saved is
 ```
 $ fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
 ```
+
 Next, run the `load` command with the `-cacert` flag:
 ```
 $ fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
+```
 
 * Curl like (single request) mode
 

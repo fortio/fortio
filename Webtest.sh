@@ -8,8 +8,6 @@ LOGLEVEL=info # change to debug to debug
 MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
 CERT=/etc/ssl/certs/ca-certificates.crt
 TEST_CERT_VOL=/etc/ssl/certs/fortio
-BUILD_IMAGE_TAG=v7
-BUILD_IMAGE=istio/fortio.build:$BUILD_IMAGE_TAG
 DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
@@ -75,7 +73,7 @@ docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-DOCKERVOLID=$(docker create -v $TEST_CERT_VOL --name certs $BUILD_IMAGE /bin/true)
+DOCKERVOLID=$(docker create -v $TEST_CERT_VOL --name certs istio/fortio.build:v7 /bin/true)
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f certs:$TEST_CERT_VOL/$f; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.

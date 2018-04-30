@@ -14,10 +14,10 @@ TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
 DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 
-CERT_TEMP := ./cert-tmp/
+CERT_TEMP_DIR := ./cert-tmp/
 
 # go test ./... and others run in vendor/ and cause problems (!)
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp)")
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json)")
 #PACKAGES:=$(shell go list ./... | grep -v vendor)
 
 # Marker for whether vendor submodule is here or not already
@@ -31,15 +31,15 @@ install: dependencies
 	go install $(PACKAGES)
 
 # Only generate certs if needed
-certs: $(CERT_TEMP)/server.cert
+certs: $(CERT_TEMP_DIR)/server.cert
 
 # Generate certs for unit and release tests.
-$(CERT_TEMP)/server.cert: cert-gen
+$(CERT_TEMP_DIR)/server.cert: cert-gen
 	./cert-gen
 
 # Remove certificates
 certs-clean:
-	rm -rf $(CERT_TEMP)
+	rm -rf $(CERT_TEMP_DIR)
 
 # Local test
 test: dependencies
@@ -126,7 +126,7 @@ all: test install lint docker-version docker-push-internal
 
 # Makefile should be edited first
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
-	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in
+	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in /etc/ssl/certs/ca-certificates.crt
 # Ran make update-build-image BUILD_IMAGE_TAG=v1 DOCKER_PREFIX=fortio/fortio
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
