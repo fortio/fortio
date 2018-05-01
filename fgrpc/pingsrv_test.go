@@ -17,6 +17,8 @@ package fgrpc
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"testing"
 	"time"
@@ -84,4 +86,19 @@ func TestPingServer(t *testing.T) {
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}
+}
+
+func TestExitedPingServer(t *testing.T) {
+	// PingServer should Exit 1 when providing a missing cert or key.
+	if os.Getenv("INVALID_CRT_KEY") == "1" {
+		PingServer("0", "missing.crt", "missing.key", "foo", 0)
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestExitedPingServer")
+	cmd.Env = append(os.Environ(), "INVALID_CRT_KEY=1")
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		return
+	}
+	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
