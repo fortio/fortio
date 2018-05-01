@@ -91,7 +91,7 @@ List of saved results:<br />
 <br />
 Filter:<form><input id="searchinp" name="s" type="text" size=20 value="{{.Search}}" /></form>
 </td><td>
-<select id="files" size=7 onchange="updateQueryString(); fortio_load(value);" multiple>
+<select id="files" size=7 onchange="fortio_load(value);" multiple>
 {{range .PreselectedDataList}}
   <option value="{{.Value}}.json" {{if .Selected}} selected {{end}}>{{.Value}}</option>
 {{end}}
