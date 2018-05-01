@@ -446,9 +446,13 @@ function getCurrentChart () {
   return currentChart
 }
 
+var timeoutID = 0
 function updateChart (chart = getCurrentChart()) {
-  updateQueryString()
   updateChartOptions(chart)
+  if (timeoutID > 0) {
+    clearTimeout(timeoutID)
+  }
+  timeoutID = setTimeout("updateQueryString()", 750)
 }
 
 function multiLabel (res) {
