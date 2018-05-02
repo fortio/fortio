@@ -94,8 +94,6 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port or
 	"disabled" to not start the grpc server. (default "8079")
-	grpc server port. Can be in the form of host:port, ip:port or port.
-	(default "8079")
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
@@ -230,7 +228,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 ```
 * A `grpcping` using TLS. First, start Fortio server with the `-cert` and `-key` flags.
 `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
-you are responsible for providing.
+you must provide.
 ```
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
@@ -242,7 +240,8 @@ Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
 * Next, use `grpcping` with the `-cacert` flag. `/path/to/fortio/ca.crt` is the path to the CA certificate
-that issued the server certificate:
+that issued the server certificate for `localhost`. In our example, the server certificate is
+`/path/to/fortio/server.crt`:
 ```
 $ fortio grpcping -cacert /path/to/fortio/ca.crt localhost
 Using server certificate /path/to/fortio/ca.crt to construct TLS credentials

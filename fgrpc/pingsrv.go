@@ -70,8 +70,7 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 	if cert != "" && key != "" {
 		creds, err := credentials.NewServerTLSFromFile(cert, key)
 		if err != nil {
-			fmt.Printf("Invalid TLS credentials: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Invalid TLS credentials: %v\n", err)
 		}
 		log.Infof("Using server certificate %v to construct TLS credentials", cert)
 		log.Infof("Using server key %v to construct TLS credentials", key)

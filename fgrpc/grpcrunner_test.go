@@ -35,6 +35,9 @@ var (
 	caCrt  = "../cert-tmp/ca.crt"
 	svrCrt = "../cert-tmp/server.crt"
 	svrKey = "../cert-tmp/server.key"
+	// used for failure test cases
+	failCrt = "../missing/cert.crt"
+	failKey = "../missing/cert.key"
 )
 
 func TestGRPCRunner(t *testing.T) {

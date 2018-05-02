@@ -17,12 +17,11 @@ package fgrpc
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"strconv"
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"istio.io/fortio/log"
 )
@@ -56,6 +55,9 @@ func TestPingServer(t *testing.T) {
 	if latency, err := PingClientCall(sAddr, "", 1, "", 0); err == nil {
 		t.Errorf("Should have had an error instead of result %f for insecure ping to secure port", latency)
 	}
+	if creds, err := credentials.NewServerTLSFromFile(failCrt, failKey); err == nil {
+		t.Errorf("Should have had an error instead of result %f for ping server", creds)
+	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
 	if r, err := GrpcHealthCheck(iAddr, "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
@@ -78,7 +80,7 @@ func TestPingServer(t *testing.T) {
 	if r, err := GrpcHealthCheck(sAddr, caCrt, "willfail", 1); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}
-	if r, err := GrpcHealthCheck(sAddr, "../missing/cert.crt", "willfail", 1); err == nil {
+	if r, err := GrpcHealthCheck(sAddr, failCrt, "willfail", 1); err == nil {
 		t.Errorf("Was expecting dial error when using invalid certificate, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
@@ -86,19 +88,4 @@ func TestPingServer(t *testing.T) {
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}
-}
-
-func TestExitedPingServer(t *testing.T) {
-	// PingServer should Exit 1 when providing a missing cert or key.
-	if os.Getenv("INVALID_CRT_KEY") == "1" {
-		PingServer("0", "missing.crt", "missing.key", "foo", 0)
-		return
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=TestExitedPingServer")
-	cmd.Env = append(os.Environ(), "INVALID_CRT_KEY=1")
-	err := cmd.Run()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		return
-	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
