@@ -256,7 +256,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				i++
 			}
 			uiRunMapMutex.Unlock()
-			log.Infof("Interrupted %d runs", i)
+			log.Infof("Interrupted all %d runs", i)
 		} else { // Stop one
 			uiRunMapMutex.Lock()
 			v, found := runs[runid]
@@ -343,6 +343,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			res.Result().ActualQPS)))
 		ResultToJsData(w, json)
 		w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n")) // nolint: gas
+		delete(runs, runid)
 	}
 }
 

@@ -24,6 +24,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"time"
 
 	"istio.io/fortio/bincommon"
 	"istio.io/fortio/fnet"
@@ -110,7 +111,9 @@ var (
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
-	syncFlag    = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	syncFlag         = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	syncIntervalFlag = flag.Duration("sync-interval", 0, "Refresh the url every given interval (default, no refresh)")
+
 	baseURLFlag = flag.String("base-url", "",
 		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
 	newMaxPayloadSizeKb = flag.Int("maxpayloadsizekb", fhttp.MaxPayloadSize/1024,
@@ -197,7 +200,17 @@ func main() {
 	if isServer {
 		// To get a start time log/timestamp in the logs
 		log.Infof("All fortio %s servers started!", version.Long())
-		select {}
+		d := *syncIntervalFlag
+		if sync != "" && d > 0 {
+			log.Infof("Will re-sync data dir every %s", d)
+			ticker := time.NewTicker(d)
+			defer ticker.Stop()
+			for range ticker.C {
+				ui.Sync(os.Stdout, sync, *dataDirFlag)
+			}
+		} else {
+			select {}
+		}
 	}
 }
 
