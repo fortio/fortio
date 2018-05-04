@@ -205,11 +205,8 @@ func main() {
 			log.Infof("Will re-sync data dir every %s", d)
 			ticker := time.NewTicker(d)
 			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					ui.Sync(os.Stdout, sync, *dataDirFlag)
-				}
+			for range ticker.C {
+				ui.Sync(os.Stdout, sync, *dataDirFlag)
 			}
 		} else {
 			select {}
