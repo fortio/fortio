@@ -164,6 +164,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Use the slower net/http standard client (works for TLS)
   -sync string
 	index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
+  -sync-interval duration
+	Refresh the url every given interval (default, no refresh)
   -t duration
 	How long to run the test or 0 to run until ^C (default 5s)
   -timeout duration
