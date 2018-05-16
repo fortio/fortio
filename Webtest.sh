@@ -14,9 +14,6 @@ DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fo
 function cleanup {
   docker stop $DOCKERID
   docker rm $DOCKERNAME
-  docker stop $DOCKERSECID
-  docker rm $DOCKERSECNAME
-  docker rm $DOCKERVOLID
 }
 trap cleanup EXIT
 set -e
