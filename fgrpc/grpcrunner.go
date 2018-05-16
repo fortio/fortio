@@ -46,7 +46,7 @@ const (
 // Dial dials grpc using insecure or tls transport security when serverAddr
 // has prefixHTTPS or cert is provided. If override is set to a non empty string,
 // it will override the virtual host name of authority in requests.
-func Dial(serverAddr string, cacert, override string) (conn *grpc.ClientConn, err error) {
+func Dial(serverAddr, cacert, override string) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
 	switch {
 	case cacert != "":
@@ -66,7 +66,7 @@ func Dial(serverAddr string, cacert, override string) (conn *grpc.ClientConn, er
 	serverAddr = grpcDestination(serverAddr)
 	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
-		log.Errf("failed to connect to %s: %v", serverAddr, err)
+		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, cacert, override, err)
 	}
 	return conn, err
 }
