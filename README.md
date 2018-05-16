@@ -64,6 +64,15 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	url from the first request is used)
   -c int
 	Number of connections/goroutine/threads (default 4)
+  -cacert
+	Full path to the CA certificate required for grpc TLS. Applicable to the grpcping
+	and load commands. Prepend the grpc destination with "https://" if standard TLS
+	(i.e. valid server certificate signed by a trusted CA) is desired.
+	-cacert will override "https://" if both are provided.
+	(default "") means no user-provided ca certificate.
+  -cert
+	Full path to the certificate used for grpc TLS. Applicable to the server command.
+	(default "") means no user-provided certificate.
   -compression
 	Enable http compression
   -curl
@@ -85,8 +94,6 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port or
 	"disabled" to not start the grpc server. (default "8079")
-  -grpc-secure
-	Use secure transport (tls) for GRPC
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
@@ -112,6 +119,9 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -k	Do not verify certs in https connections
   -keepalive
 	Keep connection alive (only for fast http 1.1) (default true)
+  -key
+	Full path to the key required for grpc TLS. Applicable to the server command.
+	(default "") means no user-provided key.
   -labels string
 	Additional config data/labels to add to the resulting JSON, defaults to
 	target URL and hostname
@@ -218,6 +228,48 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
+* A `grpcping` using TLS. First, start Fortio server with the `-cert` and `-key` flags.
+`/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
+you must provide.
+```
+$ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
+UI starting - visit:
+http://localhost:8080/fortio/
+Https redirector running on :8081
+Fortio 0.10.1 grpc ping server listening on port :8079
+Fortio 0.10.1 echo server listening on port localhost:8080
+Using server certificate /path/to/fortio/server.crt to construct TLS credentials
+Using server key /path/to/fortio/server.key to construct TLS credentials
+```
+* Next, use `grpcping` with the `-cacert` flag. `/path/to/fortio/ca.crt` is the path to the CA certificate
+that issued the server certificate for `localhost`. In our example, the server certificate is
+`/path/to/fortio/server.crt`:
+```
+$ fortio grpcping -cacert /path/to/fortio/ca.crt localhost
+Using server certificate /path/to/fortio/ca.crt to construct TLS credentials
+16:00:10 I pingsrv.go:129> Ping RTT 501452 (avg of 595441, 537088, 371828 ns) clock skew 31094
+Clock skew histogram usec : count 1 avg 31.094 +/- 0 min 31.094 max 31.094 sum 31.094
+# range, mid point, percentile, count
+>= 31.094 <= 31.094 , 31.094 , 100.00, 1
+# target 50% 31.094
+RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 1504.357
+# range, mid point, percentile, count
+>= 371.828 <= 400 , 385.914 , 33.33, 1
+> 500 <= 595.441 , 547.721 , 100.00, 2
+# target 50% 523.86
+```
+
+* `grpcping` can connect to a non-Fortio TLS server by prefacing the destination with
+`https://`:
+```
+$ fortio grpcping https://fortio.istio.io:443
+16:26:47 I grpcrunner.go:194> stripping https scheme. grpc destination: fortio.istio.io:443
+Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.795 sum 12329.795
+# range, mid point, percentile, count
+>= 12329.8 <= 12329.8 , 12329.8 , 100.00, 1
+# target 50% 12329.8
+```
+
 * Load (low default qps/threading) test:
 ```
 $ fortio load http://www.google.com
@@ -336,6 +388,16 @@ And the JSON saved is
   "Streams": 4,
   "Ping": true
 }
+```
+
+* Load test using gRPC and TLS security. First, start Fortio server with the `-cert` and `-key` flags:
+```
+$ fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
+```
+
+Next, run the `load` command with the `-cacert` flag:
+```
+$ fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
 ```
 
 * Curl like (single request) mode

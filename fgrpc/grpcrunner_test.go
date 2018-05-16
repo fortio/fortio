@@ -30,34 +30,133 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+var (
+	// Generated from "make cert"
+	caCrt  = "../cert-tmp/ca.crt"
+	svrCrt = "../cert-tmp/server.crt"
+	svrKey = "../cert-tmp/server.key"
+	// used for failure test cases
+	failCrt = "../missing/cert.crt"
+	failKey = "../missing/cert.key"
+)
+
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "bar", 0)
-	destination := fmt.Sprintf("localhost:%d", port)
+	iPort := PingServer("0", "", "", "bar", 0)
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	opts := GRPCRunnerOptions{
+	ro := GRPCRunnerOptions{
 		RunnerOptions: periodic.RunnerOptions{
 			QPS:        100,
 			Resolution: 0.00001,
 		},
-		Destination: destination,
-		Profiler:    "test.profile",
+		Profiler: "test.profile",
 	}
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
+
+	tests := []struct {
+		name       string
+		runnerOpts GRPCRunnerOptions
+		expect     bool
+	}{
+		{
+			name:       "valid insecure runner with payload",
+			runnerOpts: ro,
+			expect:     true,
+		},
+		{
+			name:       "valid secure runner",
+			runnerOpts: ro,
+			expect:     true,
+		},
+		{
+			name:       "invalid insecure runner to secure server",
+			runnerOpts: ro,
+			expect:     false,
+		},
+		{
+			name:       "valid secure runner using nil credentials to Internet https server",
+			runnerOpts: ro,
+			expect:     true,
+		},
+		{
+			name:       "invalid secure runner to insecure server",
+			runnerOpts: ro,
+			expect:     false,
+		},
+		{
+			name:       "invalid secure runner using test cert to https prefix Internet server",
+			runnerOpts: ro,
+			expect:     false,
+		},
+		{
+			name:       "invalid secure runner using test cert to no prefix Internet server",
+			runnerOpts: ro,
+			expect:     false,
+		},
+		{
+			name:       "invalid name in secure runner cert",
+			runnerOpts: ro,
+			expect:     false,
+		},
+		{
+			name:       "invalid cert for secure runner",
+			runnerOpts: ro,
+			expect:     false,
+		},
 	}
-	totalReq := res.DurationHistogram.Count
-	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
-	if totalReq != ok {
-		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	for _, test := range tests {
+		switch {
+		case test.name == "valid insecure runner with payload":
+			test.runnerOpts.Destination = iDest
+			test.runnerOpts.Payload = "test"
+		case test.name == "valid secure runner":
+			test.runnerOpts.Destination = sDest
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid insecure runner to secure server":
+			test.runnerOpts.Destination = sDest
+		case test.name == "valid secure runner using nil credentials to Internet https server":
+			test.runnerOpts.Destination = "https://fortio.istio.io:443"
+		case test.name == "invalid secure runner to insecure server":
+			test.runnerOpts.Destination = iDest
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid secure runner using test cert to https prefix Internet server":
+			test.runnerOpts.Destination = "https://fortio.istio.io:443"
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid secure runner using test cert to no prefix Internet server":
+			test.runnerOpts.Destination = "fortio.istio.io:443"
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid name in secure runner cert":
+			test.runnerOpts.Destination = sDest
+			test.runnerOpts.CACert = caCrt
+			test.runnerOpts.CertOverride = "invalidName"
+		case test.name == "invalid cert for secure runner":
+			test.runnerOpts.Destination = sDest
+			test.runnerOpts.CACert = "../missing/cert.crt"
+		}
+		res, err := RunGRPCTest(&test.runnerOpts)
+		switch {
+		case err != nil && test.expect:
+			t.Errorf("Test case: %s failed due to unexpected error: %v", test.name, err)
+			return
+		case err == nil && !test.expect:
+			t.Errorf("Test case: %s failed due to unexpected response: %v", test.name, res)
+			return
+		case err == nil && test.expect:
+			totalReq := res.DurationHistogram.Count
+			ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+			if totalReq != ok {
+				t.Errorf("Test case: %s failed. Mismatch between requests %d and ok %v",
+					test.name, totalReq, res.RetCodes)
+			}
+		}
 	}
 }
 
 func TestGRPCRunnerMaxStreams(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "maxstream", 10)
+	port := PingServer("0", "", "", "maxstream", 10)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -106,31 +205,97 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "svc1", 0)
-	destination := fmt.Sprintf("localhost:%d", port)
+	iPort := PingServer("0", "", "", "bar", 0)
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	opts := GRPCRunnerOptions{
+	ro := GRPCRunnerOptions{
 		RunnerOptions: periodic.RunnerOptions{
 			QPS:      10,
 			Duration: 1 * time.Second,
 		},
-		Destination: destination,
-		Service:     "svc2",
+		Service: "svc2",
 	}
-	_, err := RunGRPCTest(&opts)
-	if err == nil {
-		t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+
+	tests := []struct {
+		name       string
+		runnerOpts GRPCRunnerOptions
+	}{
+		{
+			name:       "insecure runner",
+			runnerOpts: ro,
+		},
+		{
+			name:       "secure runner",
+			runnerOpts: ro,
+		},
+		{
+			name:       "invalid insecure runner to secure server",
+			runnerOpts: ro,
+		},
+		{
+			name:       "invalid secure runner to insecure server",
+			runnerOpts: ro,
+		},
+		{
+			name:       "invalid name in runner cert",
+			runnerOpts: ro,
+		},
+		{
+			name:       "valid runner using nil credentials to Internet https server",
+			runnerOpts: ro,
+		},
+		{
+			name:       "invalid runner using test cert to https prefix Internet server",
+			runnerOpts: ro,
+		},
+		{
+			name:       "invalid runner using test cert to no prefix Internet server",
+			runnerOpts: ro,
+		},
 	}
-	opts.AllowInitialErrors = true
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	totalReq := res.DurationHistogram.Count
-	numErrors := res.RetCodes[-1]
-	if totalReq != numErrors {
-		t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
+	for _, test := range tests {
+		switch {
+		case test.name == "insecure runner":
+			test.runnerOpts.Destination = iDest
+		case test.name == "secure runner":
+			test.runnerOpts.Destination = sDest
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid insecure runner to secure server":
+			test.runnerOpts.Destination = sDest
+		case test.name == "invalid secure runner to insecure server":
+			test.runnerOpts.Destination = iDest
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid name in runner cert":
+			test.runnerOpts.Destination = sDest
+			test.runnerOpts.CACert = caCrt
+			test.runnerOpts.CertOverride = "invalidName"
+		case test.name == "valid runner using nil credentials to Internet https server":
+			test.runnerOpts.Destination = "https://fortio.istio.io:443"
+		case test.name == "invalid runner using test cert to https prefix Internet server":
+			test.runnerOpts.Destination = "https://fortio.istio.io:443"
+			test.runnerOpts.CACert = caCrt
+		case test.name == "invalid runner using test cert to no prefix Internet server":
+			test.runnerOpts.Destination = "fortio.istio.io:443"
+			test.runnerOpts.CACert = caCrt
+		}
+		_, err := RunGRPCTest(&test.runnerOpts)
+		if err == nil {
+			t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+		}
+		test.runnerOpts.AllowInitialErrors = true
+		res, err := RunGRPCTest(&test.runnerOpts)
+		if err != nil {
+			t.Errorf("Test case: %s failed due to unexpected error: %v", test.name, err)
+			return
+		}
+		totalReq := res.DurationHistogram.Count
+		numErrors := res.RetCodes[-1]
+		if totalReq != numErrors {
+			t.Errorf("Test case: %s failed. Mismatch between requests %d and errors %v",
+				test.name, totalReq, res.RetCodes)
+		}
 	}
 }
 
