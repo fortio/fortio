@@ -65,7 +65,8 @@ lint: dependencies
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
-# this really also tests the release process and build on windows,mac,linux
+# This really also tests the release process and build on windows,mac,linux
+# and the docker images, not just "web" (ui) stuff that it also exercises.
 release-test:
 	./Webtest.sh
 

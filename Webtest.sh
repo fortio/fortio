@@ -10,10 +10,15 @@ CERT=/etc/ssl/certs/ca-certificates.crt
 TEST_CERT_VOL=/etc/ssl/certs/fortio
 DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
+DOCKERSECVOLNAME=fortio_certs
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
 function cleanup {
+  set +e # errors are ok during cleanup
   docker stop $DOCKERID
-  docker rm $DOCKERNAME
+  docker rm -f $DOCKERNAME
+  docker stop $DOCKERSECID # may not be set yet, it's ok
+  docker rm -f $DOCKERSECNAME
+  docker rm -f $DOCKERSECVOLNAME
 }
 trap cleanup EXIT
 set -e
@@ -73,21 +78,18 @@ docker exec $DOCKERNAME /usr/local/bin/fortio grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-DOCKERVOLID=$(docker create -v $TEST_CERT_VOL --name certs istio/fortio.build:v7 /bin/true)
+DOCKERVOLID=$(docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME istio/fortio.build:v7 /bin/true)
 # copying cert files into the certs volume of the dummy container
-for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f certs:$TEST_CERT_VOL/$f; done
+for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f $DOCKERSECVOLNAME:$TEST_CERT_VOL/$f; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.
 # mounts certs volume from dummy container.
-DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --volumes-from certs istio/fortio:webtest server -cacert $TEST_CERT_VOL/ca.crt -cert $TEST_CERT_VOL/server.crt -key $TEST_CERT_VOL/server.key -grpc-port 8097 -http-port 8098 -redirect-port 8090 -loglevel $LOGLEVEL)
+DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --volumes-from $DOCKERSECVOLNAME istio/fortio:webtest server -cacert $TEST_CERT_VOL/ca.crt -cert $TEST_CERT_VOL/server.crt -key $TEST_CERT_VOL/server.key -grpc-port 8097 -http-port 8098 -redirect-port 8090 -loglevel $LOGLEVEL)
 # run secure grpcping and load tests
 docker exec $DOCKERSECNAME /usr/local/bin/fortio grpcping -cacert $TEST_CERT_VOL/ca.crt localhost:8097
 docker exec $DOCKERSECNAME /usr/local/bin/fortio load -grpc -cacert $TEST_CERT_VOL/ca.crt localhost:8097
 # switch to report mode
 docker stop $DOCKERID
 docker rm $DOCKERNAME
-docker stop $DOCKERSECID
-docker rm $DOCKERSECNAME
-docker rm $DOCKERVOLID
 DOCKERNAME=fortio_report
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME istio/fortio:webtest report -loglevel $LOGLEVEL)
 docker ps
@@ -100,3 +102,4 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
+# cleanup() will clean everything left even on success
