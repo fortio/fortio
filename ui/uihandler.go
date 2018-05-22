@@ -293,9 +293,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			o := fgrpc.GRPCRunnerOptions{
 				RunnerOptions: ro,
 				Destination:   url,
-				Secure:        grpcSecure,
 				UsePing:       grpcPing,
 				Delay:         grpcPingDelay,
+			}
+			if grpcSecure {
+				o.Destination = addHTTPS(url)
 			}
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else {
@@ -975,4 +977,22 @@ func setHostAndPort(inputPort string, addr *net.TCPAddr) {
 	if strings.HasPrefix(inputPort, ":") {
 		urlHostPort = "localhost" + portStr
 	}
+}
+
+// addHTTPS replaces "http://" in url with "https://" or prepends "https://"
+// if url does not contain prefix "http://".
+func addHTTPS(url string) (pURL string) {
+	if strings.HasPrefix(url, "http://") {
+		log.Infof("Replacing http scheme with https for url: %s", url)
+		pURL = strings.TrimPrefix(url, "http://")
+		return "https://" + pURL
+	}
+	// return url unchanged since it already has "https://"
+	if strings.HasPrefix(url, "https://") {
+		return url
+	}
+	// url must not contain any prefix, so add https prefix
+	log.Infof("Prepending https:// to url: %s", url)
+	pURL = "https://" + url
+	return pURL
 }

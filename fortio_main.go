@@ -83,10 +83,13 @@ var (
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
-	grpcSecureFlag    = flag.Bool("grpc-secure", false, "Use secure transport (tls) for GRPC")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
-	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
+	certFlag          = flag.String("cert", "", "Path to the certificate file to be used for GRPC server TLS")
+	keyFlag           = flag.String("key", "", "Path to the key file used for GRPC server TLS")
+	caCertFlag        = flag.String("cacert", "",
+		"Path to a custom CA certificate file to be used for the GRPC client TLS, if empty, use https:// prefix for standard internet CAs TLS")
+	echoPortFlag = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
+	grpcPortFlag = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port or \""+disabled+"\" to not start the grpc server.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
@@ -177,7 +180,7 @@ func main() {
 	case "server":
 		isServer = true
 		if *grpcPortFlag != disabled {
-			fgrpc.PingServer(*grpcPortFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
@@ -275,7 +278,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			Secure:             *grpcSecureFlag,
+			CACert:             *caCertFlag,
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
@@ -351,12 +354,12 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
-	tls := *grpcSecureFlag
+	cert := *caCertFlag
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, tls, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, tls, count, *payloadFlag, *pingDelayFlag)
+		_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *pingDelayFlag)
 	}
 	if err != nil {
 		// already logged

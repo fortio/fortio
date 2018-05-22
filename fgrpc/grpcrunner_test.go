@@ -30,34 +30,135 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+var (
+	// Generated from "make cert"
+	caCrt  = "../cert-tmp/ca.crt"
+	svrCrt = "../cert-tmp/server.crt"
+	svrKey = "../cert-tmp/server.key"
+	// used for failure test cases
+	failCrt = "../missing/cert.crt"
+	failKey = "../missing/cert.key"
+)
+
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "bar", 0)
-	destination := fmt.Sprintf("localhost:%d", port)
+	iPort := PingServer("0", "", "", "bar", 0)
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	opts := GRPCRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS:        100,
-			Resolution: 0.00001,
+	ro := periodic.RunnerOptions{
+		QPS:        10, // some internet outcalls, not too fast
+		Resolution: 0.00001,
+	}
+
+	tests := []struct {
+		name       string
+		runnerOpts GRPCRunnerOptions
+		expect     bool
+	}{
+		{
+			name: "valid insecure runner with payload",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+				Payload:     "test",
+			},
+			expect: true,
 		},
-		Destination: destination,
-		Profiler:    "test.profile",
+		{
+			name: "valid secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+				CACert:      caCrt,
+			},
+			expect: true,
+		},
+		{
+			name: "invalid insecure runner to secure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+			},
+			expect: false,
+		},
+		{
+			name: "valid secure runner using nil credentials to Internet https server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io:443",
+			},
+			expect: true,
+		},
+		{
+			name: "valid secure runner using nil credentials to Internet https server, default https port, trailing slash",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io/",
+			},
+			expect: true,
+		},
+		{
+			name: "invalid secure runner to insecure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "fortio.istio.io:443",
+			},
+			expect: false,
+		},
+		{
+			name: "invalid secure runner using test cert to https prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io:443",
+				CACert:      caCrt,
+			},
+			expect: false,
+		},
+		{
+			name: "invalid secure runner using test cert to no prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "fortio.istio.io:443",
+			},
+			expect: false,
+		},
+		{
+			name: "invalid name in secure runner cert",
+			runnerOpts: GRPCRunnerOptions{
+				Destination:  sDest,
+				CACert:       caCrt,
+				CertOverride: "invalidName",
+			},
+			expect: false,
+		},
+		{
+			name: "invalid cert for secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+				CACert:      "../missing/cert.crt",
+			},
+			expect: false,
+		},
 	}
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	totalReq := res.DurationHistogram.Count
-	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
-	if totalReq != ok {
-		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	for _, test := range tests {
+		test.runnerOpts.Profiler = "test.profile"
+		test.runnerOpts.RunnerOptions = ro
+		res, err := RunGRPCTest(&test.runnerOpts)
+		switch {
+		case err != nil && test.expect:
+			t.Errorf("Test case: %s failed due to unexpected error: %v", test.name, err)
+			return
+		case err == nil && !test.expect:
+			t.Errorf("Test case: %s failed due to unexpected response: %v", test.name, res)
+			return
+		case err == nil && test.expect:
+			totalReq := res.DurationHistogram.Count
+			ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+			if totalReq != ok {
+				t.Errorf("Test case: %s failed. Mismatch between requests %d and ok %v",
+					test.name, totalReq, res.RetCodes)
+			}
+		}
 	}
 }
 
 func TestGRPCRunnerMaxStreams(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "maxstream", 10)
+	port := PingServer("0", "", "", "maxstream", 10)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -106,31 +207,94 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "svc1", 0)
-	destination := fmt.Sprintf("localhost:%d", port)
+	iPort := PingServer("0", "", "", "bar", 0)
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	opts := GRPCRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS:      10,
-			Duration: 1 * time.Second,
+	ro := periodic.RunnerOptions{
+		QPS:      10,
+		Duration: 1 * time.Second,
+	}
+
+	tests := []struct {
+		name       string
+		runnerOpts GRPCRunnerOptions
+	}{
+		{
+			name: "insecure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+			},
 		},
-		Destination: destination,
-		Service:     "svc2",
+		{
+			name: "secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+				CACert:      caCrt,
+			},
+		},
+		{
+			name: "invalid insecure runner to secure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+			},
+		},
+		{
+			name: "invalid secure runner to insecure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+				CACert:      caCrt,
+			},
+		},
+		{
+			name: "invalid name in runner cert",
+			runnerOpts: GRPCRunnerOptions{
+				Destination:  sDest,
+				CACert:       caCrt,
+				CertOverride: "invalidName",
+			},
+		},
+		{
+			name: "valid runner using nil credentials to Internet https server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io/",
+			},
+		},
+		{
+			name: "invalid runner using test cert to https prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io/",
+				CACert:      caCrt,
+			},
+		},
+		{
+			name: "invalid runner using test cert to no prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "fortio.istio.io:443",
+				CACert:      caCrt,
+			},
+		},
 	}
-	_, err := RunGRPCTest(&opts)
-	if err == nil {
-		t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
-	}
-	opts.AllowInitialErrors = true
-	res, err := RunGRPCTest(&opts)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	totalReq := res.DurationHistogram.Count
-	numErrors := res.RetCodes[-1]
-	if totalReq != numErrors {
-		t.Errorf("Mismatch between requests %d and errors %v", totalReq, res.RetCodes)
+	for _, test := range tests {
+		test.runnerOpts.Service = "svc2"
+		test.runnerOpts.RunnerOptions = ro
+		_, err := RunGRPCTest(&test.runnerOpts)
+		if err == nil {
+			t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
+		}
+		test.runnerOpts.AllowInitialErrors = true
+		res, err := RunGRPCTest(&test.runnerOpts)
+		if err != nil {
+			t.Errorf("Test case: %s failed due to unexpected error: %v", test.name, err)
+			return
+		}
+		totalReq := res.DurationHistogram.Count
+		numErrors := res.RetCodes[-1]
+		if totalReq != numErrors {
+			t.Errorf("Test case: %s failed. Mismatch between requests %d and errors %v",
+				test.name, totalReq, res.RetCodes)
+		}
 	}
 }
 
