@@ -60,92 +60,83 @@ func TestGRPCRunner(t *testing.T) {
 		{
 			name: "valid insecure runner with payload",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   iDest,
-				Payload:       "test",
+				Destination: iDest,
+				Payload:     "test",
 			},
 			expect: true,
 		},
 		{
 			name: "valid secure runner",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   sDest,
-				CACert:        caCrt,
+				Destination: sDest,
+				CACert:      caCrt,
 			},
 			expect: true,
 		},
 		{
 			name: "invalid insecure runner to secure server",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   sDest,
+				Destination: sDest,
 			},
 			expect: false,
 		},
 		{
 			name: "valid secure runner using nil credentials to Internet https server",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   "https://fortio.istio.io:443",
+				Destination: "https://fortio.istio.io:443",
 			},
 			expect: true,
 		},
 		{
 			name: "valid secure runner using nil credentials to Internet https server, default https port, trailing slash",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   "https://fortio.istio.io/",
+				Destination: "https://fortio.istio.io/",
 			},
 			expect: true,
 		},
 		{
 			name: "invalid secure runner to insecure server",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   "fortio.istio.io:443",
+				Destination: "fortio.istio.io:443",
 			},
 			expect: false,
 		},
 		{
 			name: "invalid secure runner using test cert to https prefix Internet server",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   "https://fortio.istio.io:443",
-				CACert:        caCrt,
+				Destination: "https://fortio.istio.io:443",
+				CACert:      caCrt,
 			},
 			expect: false,
 		},
 		{
 			name: "invalid secure runner using test cert to no prefix Internet server",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   "fortio.istio.io:443",
+				Destination: "fortio.istio.io:443",
 			},
 			expect: false,
 		},
 		{
 			name: "invalid name in secure runner cert",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   sDest,
-				CACert:        caCrt,
-				CertOverride:  "invalidName",
+				Destination:  sDest,
+				CACert:       caCrt,
+				CertOverride: "invalidName",
 			},
 			expect: false,
 		},
 		{
 			name: "invalid cert for secure runner",
 			runnerOpts: GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   sDest,
-				CACert:        "../missing/cert.crt",
+				Destination: sDest,
+				CACert:      "../missing/cert.crt",
 			},
 			expect: false,
 		},
 	}
 	for _, test := range tests {
 		test.runnerOpts.Profiler = "test.profile"
+		test.runnerOpts.RunnerOptions = ro
 		res, err := RunGRPCTest(&test.runnerOpts)
 		switch {
 		case err != nil && test.expect:
