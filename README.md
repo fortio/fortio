@@ -64,15 +64,11 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	url from the first request is used)
   -c int
 	Number of connections/goroutine/threads (default 4)
-  -cacert
-	Full path to the CA certificate required for grpc TLS. Applicable to the grpcping
-	and load commands. Prepend the grpc destination with "https://" if standard TLS
-	(i.e. valid server certificate signed by a trusted CA) is desired.
-	-cacert will override "https://" if both are provided.
-	(default "") means no user-provided ca certificate.
-  -cert
-	Full path to the certificate used for grpc TLS. Applicable to the server command.
-	(default "") means no user-provided certificate.
+  -cacert string
+	Path to a custom CA certificate file to be used for the GRPC client TLS,
+	if empty, use https:// prefix for standard internet CAs TLS
+  -cert string
+	Path to the certificate file to be used for GRPC server TLS
   -compression
 	Enable http compression
   -curl
@@ -119,9 +115,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -k	Do not verify certs in https connections
   -keepalive
 	Keep connection alive (only for fast http 1.1) (default true)
-  -key
-	Full path to the key required for grpc TLS. Applicable to the server command.
-	(default "") means no user-provided key.
+  -key string
+	Path to the key file used for GRPC server TLS
   -labels string
 	Additional config data/labels to add to the resulting JSON, defaults to
 	target URL and hostname

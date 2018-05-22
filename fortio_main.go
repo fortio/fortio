@@ -84,11 +84,12 @@ var (
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
 	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	certFlag          = flag.String("cert", "", "Path to the certificate used for GRPC server TLS")
-	keyFlag           = flag.String("key", "", "Path to the key used for GRPC server TLS")
-	caCertFlag        = flag.String("cacert", "", "Path to the CA certificate used for GRPC client TLS")
-	echoPortFlag      = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
-	grpcPortFlag      = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
+	certFlag          = flag.String("cert", "", "Path to the certificate file to be used for GRPC server TLS")
+	keyFlag           = flag.String("key", "", "Path to the key file used for GRPC server TLS")
+	caCertFlag        = flag.String("cacert", "",
+		"Path to a custom CA certificate file to be used for the GRPC client TLS, if empty, use https:// prefix for standard internet CAs TLS")
+	echoPortFlag = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
+	grpcPortFlag = flag.String("grpc-port", fgrpc.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or port or \""+disabled+"\" to not start the grpc server.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
