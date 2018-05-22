@@ -47,12 +47,9 @@ func TestGRPCRunner(t *testing.T) {
 	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	ro := GRPCRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS:        100,
-			Resolution: 0.00001,
-		},
-		Profiler: "test.profile",
+	ro := periodic.RunnerOptions{
+		QPS:        10, // some internet outcalls, not too fast
+		Resolution: 0.00001,
 	}
 
 	tests := []struct {
@@ -61,80 +58,94 @@ func TestGRPCRunner(t *testing.T) {
 		expect     bool
 	}{
 		{
-			name:       "valid insecure runner with payload",
-			runnerOpts: ro,
-			expect:     true,
+			name: "valid insecure runner with payload",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   iDest,
+				Payload:       "test",
+			},
+			expect: true,
 		},
 		{
-			name:       "valid secure runner",
-			runnerOpts: ro,
-			expect:     true,
+			name: "valid secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   sDest,
+				CACert:        caCrt,
+			},
+			expect: true,
 		},
 		{
-			name:       "invalid insecure runner to secure server",
-			runnerOpts: ro,
-			expect:     false,
+			name: "invalid insecure runner to secure server",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   sDest,
+			},
+			expect: false,
 		},
 		{
-			name:       "valid secure runner using nil credentials to Internet https server",
-			runnerOpts: ro,
-			expect:     true,
+			name: "valid secure runner using nil credentials to Internet https server",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   "https://fortio.istio.io:443",
+			},
+			expect: true,
 		},
 		{
-			name:       "invalid secure runner to insecure server",
-			runnerOpts: ro,
-			expect:     false,
+			name: "valid secure runner using nil credentials to Internet https server, default https port, trailing slash",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   "https://fortio.istio.io/",
+			},
+			expect: true,
 		},
 		{
-			name:       "invalid secure runner using test cert to https prefix Internet server",
-			runnerOpts: ro,
-			expect:     false,
+			name: "invalid secure runner to insecure server",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   "fortio.istio.io:443",
+			},
+			expect: false,
 		},
 		{
-			name:       "invalid secure runner using test cert to no prefix Internet server",
-			runnerOpts: ro,
-			expect:     false,
+			name: "invalid secure runner using test cert to https prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   "https://fortio.istio.io:443",
+				CACert:        caCrt,
+			},
+			expect: false,
 		},
 		{
-			name:       "invalid name in secure runner cert",
-			runnerOpts: ro,
-			expect:     false,
+			name: "invalid secure runner using test cert to no prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   "fortio.istio.io:443",
+			},
+			expect: false,
 		},
 		{
-			name:       "invalid cert for secure runner",
-			runnerOpts: ro,
-			expect:     false,
+			name: "invalid name in secure runner cert",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   sDest,
+				CACert:        caCrt,
+				CertOverride:  "invalidName",
+			},
+			expect: false,
+		},
+		{
+			name: "invalid cert for secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				RunnerOptions: ro,
+				Destination:   sDest,
+				CACert:        "../missing/cert.crt",
+			},
+			expect: false,
 		},
 	}
 	for _, test := range tests {
-		switch {
-		case test.name == "valid insecure runner with payload":
-			test.runnerOpts.Destination = iDest
-			test.runnerOpts.Payload = "test"
-		case test.name == "valid secure runner":
-			test.runnerOpts.Destination = sDest
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid insecure runner to secure server":
-			test.runnerOpts.Destination = sDest
-		case test.name == "valid secure runner using nil credentials to Internet https server":
-			test.runnerOpts.Destination = "https://fortio.istio.io:443"
-		case test.name == "invalid secure runner to insecure server":
-			test.runnerOpts.Destination = iDest
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid secure runner using test cert to https prefix Internet server":
-			test.runnerOpts.Destination = "https://fortio.istio.io:443"
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid secure runner using test cert to no prefix Internet server":
-			test.runnerOpts.Destination = "fortio.istio.io:443"
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid name in secure runner cert":
-			test.runnerOpts.Destination = sDest
-			test.runnerOpts.CACert = caCrt
-			test.runnerOpts.CertOverride = "invalidName"
-		case test.name == "invalid cert for secure runner":
-			test.runnerOpts.Destination = sDest
-			test.runnerOpts.CACert = "../missing/cert.crt"
-		}
+		test.runnerOpts.Profiler = "test.profile"
 		res, err := RunGRPCTest(&test.runnerOpts)
 		switch {
 		case err != nil && test.expect:
@@ -210,12 +221,9 @@ func TestGRPCRunnerWithError(t *testing.T) {
 	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 
-	ro := GRPCRunnerOptions{
-		RunnerOptions: periodic.RunnerOptions{
-			QPS:      10,
-			Duration: 1 * time.Second,
-		},
-		Service: "svc2",
+	ro := periodic.RunnerOptions{
+		QPS:      10,
+		Duration: 1 * time.Second,
 	}
 
 	tests := []struct {
@@ -223,63 +231,63 @@ func TestGRPCRunnerWithError(t *testing.T) {
 		runnerOpts GRPCRunnerOptions
 	}{
 		{
-			name:       "insecure runner",
-			runnerOpts: ro,
+			name: "insecure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+			},
 		},
 		{
-			name:       "secure runner",
-			runnerOpts: ro,
+			name: "secure runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+				CACert:      caCrt,
+			},
 		},
 		{
-			name:       "invalid insecure runner to secure server",
-			runnerOpts: ro,
+			name: "invalid insecure runner to secure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: sDest,
+			},
 		},
 		{
-			name:       "invalid secure runner to insecure server",
-			runnerOpts: ro,
+			name: "invalid secure runner to insecure server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+				CACert:      caCrt,
+			},
 		},
 		{
-			name:       "invalid name in runner cert",
-			runnerOpts: ro,
+			name: "invalid name in runner cert",
+			runnerOpts: GRPCRunnerOptions{
+				Destination:  sDest,
+				CACert:       caCrt,
+				CertOverride: "invalidName",
+			},
 		},
 		{
-			name:       "valid runner using nil credentials to Internet https server",
-			runnerOpts: ro,
+			name: "valid runner using nil credentials to Internet https server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io/",
+			},
 		},
 		{
-			name:       "invalid runner using test cert to https prefix Internet server",
-			runnerOpts: ro,
+			name: "invalid runner using test cert to https prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "https://fortio.istio.io/",
+				CACert:      caCrt,
+			},
 		},
 		{
-			name:       "invalid runner using test cert to no prefix Internet server",
-			runnerOpts: ro,
+			name: "invalid runner using test cert to no prefix Internet server",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: "fortio.istio.io:443",
+				CACert:      caCrt,
+			},
 		},
 	}
 	for _, test := range tests {
-		switch {
-		case test.name == "insecure runner":
-			test.runnerOpts.Destination = iDest
-		case test.name == "secure runner":
-			test.runnerOpts.Destination = sDest
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid insecure runner to secure server":
-			test.runnerOpts.Destination = sDest
-		case test.name == "invalid secure runner to insecure server":
-			test.runnerOpts.Destination = iDest
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid name in runner cert":
-			test.runnerOpts.Destination = sDest
-			test.runnerOpts.CACert = caCrt
-			test.runnerOpts.CertOverride = "invalidName"
-		case test.name == "valid runner using nil credentials to Internet https server":
-			test.runnerOpts.Destination = "https://fortio.istio.io:443"
-		case test.name == "invalid runner using test cert to https prefix Internet server":
-			test.runnerOpts.Destination = "https://fortio.istio.io:443"
-			test.runnerOpts.CACert = caCrt
-		case test.name == "invalid runner using test cert to no prefix Internet server":
-			test.runnerOpts.Destination = "fortio.istio.io:443"
-			test.runnerOpts.CACert = caCrt
-		}
+		test.runnerOpts.Service = "svc2"
+		test.runnerOpts.RunnerOptions = ro
 		_, err := RunGRPCTest(&test.runnerOpts)
 		if err == nil {
 			t.Error("Was expecting initial error when connecting to secure without AllowInitialErrors")
