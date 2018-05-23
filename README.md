@@ -32,6 +32,11 @@ curl -L https://github.com/istio/fortio/releases/download/v0.11.0/fortio-linux_x
  | sudo tar -C / -xvzpf -
 ```
 
+On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
+```shell
+brew install fortio
+```
+
 Once `fortio server` is running, you can visit its web UI at http://localhost:8080/fortio/
 
 You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
