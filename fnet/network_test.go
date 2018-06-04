@@ -195,7 +195,7 @@ func TestJoinHostAndPort(t *testing.T) {
 	for _, test := range tests {
 		urlHostPort := JoinHostAndPort(test.inputPort, test.addr)
 		if urlHostPort != test.expected {
-			t.Errorf("%s was expected but %s is received ", test.expected, urlHostPort)
+			t.Errorf("%s is received  but %s was expected", urlHostPort, test.expected)
 		}
 	}
 }

@@ -453,6 +453,7 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 // addHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) (pURL string) {
+	url = strings.ToLower(url)
 	if strings.HasPrefix(url, "http://") {
 		log.Infof("Replacing http scheme with https for url: %s", url)
 		pURL = strings.TrimPrefix(url, "http://")

@@ -946,15 +946,17 @@ func TestAddHTTPS(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"www.google.com", "https://www.google.com"},
-		{"http://www.google.com", "https://www.google.com"},
-		{"https://www.google.com", "https://www.google.com"},
+		{"foo.com", "https://foo.com"},
+		{"http://foo.com", "https://foo.com"},
+		{"https://foo.com", "https://foo.com"},
+		{"hTTps://foo.com", "https://foo.com"},
+		{"hTTp://foo.com", "https://foo.com"},
 	}
 
 	for _, test := range tests {
 		output := AddHTTPS(test.input)
 		if output != test.expected {
-			t.Errorf("%s was expected but %s is received ", test.expected, output)
+			t.Errorf("%s is received but %s was expected", output, test.expected)
 		}
 	}
 }
