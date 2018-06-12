@@ -191,6 +191,9 @@ func TestJoinHostAndPort(t *testing.T) {
 				IP:   []byte{192, 168, 30, 14},
 				Port: 9090,
 			}, "192.168.30.14:9090"},
+		{"8080",
+			nil,
+			"localhost:8080"},
 	}
 	for _, test := range tests {
 		urlHostPort := JoinHostAndPort(test.inputPort, test.addr)

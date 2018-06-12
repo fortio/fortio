@@ -15,7 +15,6 @@
 package fhttp // import "istio.io/fortio/fhttp"
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -24,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	"istio.io/fortio/log"
@@ -452,38 +450,28 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
+const (
+	httpText  = "http://"
+	httpsText = "https://"
+)
+
 // addHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) (pURL string) {
-	if url, hasPrefix := toLowerCasePrefix(url, "http://"); hasPrefix {
-		log.Infof("Replacing http scheme with https for url: %s", url)
-		pURL = strings.TrimPrefix(url, "http://")
-		return "https://" + pURL
-	}
-	// return url unchanged since it already has "https://"
-	if url, hasPrefix := toLowerCasePrefix(url, "https://"); hasPrefix {
-		return url
+	if len(url) > len(httpText) {
+		if strings.EqualFold(url[0:len(httpText)], httpText) {
+			log.Infof("Replacing http scheme with https for url: %s", url)
+			pURL = url[len(httpText):]
+			return httpsText + pURL
+		}
+		// return url unchanged since it already has "https://"
+		if strings.EqualFold(url[0:len(httpsText)], httpsText) {
+			pURL = url[len(httpsText):]
+			return httpsText + pURL
+		}
 	}
 	// url must not contain any prefix, so add https prefix
 	log.Infof("Prepending https:// to url: %s", url)
-	pURL = "https://" + url
+	pURL = httpsText + url
 	return pURL
-}
-
-// toLowerCasePrefix makes prefix lower case in s. If prefix is not found in s
-// returns input s and false otherwise, returns s with lowered case prefix
-func toLowerCasePrefix(s string, prefix string) (string, bool) {
-	if len(s) < len(prefix) {
-		return s, false
-	}
-	var buffer bytes.Buffer
-	for i, char := range prefix {
-		if char == unicode.ToLower(rune(s[i])) {
-			buffer.WriteRune(char)
-		} else {
-			return s, false
-		}
-	}
-	buffer.WriteString(s[len(prefix):])
-	return buffer.String(), true
 }
