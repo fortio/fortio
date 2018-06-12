@@ -129,7 +129,7 @@ all: test install lint docker-version docker-push-internal
 # Makefile should be edited first
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
-# than run make update-build-image and diff checked etc see release/README.md
+# then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
