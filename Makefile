@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/istio/fortio
-BUILD_IMAGE_TAG := v7
+BUILD_IMAGE_TAG := v8
 BUILD_IMAGE := istio/fortio.build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -128,8 +128,8 @@ all: test install lint docker-version docker-push-internal
 
 # Makefile should be edited first
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
-	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in /etc/ssl/certs/ca-certificates.crt
-# Ran make update-build-image BUILD_IMAGE_TAG=v1 DOCKER_PREFIX=fortio/fortio
+	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
+# than run make update-build-image and diff checked etc see release/README.md
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
