@@ -19,8 +19,9 @@ CERT_TEMP_DIR := ./cert-tmp/
 # go test ./... and others run in vendor/ and cause problems (!)
 # so to avoid `can't load package: package istio.io/fortio/...: no Go files in ...`
 # note that only go1.8 needs the grep -v vendor but we are compatible with 1.8
-PACKAGES:=$(shell go list ./... | grep -v vendor)
-
+# ps: can't use go list (and get packages as canonical istio.io/fortio/x)
+# as somehow that makes gometaliner silently not find/report errors...
+PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp)")
 # Marker for whether vendor submodule is here or not already
 GRPC_DIR:=./vendor/google.golang.org/grpc
 
