@@ -94,7 +94,7 @@ pull:
 	git pull
 	$(MAKE) submodule-sync
 
-# https://github.com/istio/istio/wiki/Vendor-FAQ#how-do-i-add--change-a-dependency
+# https://github.com/istio/vendor-istio#how-do-i-add--change-a-dependency
 # PS: for fortio no dependencies should be added, only grpc updated.
 depend.status:
 	@echo "No error means your Gopkg.* are in sync and ok with vendor/"
@@ -127,7 +127,9 @@ all: test install lint docker-version docker-push-internal
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
 
-# Makefile should be edited first
+# When changing the build image, this Makefile should be edited first
+# (bump BUILD_IMAGE_TAG), also change this list if the image is used in
+# more places.
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
@@ -161,3 +163,37 @@ authorize:
 .PHONY: install lint install-linters coverage webtest release-test update-build-image
 
 .PHONY: local-lint update-build-image-tag release submodule submodule-sync pull certs certs-clean
+
+# Targets used for official builds (initially from Dockerfile)
+BUILD_DIR := /tmp/fortio_build
+LIB_DIR := /usr/local/lib/fortio
+DATA_DIR := /var/lib/istio/fortio
+OFFICIAL_BIN := ../fortio_go1.10.bin
+GOOS := linux
+GO_BIN := go
+GIT_STATUS := $(strip $(shell git status --porcelain | wc -l))
+GIT_TAG := $(shell git describe --tags --match 'v*')
+
+# Putting spaces in linker replaced variables is hard but does work.
+# This sets up the static directory outside of the go source tree and
+# the default data directory to a /var/lib/... volume
+# + rest of build time/git/version magic.
+
+$(BUILD_DIR)/build-info.txt:
+	-mkdir -p $(BUILD_DIR)
+	echo "$(shell date +'%Y-%m-%d %H:%M') $(shell git rev-parse HEAD)" > $@
+
+$(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
+	echo "-s -X istio.io/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
+  -X \"istio.io/fortio/version.buildInfo=$(shell cat $<)\" \
+  -X istio.io/fortio/version.tag=$(GIT_TAG) \
+  -X istio.io/fortio/version.gitstatus=$(GIT_STATUS)" | tee $@
+
+.PHONY: official-build official-build-version
+
+official-build: $(BUILD_DIR)/link-flags.txt
+	$(GO_BIN) version
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) istio.io/fortio
+	
+official-build-version: official-build
+	$(OFFICIAL_BIN) version
