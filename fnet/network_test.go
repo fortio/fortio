@@ -178,11 +178,11 @@ func TestJoinHostAndPort(t *testing.T) {
 		{"8080", &net.TCPAddr{
 			IP:   []byte{192, 168, 2, 3},
 			Port: 8081,
-		}, "192.168.2.3:8081"},
-		{"8081", &net.TCPAddr{
-			IP:   []byte{192, 168, 30, 14},
+		}, "localhost:8081"},
+		{"192.168.30.14:8081", &net.TCPAddr{
+			IP:   []byte{192, 168, 30, 15},
 			Port: 8080,
-		}, "192.168.30.14:8080"},
+		}, "192.168.30.15:8080"},
 		{":8080",
 			&net.TCPAddr{
 				IP:   []byte{0, 0, 0, 1},
@@ -190,6 +190,16 @@ func TestJoinHostAndPort(t *testing.T) {
 			},
 			"localhost:8080"},
 		{"",
+			&net.TCPAddr{
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
+			}, "localhost:9090"},
+		{"http",
+			&net.TCPAddr{
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
+			}, "localhost:9090"},
+		{"192.168.30.14:9090",
 			&net.TCPAddr{
 				IP:   []byte{192, 168, 30, 14},
 				Port: 9090,

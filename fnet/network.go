@@ -165,7 +165,7 @@ func ProxyToDestination(listenPort string, destination string) *net.TCPAddr {
 // when the original port binding input didn't specify an address
 func NormalizeHostPort(inputPort string, addr *net.TCPAddr) string {
 	urlHostPort := addr.String()
-	if strings.HasPrefix(inputPort, ":") || !strings.Contains(urlHostPort, ":") {
+	if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
 		urlHostPort = fmt.Sprintf("localhost:%d", addr.Port)
 	}
 	return urlHostPort
