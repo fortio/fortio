@@ -451,27 +451,25 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 }
 
 const (
-	httpText  = "http://"
-	httpsText = "https://"
+	httpPrefix  = "http://"
+	httpsPrefix = "https://"
 )
 
 // addHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
-func AddHTTPS(url string) (pURL string) {
-	if len(url) > len(httpText) {
-		if strings.EqualFold(url[0:len(httpText)], httpText) {
+func AddHTTPS(url string) string {
+	if len(url) > len(httpPrefix) {
+		if strings.EqualFold(url[:len(httpPrefix)], httpPrefix) {
 			log.Infof("Replacing http scheme with https for url: %s", url)
-			pURL = url[len(httpText):]
-			return httpsText + pURL
+			return httpsPrefix + url[len(httpPrefix):]
 		}
-		// return url unchanged since it already has "https://"
-		if strings.EqualFold(url[0:len(httpsText)], httpsText) {
-			pURL = url[len(httpsText):]
-			return httpsText + pURL
+		// returns url with normalized lowercase https prefix
+		if strings.EqualFold(url[:len(httpsPrefix)], httpsPrefix) {
+			return httpsPrefix + url[len(httpsPrefix):]
 		}
 	}
 	// url must not contain any prefix, so add https prefix
 	log.Infof("Prepending https:// to url: %s", url)
-	pURL = httpsText + url
-	return pURL
+	return httpsPrefix + url
+
 }

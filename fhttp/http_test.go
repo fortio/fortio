@@ -946,6 +946,7 @@ func TestAddHTTPS(t *testing.T) {
 		input    string
 		expected string
 	}{
+		{"foo", "https://foo"},
 		{"foo.com", "https://foo.com"},
 		{"http://foo.com", "https://foo.com"},
 		{"https://foo.com", "https://foo.com"},
@@ -956,6 +957,7 @@ func TestAddHTTPS(t *testing.T) {
 		{"hTTp://foo.com/ABOUT.html", "https://foo.com/ABOUT.html"},
 		{"hTTp://foo.com/BaR", "https://foo.com/BaR"},
 		{"https://foo.com/BaR", "https://foo.com/BaR"},
+		{"http", "https://http"},
 	}
 
 	for _, test := range tests {

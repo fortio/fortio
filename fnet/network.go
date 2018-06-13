@@ -161,19 +161,12 @@ func ProxyToDestination(listenPort string, destination string) *net.TCPAddr {
 	return Proxy(listenPort, ResolveDestination(destination))
 }
 
-// Join the input Host And Port in the form of hostname:port, ip:port or :port. And returns
-func JoinHostAndPort(inputPort string, addr *net.TCPAddr) string {
-	urlHostPort := inputPort
-	var portStr string
-	if addr != nil {
-		urlHostPort = addr.String()
-		portStr = fmt.Sprintf(":%d", addr.Port)
-	}
-	if !strings.Contains(inputPort, ":") {
-		inputPort = ":" + inputPort
-	}
-	if !strings.HasPrefix(portStr, ":") {
-		urlHostPort = "localhost" + inputPort
+// NormalizeHostPort generates host:port string for the address or uses localhost instead of [::]
+// when the original port binding input didn't specify an address
+func NormalizeHostPort(inputPort string, addr *net.TCPAddr) string {
+	urlHostPort := addr.String()
+	if strings.HasPrefix(inputPort, ":") || !strings.Contains(urlHostPort, ":") {
+		urlHostPort = fmt.Sprintf("localhost:%d", addr.Port)
 	}
 	return urlHostPort
 }

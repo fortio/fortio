@@ -175,28 +175,28 @@ func TestJoinHostAndPort(t *testing.T) {
 		addr      *net.TCPAddr
 		expected  string
 	}{
-		{":8080", &net.TCPAddr{
+		{"8080", &net.TCPAddr{
 			IP:   []byte{192, 168, 2, 3},
 			Port: 8081,
 		}, "192.168.2.3:8081"},
-		{":8081", &net.TCPAddr{
+		{"8081", &net.TCPAddr{
 			IP:   []byte{192, 168, 30, 14},
 			Port: 8080,
 		}, "192.168.30.14:8080"},
 		{":8080",
-			nil,
+			&net.TCPAddr{
+				IP:   []byte{0, 0, 0, 1},
+				Port: 8080,
+			},
 			"localhost:8080"},
 		{"",
 			&net.TCPAddr{
 				IP:   []byte{192, 168, 30, 14},
 				Port: 9090,
 			}, "192.168.30.14:9090"},
-		{"8080",
-			nil,
-			"localhost:8080"},
 	}
 	for _, test := range tests {
-		urlHostPort := JoinHostAndPort(test.inputPort, test.addr)
+		urlHostPort := NormalizeHostPort(test.inputPort, test.addr)
 		if urlHostPort != test.expected {
 			t.Errorf("%s is received  but %s was expected", urlHostPort, test.expected)
 		}

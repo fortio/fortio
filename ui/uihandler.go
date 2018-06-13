@@ -914,7 +914,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		fs := http.FileServer(http.Dir(dataDir))
 		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	}
-	urlHostPort = fnet.JoinHostAndPort(port, addr)
+	urlHostPort = fnet.NormalizeHostPort(port, addr)
 	uiMsg := fmt.Sprintf("UI started - visit:\nhttp://%s%s", urlHostPort, uiPath)
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
@@ -935,7 +935,7 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	if addr == nil {
 		return false
 	}
-	urlHostPort = fnet.JoinHostAndPort(port, addr)
+	urlHostPort = fnet.NormalizeHostPort(port, addr)
 	uiMsg := fmt.Sprintf("Browse only UI started - visit:\nhttp://%s/", urlHostPort)
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
