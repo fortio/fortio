@@ -455,7 +455,7 @@ const (
 	httpsPrefix = "https://"
 )
 
-// addHTTPS replaces "http://" in url with "https://" or prepends "https://"
+// AddHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) string {
 	if len(url) > len(httpPrefix) {
