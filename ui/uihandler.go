@@ -962,30 +962,22 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	return true
 }
 
-// setHostAndPort takes hostport in the form of hostname:port, ip:port or :port,
-// sets the urlHostPort variable.
+// setHostAndPort takes the bind address and sets urlHostPort as bind-address:port
+// unless the original input port didn't specify an address (starts with : or is just a port,
+// no colon) in which case it uses localhost:port
 func setHostAndPort(inputPort string, addr *net.TCPAddr) {
-	urlHostPort = inputPort
-	portStr := inputPort
-	if addr != nil {
-		urlHostPort = addr.String()
-		portStr = fmt.Sprintf(":%d", addr.Port)
-	}
-	if !strings.Contains(inputPort, ":") {
-		inputPort = ":" + inputPort
-	}
-	if strings.HasPrefix(inputPort, ":") {
-		urlHostPort = "localhost" + portStr
+	urlHostPort = addr.String()
+	if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
+		urlHostPort = fmt.Sprintf("localhost:%d", addr.Port)
 	}
 }
 
 // addHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
-func addHTTPS(url string) (pURL string) {
+func addHTTPS(url string) string {
 	if strings.HasPrefix(url, "http://") {
 		log.Infof("Replacing http scheme with https for url: %s", url)
-		pURL = strings.TrimPrefix(url, "http://")
-		return "https://" + pURL
+		return "https://" + strings.TrimPrefix(url, "http://")
 	}
 	// return url unchanged since it already has "https://"
 	if strings.HasPrefix(url, "https://") {
@@ -993,6 +985,5 @@ func addHTTPS(url string) (pURL string) {
 	}
 	// url must not contain any prefix, so add https prefix
 	log.Infof("Prepending https:// to url: %s", url)
-	pURL = "https://" + url
-	return pURL
+	return "https://" + url
 }
