@@ -169,6 +169,50 @@ func TestResolveIpV6(t *testing.T) {
 	}
 }
 
+func TestJoinHostAndPort(t *testing.T) {
+	var tests = []struct {
+		inputPort string
+		addr      *net.TCPAddr
+		expected  string
+	}{
+		{"8080", &net.TCPAddr{
+			IP:   []byte{192, 168, 2, 3},
+			Port: 8081,
+		}, "localhost:8081"},
+		{"192.168.30.14:8081", &net.TCPAddr{
+			IP:   []byte{192, 168, 30, 15},
+			Port: 8080,
+		}, "192.168.30.15:8080"},
+		{":8080",
+			&net.TCPAddr{
+				IP:   []byte{0, 0, 0, 1},
+				Port: 8080,
+			},
+			"localhost:8080"},
+		{"",
+			&net.TCPAddr{
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
+			}, "localhost:9090"},
+		{"http",
+			&net.TCPAddr{
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
+			}, "localhost:9090"},
+		{"192.168.30.14:9090",
+			&net.TCPAddr{
+				IP:   []byte{192, 168, 30, 14},
+				Port: 9090,
+			}, "192.168.30.14:9090"},
+	}
+	for _, test := range tests {
+		urlHostPort := NormalizeHostPort(test.inputPort, test.addr)
+		if urlHostPort != test.expected {
+			t.Errorf("%s is received  but %s was expected", urlHostPort, test.expected)
+		}
+	}
+}
+
 // --- max logging for tests
 
 func init() {

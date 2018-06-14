@@ -941,6 +941,33 @@ func TestChangeMaxPayloadSize(t *testing.T) {
 	}
 }
 
+func TestAddHTTPS(t *testing.T) {
+	var tests = []struct {
+		input    string
+		expected string
+	}{
+		{"foo", "https://foo"},
+		{"foo.com", "https://foo.com"},
+		{"http://foo.com", "https://foo.com"},
+		{"https://foo.com", "https://foo.com"},
+		{"hTTps://foo.com", "https://foo.com"},
+		{"hTTp://foo.com", "https://foo.com"},
+		{"http://fOO.com", "https://fOO.com"},
+		{"hTTp://foo.com/about.html", "https://foo.com/about.html"},
+		{"hTTp://foo.com/ABOUT.html", "https://foo.com/ABOUT.html"},
+		{"hTTp://foo.com/BaR", "https://foo.com/BaR"},
+		{"https://foo.com/BaR", "https://foo.com/BaR"},
+		{"http", "https://http"},
+	}
+
+	for _, test := range tests {
+		output := AddHTTPS(test.input)
+		if output != test.expected {
+			t.Errorf("%s is received but %s was expected", output, test.expected)
+		}
+	}
+}
+
 // --- for bench mark/comparison
 
 func asciiFold0(str string) []byte {
