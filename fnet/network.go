@@ -25,6 +25,15 @@ import (
 	"istio.io/fortio/version"
 )
 
+const (
+	// DefaultGRPCPort is the Fortio gRPC server default port number.
+	DefaultGRPCPort  = "8079"
+	DefaultHTTPPort  = "80"
+	DefaultHTTPSPort = "443"
+	PrefixHTTP       = "http://"
+	PrefixHTTPS      = "https://"
+)
+
 // NormalizePort parses port and returns host:port if port is in the form
 // of host:port already or :port if port is only a port (doesn't contain :).
 func NormalizePort(port string) string {
