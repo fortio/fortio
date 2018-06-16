@@ -461,7 +461,7 @@ func AddHTTPS(url string) string {
 		}
 		// returns url with normalized lowercase https prefix
 		if strings.EqualFold(url[:len(fnet.PrefixHTTPS)], fnet.PrefixHTTPS) {
-			return fnet.PrefixHTTPS + url[len(fnet.PrefixHTTP):]
+			return fnet.PrefixHTTPS + url[len(fnet.PrefixHTTPS):]
 		}
 	}
 	// url must not contain any prefix, so add https prefix
