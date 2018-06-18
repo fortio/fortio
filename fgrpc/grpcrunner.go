@@ -248,7 +248,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 // a hostname, IP address, hostname:port, or ip:port. The original dest is
 // returned if dest is an invalid hostname or invalid IP address. An http/https
 // prefix is removed from dest if one exists and the port number is set to
-// DefaultHTTPPort for http, DefaultHTTPSPort for https, or DefaultGRPCPort
+// StandardHTTPPort for http, StandardHTTPSPort for https, or DefaultGRPCPort
 // if http, https, or :port is not specified in dest.
 // TODO: change/fix this (NormalizePort and more)
 func grpcDestination(dest string) (parsedDest string) {
@@ -258,12 +258,12 @@ func grpcDestination(dest string) (parsedDest string) {
 	switch {
 	case strings.HasPrefix(dest, fnet.PrefixHTTP):
 		parsedDest = strings.TrimSuffix(strings.Replace(dest, fnet.PrefixHTTP, "", 1), "/")
-		port = fnet.DefaultHTTPPort
+		port = fnet.StandardHTTPPort
 		log.Infof("stripping http scheme. grpc destination: %v: grpc port: %s",
 			parsedDest, port)
 	case strings.HasPrefix(dest, fnet.PrefixHTTPS):
 		parsedDest = strings.TrimSuffix(strings.Replace(dest, fnet.PrefixHTTPS, "", 1), "/")
-		port = fnet.DefaultHTTPSPort
+		port = fnet.StandardHTTPSPort
 		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
 			parsedDest, port)
 	default:

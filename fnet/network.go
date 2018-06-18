@@ -28,10 +28,10 @@ import (
 const (
 	// DefaultGRPCPort is the Fortio gRPC server default port number.
 	DefaultGRPCPort = "8079"
-	// DefaultHTTPPort is the Standard http port number.
-	DefaultHTTPPort = "80"
-	// DefaultHTTPSPort is the Standard https port number.
-	DefaultHTTPSPort = "443"
+	// StandardHTTPPort is the Standard http port number.
+	StandardHTTPPort = "80"
+	// StandardHTTPSPort is the Standard https port number.
+	StandardHTTPSPort = "443"
 	// PrefixHTTP is a constant value for representing http protocol that can be added prefix of url
 	PrefixHTTP = "http://"
 	// PrefixHTTPS is a constant value for representing secure http protocol that can be added prefix of url
