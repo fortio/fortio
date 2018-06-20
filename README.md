@@ -204,7 +204,7 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -ui-path string
 	http server URI for UI, empty turns off that part (more secure) (default
 	"/fortio/")
-  -user
+  -user string
     User credentials for basic authentication (for http). Input data format
     should be user:password
 </pre>
