@@ -133,6 +133,8 @@ type HTTPOptions struct {
 	// Host is treated specially, remember that one separately.
 	hostOverride   string
 	HTTPReqTimeOut time.Duration // timeout value for http request
+
+	UserCredentials string // user credentials for authorization
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -145,6 +147,10 @@ func (h *HTTPOptions) ResetHeaders() {
 func (h *HTTPOptions) InitHeaders() {
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
+	err := ValidateAndAddBasicAuthentication(h)
+	if err != nil {
+		log.Debugf("User credential is not valid. %v", err)
+	}
 }
 
 // GetHeaders returns the current set of headers.

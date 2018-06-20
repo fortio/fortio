@@ -15,6 +15,7 @@
 package fhttp // import "istio.io/fortio/fhttp"
 
 import (
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -451,6 +452,19 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
+// ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
+// if user credentials are valid.
+func ValidateAndAddBasicAuthentication(h *HTTPOptions) error {
+	if len(h.UserCredentials) <= 0 {
+		return nil // user credential is not entered
+	}
+	s := strings.SplitN(h.UserCredentials, ":", 2)
+	if len(s) != 2 {
+		return fmt.Errorf("invalid user credentials are used %s. Expected format user:password", h.UserCredentials)
+	}
+	return h.AddAndValidateExtraHeader("Authorization: " + generateBase64UserCredentials(h.UserCredentials))
+}
+
 // AddHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) string {
@@ -467,5 +481,9 @@ func AddHTTPS(url string) string {
 	// url must not contain any prefix, so add https prefix
 	log.Infof("Prepending https:// to url: %s", url)
 	return fnet.PrefixHTTPS + url
+}
 
+// generateBase64UserCredentials encodes the user credential to base64 and adds a Basic as prefix.
+func generateBase64UserCredentials(userCredentials string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userCredentials))
 }

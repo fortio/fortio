@@ -65,6 +65,8 @@ var (
 	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
+	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
+		" should be user:password")
 	// QuietFlag is the value of -quiet.
 	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 )
@@ -118,6 +120,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
+	httpOpts.UserCredentials = *userCredentialsFlag
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true
