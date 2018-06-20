@@ -452,19 +452,6 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
-// ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
-// if user credentials are valid.
-func ValidateAndAddBasicAuthentication(h *HTTPOptions) error {
-	if len(h.UserCredentials) <= 0 {
-		return nil // user credential is not entered
-	}
-	s := strings.SplitN(h.UserCredentials, ":", 2)
-	if len(s) != 2 {
-		return fmt.Errorf("invalid user credentials are used %s. Expected format user:password", h.UserCredentials)
-	}
-	return h.AddAndValidateExtraHeader("Authorization: " + generateBase64UserCredentials(h.UserCredentials))
-}
-
 // AddHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) string {

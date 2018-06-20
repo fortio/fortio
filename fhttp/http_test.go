@@ -980,7 +980,8 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := ValidateAndAddBasicAuthentication(&test.o)
+		test.o.ResetHeaders()
+		err := test.o.ValidateAndAddBasicAuthentication()
 		if err == nil && test.isCredentialsValid {
 			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
 		}

@@ -147,10 +147,24 @@ func (h *HTTPOptions) ResetHeaders() {
 func (h *HTTPOptions) InitHeaders() {
 	h.ResetHeaders()
 	h.extraHeaders.Add("User-Agent", userAgent)
-	err := ValidateAndAddBasicAuthentication(h)
+	err := h.ValidateAndAddBasicAuthentication()
 	if err != nil {
 		log.Debugf("User credential is not valid. %v", err)
 	}
+}
+
+// ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
+// if user credentials are valid.
+func (h *HTTPOptions) ValidateAndAddBasicAuthentication() error {
+	if len(h.UserCredentials) <= 0 {
+		return nil // user credential is not entered
+	}
+	s := strings.SplitN(h.UserCredentials, ":", 2)
+	if len(s) != 2 {
+		return fmt.Errorf("invalid user credentials are used %s. Expected format user:password", h.UserCredentials)
+	}
+	h.extraHeaders.Add("Authorization", generateBase64UserCredentials(h.UserCredentials))
+	return nil
 }
 
 // GetHeaders returns the current set of headers.
