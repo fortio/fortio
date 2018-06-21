@@ -149,7 +149,7 @@ func (h *HTTPOptions) InitHeaders() {
 	h.extraHeaders.Add("User-Agent", userAgent)
 	err := h.ValidateAndAddBasicAuthentication()
 	if err != nil {
-		log.Debugf("User credential is not valid. %v", err)
+		log.Errf("User credential is not valid. %v", err)
 	}
 }
 

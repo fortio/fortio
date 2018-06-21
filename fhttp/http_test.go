@@ -974,15 +974,15 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 		isCredentialsValid bool
 		isAuthHeaderAdded  bool
 	}{
-		{HTTPOptions{UserCredentials: "foo:foo"}, false, true},
-		{HTTPOptions{UserCredentials: "foofoo"}, true, false},
-		{HTTPOptions{UserCredentials: ""}, false, false},
+		{HTTPOptions{UserCredentials: "foo:foo"}, true, true},
+		{HTTPOptions{UserCredentials: "foofoo"}, false, false},
+		{HTTPOptions{UserCredentials: ""}, true, false},
 	}
 
 	for _, test := range tests {
 		test.o.ResetHeaders()
 		err := test.o.ValidateAndAddBasicAuthentication()
-		if err == nil && test.isCredentialsValid {
+		if err == nil && !test.isCredentialsValid {
 			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
 		}
 		if test.isAuthHeaderAdded && len(test.o.extraHeaders.Get("Authorization")) <= 0 {
