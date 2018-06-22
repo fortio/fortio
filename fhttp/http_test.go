@@ -968,6 +968,30 @@ func TestAddHTTPS(t *testing.T) {
 	}
 }
 
+func TestValidateAndAddBasicAuthentication(t *testing.T) {
+	var tests = []struct {
+		o                  HTTPOptions
+		isCredentialsValid bool
+		isAuthHeaderAdded  bool
+	}{
+		{HTTPOptions{UserCredentials: "foo:foo"}, true, true},
+		{HTTPOptions{UserCredentials: "foofoo"}, false, false},
+		{HTTPOptions{UserCredentials: ""}, true, false},
+	}
+
+	for _, test := range tests {
+		test.o.ResetHeaders()
+		err := test.o.ValidateAndAddBasicAuthentication()
+		if err == nil && !test.isCredentialsValid {
+			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
+		}
+		if test.isAuthHeaderAdded && len(test.o.extraHeaders.Get("Authorization")) <= 0 {
+			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
+		}
+
+	}
+}
+
 // --- for bench mark/comparison
 
 func asciiFold0(str string) []byte {

@@ -15,6 +15,7 @@
 package fhttp // import "istio.io/fortio/fhttp"
 
 import (
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -467,5 +468,9 @@ func AddHTTPS(url string) string {
 	// url must not contain any prefix, so add https prefix
 	log.Infof("Prepending https:// to url: %s", url)
 	return fnet.PrefixHTTPS + url
+}
 
+// generateBase64UserCredentials encodes the user credential to base64 and adds a Basic as prefix.
+func generateBase64UserCredentials(userCredentials string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userCredentials))
 }
