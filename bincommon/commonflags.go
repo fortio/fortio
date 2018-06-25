@@ -25,6 +25,8 @@ import (
 	"os"
 	"strings"
 
+	"io"
+
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
@@ -44,13 +46,25 @@ func (f *headersFlagList) Set(value string) error {
 // -- end of functions for -H support
 
 // FlagsUsage prints end of the usage() (flags part + error message).
-func FlagsUsage(msgs ...interface{}) {
+func FlagsUsage(writer io.Writer, msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "flags are:\n")
+	fmt.Fprintf(writer, "flags are:\n")
+	flag.CommandLine.SetOutput(writer)
 	flag.PrintDefaults()
-	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
-	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
-	os.Exit(1)
+	if len(msgs) > 0 {
+		fmt.Fprint(writer, msgs...) // nolint: gas
+	}
+}
+
+// Usage prints usage according to input writer
+func Usage(writer io.Writer) {
+	fmt.Fprintf(writer, "Φορτίο %s usageErr:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+		version.Short(),
+		os.Args[0],
+		"where command is one of: load (load testing), server (starts grpc ping and",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
+		"server), redirect (redirect only server), or curl (single URL debug).",
+		"where target is a url (http load tests) or host:port (grpc health test).")
 }
 
 var (

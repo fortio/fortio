@@ -32,7 +32,7 @@ func usage(msgs ...interface{}) {
 	fmt.Fprintf(os.Stderr, "Φορτίο fortio-curl %s usage:\n\t%s [flags] url\n",
 		version.Short(),
 		os.Args[0])
-	bincommon.FlagsUsage(msgs...)
+	bincommon.FlagsUsage(os.Stderr, msgs...)
 }
 
 func main() {
