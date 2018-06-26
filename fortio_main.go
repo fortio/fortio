@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"runtime"
@@ -56,33 +55,10 @@ func (f *proxiesFlagList) Set(value string) error {
 // Prints usage and error messages with StdErr writer
 func usageErr(msgs ...interface{}) {
 	// nolint: gas
-	usage(os.Stderr)
+	bincommon.Usage(os.Stderr)
 	bincommon.FlagsUsage(os.Stderr, msgs...)
 	os.Stderr.WriteString("\n") // nolint: gas, errcheck
 	os.Exit(1)
-}
-
-// Usage prints usage according to input writer
-func usage(writer io.Writer) {
-	fmt.Fprintf(writer, "Φορτίο %s usageErr:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
-		version.Short(),
-		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
-		"server), redirect (redirect only server), or curl (single URL debug).",
-		"where target is a url (http load tests) or host:port (grpc health test).")
-}
-
-// versionInfo prints application name and its version.
-func versionInfo() {
-	fmt.Fprintf(os.Stdout, "Φορτίο version %s \n",
-		version.Short())
-}
-
-// Prints usage with stdOut writer
-func usageInfo() {
-	usage(os.Stdout)
-	bincommon.FlagsUsage(os.Stdout)
 }
 
 // Attention: every flag that is common to http client goes to bincommon/
@@ -218,14 +194,6 @@ func main() {
 		}
 	case "grpcping":
 		grpcClient()
-	case "help":
-		fallthrough
-	case "-help":
-		usageInfo()
-	case "version":
-		fallthrough
-	case "-version":
-		versionInfo()
 	default:
 		usageErr("Error: unknown command ", command)
 	}

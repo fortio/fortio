@@ -29,6 +29,7 @@ import (
 
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
+	"istio.io/fortio/version"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -53,6 +54,17 @@ func FlagsUsage(writer io.Writer, msgs ...interface{}) {
 	if len(msgs) > 0 {
 		fmt.Fprint(writer, msgs...) // nolint: gas
 	}
+}
+
+// Usage prints usage according to input writer
+func Usage(writer io.Writer) {
+	fmt.Fprintf(writer, "Φορτίο %s usageErr:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+		version.Short(),
+		os.Args[0],
+		"where command is one of: load (load testing), server (starts grpc ping and",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
+		"server), redirect (redirect only server), or curl (single URL debug).",
+		"where target is a url (http load tests) or host:port (grpc health test).")
 }
 
 var (
@@ -80,6 +92,24 @@ func SharedMain() {
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
+	// Special case so `fcurl -version` and `--version` and `version` and ... work
+	if len(os.Args) < 2 {
+		return
+	}
+	if strings.Contains(os.Args[1], "version") {
+		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
+			// so `fortio version -s` is the short version; everything else is long/full
+			fmt.Println(version.Short())
+		} else {
+			fmt.Println(version.Long())
+		}
+		os.Exit(0)
+	}
+	if strings.Contains(os.Args[1], "help") {
+		Usage(os.Stdout)
+		FlagsUsage(os.Stdout)
+		os.Exit(0)
+	}
 }
 
 // FetchURL is fetching url content and exiting with 1 upon error.
