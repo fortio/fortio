@@ -105,7 +105,7 @@ func SharedMain() {
 		}
 		os.Exit(0)
 	}
-	if strings.Contains(os.Args[1], "help") {
+	if strings.Contains(os.Args[0], "fortio") && strings.Contains(os.Args[1], "help") {
 		Usage(os.Stdout)
 		FlagsUsage(os.Stdout)
 		os.Exit(0)

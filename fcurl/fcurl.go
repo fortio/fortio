@@ -33,6 +33,8 @@ func usage(msgs ...interface{}) {
 		version.Short(),
 		os.Args[0])
 	bincommon.FlagsUsage(os.Stderr, msgs...)
+	os.Stderr.WriteString("\n") // nolint: gas, errcheck
+	os.Exit(1)
 }
 
 func main() {
