@@ -56,17 +56,6 @@ func FlagsUsage(writer io.Writer, msgs ...interface{}) {
 	}
 }
 
-// Usage prints usage according to input writer
-func Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "Φορτίο %s usageErr:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
-		version.Short(),
-		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
-		"server), redirect (redirect only server), or curl (single URL debug).",
-		"where target is a url (http load tests) or host:port (grpc health test).")
-}
-
 var (
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")

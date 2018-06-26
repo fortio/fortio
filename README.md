@@ -133,6 +133,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	grpc ping client mode: use health instead of ping
   -healthservice string
 	which service string to pass to health check
+  -help
+    Shows the available flags and operations
   -http-port string
 	http echo server port. Can be in the form of host:port, ip:port or port.
 	(default "8080")
@@ -207,6 +209,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -user string
     	User credentials for basic authentication (for http). Input data format
     	should be user:password
+  -version
+    Show the current version of fortio project
 </pre>
 </details>
 
