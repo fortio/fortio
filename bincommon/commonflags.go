@@ -58,7 +58,7 @@ func FlagsUsage(writer io.Writer, msgs ...interface{}) {
 
 // Usage prints usage according to input writer
 func Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "Φορτίο %s usageErr:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+	fmt.Fprintf(writer, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
