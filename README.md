@@ -56,7 +56,9 @@ or start simple http and grpc ping servers, as well as a basic web UI, result gr
 with the `server` command or issue grpc ping messages using the `grpcping` command.
 It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command).
 You can run just the redirector with `redirect`.
-Lastly if you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+You can learn current Fortio version using `version` command.
+Lastly, you can learn which flags are available using `help` command.
 
 Most important flags for http load generation:
 
@@ -133,8 +135,6 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	grpc ping client mode: use health instead of ping
   -healthservice string
 	which service string to pass to health check
-  -help
-    Shows the available flags and operations
   -http-port string
 	http echo server port. Can be in the form of host:port, ip:port or port.
 	(default "8080")
@@ -209,8 +209,6 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -user string
     	User credentials for basic authentication (for http). Input data format
     	should be user:password
-  -version
-    Show the current version of fortio project
 </pre>
 </details>
 

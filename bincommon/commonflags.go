@@ -29,7 +29,6 @@ import (
 
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
-	"istio.io/fortio/version"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
@@ -81,16 +80,6 @@ func SharedMain() {
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
-	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
-		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
-			// so `fortio version -s` is the short version; everything else is long/full
-			fmt.Println(version.Short())
-		} else {
-			fmt.Println(version.Long())
-		}
-		os.Exit(0)
-	}
 }
 
 // FetchURL is fetching url content and exiting with 1 upon error.

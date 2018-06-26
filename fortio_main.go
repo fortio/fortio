@@ -75,7 +75,7 @@ func usage(writer io.Writer) {
 
 // versionInfo prints application name and its version.
 func versionInfo() {
-	fmt.Fprintf(os.Stdout, "Φορτίο version %s\n",
+	fmt.Fprintf(os.Stdout, "Φορτίο version %s \n",
 		version.Short())
 }
 
