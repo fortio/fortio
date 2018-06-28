@@ -46,25 +46,14 @@ func (f *headersFlagList) Set(value string) error {
 // -- end of functions for -H support
 
 // FlagsUsage prints end of the usage() (flags part + error message).
-func FlagsUsage(writer io.Writer, msgs ...interface{}) {
+func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(writer, "flags are:\n")
-	flag.CommandLine.SetOutput(writer)
+	fmt.Fprintf(w, "flags are:\n")
+	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
 	if len(msgs) > 0 {
-		fmt.Fprint(writer, msgs...) // nolint: gas
+		fmt.Fprintln(w, msgs...) // nolint: gas
 	}
-}
-
-// Usage prints usage according to input writer
-func Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
-		version.Short(),
-		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
-		"server), redirect (redirect only server), or curl (single URL debug).",
-		"where target is a url (http load tests) or host:port (grpc health test).")
 }
 
 var (
@@ -86,7 +75,7 @@ var (
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
-func SharedMain() {
+func SharedMain(usage func(io.Writer, ...interface{})) {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
@@ -105,9 +94,8 @@ func SharedMain() {
 		}
 		os.Exit(0)
 	}
-	if strings.Contains(os.Args[0], "fortio") && strings.Contains(os.Args[1], "help") {
-		Usage(os.Stdout)
-		FlagsUsage(os.Stdout)
+	if strings.Contains(os.Args[1], "help") {
+		usage(os.Stdout)
 		os.Exit(0)
 	}
 }

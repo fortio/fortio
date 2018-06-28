@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -52,12 +53,21 @@ func (f *proxiesFlagList) Set(value string) error {
 
 // -- end of functions for -P support
 
+// Usage to a writer
+func usage(w io.Writer, msgs ...interface{}) {
+	fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+		version.Short(),
+		os.Args[0],
+		"where command is one of: load (load testing), server (starts grpc ping and",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
+		"server), redirect (redirect only server), or curl (single URL debug).",
+		"where target is a url (http load tests) or host:port (grpc health test).")
+	bincommon.FlagsUsage(w, msgs...)
+}
+
 // Prints usage and error messages with StdErr writer
 func usageErr(msgs ...interface{}) {
-	// nolint: gas
-	bincommon.Usage(os.Stderr)
-	bincommon.FlagsUsage(os.Stderr, msgs...)
-	os.Stderr.WriteString("\n") // nolint: gas, errcheck
+	usage(os.Stderr)
 	os.Exit(1)
 }
 
@@ -134,8 +144,8 @@ var (
 )
 
 func main() {
-	bincommon.SharedMain()
 	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
 	}
