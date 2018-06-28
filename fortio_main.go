@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -52,17 +53,22 @@ func (f *proxiesFlagList) Set(value string) error {
 
 // -- end of functions for -P support
 
-// Prints usage
-func usage(msgs ...interface{}) {
-	// nolint: gas
-	fmt.Fprintf(os.Stderr, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+// Usage to a writer
+func usage(w io.Writer, msgs ...interface{}) {
+	fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
 		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
 		"server), redirect (redirect only server), or curl (single URL debug).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
-	bincommon.FlagsUsage(msgs...)
+	bincommon.FlagsUsage(w, msgs...)
+}
+
+// Prints usage and error messages with StdErr writer
+func usageErr(msgs ...interface{}) {
+	usage(os.Stderr, msgs...)
+	os.Exit(1)
 }
 
 // Attention: every flag that is common to http client goes to bincommon/
@@ -138,10 +144,10 @@ var (
 )
 
 func main() {
-	bincommon.SharedMain()
 	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
-		usage("Error: need at least 1 command parameter")
+		usageErr("Error: need at least 1 command parameter")
 	}
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
@@ -152,7 +158,7 @@ func main() {
 	}
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
-		usage("Unable to extract percentiles from -p: ", err)
+		usageErr("Unable to extract percentiles from -p: ", err)
 	}
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
@@ -199,7 +205,7 @@ func main() {
 	case "grpcping":
 		grpcClient()
 	default:
-		usage("Error: unknown command ", command)
+		usageErr("Error: unknown command ", command)
 	}
 	if isServer {
 		// To get a start time log/timestamp in the logs
@@ -220,7 +226,7 @@ func main() {
 
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
-		usage("Error: fortio load/curl needs a url or destination")
+		usageErr("Error: fortio load/curl needs a url or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if *httpsInsecureFlag {
@@ -348,7 +354,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 
 func grpcClient() {
 	if len(flag.Args()) != 1 {
-		usage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
+		usageErr("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
 	count := int(*exactlyFlag)

@@ -25,6 +25,8 @@ import (
 	"os"
 	"strings"
 
+	"io"
+
 	"istio.io/fortio/fhttp"
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
@@ -44,13 +46,14 @@ func (f *headersFlagList) Set(value string) error {
 // -- end of functions for -H support
 
 // FlagsUsage prints end of the usage() (flags part + error message).
-func FlagsUsage(msgs ...interface{}) {
+func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(os.Stderr, "flags are:\n")
+	fmt.Fprintf(w, "flags are:\n")
+	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
-	fmt.Fprint(os.Stderr, msgs...) // nolint: gas
-	os.Stderr.WriteString("\n")    // nolint: gas, errcheck
-	os.Exit(1)
+	if len(msgs) > 0 {
+		fmt.Fprintln(w, msgs...) // nolint: gas
+	}
 }
 
 var (
@@ -72,20 +75,27 @@ var (
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
-func SharedMain() {
+func SharedMain(usage func(io.Writer, ...interface{})) {
 	flag.Var(&headersFlags, "H", "Additional Header(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in kbytes")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
+	if len(os.Args) < 2 {
+		return
+	}
+	if strings.Contains(os.Args[1], "version") {
 		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
 			// so `fortio version -s` is the short version; everything else is long/full
 			fmt.Println(version.Short())
 		} else {
 			fmt.Println(version.Long())
 		}
+		os.Exit(0)
+	}
+	if strings.Contains(os.Args[1], "help") {
+		usage(os.Stdout)
 		os.Exit(0)
 	}
 }
