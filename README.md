@@ -75,11 +75,11 @@ Most important flags for http load generation:
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 
 
-Full list of command line flags:
+Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.0.0 usage:
+Φορτίο 1.0.1 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http
 echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
@@ -207,8 +207,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	http server URI for UI, empty turns off that part (more secure) (default
 	"/fortio/")
   -user string
-    	User credentials for basic authentication (for http). Input data format
-    	should be user:password
+	User credentials for basic authentication (for http). Input data format
+	should be user:password
 </pre>
 </details>
 
