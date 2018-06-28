@@ -67,7 +67,7 @@ func usage(w io.Writer, msgs ...interface{}) {
 
 // Prints usage and error messages with StdErr writer
 func usageErr(msgs ...interface{}) {
-	usage(os.Stderr)
+	usage(os.Stderr, msgs...)
 	os.Exit(1)
 }
 

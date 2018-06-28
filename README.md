@@ -57,7 +57,7 @@ with the `server` command or issue grpc ping messages using the `grpcping` comma
 It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command).
 You can run just the redirector with `redirect`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
-You can learn current Fortio version using `version` command.
+The `version` command will print version and build information, `fortio version -s` just the version.
 Lastly, you can learn which flags are available using `help` command.
 
 Most important flags for http load generation:
