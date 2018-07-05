@@ -175,6 +175,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
 	Payload string to send along
+  -payload-size int
+    Payload size to create random payload. Any written input payload is going to be overwritten
   -ping
 	grpc load test: use ping instead of health
   -profile string

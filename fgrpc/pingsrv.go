@@ -35,6 +35,8 @@ import (
 const (
 	// DefaultHealthServiceName is the default health service name used by fortio.
 	DefaultHealthServiceName = "ping"
+	// DefaultPayloadSize indicates the message size of the grpc message for ping
+	DefaultPayloadSize = -1
 )
 
 type pingSrv struct {
@@ -92,10 +94,13 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
-func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration) (float64, error) {
+func PingClientCall(serverAddr, cacert string, n int, payload string, payloadSize int, delay time.Duration) (float64, error) {
 	conn, err := Dial(serverAddr, cacert, "") // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
+	}
+	if payloadSize != DefaultPayloadSize {
+		payload = string(fnet.Payload[:payloadSize])
 	}
 	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)

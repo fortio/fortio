@@ -287,9 +287,9 @@ func generateSize(sizeInput string) (size int) {
 		}
 		size = s
 		log.Debugf("Parsed size %s -> %d", sizeInput, size)
-		if size > MaxPayloadSize {
-			log.Warnf("Requested size %d greater than max size %d, using max instead", size, MaxPayloadSize)
-			size = MaxPayloadSize
+		if size > fnet.MaxPayloadSize {
+			log.Warnf("Requested size %d greater than max size %d, using max instead", size, fnet.MaxPayloadSize)
+			size = fnet.MaxPayloadSize
 		}
 		return size
 	}
@@ -308,9 +308,9 @@ func generateSize(sizeInput string) (size int) {
 			log.Warnf("Bad input size %v -> %v, not a number before colon", sizeInput, l2[0])
 			return size
 		}
-		if s > MaxPayloadSize {
-			log.Warnf("Requested size %d greater than max size %d, using max instead", s, MaxPayloadSize)
-			s = MaxPayloadSize
+		if s > fnet.MaxPayloadSize {
+			log.Warnf("Requested size %d greater than max size %d, using max instead", s, fnet.MaxPayloadSize)
+			s = fnet.MaxPayloadSize
 		}
 		percStr := removeTrailingPercent(l2[1])
 		p, err := strconv.ParseFloat(percStr, 32)
