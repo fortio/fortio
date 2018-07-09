@@ -368,7 +368,12 @@ func grpcClient() {
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *payloadSizeFlag, *pingDelayFlag)
+		payloadSize := *payloadSizeFlag
+		if payloadSize > fgrpc.DefaultPayloadSize {
+			_, err = fgrpc.PingClientCallPayloadSize(host, cert, count, payloadSize, *pingDelayFlag)
+		} else {
+			_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *pingDelayFlag)
+		}
 	}
 	if err != nil {
 		// already logged
