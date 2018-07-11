@@ -142,7 +142,8 @@ var (
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 
-	payloadSizeFlag = flag.Int("payload-size", fgrpc.DefaultPayloadSize, "Payload size to create random payload")
+	payloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
+		" must be smaller than -maxpayloadsizekb")
 )
 
 func main() {
@@ -369,7 +370,7 @@ func grpcClient() {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
 		payloadSize := *payloadSizeFlag
-		if payloadSize > fgrpc.DefaultPayloadSize {
+		if payloadSize > 0 {
 			_, err = fgrpc.PingClientCallPayloadSize(host, cert, count, payloadSize, *pingDelayFlag)
 		} else {
 			_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *pingDelayFlag)

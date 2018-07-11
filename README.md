@@ -176,7 +176,7 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -payload string
 	Payload string to send along
   -payload-size int
-    Payload size to create random payload. Any written input payload is going to be overwritten
+    Additional random payload size, replaces -payload when set > 0, must be smaller than -maxpayloadsizekb
   -ping
 	grpc load test: use ping instead of health
   -profile string

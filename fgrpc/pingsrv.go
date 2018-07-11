@@ -35,8 +35,6 @@ import (
 const (
 	// DefaultHealthServiceName is the default health service name used by fortio.
 	DefaultHealthServiceName = "ping"
-	// DefaultPayloadSize indicates the message size of the grpc message for ping
-	DefaultPayloadSize = 0
 )
 
 type pingSrv struct {
