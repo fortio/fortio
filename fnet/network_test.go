@@ -235,6 +235,24 @@ func TestChangeMaxPayloadSize(t *testing.T) {
 	}
 }
 
+func TestValidatePayloadSize(t *testing.T) {
+	ChangeMaxPayloadSize(256 * 1024)
+	var tests = []struct {
+		input    int
+		expected int
+	}{
+		{257 * 1024, MaxPayloadSize},
+		{10, 10},
+	}
+	for _, test := range tests {
+		size := test.input
+		ValidatePayloadSize(&size)
+		if size != test.expected {
+			t.Errorf("Got %d, expected %d for ValidatePayloadSize(%d)", size, test.expected, test.input)
+		}
+	}
+}
+
 // --- max logging for tests
 
 func init() {
