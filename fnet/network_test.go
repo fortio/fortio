@@ -243,7 +243,8 @@ func TestValidatePayloadSize(t *testing.T) {
 	}{
 		{257 * 1024, MaxPayloadSize},
 		{10, 10},
-		{-1, MaxPayloadSize},
+		{0, 0},
+		{-1, 0},
 	}
 	for _, test := range tests {
 		size := test.input
