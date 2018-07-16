@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 )
 
@@ -481,7 +482,7 @@ func TestGenerateSize(t *testing.T) {
 		{"512:45,512:55", 512},
 		{"0", 0}, // and not -1
 		{"262144", 262144},
-		{"262145", MaxPayloadSize}, // MaxSize test
+		{"262145", fnet.MaxPayloadSize}, // MaxSize test
 		{"1000000:10,2000000:90", 262144},
 	}
 	for _, tst := range tests {
@@ -916,28 +917,6 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	}
 	if !bytes.Contains(data, expected) {
 		t.Errorf("Didn't find default header echoed back in fast client1 %s (expecting %s)", DebugSummary(data, 512), expected)
-	}
-}
-
-func TestChangeMaxPayloadSize(t *testing.T) {
-	var tests = []struct {
-		input    int
-		expected int
-	}{
-		// negative test cases
-		{-1, 0},
-		// lesser than current default
-		{0, 0},
-		{64, 64},
-		// Greater than current default
-		{987 * 1024, 987 * 1024},
-	}
-	for _, tst := range tests {
-		ChangeMaxPayloadSize(tst.input)
-		actual := len(payload)
-		if len(payload) != tst.expected {
-			t.Errorf("Got %d, expected %d for ChangeMaxPayloadSize(%d)", actual, tst.expected, tst.input)
-		}
 	}
 }
 

@@ -60,6 +60,12 @@ func TestPingServer(t *testing.T) {
 	if creds, err := credentials.NewServerTLSFromFile(failCrt, failKey); err == nil {
 		t.Errorf("Should have had an error instead of result %f for ping server", creds)
 	}
+	if latency, err := PingClientCallPayloadSize(sAddr, caCrt, 7, 10, 0); err != nil || latency <= 0 {
+		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
+	}
+	if latency, err := PingClientCallPayloadSize(iAddr, caCrt, 1, 0, 0); err == nil {
+		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
+	}
 	serving := grpc_health_v1.HealthCheckResponse_SERVING
 	if r, err := GrpcHealthCheck(iAddr, "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
