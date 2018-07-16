@@ -221,7 +221,7 @@ func ValidatePayloadSize(size *int) {
 		log.Warnf("Requested size %d greater than max size %d, using max instead", *size, MaxPayloadSize)
 		*size = MaxPayloadSize
 	} else if *size < 0 {
-		log.Warnf("Requested size %d is smaller than 0. Size is set 0", *size)
+		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
 		*size = 0
 	}
 }
