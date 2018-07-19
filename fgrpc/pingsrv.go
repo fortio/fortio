@@ -90,6 +90,14 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 	return addr.Port
 }
 
+// PingClientCallPayloadSize calls the ping service. It is similar to PingClientCall instead of using payload, it uses
+// payload size to generate random payload. Returns the average round trip in seconds.
+func PingClientCallPayloadSize(serverAddr, cacert string, n int, payloadSize int, delay time.Duration) (float64, error) {
+	fnet.ValidatePayloadSize(&payloadSize)
+	payload := string(fnet.Payload[:payloadSize])
+	return PingClientCall(serverAddr, cacert, n, payload, delay)
+}
+
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
 func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration) (float64, error) {

@@ -213,6 +213,48 @@ func TestJoinHostAndPort(t *testing.T) {
 	}
 }
 
+func TestChangeMaxPayloadSize(t *testing.T) {
+	var tests = []struct {
+		input    int
+		expected int
+	}{
+		// negative test cases
+		{-1, 0},
+		// lesser than current default
+		{0, 0},
+		{64, 64},
+		// Greater than current default
+		{987 * 1024, 987 * 1024},
+	}
+	for _, tst := range tests {
+		ChangeMaxPayloadSize(tst.input)
+		actual := len(Payload)
+		if len(Payload) != tst.expected {
+			t.Errorf("Got %d, expected %d for ChangeMaxPayloadSize(%d)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
+func TestValidatePayloadSize(t *testing.T) {
+	ChangeMaxPayloadSize(256 * 1024)
+	var tests = []struct {
+		input    int
+		expected int
+	}{
+		{257 * 1024, MaxPayloadSize},
+		{10, 10},
+		{0, 0},
+		{-1, 0},
+	}
+	for _, test := range tests {
+		size := test.input
+		ValidatePayloadSize(&size)
+		if size != test.expected {
+			t.Errorf("Got %d, expected %d for ValidatePayloadSize(%d)", size, test.expected, test.input)
+		}
+	}
+}
+
 // --- max logging for tests
 
 func init() {
