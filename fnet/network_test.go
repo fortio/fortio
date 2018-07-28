@@ -255,6 +255,73 @@ func TestValidatePayloadSize(t *testing.T) {
 	}
 }
 
+func TestGenerateRandomPayload(t *testing.T) {
+	ChangeMaxPayloadSize(256 * 1024)
+	var tests = []struct {
+		input    int
+		expected int
+	}{
+		{257 * 1024, MaxPayloadSize},
+		{10, 10},
+		{0, 0},
+		{-1, 0},
+	}
+	for _, test := range tests {
+		text := GenerateRandomPayload(test.input)
+		if len(text) != test.expected {
+			t.Errorf("Got %d, expected %d for GenerateRandomPayload(%d) payload size", len(text), test.expected, test.input)
+		}
+	}
+}
+
+func TestReadFileForPayload(t *testing.T) {
+	var tests = []struct {
+		payloadFile  string
+		expectedText string
+	}{
+		{payloadFile: "mockfile", expectedText: "{\"test\":\"test\"}"},
+		{payloadFile: "", expectedText: ""},
+	}
+
+	for _, test := range tests {
+		text, err := ReadFileForPayload(test.payloadFile)
+		if err != nil && test.expectedText != "" {
+			t.Errorf("Error should not be happened for ReadFileForPayload")
+		}
+		if text != test.expectedText {
+			t.Errorf("Got %s, expected %s for ReadFileForPayload()", text, test.expectedText)
+		}
+	}
+}
+
+func TestGeneratePayload(t *testing.T) {
+	var tests = []struct {
+		payloadFile    string
+		payloadSize    int
+		payload        string
+		expectedResLen int
+	}{
+		{payloadFile: "mockfile", payloadSize: 123, payload: "",
+			expectedResLen: len("{\"test\":\"test\"}")},
+		{payloadFile: "nottestmock", payloadSize: 0, payload: "{\"test\":\"test1\"}",
+			expectedResLen: 0},
+		{payloadFile: "", payloadSize: 123, payload: "{\"test\":\"test1\"}",
+			expectedResLen: 123},
+		{payloadFile: "", payloadSize: 0, payload: "{\"test\":\"test1\"}",
+			expectedResLen: len("{\"test\":\"test1\"}")},
+		{payloadFile: "", payloadSize: 0, payload: "",
+			expectedResLen: 0},
+	}
+
+	for _, test := range tests {
+		payload := GeneratePayload(test.payloadFile, test.payloadSize, test.payload)
+		if len(payload) != test.expectedResLen {
+			t.Errorf("Got %d, expected %d for GeneratePayload() as payload length", len(payload),
+				test.expectedResLen)
+		}
+	}
+}
+
 // --- max logging for tests
 
 func init() {

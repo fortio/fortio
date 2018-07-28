@@ -17,6 +17,7 @@ package fnet // import "istio.io/fortio/fnet"
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"strings"
@@ -223,5 +224,37 @@ func ValidatePayloadSize(size *int) {
 	} else if *size < 0 {
 		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
 		*size = 0
+	}
+}
+
+// GenerateRandomPayload generates a random payload with given input size
+func GenerateRandomPayload(payloadSize int) string {
+	ValidatePayloadSize(&payloadSize)
+	return string(Payload[:payloadSize])
+}
+
+// ReadFileForPayload reads the file from given input path
+func ReadFileForPayload(payloadFilePath string) (string, error) {
+	data, err := ioutil.ReadFile(payloadFilePath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// GeneratePayload generates a payload with given inputs.
+// First tries filePath, then random payload, at last payload
+func GeneratePayload(payloadFilePath string, payloadSize int, payload string) string {
+	if len(payloadFilePath) > 0 {
+		p, err := ReadFileForPayload(payloadFilePath)
+		if err != nil {
+			log.Warnf("File read operation is failed %v", err)
+			return ""
+		}
+		return p
+	} else if payloadSize > 0 {
+		return GenerateRandomPayload(payloadSize)
+	} else {
+		return payload
 	}
 }

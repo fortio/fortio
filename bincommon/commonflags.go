@@ -28,6 +28,7 @@ import (
 	"io"
 
 	"istio.io/fortio/fhttp"
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
 )
@@ -72,6 +73,15 @@ var (
 		" should be user:password")
 	// QuietFlag is the value of -quiet.
 	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
+
+	contentTypeFlag = flag.String("content-type", "", "Sets a content type for http request")
+	// PayloadSizeFlag is the value of -payload-size
+	PayloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
+		" must be smaller than -maxpayloadsizekb")
+	// PayloadFlag is the value of -payload
+	PayloadFlag = flag.String("payload", "", "Payload string to send along")
+	// PayloadFileFlag is the value of -paylaod-file
+	PayloadFileFlag = flag.String("payload-file", "", "File that is going to be used as payload, replaces -payload when set")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -131,6 +141,8 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
 	httpOpts.UserCredentials = *userCredentialsFlag
+	httpOpts.ContentType = *contentTypeFlag
+	httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true

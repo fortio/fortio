@@ -135,15 +135,11 @@ var (
 	doHealthFlag   = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
-	payloadFlag    = flag.String("payload", "", "Payload string to send along")
 	pingDelayFlag  = flag.Duration("grpc-ping-delay", 0, "grpc ping delay in response")
 	streamsFlag    = flag.Int("s", 1, "Number of streams per grpc connection")
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
-
-	payloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
-		" must be smaller than -maxpayloadsizekb")
 )
 
 func main() {
@@ -240,6 +236,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		return
 	}
 	url := httpOpts.URL
+	payload := httpOpts.Payload
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
@@ -292,7 +289,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
-			Payload:            *payloadFlag,
+			Payload:            payload,
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
 		}
@@ -369,12 +366,8 @@ func grpcClient() {
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		payloadSize := *payloadSizeFlag
-		if payloadSize > 0 {
-			_, err = fgrpc.PingClientCallPayloadSize(host, cert, count, payloadSize, *pingDelayFlag)
-		} else {
-			_, err = fgrpc.PingClientCall(host, cert, count, *payloadFlag, *pingDelayFlag)
-		}
+		payload := fnet.GeneratePayload(*bincommon.PayloadFileFlag, *bincommon.PayloadSizeFlag, *bincommon.PayloadFileFlag)
+		_, err = fgrpc.PingClientCall(host, cert, count, payload, *pingDelayFlag)
 	}
 	if err != nil {
 		// already logged

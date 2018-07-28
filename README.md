@@ -109,6 +109,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Path to the certificate file to be used for GRPC server TLS
   -compression
 	Enable http compression
+  -content-type
+    Sets a content type for http request
   -curl
 	Just fetch the content once
   -data-dir string
@@ -175,6 +177,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
 	Payload string to send along
+  -payload-file string
+    File path that is collected as a payload, replaces -payload and -payload-size when set
   -payload-size int
     Additional random payload size, replaces -payload when set > 0, must be smaller than -maxpayloadsizekb
   -ping

@@ -678,6 +678,93 @@ func TestPayloadSizeSmall(t *testing.T) {
 	}
 }
 
+func TestPayloadForClient(t *testing.T) {
+	var tests = []struct {
+		contentType    string
+		payload        string
+		expectedMethod string
+	}{
+		{"application/json",
+			"{\"test\" : \"test\"}",
+			"POST"},
+		{"application/xml",
+			"<test test=\"test\">",
+			"POST"},
+		{"",
+			"",
+			"GET"},
+	}
+	for _, test := range tests {
+		hOptions := HTTPOptions{}
+		hOptions.URL = "http://foo.com"
+		hOptions.ContentType = test.contentType
+		hOptions.Payload = test.payload
+		hOptions.DisableFastClient = true
+		fetcher := NewClient(&hOptions)
+		client, ok := fetcher.(*Client)
+		if !ok {
+			t.Errorf("Fetcher must be cast to Client")
+		}
+		contentType := client.req.Header.Get("Content-Type")
+		if contentType != test.contentType {
+			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
+		}
+		method := client.req.Method
+		if method != test.expectedMethod {
+			t.Errorf("Got %s, expected %s as a method", method, test.expectedMethod)
+		}
+		body := client.req.Body
+		if body == nil {
+			if len(test.payload) > 0 {
+				t.Errorf("Got empty nil body, expected %s as a body", test.payload)
+			}
+			continue
+		}
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(body)
+		payload := buf.String()
+		if payload != test.payload {
+			t.Errorf("Got %s, expected %s as a body", payload, test.payload)
+		}
+	}
+}
+
+func TestPayloadForFastClient(t *testing.T) {
+	var tests = []struct {
+		contentType     string
+		payload         string
+		expectedReqBody string
+	}{
+		{"application/json",
+			"{\"test\" : \"test\"}",
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
+				"application/json\r\nUser-Agent: %s\r\nContent-Length: 17\r\n\r\n{\"test\" : \"test\"}", userAgent)},
+		{"application/xml",
+			"<test test=\"test\">",
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
+				"application/xml\r\nUser-Agent: %s\r\nContent-Length: 18\r\n\r\n<test test=\"test\">", userAgent)},
+		{"",
+			"",
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: foo.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
+	}
+	for _, test := range tests {
+		hOptions := HTTPOptions{}
+		hOptions.URL = "http://foo.com"
+		hOptions.ContentType = test.contentType
+		hOptions.Payload = test.payload
+		hOptions.DisableFastClient = false
+		fetcher := NewClient(&hOptions)
+		client, ok := fetcher.(*FastClient)
+		if !ok {
+			t.Errorf("Fetcher must be cast to Fast Client")
+		}
+		body := string(client.req)
+		if body != test.expectedReqBody {
+			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)
+		}
+	}
+}
+
 func TestPayloadSizeLarge(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)

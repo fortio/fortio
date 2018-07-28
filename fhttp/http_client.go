@@ -135,6 +135,10 @@ type HTTPOptions struct {
 	HTTPReqTimeOut time.Duration // timeout value for http request
 
 	UserCredentials string // user credentials for authorization
+
+	ContentType string // indicates request body type
+	Payload     string // body for http request
+	PayloadSize int    // size that determines the random generated body size
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -150,6 +154,9 @@ func (h *HTTPOptions) InitHeaders() {
 	err := h.ValidateAndAddBasicAuthentication()
 	if err != nil {
 		log.Errf("User credential is not valid. %v", err)
+	}
+	if len(h.ContentType) > 0 {
+		h.extraHeaders.Add("Content-Type", h.ContentType)
 	}
 }
 
@@ -203,7 +210,15 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 
 // newHttpRequest makes a new http GET request for url with User-Agent.
 func newHTTPRequest(o *HTTPOptions) *http.Request {
-	req, err := http.NewRequest("GET", o.URL, nil)
+	var method string
+	var body io.Reader
+	if len(o.Payload) > 0 {
+		method = "POST"
+		body = strings.NewReader(o.Payload)
+	} else {
+		method = "GET"
+	}
+	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("Unable to make request for %s : %v", o.URL, err)
 		return nil
@@ -329,13 +344,13 @@ func NewStdClient(o *HTTPOptions) *Client {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
 	}
 	client := Client{
-		o.URL,
-		req,
-		&http.Client{
+		url: o.URL,
+		req: req,
+		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
 		},
-		&tr,
+		transport: &tr,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
@@ -404,6 +419,13 @@ func (c *FastClient) Close() int {
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
 func NewFastClient(o *HTTPOptions) Fetcher {
+	var method string
+	payloadLen := len(o.Payload)
+	if payloadLen > 0 {
+		method = "POST "
+	} else {
+		method = "GET "
+	}
 	o.Init(o.URL)
 	proto := "1.1"
 	if o.HTTP10 {
@@ -439,7 +461,7 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		host = o.hostOverride
 	}
 	var buf bytes.Buffer
-	buf.WriteString("GET " + url.RequestURI() + " HTTP/" + proto + "\r\n")
+	buf.WriteString(method + url.RequestURI() + " HTTP/" + proto + "\r\n")
 	if !bc.http10 {
 		buf.WriteString("Host: " + host + "\r\n")
 		bc.parseHeaders = true
@@ -458,7 +480,14 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	// This writes multiple valued headers properly (unlike calling Get() to do it ourselves)
 	o.extraHeaders.Write(w) // nolint: errcheck,gas
 	w.Flush()               // nolint: errcheck,gas
+	if payloadLen > 0 {
+		buf.WriteString(fmt.Sprintf("Content-Length: %d\r\n", payloadLen))
+	}
 	buf.WriteString("\r\n")
+	//Add the payload to http body
+	if payloadLen > 0 {
+		buf.WriteString(o.Payload)
+	}
 	bc.req = buf.Bytes()
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
 	return &bc
