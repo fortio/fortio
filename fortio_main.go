@@ -95,9 +95,11 @@ var (
 	caCertFlag        = flag.String("cacert", "",
 		"Path to a custom CA certificate file to be used for the GRPC client TLS, "+
 			"if empty, use https:// prefix for standard internet CAs TLS")
-	echoPortFlag = flag.String("http-port", "8080", "http echo server port. Can be in the form of host:port, ip:port or port.")
+	echoPortFlag = flag.String("http-port", "8080",
+		"http echo server port. Can be in the form of host:port, ip:port, port or /unix/domain/path.")
 	grpcPortFlag = flag.String("grpc-port", fnet.DefaultGRPCPort,
-		"grpc server port. Can be in the form of host:port, ip:port or port or \""+disabled+"\" to not start the grpc server.")
+		"grpc server port. Can be in the form of host:port, ip:port or port or /unix/domain/path or \""+disabled+
+			"\" to not start the grpc server.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
@@ -295,6 +297,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Payload:            *payloadFlag,
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
+			UnixDomainSocket:   httpOpts.UnixDomainSocket,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else {

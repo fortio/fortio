@@ -79,7 +79,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.0.1 usage:
+Φορτίο 1.1.0 usage:
 	fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and http
 echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
@@ -127,7 +127,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	grpc ping delay in response
   -grpc-port string
 	grpc server port. Can be in the form of host:port, ip:port or port or
-	"disabled" to not start the grpc server. (default "8079")
+	/unix/domain/path or "disabled" to not start the grpc server. (default
+	"8079")
   -halfclose
 	When not keepalive, whether to half close the connection (only for fast
 	http)
@@ -136,8 +137,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -healthservice string
 	which service string to pass to health check
   -http-port string
-	http echo server port. Can be in the form of host:port, ip:port or port.
-	(default "8080")
+	http echo server port. Can be in the form of host:port, ip:port, port or
+	/unix/domain/path. (default "8080")
   -http1.0
 	Use http1.0 (instead of http 1.1)
   -httpbufferkb int
@@ -176,7 +177,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -payload string
 	Payload string to send along
   -payload-size int
-    Additional random payload size, replaces -payload when set > 0, must be smaller than -maxpayloadsizekb
+	Additional random payload size, replaces -payload when set > 0, must be
+	smaller than -maxpayloadsizekb
   -ping
 	grpc load test: use ping instead of health
   -profile string
@@ -208,10 +210,11 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
   -ui-path string
 	http server URI for UI, empty turns off that part (more secure) (default
 	"/fortio/")
+  -unix-socket string
+	Unix domain socket to use for physical connection
   -user string
 	User credentials for basic authentication (for http). Input data format
-	should be user:password
-</pre>
+	should be user:password</pre>
 </details>
 
 See also the FAQ entry about [fortio flags for best results](https://github.com/istio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)

@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -730,7 +729,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 }
 
 func TestEchoHeaders(t *testing.T) {
-	_, a := Serve("0", "")
+	_, a := ServeTCP("0", "")
 	var headers = []struct {
 		key   string
 		value string
@@ -777,7 +776,8 @@ func TestEchoHeaders(t *testing.T) {
 }
 
 func TestPPROF(t *testing.T) {
-	mux, addr := HTTPServer("test pprof", "0")
+	mux, addrN := HTTPServer("test pprof", "0")
+	addr := addrN.(*net.TCPAddr)
 	url := fmt.Sprintf("localhost:%d/debug/pprof/heap?debug=1", addr.Port)
 	code, _ := Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusNotFound {
@@ -794,7 +794,7 @@ func TestPPROF(t *testing.T) {
 }
 
 func TestFetchAndOnBehalfOf(t *testing.T) {
-	mux, addr := Serve("0", "/debug")
+	mux, addr := ServeTCP("0", "/debug")
 	mux.Handle("/fetch/", http.StripPrefix("/fetch/", http.HandlerFunc(FetcherHandler)))
 	url := fmt.Sprintf("localhost:%d/fetch/localhost:%d/debug", addr.Port, addr.Port)
 	code, data := Fetch(&HTTPOptions{URL: url})
@@ -809,9 +809,10 @@ func TestFetchAndOnBehalfOf(t *testing.T) {
 
 func TestServeError(t *testing.T) {
 	_, addr := Serve("0", "")
-	mux2, addr2 := Serve(strconv.Itoa(addr.Port), "")
+	port := fnet.GetPort(addr)
+	mux2, addr2 := Serve(port, "")
 	if mux2 != nil || addr2 != nil {
-		t.Errorf("2nd Serve() on same port %d should have failed: %v %v", addr.Port, mux2, addr2)
+		t.Errorf("2nd Serve() on same port %v should have failed: %v %v", port, mux2, addr2)
 	}
 }
 
@@ -822,7 +823,7 @@ func testCacheHeaderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestCache(t *testing.T) {
-	mux, addr := Serve("0", "")
+	mux, addr := ServeTCP("0", "")
 	mux.HandleFunc("/cached", testCacheHeaderHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	o := NewHTTPOptions(baseURL)
@@ -847,7 +848,8 @@ func TestCache(t *testing.T) {
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"
-	url := fmt.Sprintf("http://localhost:%d%s", addr.Port, relativeURL)
+	port := fnet.GetPort(addr)
+	url := fmt.Sprintf("http://localhost:%s%s", port, relativeURL)
 	opts := NewHTTPOptions(url)
 	opts.AddAndValidateExtraHeader("Host: foo.istio.io")
 	code, data := Fetch(opts)
@@ -858,9 +860,9 @@ func TestRedirector(t *testing.T) {
 		t.Errorf("Result %s doesn't contain Location: redirect", DebugSummary(data, 1024))
 	}
 	// 2nd one should fail
-	addr2 := RedirectToHTTPS(strconv.Itoa(addr.Port))
+	addr2 := RedirectToHTTPS(port)
 	if addr2 != nil {
-		t.Errorf("2nd RedirectToHTTPS() on same port %d should have failed: %v", addr.Port, addr2)
+		t.Errorf("2nd RedirectToHTTPS() on same port %s should have failed: %v", port, addr2)
 
 	}
 }
@@ -876,7 +878,7 @@ func escapeTestHandler(w http.ResponseWriter, r *http.Request) {
 func TestHTMLEscapeWriter(t *testing.T) {
 	mux, addr := HTTPServer("test escape", ":0")
 	mux.HandleFunc("/", escapeTestHandler)
-	url := fmt.Sprintf("http://localhost:%d/", addr.Port)
+	url := fmt.Sprintf("http://localhost:%s/", fnet.GetPort(addr))
 	code, data := FetchURL(url)
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
@@ -896,7 +898,7 @@ func TestNewHTMLEscapeWriterError(t *testing.T) {
 }
 
 func TestDefaultHeadersAndOptionsInit(t *testing.T) {
-	_, addr := Serve("0", "/debug")
+	_, addr := ServeTCP("0", "/debug")
 	// Un initialized http options:
 	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
 	o1 := o

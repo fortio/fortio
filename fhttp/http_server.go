@@ -138,13 +138,13 @@ func closingServer(listener net.Listener) error {
 
 // HTTPServer creates an http server named name on address/port port.
 // Port can include binding address and/or be port 0.
-func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
+func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 	m := http.NewServeMux()
 	s := &http.Server{
 		Handler: m,
 	}
 	listener, addr := fnet.Listen(name, port)
-	if addr == nil {
+	if listener == nil {
 		return nil, nil // error already logged
 	}
 	go func() {
@@ -161,9 +161,11 @@ func HTTPServer(name string, port string) (*http.ServeMux, *net.TCPAddr) {
 // returns the listening port and mux to which one can attach handlers to.
 // Note: in a future version of istio, the closing will be actually be secure
 // on/off and create an https server instead of a closing server.
+// As this is a dynamic tcp socket server, the address is TCP.
 func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	if !closing {
-		return HTTPServer("dynamic", "0")
+		mux, addr := HTTPServer("dynamic", "0")
+		return mux, addr.(*net.TCPAddr)
 	}
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
@@ -175,7 +177,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 			log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
 		}
 	}()
-	return nil, addr
+	return nil, addr.(*net.TCPAddr)
 }
 
 /*
@@ -299,7 +301,7 @@ func CacheOn(w http.ResponseWriter) {
 // Returns the mux and addr where the listening socket is bound.
 // The .Port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
-func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
+func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 	startTime = time.Now()
 	mux, addr := HTTPServer("echo", port)
 	if addr == nil {
@@ -310,6 +312,16 @@ func Serve(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	}
 	mux.HandleFunc("/", EchoHandler)
 	return mux, addr
+}
+
+// ServeTCP is Serve() but restricted to TCP (return address is assumed
+// to be TCP - will panic for unix domain)
+func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
+	mux, addr := Serve(port, debugPath)
+	if addr == nil {
+		return nil, nil // error already logged
+	}
+	return mux, addr.(*net.TCPAddr)
 }
 
 // -- formerly in ui handler
@@ -368,7 +380,7 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress)
-func RedirectToHTTPS(port string) *net.TCPAddr {
+func RedirectToHTTPS(port string) net.Addr {
 	m, a := HTTPServer("https redirector", port)
 	if m == nil {
 		return nil // error already logged
