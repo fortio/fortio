@@ -492,6 +492,37 @@ func TestGenerateSize(t *testing.T) {
 	}
 }
 
+func TestPayloadWithEchoBack(t *testing.T) {
+	var tests = []struct {
+		payload []byte
+		http10  bool
+	}{
+		{[]byte{44, 45, 00, 46, 47}, false},
+		{[]byte{44, 45, 00, 46, 47}, true},
+		{[]byte("groß"), false},
+		{[]byte("groß"), true},
+	}
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	for _, test := range tests {
+		opts := NewHTTPOptions(url)
+		opts.HTTP10 = test.http10
+		opts.Payload = test.payload
+		cli := NewClient(opts)
+		code, body, _ := cli.Fetch()
+		if code != 200 {
+			t.Errorf("Unexpected error %d", code)
+		}
+		if !bytes.Equal(body[len(body)-len(test.payload):], test.payload) {
+			t.Errorf("Got %s, expected %s from echo", string(body), string(test.payload))
+		}
+		if test.http10 {
+			cli.Close()
+		}
+	}
+}
+
 // Many of the earlier http tests are through httprunner but new tests should go here
 
 func TestEchoBack(t *testing.T) {
@@ -681,17 +712,17 @@ func TestPayloadSizeSmall(t *testing.T) {
 func TestPayloadForClient(t *testing.T) {
 	var tests = []struct {
 		contentType    string
-		payload        string
+		payload        []byte
 		expectedMethod string
 	}{
 		{"application/json",
-			"{\"test\" : \"test\"}",
+			[]byte("{\"test\" : \"test\"}"),
 			"POST"},
 		{"application/xml",
-			"<test test=\"test\">",
+			[]byte("<test test=\"test\">"),
 			"POST"},
 		{"",
-			"",
+			nil,
 			"GET"},
 	}
 	for _, test := range tests {
@@ -722,9 +753,9 @@ func TestPayloadForClient(t *testing.T) {
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(body)
-		payload := buf.String()
-		if payload != test.payload {
-			t.Errorf("Got %s, expected %s as a body", payload, test.payload)
+		payload := buf.Bytes()
+		if !bytes.Equal(payload, test.payload) {
+			t.Errorf("Got %s, expected %s as a body", string(payload), string(test.payload))
 		}
 	}
 }
@@ -732,19 +763,19 @@ func TestPayloadForClient(t *testing.T) {
 func TestPayloadForFastClient(t *testing.T) {
 	var tests = []struct {
 		contentType     string
-		payload         string
+		payload         []byte
 		expectedReqBody string
 	}{
 		{"application/json",
-			"{\"test\" : \"test\"}",
+			[]byte("{\"test\" : \"test\"}"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
 				"application/json\r\nUser-Agent: %s\r\nContent-Length: 17\r\n\r\n{\"test\" : \"test\"}", userAgent)},
 		{"application/xml",
-			"<test test=\"test\">",
+			[]byte("<test test=\"test\">"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
 				"application/xml\r\nUser-Agent: %s\r\nContent-Length: 18\r\n\r\n<test test=\"test\">", userAgent)},
 		{"",
-			"",
+			nil,
 			fmt.Sprintf("GET / HTTP/1.1\r\nHost: foo.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
 	}
 	for _, test := range tests {

@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	"bytes"
+
 	"istio.io/fortio/log"
 	"istio.io/fortio/version"
 )
@@ -277,19 +279,19 @@ func TestGenerateRandomPayload(t *testing.T) {
 func TestReadFileForPayload(t *testing.T) {
 	var tests = []struct {
 		payloadFile  string
-		expectedText string
+		expectedText []byte
 	}{
-		{payloadFile: "mockfile", expectedText: "{\"test\":\"test\"}"},
-		{payloadFile: "", expectedText: ""},
+		{payloadFile: "../.testdata/payloadTest1.txt", expectedText: []byte("{\"test\":\"test\"}")},
+		{payloadFile: "", expectedText: nil},
 	}
 
 	for _, test := range tests {
-		text, err := ReadFileForPayload(test.payloadFile)
-		if err != nil && test.expectedText != "" {
+		data, err := ReadFileForPayload(test.payloadFile)
+		if err != nil && len(test.expectedText) > 0 {
 			t.Errorf("Error should not be happened for ReadFileForPayload")
 		}
-		if text != test.expectedText {
-			t.Errorf("Got %s, expected %s for ReadFileForPayload()", text, test.expectedText)
+		if !bytes.Equal(data, test.expectedText) {
+			t.Errorf("Got %s, expected %s for ReadFileForPayload()", string(data), string(test.expectedText))
 		}
 	}
 }
@@ -301,7 +303,7 @@ func TestGeneratePayload(t *testing.T) {
 		payload        string
 		expectedResLen int
 	}{
-		{payloadFile: "mockfile", payloadSize: 123, payload: "",
+		{payloadFile: "../.testdata/payloadTest1.txt", payloadSize: 123, payload: "",
 			expectedResLen: len("{\"test\":\"test\"}")},
 		{payloadFile: "nottestmock", payloadSize: 0, payload: "{\"test\":\"test1\"}",
 			expectedResLen: 0},

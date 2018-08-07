@@ -236,7 +236,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		return
 	}
 	url := httpOpts.URL
-	payload := httpOpts.Payload
+	payload := httpOpts.GetPayloadString()
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
@@ -366,8 +366,8 @@ func grpcClient() {
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
 	} else {
-		payload := fnet.GeneratePayload(*bincommon.PayloadFileFlag, *bincommon.PayloadSizeFlag, *bincommon.PayloadFileFlag)
-		_, err = fgrpc.PingClientCall(host, cert, count, payload, *pingDelayFlag)
+		httpOpts := bincommon.SharedHTTPOptions()
+		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.GetPayloadString(), *pingDelayFlag)
 	}
 	if err != nil {
 		// already logged
