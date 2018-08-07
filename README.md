@@ -35,7 +35,7 @@ docker run istio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v1.0.0/fortio-linux_x64-1.0.0.tgz \
+curl -L https://github.com/istio/fortio/releases/download/v1.1.0/fortio-linux_x64-1.1.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -214,7 +214,8 @@ target is a url (http load tests) or host:port (grpc health test).  flags are:
 	Unix domain socket to use for physical connection
   -user string
 	User credentials for basic authentication (for http). Input data format
-	should be user:password</pre>
+	should be user:password
+</pre>
 </details>
 
 See also the FAQ entry about [fortio flags for best results](https://github.com/istio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
@@ -224,12 +225,12 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 * Start the internal servers:
 ```
 $ fortio server &
-Fortio 1.0.0 grpc 'ping' server listening on [::]:8079
-Fortio 1.0.0 https redirector server listening on [::]:8081
-Fortio 1.0.0 echo server listening on [::]:8080
+Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.1.0 https redirector server listening on [::]:8081
+Fortio 1.1.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-21:45:23 I fortio_main.go:195> All fortio 1.0.0 buildinfo go1.10 servers started!
+21:45:23 I fortio_main.go:195> All fortio 1.1.0 buildinfo go1.10 servers started!
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -239,8 +240,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 1.0.0 grpc ping server listening on port :8079
-Fortio 1.0.0 echo server listening on port 10.10.10.10:8088
+Fortio 1.1.0 grpc ping server listening on port :8079
+Fortio 1.1.0 echo server listening on port 10.10.10.10:8088
 ```
 * Simple grpc ping:
 ```
@@ -280,8 +281,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 1.0.0 grpc ping server listening on port :8079
-Fortio 1.0.0 echo server listening on port localhost:8080
+Fortio 1.1.0 grpc ping server listening on port :8079
+Fortio 1.1.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -317,7 +318,7 @@ Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.
 * Load (low default qps/threading) test:
 ```
 $ fortio load http://www.google.com
-Fortio 1.0.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
 19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
@@ -347,7 +348,7 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hit the fortio ping grpc endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the json result:
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
-Fortio 1.0.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
 16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
 16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
 16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
@@ -449,14 +450,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 1.0.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 1.1.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-1.0.0
+User-Agent: istio/fortio-1.1.0
 Foo: Bar
 
 body:
