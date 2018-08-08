@@ -493,6 +493,23 @@ func TestGenerateSize(t *testing.T) {
 
 // Many of the earlier http tests are through httprunner but new tests should go here
 
+func TestUnixDomainHttp(t *testing.T) {
+	uds := fnet.GetUniqueUnixDomainPath("fortio-http-test-uds")
+	_, addr := Serve(uds, "/debug1")
+	if addr == nil {
+		t.Fatalf("Error for Serve for %s", uds)
+	}
+	o := HTTPOptions{UnixDomainSocket: uds, URL: "http://foo.bar:123/debug1"}
+	client := NewClient(&o)
+	code, data, _ := client.Fetch()
+	if code != http.StatusOK {
+		t.Errorf("Got error %d fetching uds %s", code, uds)
+	}
+	if !strings.Contains(string(data), "Host: foo.bar:123") {
+		t.Errorf("Didn't find expected Host header in debug handler: %s", DebugSummary(data, 1024))
+	}
+}
+
 func TestEchoBack(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
@@ -643,9 +660,14 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 
 func TestInvalidRequest(t *testing.T) {
 	o := HTTPOptions{
-		URL: "http://www.google.com/", // valid url
+		URL:            "http://www.google.com/", // valid url
+		NumConnections: -3,                       // bogus NumConnections will get fixed
+		HTTPReqTimeOut: -1,
 	}
 	client := NewStdClient(&o)
+	if o.NumConnections <= 0 {
+		t.Errorf("Got %d NumConnections, was expecting normalization to 1", o.NumConnections)
+	}
 	client.ChangeURL(" http://bad.url.with.space.com/") // invalid url
 	// should not crash (issue #93), should error out
 	code, _, _ := client.Fetch()

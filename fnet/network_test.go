@@ -15,7 +15,7 @@
 package fnet
 
 import (
-	"io/ioutil"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -142,18 +142,34 @@ func TestProxy(t *testing.T) {
 	}
 }
 
+func TestBadGetUniqueUnixDomainPath(t *testing.T) {
+	badPath := []byte{0x41, 0, 0x42}
+	fname := GetUniqueUnixDomainPath(string(badPath))
+	if fname != "/tmp/fortio-default-uds" {
+		t.Errorf("Got %s when expecting default/error case for bad prefix", fname)
+	}
+}
+
+func TestDefaultGetUniqueUnixDomainPath(t *testing.T) {
+	n1 := GetUniqueUnixDomainPath("")
+	n2 := GetUniqueUnixDomainPath("")
+	if n1 == n2 {
+		t.Errorf("Got %s and %s when expecting unique names", n1, n2)
+	}
+}
+
 func TestUnixDomain(t *testing.T) {
 	// Test through the proxy as well (which indirectly tests Listen)
-	f, err := ioutil.TempFile(os.TempDir(), "fortio-uds")
-	if err != nil {
-		t.Fatalf("Unable to generate temp file: %v", err)
-	}
-	fname := f.Name()
-	os.Remove(fname) // for the bind to succeed
+	fname := GetUniqueUnixDomainPath("fortio-uds-test")
 	addr := ProxyToDestination(fname, "www.google.com:80")
 	defer os.Remove(fname) // to not leak the temp socket
 	if addr == nil {
 		t.Fatalf("Nil socket in unix socket proxy listen")
+	}
+	hp := NormalizeHostPort("", addr)
+	expected := fmt.Sprintf("-unix-socket=%s", fname)
+	if hp != expected {
+		t.Errorf("Got %s, expected %s from NormalizeHostPort(%v)", hp, expected, addr)
 	}
 	dAddr := net.UnixAddr{Name: fname, Net: UnixDomainSocket}
 	d, err := net.DialUnix(UnixDomainSocket, nil, &dAddr)

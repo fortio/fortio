@@ -71,6 +71,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	h.URL = url
 	h.NumConnections = 1
 	if h.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", h.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	if h.extraHeaders == nil { // not already initialized from flags.
@@ -85,7 +86,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 func (h *HTTPOptions) URLSchemeCheck() {
 	log.LogVf("URLSchemeCheck %+v", h)
 	if len(h.URL) == 0 {
-		log.Errf("unexpected init with empty url")
+		log.Errf("Unexpected init with empty url")
 		return
 	}
 	hs := "https://" // longer of the 2 prefixes
@@ -102,7 +103,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		return // url is good
 	}
 	if !strings.HasPrefix(lcURL, "http://") {
-		log.Warnf("assuming http:// on missing scheme for '%s'", h.URL)
+		log.Warnf("Assuming http:// on missing scheme for '%s'", h.URL)
 		h.URL = "http://" + h.URL
 	}
 }
@@ -151,7 +152,7 @@ func (h *HTTPOptions) InitHeaders() {
 	h.extraHeaders.Add("User-Agent", userAgent)
 	err := h.ValidateAndAddBasicAuthentication()
 	if err != nil {
-		log.Errf("User credential is not valid. %v", err)
+		log.Errf("User credential is not valid: %v", err)
 	}
 }
 
@@ -163,7 +164,7 @@ func (h *HTTPOptions) ValidateAndAddBasicAuthentication() error {
 	}
 	s := strings.SplitN(h.UserCredentials, ":", 2)
 	if len(s) != 2 {
-		return fmt.Errorf("invalid user credentials are used %s. Expected format user:password", h.UserCredentials)
+		return fmt.Errorf("invalid user credentials \"%s\", expecting \"user:password\"", h.UserCredentials)
 	}
 	h.extraHeaders.Add("Authorization", generateBase64UserCredentials(h.UserCredentials))
 	return nil
@@ -219,7 +220,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	}
 	bytes, err := httputil.DumpRequestOut(req, false)
 	if err != nil {
-		log.Errf("Unable to dump request %v", err)
+		log.Errf("Unable to dump request: %v", err)
 	} else {
 		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
 	}
@@ -304,17 +305,10 @@ func NewClient(o *HTTPOptions) Fetcher {
 
 // NewStdClient creates a client object that wraps the net/http standard client.
 func NewStdClient(o *HTTPOptions) *Client {
-	o.Init(o.URL)
+	o.Init(o.URL) // also normalizes NumConnections etc to be valid.
 	req := newHTTPRequest(o)
 	if req == nil {
 		return nil
-	}
-	if o.NumConnections < 1 {
-		o.NumConnections = 1
-	}
-	// 0 timeout for stdclient doesn't mean 0 timeout... so just warn and leave it
-	if o.HTTPReqTimeOut <= 0 {
-		log.Warnf("Std call with client timeout %v", o.HTTPReqTimeOut)
 	}
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
@@ -457,10 +451,6 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		} else {
 			buf.WriteString("Connection: close\r\n")
 		}
-	}
-	if o.HTTPReqTimeOut <= 0 {
-		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
-		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	bc.reqTimeout = o.HTTPReqTimeOut
 	w := bufio.NewWriter(&buf)

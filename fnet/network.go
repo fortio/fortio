@@ -17,8 +17,10 @@ package fnet // import "istio.io/fortio/fnet"
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,7 +69,7 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	// and speed:
 	_, err := rand.Read(Payload)
 	if err != nil {
-		log.Errf("Error changing paylaod size, while generating random paylaod")
+		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
 }
 
@@ -262,4 +264,20 @@ func ValidatePayloadSize(size *int) {
 		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
 		*size = 0
 	}
+}
+
+// GetUniqueUnixDomainPath returns a path to be used for unix domain socket.
+func GetUniqueUnixDomainPath(prefix string) string {
+	if prefix == "" {
+		prefix = "fortio-uds"
+	}
+	f, err := ioutil.TempFile(os.TempDir(), prefix)
+	if err != nil {
+		log.Errf("Unable to generate temp file with prefix %s: %v", prefix, err)
+		return "/tmp/fortio-default-uds"
+	}
+	fname := f.Name()
+	f.Close()
+	os.Remove(fname) // for the bind to succeed
+	return fname
 }
