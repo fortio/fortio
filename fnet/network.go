@@ -103,9 +103,8 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 		return nil, nil
 	}
 	lAddr := listener.Addr()
-	lPort := GetPort(lAddr)
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, lPort)
+		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, lAddr)
 	}
 	return listener, lAddr
 }

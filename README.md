@@ -229,8 +229,9 @@ Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
 Fortio 1.1.0 https redirector server listening on [::]:8081
 Fortio 1.1.0 echo server listening on [::]:8080
 UI started - visit:
-http://localhost:8080/fortio/   (or any host/ip reachable on this server)
-21:45:23 I fortio_main.go:195> All fortio 1.1.0 buildinfo go1.10 servers started!
+http://localhost:8080/fortio/
+(or any host/ip reachable on this server)
+14:57:12 I fortio_main.go:217> All fortio 1.1.0 unknown go1.10.3 servers started!
 ```
 
 * By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
@@ -243,6 +244,35 @@ Https redirector running on :8081
 Fortio 1.1.0 grpc ping server listening on port :8079
 Fortio 1.1.0 echo server listening on port 10.10.10.10:8088
 ```
+
+* You can use unix domain socket for any server/client:
+```
+$ fortio server --http-port /tmp/fortio-uds-http &
+Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.1.0 https redirector server listening on [::]:8081
+Fortio 1.1.0 echo server listening on /tmp/fortio-uds-http
+UI started - visit:
+fortio curl -unix-socket=/tmp/fortio-uds-http http://localhost/fortio/
+14:58:45 I fortio_main.go:217> All fortio 1.1.0 unknown go1.10.3 servers started!
+$ fortio curl -unix-socket=/tmp/fortio-uds-http http://foo.bar/debug
+15:00:48 I http_client.go:428> Using unix domain socket /tmp/fortio-uds-http instead of foo.bar http
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=UTF-8
+Date: Wed, 08 Aug 2018 22:00:48 GMT
+Content-Length: 231
+
+Φορτίο version 1.1.0 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro.roam.corp.google.com - request from 
+
+GET /debug HTTP/1.1
+
+headers:
+
+Host: foo.bar
+User-Agent: istio/fortio-1.1.0
+
+body:
+```
+
 * Simple grpc ping:
 ```
 $ fortio grpcping localhost

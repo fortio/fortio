@@ -478,7 +478,7 @@ func (c *FastClient) connect() net.Conn {
 	}
 	tcpSock, ok := socket.(*net.TCPConn)
 	if !ok {
-		log.Warnf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
+		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
 		return socket
 	}
 	// For now those errors are not critical/breaking
