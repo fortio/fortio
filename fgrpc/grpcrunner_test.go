@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 
@@ -46,6 +47,9 @@ func TestGRPCRunner(t *testing.T) {
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
+	uds := fnet.GetUniqueUnixDomainPath("fortio-grpc-test")
+	uPath := PingServer(uds, "", "", "", 10)
+	uDest := "foo.bar:125"
 
 	ro := periodic.RunnerOptions{
 		QPS:        10, // some internet outcalls, not too fast
@@ -70,6 +74,14 @@ func TestGRPCRunner(t *testing.T) {
 			runnerOpts: GRPCRunnerOptions{
 				Destination: sDest,
 				CACert:      caCrt,
+			},
+			expect: true,
+		},
+		{
+			name: "valid unix domain socket runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination:      uDest,
+				UnixDomainSocket: uPath.String(),
 			},
 			expect: true,
 		},
