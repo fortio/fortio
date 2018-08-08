@@ -277,7 +277,8 @@ func GetUniqueUnixDomainPath(prefix string) string {
 		return "/tmp/fortio-default-uds"
 	}
 	fname := f.Name()
-	f.Close()
-	os.Remove(fname) // for the bind to succeed
+	_ = f.Close()
+	// for the bind to succeed we need the file to not pre exist:
+	_ = os.Remove(fname)
 	return fname
 }
