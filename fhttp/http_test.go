@@ -514,13 +514,35 @@ func TestPayloadWithEchoBack(t *testing.T) {
 		if code != 200 {
 			t.Errorf("Unexpected error %d", code)
 		}
-		if !bytes.Equal(body[len(body)-len(test.payload):], test.payload) {
+		contentLength := extractContentLength(string(body))
+		if !bytes.Equal(body[len(body)-contentLength:], test.payload) {
 			t.Errorf("Got %s, expected %s from echo", string(body), string(test.payload))
 		}
 		if test.http10 {
 			cli.Close()
 		}
 	}
+}
+
+func extractContentLength(body string) int {
+	headers := strings.Split(body, "\r\n")
+	for _, header := range headers {
+		if strings.HasPrefix(header, "Content-Length") {
+			KVSplit := strings.Split(header, ":")
+			if len(KVSplit) != 2 {
+				return 0
+			}
+			KVSplit[1] = strings.TrimLeft(KVSplit[1], " ") //Get rid of the left space...
+			length, err := strconv.Atoi(KVSplit[1])
+			if err != nil {
+				log.Warnf("Error occurred while taking the length from content-length header %v", err)
+				return 0
+			}
+			return length
+		}
+	}
+	log.Warnf("Content-Length header is not found")
+	return 0
 }
 
 // Many of the earlier http tests are through httprunner but new tests should go here
@@ -558,7 +580,7 @@ func TestH10Cli(t *testing.T) {
 	if code != 200 {
 		t.Errorf("http 1.0 unexpected error %d", code)
 	}
-	s := cli.(*FastClient).socket
+	s := cli.socket
 	if s != nil {
 		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
 	}
@@ -613,7 +635,7 @@ func TestDefaultPort(t *testing.T) {
 	if code != 303 {
 		t.Errorf("unexpected code for %s: %d (expecting 303 redirect to https)", url, code)
 	}
-	conn := cli.(*FastClient).connect()
+	conn := cli.connect()
 	if conn != nil {
 		p := conn.RemoteAddr().(*net.TCPAddr).Port
 		if p != 80 {
@@ -631,16 +653,16 @@ func TestDefaultPort(t *testing.T) {
 		// If https support was added, remove this whitebox/for coverage purpose assertion
 		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
 	}
-	cli = NewClient(opts)
-	if cli == nil {
+	dCli := NewClient(opts)
+	if dCli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts.")
 	}
 	// currently fast client fails with https:
-	code, _, _ = cli.Fetch()
+	code, _, _ = dCli.Fetch()
 	if code != 200 {
 		t.Errorf("Standard client http error code %d", code)
 	}
-	cli.Close()
+	dCli.Close()
 }
 
 // Test for bug #127
@@ -727,15 +749,10 @@ func TestPayloadForClient(t *testing.T) {
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
-		hOptions.URL = "http://foo.com"
+		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		hOptions.DisableFastClient = true
-		fetcher := NewClient(&hOptions)
-		client, ok := fetcher.(*Client)
-		if !ok {
-			t.Errorf("Fetcher must be cast to Client")
-		}
+		client := NewStdClient(&hOptions)
 		contentType := client.req.Header.Get("Content-Type")
 		if contentType != test.contentType {
 			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
@@ -768,27 +785,22 @@ func TestPayloadForFastClient(t *testing.T) {
 	}{
 		{"application/json",
 			[]byte("{\"test\" : \"test\"}"),
-			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Type: "+
 				"application/json\r\nUser-Agent: %s\r\nContent-Length: 17\r\n\r\n{\"test\" : \"test\"}", userAgent)},
 		{"application/xml",
 			[]byte("<test test=\"test\">"),
-			fmt.Sprintf("POST / HTTP/1.1\r\nHost: foo.com\r\nContent-Type: "+
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Type: "+
 				"application/xml\r\nUser-Agent: %s\r\nContent-Length: 18\r\n\r\n<test test=\"test\">", userAgent)},
 		{"",
 			nil,
-			fmt.Sprintf("GET / HTTP/1.1\r\nHost: foo.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
-		hOptions.URL = "http://foo.com"
+		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		hOptions.DisableFastClient = false
-		fetcher := NewClient(&hOptions)
-		client, ok := fetcher.(*FastClient)
-		if !ok {
-			t.Errorf("Fetcher must be cast to Fast Client")
-		}
+		client := NewFastClient(&hOptions)
 		body := string(client.req)
 		if body != test.expectedReqBody {
 			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)

@@ -159,7 +159,8 @@ func (h *HTTPOptions) InitHeaders() {
 	}
 }
 
-// GetPayloadString returns the payload as a string. If paylaod is null return empty string
+// GetPayloadString returns the payload as a string. If payload is null return empty string
+// This is only needed due to grpc ping proto. It takes string stead of byte array.
 func (h *HTTPOptions) GetPayloadString() string {
 	if h.Payload == nil {
 		return ""
@@ -430,7 +431,7 @@ func (c *FastClient) Close() int {
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) Fetcher {
+func NewFastClient(o *HTTPOptions) *FastClient {
 	method := o.GetMethod()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
