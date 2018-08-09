@@ -37,28 +37,34 @@ import (
 // Dial dials grpc using insecure or tls transport security when serverAddr
 // has prefixHTTPS or cert is provided. If override is set to a non empty string,
 // it will override the virtual host name of authority in requests.
-func Dial(serverAddr, cacert, override string) (conn *grpc.ClientConn, err error) {
+func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
 	switch {
-	case cacert != "":
+	case o.CACert != "":
 		var creds credentials.TransportCredentials
-		creds, err = credentials.NewClientTLSFromFile(cacert, override)
+		creds, err = credentials.NewClientTLSFromFile(o.CACert, o.CertOverride)
 		if err != nil {
 			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
-		log.Infof("Using CA certificate %v to construct TLS credentials", cacert)
+		log.Infof("Using CA certificate %v to construct TLS credentials", o.CACert)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
-	case strings.HasPrefix(serverAddr, fnet.PrefixHTTPS):
+	case strings.HasPrefix(o.Destination, fnet.PrefixHTTPS):
 		creds := credentials.NewTLS(nil)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
 		opts = append(opts, grpc.WithInsecure())
 	}
-	serverAddr = grpcDestination(serverAddr)
+	serverAddr := grpcDestination(o.Destination)
+	if o.UnixDomainSocket != "" {
+		log.Warnf("Using domain socket %v instead of %v for grpc connection", o.UnixDomainSocket, serverAddr)
+		opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout(fnet.UnixDomainSocket, o.UnixDomainSocket, timeout)
+		}))
+	}
 	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
-		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, cacert, override, err)
+		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
 	}
 	return conn, err
 }
@@ -119,6 +125,7 @@ type GRPCRunnerOptions struct {
 	CertOverride       string        // Override the cert virtual host of authority for testing
 	AllowInitialErrors bool          // whether initial errors don't cause an abort
 	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
+	UnixDomainSocket   string        // unix domain socket path to use for physical connection instead of Destination
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -161,7 +168,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
 		if (i % o.Streams) == 0 {
-			conn, err = Dial(o.Destination, o.CACert, o.CertOverride)
+			conn, err = Dial(o)
 			if err != nil {
 				log.Errf("Error in grpc dial for %s %v", o.Destination, err)
 				return nil, err

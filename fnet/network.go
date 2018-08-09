@@ -17,8 +17,11 @@ package fnet // import "istio.io/fortio/fnet"
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -37,6 +40,8 @@ const (
 	PrefixHTTP = "http://"
 	// PrefixHTTPS is a constant value for representing secure http protocol that can be added prefix of url
 	PrefixHTTPS = "https://"
+	// UnixDomainSocket type for network addresses.
+	UnixDomainSocket = "unix"
 )
 
 var (
@@ -64,7 +69,7 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	// and speed:
 	_, err := rand.Read(Payload)
 	if err != nil {
-		log.Errf("Error changing paylaod size, while generating random paylaod")
+		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
 }
 
@@ -80,25 +85,45 @@ func NormalizePort(port string) string {
 // Listen returns a listener for the port. Port can be a port or a
 // bind address and a port (e.g. "8080" or "[::1]:8080"...). If the
 // port component is 0 a free port will be returned by the system.
+// If the port is a pathname (contains a /) a unix domain socket listener
+// will be used instead of regular tcp socket.
 // This logs critical on error and returns nil (is meant for servers
 // that must start).
-func Listen(name string, port string) (net.Listener, *net.TCPAddr) {
-	nPort := NormalizePort(port)
-	listener, err := net.Listen("tcp", nPort)
+func Listen(name string, port string) (net.Listener, net.Addr) {
+	sockType := "tcp"
+	nPort := port
+	if strings.Contains(port, "/") {
+		sockType = UnixDomainSocket
+	} else {
+		nPort = NormalizePort(port)
+	}
+	listener, err := net.Listen(sockType, nPort)
 	if err != nil {
-		log.Critf("Can't listen to %v for %s: %v", nPort, name, err)
+		log.Critf("Can't listen to %s socket %v (%v) for %s: %v", sockType, port, nPort, name, err)
 		return nil, nil
 	}
-	addr := listener.Addr().(*net.TCPAddr)
+	lAddr := listener.Addr()
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, addr.String())
+		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, lAddr)
 	}
-	return listener, addr
+	return listener, lAddr
+}
+
+// GetPort extracts the port for TCP sockets and the path for unix domain sockets.
+func GetPort(lAddr net.Addr) string {
+	var lPort string
+	// Note: might panic if called with something else than unix or tcp socket addr, it's ok.
+	if lAddr.Network() == UnixDomainSocket {
+		lPort = lAddr.(*net.UnixAddr).Name
+	} else {
+		lPort = strconv.Itoa(lAddr.(*net.TCPAddr).Port)
+	}
+	return lPort
 }
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func ResolveDestination(dest string) *net.TCPAddr {
+func ResolveDestination(dest string) net.Addr {
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
@@ -111,7 +136,8 @@ func ResolveDestination(dest string) *net.TCPAddr {
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
-func Resolve(host string, port string) *net.TCPAddr {
+func Resolve(host string, port string) net.Addr {
+	log.Debugf("Resolve() called with host=%s port=%s", host, port)
 	dest := &net.TCPAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
 		log.Debugf("host %s looks like an IPv6, stripping []", host)
@@ -143,22 +169,32 @@ func Resolve(host string, port string) *net.TCPAddr {
 	return dest
 }
 
-func transfer(wg *sync.WaitGroup, dst *net.TCPConn, src *net.TCPConn) {
+func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {
 	n, oErr := io.Copy(dst, src) // keep original error for logs below
 	log.LogVf("Proxy: transferred %d bytes from %v to %v (err=%v)", n, src.RemoteAddr(), dst.RemoteAddr(), oErr)
-	err := src.CloseRead()
-	if err != nil { // We got an eof so it's already half closed.
-		log.LogVf("Proxy: semi expected error CloseRead on src %v: %v,%v", src.RemoteAddr(), err, oErr)
+	sTCP, ok := src.(*net.TCPConn)
+	if ok {
+		err := sTCP.CloseRead()
+		if err != nil { // We got an eof so it's already half closed.
+			log.LogVf("Proxy: semi expected error CloseRead on src %v: %v,%v", src.RemoteAddr(), err, oErr)
+		}
 	}
-	err = dst.CloseWrite()
-	if err != nil {
-		log.Errf("Proxy: error CloseWrite on dst %v: %v,%v", dst.RemoteAddr(), err, oErr)
+	dTCP, ok := dst.(*net.TCPConn)
+	if ok {
+		err := dTCP.CloseWrite()
+		if err != nil {
+			log.Errf("Proxy: error CloseWrite on dst %v: %v,%v", dst.RemoteAddr(), err, oErr)
+		}
 	}
 	wg.Done()
 }
 
-func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
-	d, err := net.DialTCP("tcp", nil, dest)
+func handleProxyRequest(conn net.Conn, dest net.Addr) {
+	err := fmt.Errorf("nil destination")
+	var d net.Conn
+	if dest != nil {
+		d, err = net.Dial(dest.Network(), dest.String())
+	}
 	if err != nil {
 		log.Errf("Proxy: unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)
 		_ = conn.Close()
@@ -176,9 +212,9 @@ func handleProxyRequest(conn *net.TCPConn, dest *net.TCPAddr) {
 }
 
 // Proxy starts a tcp proxy.
-func Proxy(port string, dest *net.TCPAddr) *net.TCPAddr {
-	listener, addr := Listen("proxy for "+dest.String(), port)
-	if addr == nil {
+func Proxy(port string, dest net.Addr) net.Addr {
+	listener, lAddr := Listen(fmt.Sprintf("proxy for %v", dest), port)
+	if listener == nil {
 		return nil // error already logged
 	}
 	go func() {
@@ -187,29 +223,32 @@ func Proxy(port string, dest *net.TCPAddr) *net.TCPAddr {
 			if err != nil {
 				log.Critf("Proxy: error accepting: %v", err) // will this loop with error?
 			} else {
-				tcpConn := conn.(*net.TCPConn)
 				log.LogVf("Proxy: Accepted proxy connection from %v -> %v (for listener %v)",
 					conn.RemoteAddr(), conn.LocalAddr(), dest)
 				// TODO limit number of go request, use worker pool, etc...
-				go handleProxyRequest(tcpConn, dest)
+				go handleProxyRequest(conn, dest)
 			}
 		}
 	}()
-	return addr
+	return lAddr
 }
 
-// ProxyToDestination opens a proxy from the listenPort (or addr:port) and forwards
+// ProxyToDestination opens a proxy from the listenPort (or addr:port or unix domain socket path) and forwards
 // all traffic to destination (host:port)
-func ProxyToDestination(listenPort string, destination string) *net.TCPAddr {
+func ProxyToDestination(listenPort string, destination string) net.Addr {
 	return Proxy(listenPort, ResolveDestination(destination))
 }
 
 // NormalizeHostPort generates host:port string for the address or uses localhost instead of [::]
 // when the original port binding input didn't specify an address
-func NormalizeHostPort(inputPort string, addr *net.TCPAddr) string {
+func NormalizeHostPort(inputPort string, addr net.Addr) string {
 	urlHostPort := addr.String()
-	if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
-		urlHostPort = fmt.Sprintf("localhost:%d", addr.Port)
+	if addr.Network() == UnixDomainSocket {
+		urlHostPort = fmt.Sprintf("-unix-socket=%s", urlHostPort)
+	} else {
+		if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
+			urlHostPort = fmt.Sprintf("localhost:%d", addr.(*net.TCPAddr).Port)
+		}
 	}
 	return urlHostPort
 }
@@ -224,4 +263,21 @@ func ValidatePayloadSize(size *int) {
 		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
 		*size = 0
 	}
+}
+
+// GetUniqueUnixDomainPath returns a path to be used for unix domain socket.
+func GetUniqueUnixDomainPath(prefix string) string {
+	if prefix == "" {
+		prefix = "fortio-uds"
+	}
+	f, err := ioutil.TempFile(os.TempDir(), prefix)
+	if err != nil {
+		log.Errf("Unable to generate temp file with prefix %s: %v", prefix, err)
+		return "/tmp/fortio-default-uds"
+	}
+	fname := f.Name()
+	_ = f.Close()
+	// for the bind to succeed we need the file to not pre exist:
+	_ = os.Remove(fname)
+	return fname
 }

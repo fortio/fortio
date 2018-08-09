@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"istio.io/fortio/fnet"
 	"istio.io/fortio/log"
 	"istio.io/fortio/periodic"
 
@@ -42,10 +43,13 @@ var (
 
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	iPort := PingServer("0", "", "", "bar", 0)
+	iPort := PingServerTCP("0", "", "", "bar", 0)
 	iDest := fmt.Sprintf("localhost:%d", iPort)
-	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
+	uds := fnet.GetUniqueUnixDomainPath("fortio-grpc-test")
+	uPath := PingServer(uds, "", "", "", 10)
+	uDest := "foo.bar:125"
 
 	ro := periodic.RunnerOptions{
 		QPS:        10, // some internet outcalls, not too fast
@@ -70,6 +74,14 @@ func TestGRPCRunner(t *testing.T) {
 			runnerOpts: GRPCRunnerOptions{
 				Destination: sDest,
 				CACert:      caCrt,
+			},
+			expect: true,
+		},
+		{
+			name: "valid unix domain socket runner",
+			runnerOpts: GRPCRunnerOptions{
+				Destination:      uDest,
+				UnixDomainSocket: uPath.String(),
 			},
 			expect: true,
 		},
@@ -158,7 +170,7 @@ func TestGRPCRunner(t *testing.T) {
 
 func TestGRPCRunnerMaxStreams(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServer("0", "", "", "maxstream", 10)
+	port := PingServerTCP("0", "", "", "maxstream", 10)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -207,9 +219,9 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	iPort := PingServer("0", "", "", "bar", 0)
+	iPort := PingServerTCP("0", "", "", "bar", 0)
 	iDest := fmt.Sprintf("localhost:%d", iPort)
-	sPort := PingServer("0", svrCrt, svrKey, "bar", 0)
+	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 
 	ro := periodic.RunnerOptions{

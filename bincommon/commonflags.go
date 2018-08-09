@@ -72,6 +72,8 @@ var (
 		" should be user:password")
 	// QuietFlag is the value of -quiet.
 	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
+	// UnixDomainSocket to use instead of regular host:port
+	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket to use for physical connection")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -131,6 +133,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
 	httpOpts.UserCredentials = *userCredentialsFlag
+	httpOpts.UnixDomainSocket = *unixDomainSocketFlag
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true
