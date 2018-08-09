@@ -136,13 +136,10 @@ type HTTPOptions struct {
 	HTTPReqTimeOut time.Duration // timeout value for http request
 
 	UserCredentials string // user credentials for authorization
-
-
-	ContentType string // indicates request body type
-	Payload     []byte // body for http request
+	ContentType     string // indicates request body type
+	Payload         []byte // body for http request
 
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
-
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.

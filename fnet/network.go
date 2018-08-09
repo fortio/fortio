@@ -45,7 +45,6 @@ const (
 	POST = "POST"
 	// GET is a constant value that indicates http method as get
 	GET = "GET"
-  
 	// UnixDomainSocket type for network addresses.
 	UnixDomainSocket = "unix"
 )
@@ -301,6 +300,7 @@ func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []
 	} else {
 		return []byte(payload)
 	}
+}
 
 // GetUniqueUnixDomainPath returns a path to be used for unix domain socket.
 func GetUniqueUnixDomainPath(prefix string) string {
