@@ -71,6 +71,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	h.URL = url
 	h.NumConnections = 1
 	if h.HTTPReqTimeOut <= 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", h.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	if h.extraHeaders == nil { // not already initialized from flags.
@@ -85,7 +86,7 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 func (h *HTTPOptions) URLSchemeCheck() {
 	log.LogVf("URLSchemeCheck %+v", h)
 	if len(h.URL) == 0 {
-		log.Errf("unexpected init with empty url")
+		log.Errf("Unexpected init with empty url")
 		return
 	}
 	hs := "https://" // longer of the 2 prefixes
@@ -102,7 +103,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		return // url is good
 	}
 	if !strings.HasPrefix(lcURL, "http://") {
-		log.Warnf("assuming http:// on missing scheme for '%s'", h.URL)
+		log.Warnf("Assuming http:// on missing scheme for '%s'", h.URL)
 		h.URL = "http://" + h.URL
 	}
 }
@@ -136,8 +137,12 @@ type HTTPOptions struct {
 
 	UserCredentials string // user credentials for authorization
 
+
 	ContentType string // indicates request body type
 	Payload     []byte // body for http request
+
+	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
+
 }
 
 // ResetHeaders resets all the headers, including the User-Agent one.
@@ -152,7 +157,7 @@ func (h *HTTPOptions) InitHeaders() {
 	h.extraHeaders.Add("User-Agent", userAgent)
 	err := h.ValidateAndAddBasicAuthentication()
 	if err != nil {
-		log.Errf("User credential is not valid. %v", err)
+		log.Errf("User credential is not valid: %v", err)
 	}
 	if len(h.ContentType) > 0 {
 		h.extraHeaders.Add("Content-Type", h.ContentType)
@@ -176,7 +181,7 @@ func (h *HTTPOptions) ValidateAndAddBasicAuthentication() error {
 	}
 	s := strings.SplitN(h.UserCredentials, ":", 2)
 	if len(s) != 2 {
-		return fmt.Errorf("invalid user credentials are used %s. Expected format user:password", h.UserCredentials)
+		return fmt.Errorf("invalid user credentials \"%s\", expecting \"user:password\"", h.UserCredentials)
 	}
 	h.extraHeaders.Add("Authorization", generateBase64UserCredentials(h.UserCredentials))
 	return nil
@@ -245,7 +250,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	}
 	bytes, err := httputil.DumpRequestOut(req, false)
 	if err != nil {
-		log.Errf("Unable to dump request %v", err)
+		log.Errf("Unable to dump request: %v", err)
 	} else {
 		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
 	}
@@ -330,17 +335,10 @@ func NewClient(o *HTTPOptions) Fetcher {
 
 // NewStdClient creates a client object that wraps the net/http standard client.
 func NewStdClient(o *HTTPOptions) *Client {
-	o.Init(o.URL)
+	o.Init(o.URL) // also normalizes NumConnections etc to be valid.
 	req := newHTTPRequest(o)
 	if req == nil {
 		return nil
-	}
-	if o.NumConnections < 1 {
-		o.NumConnections = 1
-	}
-	// 0 timeout for stdclient doesn't mean 0 timeout... so just warn and leave it
-	if o.HTTPReqTimeOut <= 0 {
-		log.Warnf("Std call with client timeout %v", o.HTTPReqTimeOut)
 	}
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
@@ -398,8 +396,8 @@ func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 type FastClient struct {
 	buffer       []byte
 	req          []byte
-	dest         net.TCPAddr
-	socket       *net.TCPConn
+	dest         net.Addr
+	socket       net.Conn
 	socketCount  int
 	size         int
 	code         int
@@ -457,12 +455,19 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		bc.port = url.Scheme // ie http which turns into 80 later
 		log.LogVf("No port specified, using %s", bc.port)
 	}
-	addr := fnet.Resolve(bc.hostname, bc.port)
+	var addr net.Addr
+	if o.UnixDomainSocket != "" {
+		log.Infof("Using unix domain socket %v instead of %v %v", o.UnixDomainSocket, bc.hostname, bc.port)
+		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
+		addr = uds
+	} else {
+		addr = fnet.Resolve(bc.hostname, bc.port)
+	}
 	if addr == nil {
 		// Error already logged
 		return nil
 	}
-	bc.dest = *addr
+	bc.dest = addr
 	// Create the bytes for the request:
 	host := bc.host
 	if o.hostOverride != "" {
@@ -478,10 +483,6 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		} else {
 			buf.WriteString("Connection: close\r\n")
 		}
-	}
-	if o.HTTPReqTimeOut <= 0 {
-		log.Warnf("Invalid timeout %v, setting to %v", o.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
-		o.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
 	}
 	bc.reqTimeout = o.HTTPReqTimeOut
 	w := bufio.NewWriter(&buf)
@@ -507,21 +508,26 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 }
 
 // connect to destination.
-func (c *FastClient) connect() *net.TCPConn {
+func (c *FastClient) connect() net.Conn {
 	c.socketCount++
-	socket, err := net.DialTCP("tcp", nil, &c.dest)
+	socket, err := net.Dial(c.dest.Network(), c.dest.String())
 	if err != nil {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
 		return nil
 	}
+	tcpSock, ok := socket.(*net.TCPConn)
+	if !ok {
+		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
+		return socket
+	}
 	// For now those errors are not critical/breaking
-	if err = socket.SetNoDelay(true); err != nil {
+	if err = tcpSock.SetNoDelay(true); err != nil {
 		log.Warnf("Unable to connect to set tcp no delay %v %v : %v", socket, c.dest, err)
 	}
-	if err = socket.SetWriteBuffer(len(c.req)); err != nil {
+	if err = tcpSock.SetWriteBuffer(len(c.req)); err != nil {
 		log.Warnf("Unable to connect to set write buffer %d %v %v : %v", len(c.req), socket, c.dest, err)
 	}
-	if err = socket.SetReadBuffer(len(c.buffer)); err != nil {
+	if err = tcpSock.SetReadBuffer(len(c.buffer)); err != nil {
 		log.Warnf("Unable to connect to read buffer %d %v %v : %v", len(c.buffer), socket, c.dest, err)
 	}
 	return socket
@@ -549,7 +555,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 			return c.returnRes()
 		}
 	} else {
-		log.Debugf("Reusing socket %v", *conn)
+		log.Debugf("Reusing socket %v", conn)
 	}
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
@@ -558,7 +564,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
-			log.Infof("Closing dead socket %v (%v)", *conn, err)
+			log.Infof("Closing dead socket %v (%v)", conn, err)
 			conn.Close() // nolint: errcheck,gas
 			c.errorCount++
 			return c.Fetch() // recurse once
@@ -571,11 +577,16 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		return c.returnRes()
 	}
 	if !c.keepAlive && c.halfClose {
-		if err = conn.CloseWrite(); err != nil {
-			log.Errf("Unable to close write to %v %v : %v", conn, c.dest, err)
-			return c.returnRes()
-		} // else:
-		log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
+		tcpConn, ok := conn.(*net.TCPConn)
+		if ok {
+			if err = tcpConn.CloseWrite(); err != nil {
+				log.Errf("Unable to close write to %v %v : %v", conn, c.dest, err)
+				return c.returnRes()
+			} // else:
+			log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
+		} else {
+			log.Warnf("Unable to close write non tcp connection %v", conn)
+		}
 	}
 	// Read the response:
 	c.readResponse(conn, reuse)
@@ -589,7 +600,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 
 // Response reading:
 // TODO: refactor - unwiedly/ugly atm
-func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
+func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
 	// TODO: safer to start with -1 / SocketError and fix ok for http 1.0
@@ -607,11 +618,11 @@ func (c *FastClient) readResponse(conn *net.TCPConn, reusedSocket bool) {
 			if err != nil {
 				if reusedSocket && c.size == 0 {
 					// Ok for reused socket to be dead once (close by server)
-					log.Infof("Closing dead socket %v (err %v at first read)", *conn, err)
+					log.Infof("Closing dead socket %v (err %v at first read)", conn, err)
 					c.errorCount++
 					err = conn.Close() // close the previous one
 					if err != nil {
-						log.Warnf("Error closing dead socket %v: %v", *conn, err)
+						log.Warnf("Error closing dead socket %v: %v", conn, err)
 					}
 					c.code = RetryOnce // special "retry once" code
 					return

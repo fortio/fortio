@@ -15,8 +15,9 @@
 package fnet
 
 import (
+	"fmt"
 	"net"
-	"strconv"
+	"os"
 	"strings"
 	"testing"
 
@@ -67,7 +68,7 @@ func TestListen(t *testing.T) {
 	if l == nil || a == nil {
 		t.Fatalf("Unexpected nil in Listen() %v %v", l, a)
 	}
-	if a.Port == 0 {
+	if a.(*net.TCPAddr).Port == 0 {
 		t.Errorf("Unexpected 0 port after listen %+v", a)
 	}
 	_ = l.Close() // nolint: gas
@@ -75,10 +76,10 @@ func TestListen(t *testing.T) {
 
 func TestListenFailure(t *testing.T) {
 	_, a1 := Listen("test listen2", "0")
-	if a1.Port == 0 {
+	if a1.(*net.TCPAddr).Port == 0 {
 		t.Errorf("Unexpected 0 port after listen %+v", a1)
 	}
-	l, a := Listen("this should fail", strconv.Itoa(a1.Port))
+	l, a := Listen("this should fail", GetPort(a1))
 	if l != nil || a != nil {
 		t.Errorf("listen that should error got %v %v instead of nil", l, a)
 	}
@@ -122,7 +123,7 @@ func TestResolveDestinationMultipleIps(t *testing.T) {
 
 func TestProxy(t *testing.T) {
 	addr := ProxyToDestination(":0", "www.google.com:80")
-	dAddr := net.TCPAddr{Port: addr.Port}
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
 		t.Fatalf("can't connect to our proxy: %v", err)
@@ -143,9 +144,59 @@ func TestProxy(t *testing.T) {
 	}
 }
 
+func TestBadGetUniqueUnixDomainPath(t *testing.T) {
+	badPath := []byte{0x41, 0, 0x42}
+	fname := GetUniqueUnixDomainPath(string(badPath))
+	if fname != "/tmp/fortio-default-uds" {
+		t.Errorf("Got %s when expecting default/error case for bad prefix", fname)
+	}
+}
+
+func TestDefaultGetUniqueUnixDomainPath(t *testing.T) {
+	n1 := GetUniqueUnixDomainPath("")
+	n2 := GetUniqueUnixDomainPath("")
+	if n1 == n2 {
+		t.Errorf("Got %s and %s when expecting unique names", n1, n2)
+	}
+}
+
+func TestUnixDomain(t *testing.T) {
+	// Test through the proxy as well (which indirectly tests Listen)
+	fname := GetUniqueUnixDomainPath("fortio-uds-test")
+	addr := ProxyToDestination(fname, "www.google.com:80")
+	defer os.Remove(fname) // to not leak the temp socket
+	if addr == nil {
+		t.Fatalf("Nil socket in unix socket proxy listen")
+	}
+	hp := NormalizeHostPort("", addr)
+	expected := fmt.Sprintf("-unix-socket=%s", fname)
+	if hp != expected {
+		t.Errorf("Got %s, expected %s from NormalizeHostPort(%v)", hp, expected, addr)
+	}
+	dAddr := net.UnixAddr{Name: fname, Net: UnixDomainSocket}
+	d, err := net.DialUnix(UnixDomainSocket, nil, &dAddr)
+	if err != nil {
+		t.Fatalf("can't connect to our proxy using unix socket %v: %v", fname, err)
+	}
+	defer d.Close()
+	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
+	d.Write([]byte(data))
+	d.CloseWrite()
+	res := make([]byte, 4096)
+	n, err := d.Read(res)
+	if err != nil {
+		t.Errorf("read error with proxy: %v", err)
+	}
+	resStr := string(res[:n])
+	expectedStart := "HTTP/1.0 200 OK\r\n"
+	if !strings.HasPrefix(resStr, expectedStart) {
+		t.Errorf("Unexpected reply '%q', expected starting with '%q'", resStr, expectedStart)
+	}
+
+}
 func TestProxyErrors(t *testing.T) {
 	addr := ProxyToDestination(":0", "doesnotexist.istio.io:80")
-	dAddr := net.TCPAddr{Port: addr.Port}
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
 		t.Fatalf("can't connect to our proxy: %v", err)
@@ -157,7 +208,7 @@ func TestProxyErrors(t *testing.T) {
 		t.Errorf("didn't get expected error with proxy %d", n)
 	}
 	// 2nd proxy on same port should fail
-	addr2 := ProxyToDestination(strconv.Itoa(addr.Port), "www.google.com:80")
+	addr2 := ProxyToDestination(GetPort(addr), "www.google.com:80")
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}

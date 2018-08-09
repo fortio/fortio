@@ -203,7 +203,7 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 // the error test for / url above fail:
 
 func TestServe(t *testing.T) {
-	_, addr := Serve("0", "/debugx1")
+	_, addr := ServeTCP("0", "/debugx1")
 	port := addr.Port
 	log.Infof("On addr %s found port: %d", addr, port)
 	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)

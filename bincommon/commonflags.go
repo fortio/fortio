@@ -82,6 +82,9 @@ var (
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
 	// PayloadFileFlag is the value of -paylaod-file
 	PayloadFileFlag = flag.String("payload-file", "", "File that is going to be used as payload, replaces -payload when set")
+
+	// UnixDomainSocket to use instead of regular host:port
+	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket to use for physical connection")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -143,6 +146,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.UserCredentials = *userCredentialsFlag
 	httpOpts.ContentType = *contentTypeFlag
 	httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+	httpOpts.UnixDomainSocket = *unixDomainSocketFlag
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true

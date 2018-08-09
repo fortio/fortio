@@ -33,10 +33,10 @@ func init() {
 }
 
 func TestPingServer(t *testing.T) {
-	iPort := PingServer("0", "", "", "foo", 0)
+	iPort := PingServerTCP("0", "", "", "foo", 0)
 	iAddr := fmt.Sprintf("localhost:%d", iPort)
 	t.Logf("insecure grpc ping server running, will connect to %s", iAddr)
-	sPort := PingServer("0", svrCrt, svrKey, "foo", 0)
+	sPort := PingServerTCP("0", svrCrt, svrKey, "foo", 0)
 	sAddr := fmt.Sprintf("localhost:%d", sPort)
 	t.Logf("secure grpc ping server running, will connect to %s", sAddr)
 	delay := 100 * time.Millisecond
@@ -86,7 +86,7 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Was expecting dial error when using invalid certificate, didn't get one, got %+v", r)
 	}
 	// 2nd server on same port should fail to bind:
-	newPort := PingServer(strconv.Itoa(iPort), "", "", "will fail", 0)
+	newPort := PingServerTCP(strconv.Itoa(iPort), "", "", "will fail", 0)
 	if newPort != -1 {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}
