@@ -494,8 +494,8 @@ func TestGenerateSize(t *testing.T) {
 
 func TestPayloadWithEchoBack(t *testing.T) {
 	var tests = []struct {
-		payload []byte
-		disableFastClient  bool
+		payload           []byte
+		disableFastClient bool
 	}{
 		{[]byte{44, 45, 00, 46, 47}, false},
 		{[]byte{44, 45, 00, 46, 47}, true},
