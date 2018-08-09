@@ -558,7 +558,7 @@ func TestH10Cli(t *testing.T) {
 	if code != 200 {
 		t.Errorf("http 1.0 unexpected error %d", code)
 	}
-	s := cli.socket
+	s := cli.(*FastClient).socket
 	if s != nil {
 		t.Errorf("http 1.0 socket should be nil after fetch (no keepalive) %+v instead", s)
 	}
@@ -613,7 +613,7 @@ func TestDefaultPort(t *testing.T) {
 	if code != 303 {
 		t.Errorf("unexpected code for %s: %d (expecting 303 redirect to https)", url, code)
 	}
-	conn := cli.connect()
+	conn := cli.(*FastClient).connect()
 	if conn != nil {
 		p := conn.RemoteAddr().(*net.TCPAddr).Port
 		if p != 80 {
@@ -631,16 +631,16 @@ func TestDefaultPort(t *testing.T) {
 		// If https support was added, remove this whitebox/for coverage purpose assertion
 		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
 	}
-	dCli := NewClient(opts)
-	if dCli == nil {
+	cli = NewClient(opts)
+	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts.")
 	}
 	// currently fast client fails with https:
-	code, _, _ = dCli.Fetch()
+	code, _, _ = cli.Fetch()
 	if code != 200 {
 		t.Errorf("Standard client http error code %d", code)
 	}
-	dCli.Close()
+	cli.Close()
 }
 
 // Test for bug #127
@@ -779,7 +779,7 @@ func TestPayloadForFastClient(t *testing.T) {
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
 		client := NewFastClient(&hOptions)
-		body := string(client.req)
+		body := string(client.(*FastClient).req)
 		if body != test.expectedReqBody {
 			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)
 		}

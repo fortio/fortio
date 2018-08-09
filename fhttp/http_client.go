@@ -431,7 +431,7 @@ func (c *FastClient) Close() int {
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) *FastClient {
+func NewFastClient(o *HTTPOptions) Fetcher {
 	method := o.GetMethod()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
