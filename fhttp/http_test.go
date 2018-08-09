@@ -495,7 +495,7 @@ func TestGenerateSize(t *testing.T) {
 func TestPayloadWithEchoBack(t *testing.T) {
 	var tests = []struct {
 		payload []byte
-		http10  bool
+		disableFastClient  bool
 	}{
 		{[]byte{44, 45, 00, 46, 47}, false},
 		{[]byte{44, 45, 00, 46, 47}, true},
@@ -507,42 +507,20 @@ func TestPayloadWithEchoBack(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/", a.Port)
 	for _, test := range tests {
 		opts := NewHTTPOptions(url)
-		opts.HTTP10 = test.http10
+		opts.DisableFastClient = test.disableFastClient
 		opts.Payload = test.payload
 		cli := NewClient(opts)
-		code, body, _ := cli.Fetch()
+		code, body, header := cli.Fetch()
 		if code != 200 {
 			t.Errorf("Unexpected error %d", code)
 		}
-		contentLength := extractContentLength(string(body))
-		if !bytes.Equal(body[len(body)-contentLength:], test.payload) {
+		if !bytes.Equal(body[header:], test.payload) {
 			t.Errorf("Got %s, expected %s from echo", string(body), string(test.payload))
 		}
-		if test.http10 {
+		if !test.disableFastClient {
 			cli.Close()
 		}
 	}
-}
-
-func extractContentLength(body string) int {
-	headers := strings.Split(body, "\r\n")
-	for _, header := range headers {
-		if strings.HasPrefix(header, "Content-Length") {
-			KVSplit := strings.Split(header, ":")
-			if len(KVSplit) != 2 {
-				return 0
-			}
-			KVSplit[1] = strings.TrimLeft(KVSplit[1], " ") //Get rid of the left space...
-			length, err := strconv.Atoi(KVSplit[1])
-			if err != nil {
-				log.Warnf("Error occurred while taking the length from content-length header %v", err)
-				return 0
-			}
-			return length
-		}
-	}
-	log.Warnf("Content-Length header is not found")
-	return 0
 }
 
 // Many of the earlier http tests are through httprunner but new tests should go here

@@ -160,7 +160,7 @@ func (h *HTTPOptions) InitHeaders() {
 }
 
 // GetPayloadString returns the payload as a string. If payload is null return empty string
-// This is only needed due to grpc ping proto. It takes string stead of byte array.
+// This is only needed due to grpc ping proto. It takes string instead of byte array.
 func (h *HTTPOptions) GetPayloadString() string {
 	if h.Payload == nil {
 		return ""
