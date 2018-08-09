@@ -136,6 +136,8 @@ type HTTPOptions struct {
 	HTTPReqTimeOut time.Duration // timeout value for http request
 
 	UserCredentials string // user credentials for authorization
+	ContentType     string // indicates request body type
+	Payload         []byte // body for http request
 
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
 }
@@ -154,6 +156,18 @@ func (h *HTTPOptions) InitHeaders() {
 	if err != nil {
 		log.Errf("User credential is not valid: %v", err)
 	}
+	if len(h.ContentType) > 0 {
+		h.extraHeaders.Add("Content-Type", h.ContentType)
+	}
+}
+
+// GetPayloadString returns the payload as a string. If payload is null return empty string
+// This is only needed due to grpc ping proto. It takes string instead of byte array.
+func (h *HTTPOptions) GetPayloadString() string {
+	if h.Payload == nil {
+		return ""
+	}
+	return string(h.Payload)
 }
 
 // ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
@@ -178,6 +192,14 @@ func (h *HTTPOptions) GetHeaders() http.Header {
 	cp := h.extraHeaders
 	cp.Add("Host", h.hostOverride)
 	return cp
+}
+
+// GetMethod returns the method of the http req.
+func (h *HTTPOptions) GetMethod() string {
+	if len(h.Payload) > 0 {
+		return fnet.POST
+	}
+	return fnet.GET
 }
 
 // AddAndValidateExtraHeader collects extra headers (see main.go for example).
@@ -206,7 +228,12 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 
 // newHttpRequest makes a new http GET request for url with User-Agent.
 func newHTTPRequest(o *HTTPOptions) *http.Request {
-	req, err := http.NewRequest("GET", o.URL, nil)
+	method := o.GetMethod()
+	var body io.Reader
+	if method == fnet.POST {
+		body = bytes.NewReader(o.Payload)
+	}
+	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("Unable to make request for %s : %v", o.URL, err)
 		return nil
@@ -325,13 +352,13 @@ func NewStdClient(o *HTTPOptions) *Client {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
 	}
 	client := Client{
-		o.URL,
-		req,
-		&http.Client{
+		url: o.URL,
+		req: req,
+		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
 		},
-		&tr,
+		transport: &tr,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
@@ -400,6 +427,8 @@ func (c *FastClient) Close() int {
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
 func NewFastClient(o *HTTPOptions) Fetcher {
+	method := o.GetMethod()
+	payloadLen := len(o.Payload)
 	o.Init(o.URL)
 	proto := "1.1"
 	if o.HTTP10 {
@@ -442,7 +471,7 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		host = o.hostOverride
 	}
 	var buf bytes.Buffer
-	buf.WriteString("GET " + url.RequestURI() + " HTTP/" + proto + "\r\n")
+	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
 	if !bc.http10 {
 		buf.WriteString("Host: " + host + "\r\n")
 		bc.parseHeaders = true
@@ -457,7 +486,14 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	// This writes multiple valued headers properly (unlike calling Get() to do it ourselves)
 	o.extraHeaders.Write(w) // nolint: errcheck,gas
 	w.Flush()               // nolint: errcheck,gas
+	if payloadLen > 0 {
+		buf.WriteString(fmt.Sprintf("Content-Length: %d\r\n", payloadLen))
+	}
 	buf.WriteString("\r\n")
+	//Add the payload to http body
+	if payloadLen > 0 {
+		buf.Write(o.Payload)
+	}
 	bc.req = buf.Bytes()
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
 	return &bc

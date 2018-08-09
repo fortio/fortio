@@ -40,6 +40,11 @@ const (
 	PrefixHTTP = "http://"
 	// PrefixHTTPS is a constant value for representing secure http protocol that can be added prefix of url
 	PrefixHTTPS = "https://"
+
+	// POST is a constant value that indicates http method as post
+	POST = "POST"
+	// GET is a constant value that indicates http method as get
+	GET = "GET"
 	// UnixDomainSocket type for network addresses.
 	UnixDomainSocket = "unix"
 )
@@ -262,6 +267,38 @@ func ValidatePayloadSize(size *int) {
 	} else if *size < 0 {
 		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
 		*size = 0
+	}
+}
+
+// GenerateRandomPayload generates a random payload with given input size
+func GenerateRandomPayload(payloadSize int) []byte {
+	ValidatePayloadSize(&payloadSize)
+	return Payload[:payloadSize]
+}
+
+// ReadFileForPayload reads the file from given input path
+func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
+	data, err := ioutil.ReadFile(payloadFilePath)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// GeneratePayload generates a payload with given inputs.
+// First tries filePath, then random payload, at last payload
+func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []byte {
+	if len(payloadFilePath) > 0 {
+		p, err := ReadFileForPayload(payloadFilePath)
+		if err != nil {
+			log.Warnf("File read operation is failed %v", err)
+			return nil
+		}
+		return p
+	} else if payloadSize > 0 {
+		return GenerateRandomPayload(payloadSize)
+	} else {
+		return []byte(payload)
 	}
 }
 
