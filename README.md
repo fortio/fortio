@@ -80,141 +80,141 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 Φορτίο 1.1.0 usage:
-	fortio command [flags] target
-where command is one of: load (load testing), server (starts grpc ping and http
-echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI
-server), redirect (redirect only server), or curl (single URL debug).  where
-target is a url (http load tests) or host:port (grpc health test).  flags are:
-  -H value
-	Additional Header(s)
-  -L	Follow redirects (implies -std-client) - do not use for load test
+        fortio command [flags] target
+where command is one of: load (load testing), server (starts grpc ping and
+http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report
+only UI server), redirect (redirect only server), or curl (single URL debug).
+where target is a url (http load tests) or host:port (grpc health test).
+flags are:
+  -H header
+        Additional header(s)
+  -L    Follow redirects (implies -std-client) - do not use for load test
   -P value
-	Proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
-	www.google.com:443" ...
-  -a	Automatically save JSON result with filename based on labels & timestamp
+        Proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0 
+www.google.com:443" ...
+  -a    Automatically save JSON result with filename based on labels & timestamp
   -abort-on int
-	Http code that if encountered aborts the run. e.g. 503 or -1 for socket
-	errors.
+        Http code that if encountered aborts the run. e.g. 503 or -1 for socket 
+errors.
   -allow-initial-errors
-	Allow and don't abort on initial warmup errors
+        Allow and don't abort on initial warmup errors
   -base-url string
-	base URL used as prefix for data/index.tsv generation. (when empty, the
-	url from the first request is used)
+        base URL used as prefix for data/index.tsv generation. (when empty, the 
+url from the first request is used)
   -c int
-	Number of connections/goroutine/threads (default 4)
-  -cacert string
-	Path to a custom CA certificate file to be used for the GRPC client TLS,
-	if empty, use https:// prefix for standard internet CAs TLS
-  -cert string
-	Path to the certificate file to be used for GRPC server TLS
+        Number of connections/goroutine/threads (default 4)
+  -cacert Path
+        Path to a custom CA certificate file to be used for the GRPC client 
+TLS, if empty, use https:// prefix for standard internet CAs TLS
+  -cert Path
+        Path to the certificate file to be used for GRPC server TLS
   -compression
-	Enable http compression
+        Enable http compression
   -curl
-	Just fetch the content once
-  -data-dir string
-	Directory where JSON results are stored/read (default ".")
+        Just fetch the content once
+  -data-dir Directory
+        Directory where JSON results are stored/read (default ".")
   -echo-debug-path string
-	http echo server URI for debug, empty turns off that part (more secure)
-	(default "/debug")
+        http echo server URI for debug, empty turns off that part (more secure) 
+(default "/debug")
   -gomaxprocs int
-	Setting for runtime.GOMAXPROCS, <1 doesn't change the default
+        Setting for runtime.GOMAXPROCS, <1 doesn't change the default
   -grpc
-	Use GRPC (health check by default, add -ping for ping) for load testing
+        Use GRPC (health check by default, add -ping for ping) for load testing
   -grpc-max-streams uint
-	MaxConcurrentStreams for the grpc server. Default (0) is to leave the
-	option unset.
+        MaxConcurrentStreams for the grpc server. Default (0) is to leave the 
+option unset.
   -grpc-ping-delay duration
-	grpc ping delay in response
+        grpc ping delay in response
   -grpc-port string
-	grpc server port. Can be in the form of host:port, ip:port or port or
-	/unix/domain/path or "disabled" to not start the grpc server. (default
-	"8079")
+        grpc server port. Can be in the form of host:port, ip:port or port or 
+/unix/domain/path or "disabled" to not start the grpc server. (default "8079")
   -halfclose
-	When not keepalive, whether to half close the connection (only for fast
-	http)
+        When not keepalive, whether to half close the connection (only for fast 
+http)
   -health
-	grpc ping client mode: use health instead of ping
+        grpc ping client mode: use health instead of ping
   -healthservice string
-	which service string to pass to health check
+        which service string to pass to health check
   -http-port string
-	http echo server port. Can be in the form of host:port, ip:port, port or
-	/unix/domain/path. (default "8080")
+        http echo server port. Can be in the form of host:port, ip:port, port 
+or /unix/domain/path. (default "8080")
   -http1.0
-	Use http1.0 (instead of http 1.1)
-  -httpbufferkb int
-	Size of the buffer (max data size) for the optimized http client in
-	kbytes (default 128)
+        Use http1.0 (instead of http 1.1)
+  -httpbufferkb kbytes
+        Size of the buffer (max data size) for the optimized http client in 
+kbytes (default 128)
   -httpccch
-	Check for Connection: Close Header
+        Check for Connection: Close Header
   -https-insecure
-	Long form of the -k flag
-  -json string
-	Json output to provided file or '-' for stdout (empty = no json output,
-	unless -a is used)
-  -k	Do not verify certs in https connections
+        Long form of the -k flag
+  -json path
+        Json output to provided file path or '-' for stdout (empty = no json 
+output, unless -a is used)
+  -k    Do not verify certs in https connections
   -keepalive
-	Keep connection alive (only for fast http 1.1) (default true)
-  -key string
-	Path to the key file used for GRPC server TLS
+        Keep connection alive (only for fast http 1.1) (default true)
+  -key Path
+        Path to the key file used for GRPC server TLS
   -labels string
-	Additional config data/labels to add to the resulting JSON, defaults to
-	target URL and hostname
+        Additional config data/labels to add to the resulting JSON, defaults to 
+target URL and hostname
   -logcaller
-	Logs filename and line number of callers to log (default true)
+        Logs filename and line number of callers to log (default true)
   -loglevel value
-	loglevel, one of [Debug Verbose Info Warning Error Critical Fatal]
-	(default Info)
+        loglevel, one of [Debug Verbose Info Warning Error Critical Fatal] 
+(default Info)
   -logprefix string
-	Prefix to log lines before logged messages (default "> ")
+        Prefix to log lines before logged messages (default "> ")
   -maxpayloadsizekb int
-	MaxPayloadSize is the maximum size of payload to be generated by the
-	EchoHandler size= argument. In Kbytes. (default 256)
+        MaxPayloadSize is the maximum size of payload to be generated by the 
+EchoHandler size= argument. In Kbytes. (default 256)
   -n int
-	Run for exactly this number of calls instead of duration. Default (0) is
-	to use duration (-t). Default is 1 when used as grpc ping count.
+        Run for exactly this number of calls instead of duration. Default (0) 
+is to use duration (-t). Default is 1 when used as grpc ping count.
   -p string
-	List of pXX to calculate (default "50,75,90,99,99.9")
+        List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
-	Payload string to send along
+        Payload string to send along
   -payload-size int
-	Additional random payload size, replaces -payload when set > 0, must be
-	smaller than -maxpayloadsizekb
+        Additional random payload size, replaces -payload when set > 0, must be 
+smaller than -maxpayloadsizekb
   -ping
-	grpc load test: use ping instead of health
-  -profile string
-	write .cpu and .mem profiles to file
+        grpc load test: use ping instead of health
+  -profile file
+        write .cpu and .mem profiles to file
   -qps float
-	Queries Per Seconds or 0 for no wait/max qps (default 8)
+        Queries Per Seconds or 0 for no wait/max qps (default 8)
   -quiet
-	Quiet mode: sets the loglevel to Error and reduces the output.
+        Quiet mode: sets the loglevel to Error and reduces the output.
   -r float
-	Resolution of the histogram lowest buckets in seconds (default 0.001)
+        Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port string
-	Redirect all incoming traffic to https URL (need ingress to work
-	properly). Can be in the form of host:port, ip:port, port or "disabled"
-	to disable the feature. (default "8081")
+        Redirect all incoming traffic to https URL (need ingress to work 
+properly). Can be in the form of host:port, ip:port, port or "disabled" to 
+disable the feature. (default "8081")
   -s int
-	Number of streams per grpc connection (default 1)
-  -static-dir string
-	Absolute path to the dir containing the static files dir
+        Number of streams per grpc connection (default 1)
+  -static-dir path
+        Absolute path to the dir containing the static files dir
   -stdclient
-	Use the slower net/http standard client (works for TLS)
+        Use the slower net/http standard client (works for TLS)
   -sync string
-	index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
+        index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -sync-interval duration
-	Refresh the url every given interval (default, no refresh)
+        Refresh the url every given interval (default, no refresh)
   -t duration
-	How long to run the test or 0 to run until ^C (default 5s)
+        How long to run the test or 0 to run until ^C (default 5s)
   -timeout duration
-	Connection and read timeout value (for http) (default 15s)
+        Connection and read timeout value (for http) (default 15s)
   -ui-path string
-	http server URI for UI, empty turns off that part (more secure) (default
-	"/fortio/")
-  -unix-socket string
-	Unix domain socket to use for physical connection
-  -user string
-	User credentials for basic authentication (for http). Input data format
-	should be user:password
+        http server URI for UI, empty turns off that part (more secure) 
+(default "/fortio/")
+  -unix-socket path
+        Unix domain socket path to use for physical connection
+  -user user:password
+        User credentials for basic authentication (for http). Input data format 
+should be user:password
 </pre>
 </details>
 

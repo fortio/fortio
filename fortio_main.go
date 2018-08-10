@@ -59,8 +59,8 @@ func usage(w io.Writer, msgs ...interface{}) {
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
-		"server), redirect (redirect only server), or curl (single URL debug).",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report",
+		"only UI server), redirect (redirect only server), or curl (single URL debug).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
