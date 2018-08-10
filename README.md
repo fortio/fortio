@@ -74,6 +74,7 @@ Most important flags for http load generation:
 | `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typicallly a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 
+You can switch from http GET queries to POST by setting `-content-type` or passing one of the `-payload-*` option.
 
 Full list of command line flags (`fortio help`):
 <details>
@@ -111,7 +112,8 @@ TLS, if empty, use https:// prefix for standard internet CAs TLS
   -compression
         Enable http compression
   -content-type string
-        Sets a content type for http request
+        Sets http content type. Setting this value switches the request method
+from GET to POST.
   -curl
         Just fetch the content once
   -data-dir Directory
@@ -178,11 +180,12 @@ is to use duration (-t). Default is 1 when used as grpc ping count.
         List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
         Payload string to send along
-  -payload-file string
-        File that is going to be used as payload, replaces -payload when set
+  -payload-file path
+        File path to be use as payload (POST for http), replaces -payload when
+set.
   -payload-size int
         Additional random payload size, replaces -payload when set > 0, must be
-smaller than -maxpayloadsizekb
+smaller than -maxpayloadsizekb. Setting this switches http to POST.
   -ping
         grpc load test: use ping instead of health
   -profile file
