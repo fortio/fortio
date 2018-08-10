@@ -59,8 +59,8 @@ func usage(w io.Writer, msgs ...interface{}) {
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report only UI",
-		"server), redirect (redirect only server), or curl (single URL debug).",
+		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report",
+		"only UI server), redirect (redirect only server), or curl (single URL debug).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
@@ -87,13 +87,13 @@ var (
 	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
-	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to file")
+	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	certFlag          = flag.String("cert", "", "Path to the certificate file to be used for GRPC server TLS")
-	keyFlag           = flag.String("key", "", "Path to the key file used for GRPC server TLS")
+	certFlag          = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
+	keyFlag           = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
 	caCertFlag        = flag.String("cacert", "",
-		"Path to a custom CA certificate file to be used for the GRPC client TLS, "+
+		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
 			"if empty, use https:// prefix for standard internet CAs TLS")
 	echoPortFlag = flag.String("http-port", "8080",
 		"http echo server port. Can be in the form of host:port, ip:port, port or /unix/domain/path.")
@@ -103,13 +103,13 @@ var (
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server URI for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
-		"Json output to provided file or '-' for stdout (empty = no json output, unless -a is used)")
+		"Json output to provided file `path` or '-' for stdout (empty = no json output, unless -a is used)")
 	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
-	staticDirFlag = flag.String("static-dir", "", "Absolute path to the dir containing the static files dir")
-	dataDirFlag   = flag.String("data-dir", defaultDataDir, "Directory where JSON results are stored/read")
+	staticDirFlag = flag.String("static-dir", "", "Absolute `path` to the dir containing the static files dir")
+	dataDirFlag   = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags  proxiesFlagList
 	proxies       = make([]string, 0)
 
