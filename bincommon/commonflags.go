@@ -69,18 +69,18 @@ var (
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
-		" should be user:password")
+		" should be `user:password`")
 	// QuietFlag is the value of -quiet.
 	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	// UnixDomainSocket to use instead of regular host:port
-	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket to use for physical connection")
+	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
 func SharedMain(usage func(io.Writer, ...interface{})) {
-	flag.Var(&headersFlags, "H", "Additional Header(s)")
+	flag.Var(&headersFlags, "H", "Additional `header`(s)")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
-		"Size of the buffer (max data size) for the optimized http client in kbytes")
+		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
