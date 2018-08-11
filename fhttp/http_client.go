@@ -79,6 +79,11 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	return h
 }
 
+const (
+	contentType   = "Content-Type"
+	contentLength = "Content-Length"
+)
+
 // GenerateHeaders completes the header generation, including Content-Type/Length
 // and user credential coming from the http options in addition to extra headers
 // coming from flags and AddAndValidateExtraHeader().
@@ -88,12 +93,17 @@ func (h *HTTPOptions) GenerateHeaders() http.Header {
 	}
 	allHeaders := h.extraHeaders
 	payloadLen := len(h.Payload)
-	if payloadLen > 0 && len(h.ContentType) == 0 {
+	// If content-type isn't already specified and we have a payload, let's use the
+	// standard for binary content:
+	if payloadLen > 0 && len(h.ContentType) == 0 && len(allHeaders.Get(contentType)) == 0 {
 		h.ContentType = "application/octet-stream"
 	}
 	if len(h.ContentType) > 0 {
-		allHeaders.Add("Content-Type", h.ContentType)
-		allHeaders.Add("Content-Length", strconv.Itoa(payloadLen))
+		allHeaders.Add(contentType, h.ContentType)
+	}
+	// Add content-length unless already set in custom headers (or we're not doing a POST)
+	if (payloadLen > 0 || len(h.ContentType) > 0) && len(allHeaders.Get(contentLength)) == 0 {
+		allHeaders.Add(contentLength, strconv.Itoa(payloadLen))
 	}
 	err := h.ValidateAndAddBasicAuthentication(allHeaders)
 	if err != nil {
