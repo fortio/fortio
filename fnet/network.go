@@ -262,7 +262,8 @@ func NormalizeHostPort(inputPort string, addr net.Addr) string {
 // size will set to MaxPayLoadSize
 func ValidatePayloadSize(size *int) {
 	if *size > MaxPayloadSize && *size > 0 {
-		log.Warnf("Requested size %d greater than max size %d, using max instead", *size, MaxPayloadSize)
+		log.Warnf("Requested size %d greater than max size %d, using max instead (change max using -maxpayloadsizekb)",
+			*size, MaxPayloadSize)
 		*size = MaxPayloadSize
 	} else if *size < 0 {
 		log.Warnf("Requested size %d is negative, using 0 (no additional payload) instead.", *size)
