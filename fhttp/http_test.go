@@ -38,7 +38,7 @@ func TestGetHeaders(t *testing.T) {
 	o := &HTTPOptions{}
 	o.AddAndValidateExtraHeader("FOo:baR")
 	oo := *o // check that copying works
-	h := oo.GetHeaders()
+	h := oo.AllHeaders()
 	if len(h) != 2 { // 1 above + user-agent
 		t.Errorf("Header count mismatch, got %d instead of 3", len(h))
 	}
@@ -49,7 +49,7 @@ func TestGetHeaders(t *testing.T) {
 		t.Errorf("Host header should be nil initially, got '%v'", h.Get("Host"))
 	}
 	o.AddAndValidateExtraHeader("hoSt:   aBc:123")
-	h = o.GetHeaders()
+	h = o.AllHeaders()
 	if h.Get("Host") != "aBc:123" {
 		t.Errorf("Host header mismatch, got '%v'", h.Get("Host"))
 	}
@@ -61,7 +61,7 @@ func TestGetHeaders(t *testing.T) {
 		t.Errorf("Expected error for header without value, did not get one")
 	}
 	o.ResetHeaders()
-	h = o.GetHeaders()
+	h = o.AllHeaders()
 	if h.Get("Host") != "" {
 		t.Errorf("After reset Host header should be nil, got '%v'", h.Get("Host"))
 	}
@@ -99,8 +99,8 @@ func TestMultiInitAndEscape(t *testing.T) {
 	o.AddAndValidateExtraHeader("FoO: BaR")
 	// re init should not erase headers
 	o.Init(o.URL)
-	if o.GetHeaders().Get("Foo") != "BaR" {
-		t.Errorf("Lost header after Init %+v", o.GetHeaders())
+	if o.AllHeaders().Get("Foo") != "BaR" {
+		t.Errorf("Lost header after Init %+v", o.AllHeaders())
 	}
 }
 
@@ -491,6 +491,37 @@ func TestGenerateSize(t *testing.T) {
 	}
 }
 
+func TestPayloadWithEchoBack(t *testing.T) {
+	var tests = []struct {
+		payload           []byte
+		disableFastClient bool
+	}{
+		{[]byte{44, 45, 00, 46, 47}, false},
+		{[]byte{44, 45, 00, 46, 47}, true},
+		{[]byte("groß"), false},
+		{[]byte("groß"), true},
+	}
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	for _, test := range tests {
+		opts := NewHTTPOptions(url)
+		opts.DisableFastClient = test.disableFastClient
+		opts.Payload = test.payload
+		cli := NewClient(opts)
+		code, body, header := cli.Fetch()
+		if code != 200 {
+			t.Errorf("Unexpected error %d", code)
+		}
+		if !bytes.Equal(body[header:], test.payload) {
+			t.Errorf("Got %s, expected %q from echo", DebugSummary(body, 512), test.payload)
+		}
+		if !test.disableFastClient {
+			cli.Close()
+		}
+	}
+}
+
 // Many of the earlier http tests are through httprunner but new tests should go here
 
 func TestUnixDomainHttp(t *testing.T) {
@@ -695,6 +726,85 @@ func TestPayloadSizeSmall(t *testing.T) {
 		}
 		if len(data)-header != size {
 			t.Errorf("Got len(data)-header %d not as expected %d : got %s", len(data)-header, size, DebugSummary(data, 512))
+		}
+	}
+}
+
+// TODO: improve/unify/simplify those payload/POST tests: just go to /debug handler for both clients and check what is echoed back
+
+func TestPayloadForClient(t *testing.T) {
+	var tests = []struct {
+		contentType    string
+		payload        []byte
+		expectedMethod string
+	}{
+		{"application/json",
+			[]byte("{\"test\" : \"test\"}"),
+			"POST"},
+		{"application/xml",
+			[]byte("<test test=\"test\">"),
+			"POST"},
+		{"",
+			nil,
+			"GET"},
+	}
+	for _, test := range tests {
+		hOptions := HTTPOptions{}
+		hOptions.URL = "www.google.com"
+		hOptions.ContentType = test.contentType
+		hOptions.Payload = test.payload
+		client := NewStdClient(&hOptions)
+		contentType := client.req.Header.Get("Content-Type")
+		if contentType != test.contentType {
+			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
+		}
+		method := client.req.Method
+		if method != test.expectedMethod {
+			t.Errorf("Got %s, expected %s as a method", method, test.expectedMethod)
+		}
+		body := client.req.Body
+		if body == nil {
+			if len(test.payload) > 0 {
+				t.Errorf("Got empty nil body, expected %s as a body", test.payload)
+			}
+			continue
+		}
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(body)
+		payload := buf.Bytes()
+		if !bytes.Equal(payload, test.payload) {
+			t.Errorf("Got %s, expected %s as a body", string(payload), string(test.payload))
+		}
+	}
+}
+
+func TestPayloadForFastClient(t *testing.T) {
+	var tests = []struct {
+		contentType     string
+		payload         []byte
+		expectedReqBody string
+	}{
+		{"application/json",
+			[]byte("{\"test\" : \"test\"}"),
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 17\r\nContent-Type: "+
+				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent)},
+		{"application/xml",
+			[]byte("<test test=\"test\">"),
+			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 18\r\nContent-Type: "+
+				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent)},
+		{"",
+			nil,
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
+	}
+	for _, test := range tests {
+		hOptions := HTTPOptions{}
+		hOptions.URL = "www.google.com"
+		hOptions.ContentType = test.contentType
+		hOptions.Payload = test.payload
+		client := NewFastClient(&hOptions)
+		body := string(client.(*FastClient).req)
+		if body != test.expectedReqBody {
+			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)
 		}
 	}
 }
@@ -983,12 +1093,12 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test.o.ResetHeaders()
-		err := test.o.ValidateAndAddBasicAuthentication()
+		h := make(http.Header)
+		err := test.o.ValidateAndAddBasicAuthentication(h)
 		if err == nil && !test.isCredentialsValid {
 			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
 		}
-		if test.isAuthHeaderAdded && len(test.o.extraHeaders.Get("Authorization")) <= 0 {
+		if test.isAuthHeaderAdded && len(h.Get("Authorization")) <= 0 {
 			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
 		}
 

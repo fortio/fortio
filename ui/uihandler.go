@@ -237,7 +237,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
-		}{r, httpopts.GetHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
+		}{r, httpopts.AllHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
 		if err != nil {
