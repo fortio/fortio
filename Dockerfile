@@ -2,8 +2,6 @@
 FROM istio/fortio.build:v8 as build
 WORKDIR /go/src/istio.io
 COPY . fortio
-# Submodule handling
-RUN make -C fortio submodule
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
 RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_BIN=../fortio_go1.10.bin

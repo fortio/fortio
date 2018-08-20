@@ -22,11 +22,9 @@ CERT_TEMP_DIR := ./cert-tmp/
 # ps: can't use go list (and get packages as canonical istio.io/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
 PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp)")
-# Marker for whether vendor submodule is here or not already
-GRPC_DIR:=./vendor/google.golang.org/grpc
 
 # Run dependencies
-dependencies: submodule certs
+dependencies: certs
 
 # Local targets:
 install: dependencies
@@ -50,7 +48,7 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: dependencies vendor.check
+local-lint: dependencies
 	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate \
 	--exclude=.pb.go --disable=gocyclo --disable=gas --line-length=132 \
@@ -78,28 +76,12 @@ coverage: dependencies
 	./.circleci/coverage.sh
 	curl -s https://codecov.io/bash | bash
 
-# Submodule handling when not already there
-submodule: $(GRPC_DIR)
-
-$(GRPC_DIR):
-	$(MAKE) submodule-sync
-
-# If you want to force update/sync, invoke 'make submodule-sync' directly
-submodule-sync:
-	git submodule sync
-	git submodule update --init
-
 # Short cut for pulling/updating to latest of the current branch
 pull:
 	git pull
-	$(MAKE) submodule-sync
 
-# https://github.com/istio/vendor-istio#how-do-i-add--change-a-dependency
-# PS: for fortio no dependencies should be added, only grpc updated.
 depend.status:
-	@echo "No error means your Gopkg.* are in sync and ok with vendor/"
 	dep status
-	cp Gopkg.* vendor/
 
 depend.update.full: depend.cleanlock depend.update
 
@@ -109,17 +91,8 @@ depend.cleanlock:
 depend.update:
 	@echo "Running dep ensure with DEPARGS=$(DEPARGS)"
 	time dep ensure $(DEPARGS)
-	cp Gopkg.* vendor/
-	@echo "now check the diff in vendor/ and make a PR"
 
-vendor.check:
-	@echo "Checking that Gopkg.* are in sync with vendor/ submodule:"
-	@echo "if this fails, 'make pull' and/or seek on-call help"
-	diff Gopkg.toml vendor/
-	diff Gopkg.lock vendor/
-
-.PHONY: depend.status depend.cleanlock depend.update depend.update.full vendor.check
-
+.PHONY: depend.status depend.cleanlock depend.update depend.update.full
 
 # Docker: Pushes the combo image and the smaller image(s)
 all: test install lint docker-version docker-push-internal
@@ -162,14 +135,14 @@ authorize:
 
 .PHONY: install lint install-linters coverage webtest release-test update-build-image
 
-.PHONY: local-lint update-build-image-tag release submodule submodule-sync pull certs certs-clean
+.PHONY: local-lint update-build-image-tag release pull certs certs-clean
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
 LIB_DIR := /usr/local/lib/fortio
 DATA_DIR := /var/lib/istio/fortio
 OFFICIAL_BIN := ../fortio_go1.10.bin
-GOOS := 
+GOOS :=
 GO_BIN := go
 GIT_STATUS := $(strip $(shell git status --porcelain | wc -l))
 GIT_TAG := $(shell git describe --tags --match 'v*')
@@ -194,7 +167,7 @@ $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 official-build: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) istio.io/fortio
-	
+
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
 

@@ -15,7 +15,6 @@ jobs:
     <<: *defaultEnv
     steps:
       - checkout
-      - run: make submodule
       - run: make test
   release-tests:
     <<: *defaultEnv
@@ -23,20 +22,17 @@ jobs:
       - setup_remote_docker:
           version: 17.11.0-ce
       - checkout
-      - run: make submodule
       - run: make release-test
   linters:
     <<: *defaultEnv
     steps:
       - checkout
-      - run: make submodule
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
   codecov:
     <<: *defaultEnv
     steps:
       - checkout
-      - run: make submodule
       - run: make coverage
 
 workflows:
