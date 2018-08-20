@@ -1,4 +1,5 @@
 # Fortio
+
 [![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
 [![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
@@ -40,14 +41,15 @@ curl -L https://github.com/istio/fortio/releases/download/v1.1.0/fortio-linux_x6
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
+
 ```shell
 brew install fortio
 ```
 
-Once `fortio server` is running, you can visit its web UI at http://localhost:8080/fortio/
+Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
-You can get a preview of the reporting/graphing UI at https://fortio.istio.io/
-and on https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/
+You can get a preview of the reporting/graphing UI at [https://fortio.istio.io/](https://fortio.istio.io/)
+and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
 
 ## Command line arguments
 
@@ -122,7 +124,7 @@ from GET to POST.
         http echo server URI for debug, empty turns off that part (more secure)
 (default "/debug")
   -gomaxprocs int
-        Setting for runtime.GOMAXPROCS, <1 doesn't change the default
+        Setting for runtime.GOMAXPROCS, &lt;1 doesn't change the default
   -grpc
         Use GRPC (health check by default, add -ping for ping) for load testing
   -grpc-max-streams uint
@@ -229,8 +231,9 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 
 ## Example use and output
 
-* Start the internal servers:
-```
+### Start the internal servers
+
+```Shell
 $ fortio server &
 Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
 Fortio 1.1.0 https redirector server listening on [::]:8081
@@ -238,12 +241,15 @@ Fortio 1.1.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:57:12 I fortio_main.go:217> All fortio 1.1.0 unknown go1.10.3 servers started!
+14:57:12 I fortio_main.go:217> All fortio 1.1.0 release go1.10.3 servers started!
 ```
 
-* By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
+### Change the port / binding address
+
+By default, Fortio's web/echo servers listen on port 8080 on all interfaces.
 Use the `-http-port` flag to change this behavior:
-```
+
+```Shell
 $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
@@ -252,8 +258,11 @@ Fortio 1.1.0 grpc ping server listening on port :8079
 Fortio 1.1.0 echo server listening on port 10.10.10.10:8088
 ```
 
-* You can use unix domain socket for any server/client:
-```
+### Unix domain sockets
+
+You can use unix domain socket for any server/client:
+
+```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
 Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
 Fortio 1.1.0 https redirector server listening on [::]:8081
@@ -280,8 +289,11 @@ User-Agent: istio/fortio-1.1.0
 body:
 ```
 
-* Simple grpc ping:
-```
+### GRPC
+
+#### Simple grpc ping
+
+```Shell
 $ fortio grpcping localhost
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
 Clock skew histogram usec : count 1 avg -2.137 +/- 0 min -2.137 max -2.137 sum -2.137
@@ -294,10 +306,13 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
-* The value of `-grpc-port` (default 8079) is used when specifying a hostname
-or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to
+
+#### Change the target port for grpc
+
+The value of `-grpc-port` (default 8079) is used when specifying a hostname or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to
 change this behavior:
-```
+
+```Shell
 $ fortio grpcping 10.10.10.100:8078 # Connects to gRPC server 10.10.10.100 listening on port 8078
 02:29:27 I pingsrv.go:116> Ping RTT 305334 (avg of 342970, 293515, 279517 ns) clock skew -2137
 Clock skew histogram usec : count 1 avg -2.137 +/- 0 min -2.137 max -2.137 sum -2.137
@@ -310,10 +325,15 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 >= 300 < 350 , 325 , 100.00, 1
 # target 50% 294.879
 ```
-* A `grpcping` using TLS. First, start Fortio server with the `-cert` and `-key` flags.
+
+#### `grpcping` using TLS
+
+* First, start Fortio server with the `-cert` and `-key` flags:
+
 `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
 you must provide.
-```
+
+```Shell
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
@@ -323,10 +343,14 @@ Fortio 1.1.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
-* Next, use `grpcping` with the `-cacert` flag. `/path/to/fortio/ca.crt` is the path to the CA certificate
+
+* Next, use `grpcping` with the `-cacert` flag:
+  
+`/path/to/fortio/ca.crt` is the path to the CA certificate
 that issued the server certificate for `localhost`. In our example, the server certificate is
 `/path/to/fortio/server.crt`:
-```
+
+```Shell
 $ fortio grpcping -cacert /path/to/fortio/ca.crt localhost
 Using server certificate /path/to/fortio/ca.crt to construct TLS credentials
 16:00:10 I pingsrv.go:129> Ping RTT 501452 (avg of 595441, 537088, 371828 ns) clock skew 31094
@@ -341,9 +365,11 @@ RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 
 # target 50% 523.86
 ```
 
-* `grpcping` can connect to a non-Fortio TLS server by prefacing the destination with
-`https://`:
-```
+#### GRPC to standard https service
+
+`grpcping` can connect to a non-Fortio TLS server by prefacing the destination with `https://`:
+
+```Shell
 $ fortio grpcping https://fortio.istio.io
 11:07:55 I grpcrunner.go:275> stripping https scheme. grpc destination: fortio.istio.io. grpc port: 443
 Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.795 sum 12329.795
@@ -352,8 +378,11 @@ Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.
 # target 50% 12329.8
 ```
 
-* Load (low default qps/threading) test:
-```
+### Simple load test
+
+Load (low default qps/threading) test:
+
+```Shell
 $ fortio load http://www.google.com
 Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
@@ -380,9 +409,10 @@ Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 s
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
 
-* Grpc load test with delay, multiple streams
+### GRPC load test
 
 Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hit the fortio ping grpc endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the json result:
+
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
 Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
@@ -406,6 +436,7 @@ Ping SERVING : 40
 All done 40 calls (plus 2 warmup) 277.319 ms avg, 7.6 qps
 Successfully wrote 1210 bytes of Json data to 2018-04-03-163258_fortio_stage_istio_io_ldemailly_macbookpro.json
 ```
+
 And the JSON saved is
 <details>
 <pre>
@@ -468,18 +499,20 @@ And the JSON saved is
 </pre></details>
 
 * Load test using gRPC and TLS security. First, start Fortio server with the `-cert` and `-key` flags:
-```
-$ fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
+
+```Shell
+fortio server -cert /etc/ssl/certs/server.crt -key /etc/ssl/certs/server.key
 ```
 
 Next, run the `load` command with the `-cacert` flag:
-```
-$ fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
+
+```Shell
+fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
 ```
 
-* Curl like (single request) mode
+### Curl like (single request) mode
 
-```
+```Shell
 $ fortio load -curl -H Foo:Bar http://localhost:8080/debug
 14:26:26 I http.go:133> Setting regular extra header Foo: Bar
 HTTP/1.1 200 OK
@@ -501,11 +534,11 @@ body:
 
 ```
 
-* Report only UI
+### Report only UI
 
 If you have json files saved from running the full UI, you can serve just the reports:
 
-```
+```Shell
 $ fortio report
 Browse only UI starting - visit:
 http://localhost:8080/
@@ -515,24 +548,28 @@ Https redirector running on :8081
 ## Server URLs and features
 
 Fortio `server` has the following feature for the http listening on 8080 (all paths and ports are configurable through flags above):
-- A simple echo server which will echo back posted data (for any path not mentioned below).
-For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
+
+* A simple echo server which will echo back posted data (for any path not mentioned below).
+
+  For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
 
 | Parameter | Usage, example |
-| ----------|----------------|
+|-----------|----------------|
 | delay     | duration to delay the response by. Can be a single value or a coma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
 | status    | http status to return instead of 200. Can be a single value or a coma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
 | size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
 | close     | close the socket after answering e.g `close=true` |
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
-- `/debug` will echo back the request in plain text for human debugging.
-- `/fortio/` A UI to
-  - Run/Trigger tests and graph the results.
-  - A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
-  - Proxy/fetch other URLs
-  - `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
-  - Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
-  - Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
+
+* `/debug` will echo back the request in plain text for human debugging.
+
+* `/fortio/` A UI to
+  * Run/Trigger tests and graph the results.
+  * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
+  * Proxy/fetch other URLs
+  * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
+  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
+  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
 
 The `report` mode is a readonly subset of the above directly on `/`.
 
@@ -628,15 +665,16 @@ Run result:
 
 ![Graphical result](https://user-images.githubusercontent.com/3664595/41430735-bb95eb3a-6fc5-11e8-8174-be4a6251058f.png)
 
-```
+```Shell
 Code 200 : 2929 (97.6 %)
 Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are newer/live examples on https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/
+There are newer/live examples on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
 
 ## Contributing
+
 Contributions whether through issues, documentation, bug fixes, or new features
 are most welcome !
 
@@ -646,14 +684,16 @@ and [Getting started contributing to Fortio](https://github.com/istio/fortio/wik
 If you are not using the binary releases, please do `make pull` to pull/update to the latest of the current branch.
 
 And make sure to go format and run those commands successfully before sending your PRs:
-```
+
+```Shell
 make test
 make lint
 make release-test
 ```
 
 When modifying Javascript, check with [standard](https://github.com/standard/standard):
-```
+
+```Shell
 standard --fix ui/static/js/fortio_chart.js
 ```
 
