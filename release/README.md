@@ -1,6 +1,6 @@
-## How to make a fortio release
+# How to make a fortio release
 
-- Make sure `version/version.go`'s `major`/`minor`/`patch` is newer than https://github.com/istio/fortio/releases
+- Make sure `version/version.go`'s `major`/`minor`/`patch` is newer than the most recent [release](https://github.com/istio/fortio/releases)
 
 - Make a release there and document the changes since the previous release
 
@@ -12,12 +12,13 @@
 
 - Upload the release/fortio-\*.tgz to GitHub
 
-- The docker official builds are done automatically based on tag, check https://cloud.docker.com/app/istio/repository/docker/istio/fortio/builds
+- The docker official builds are done automatically based on tag, check [fortio's cloud docker build page](https://cloud.docker.com/app/istio/repository/docker/istio/fortio/builds)
 
 - Increment the `patch` and commit that right away so the first point is true next time and so master/latest docker images have the correct next-pre version.
 
 - Once the release is deemed good/stable: move the git tag `latest_release` to the same as the release.
-  ```
+
+  ```Shell
   # for instance for 0.11.0:
   git fetch
   git checkout v0.11.0
@@ -26,7 +27,8 @@
   ```
 
 - Also push `latest_release` docker tag/image: wait for the autobuild to make it and then:
-  ```
+
+  ```Shell
   # for instance for 0.11.0:
   docker image pull istio/fortio:0.11.0
   docker tag istio/fortio:0.11.0 istio/fortio:latest_release
@@ -45,14 +47,16 @@ Edit the `BUILD_IMAGE_TAG := v5` line in the Makefile, set it to `v6`
 for instance (replace `v6` by whichever is the next one at the time)
 
 run
-```
+
+```Shell
 make update-build-image
 ```
 
 Make sure it gets successfully pushed to the istio/fortio registry
 
 run
-```
+
+```Shell
 make update-build-image-tag
 ```
 
