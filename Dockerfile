@@ -1,6 +1,6 @@
 # Build the binaries in larger image
 FROM istio/fortio.build:v8 as build
-WORKDIR /go/src/istio.io
+WORKDIR /go/src/fortio.org
 COPY . fortio
 # Submodule handling
 RUN make -C fortio submodule

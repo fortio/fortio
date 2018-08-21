@@ -1,6 +1,6 @@
 # Build the binaries in larger image
 FROM istio/fortio.build:v8 as build
-WORKDIR /go/src/istio.io
+WORKDIR /go/src/fortio.org
 COPY . fortio
 # TODO: share common part with main Dockerfile (have the main Dockerfile build more than 1 image - how?)
 RUN echo "$(date +'%Y-%m-%d %H:%M') $(cd fortio; git rev-parse HEAD)" > /build-info.txt
@@ -11,5 +11,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags "$(cat /link-flags.txt)" -o fc
 # Minimal image with just the binary
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/src/istio.io/fcurl.bin /usr/local/bin/fcurl
+COPY --from=build /go/src/fortio.org/fcurl.bin /usr/local/bin/fcurl
 ENTRYPOINT ["/usr/local/bin/fcurl"]
