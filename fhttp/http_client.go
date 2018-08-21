@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "istio.io/fortio/fhttp"
+package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"bufio"
@@ -29,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/version"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.

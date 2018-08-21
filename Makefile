@@ -17,9 +17,9 @@ DOCKER_TAG = $(DOCKER_PREFIX)$(IMAGE):$(TAG)
 CERT_TEMP_DIR := ./cert-tmp/
 
 # go test ./... and others run in vendor/ and cause problems (!)
-# so to avoid `can't load package: package istio.io/fortio/...: no Go files in ...`
+# so to avoid `can't load package: package fortio.org/fortio/...: no Go files in ...`
 # note that only go1.8 needs the grep -v vendor but we are compatible with 1.8
-# ps: can't use go list (and get packages as canonical istio.io/fortio/x)
+# ps: can't use go list (and get packages as canonical fortio.org/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
 PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp)")
 # Marker for whether vendor submodule is here or not already
@@ -62,7 +62,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
 lint: dependencies
-	docker run -v $(shell pwd):/go/src/istio.io/fortio $(BUILD_IMAGE) bash -c \
+	docker run -v $(shell pwd):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
 		"cd fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
@@ -184,16 +184,16 @@ $(BUILD_DIR)/build-info.txt:
 	echo "$(shell date +'%Y-%m-%d %H:%M') $(shell git rev-parse HEAD)" > $@
 
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
-	echo "-s -X istio.io/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
-  -X \"istio.io/fortio/version.buildInfo=$(shell cat $<)\" \
-  -X istio.io/fortio/version.tag=$(GIT_TAG) \
-  -X istio.io/fortio/version.gitstatus=$(GIT_STATUS)" | tee $@
+	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
+  -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
+  -X fortio.org/fortio/version.tag=$(GIT_TAG) \
+  -X fortio.org/fortio/version.gitstatus=$(GIT_STATUS)" | tee $@
 
 .PHONY: official-build official-build-version official-build-clean
 
 official-build: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
-	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) istio.io/fortio
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) fortio.org/fortio
 	
 official-build-version: official-build
 	$(OFFICIAL_BIN) version

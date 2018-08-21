@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/fortio/log"
+	"fortio.org/fortio/log"
 )
 
 func TestHTTPRunner(t *testing.T) {

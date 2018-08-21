@@ -23,8 +23,8 @@ import (
 
 	"bytes"
 
-	"istio.io/fortio/log"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/version"
 )
 
 func TestNormalizePort(t *testing.T) {

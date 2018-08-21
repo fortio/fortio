@@ -1,8 +1,8 @@
 # Fortio
 
 [![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
-[![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
-[![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
+[![Go Report Card](https://goreportcard.com/badge/fortio.org/fortio)](https://goreportcard.com/report/fortio.org/fortio)
+[![GoDoc](https://godoc.org/fortio.org/fortio?status.svg)](https://godoc.org/fortio.org/fortio)
 [![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
 [![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=shield)](https://circleci.com/gh/istio/fortio)
 <img src="https://raw.githubusercontent.com/istio/fortio/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
@@ -23,7 +23,7 @@ and when bugs are found they are fixed quickly, so after 1 year of development a
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
-2. `go get istio.io/fortio`
+2. `go get fortio.org/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
 Or use docker, for instance:

@@ -19,11 +19,11 @@ RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio.exe GO
 FROM scratch as release
 # NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/src/istio.io/fortio/ui/static /usr/local/lib/fortio/static
-COPY --from=build /go/src/istio.io/fortio/ui/templates /usr/local/lib/fortio/templates
-#COPY --from=build /go/src/istio.io/fortio_go1.10.bin /usr/local/bin/fortio_go1.10
-#COPY --from=build /go/src/istio.io/fortio_go1.8.bin /usr/local/bin/fortio_go1.8
-COPY --from=build /go/src/istio.io/fortio_go1.10.bin /usr/local/bin/fortio
+COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/local/lib/fortio/static
+COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/local/lib/fortio/templates
+#COPY --from=build /go/src/fortio.org/fortio_go1.10.bin /usr/local/bin/fortio_go1.10
+#COPY --from=build /go/src/fortio.org/fortio_go1.8.bin /usr/local/bin/fortio_go1.8
+COPY --from=build /go/src/fortio.org/fortio_go1.10.bin /usr/local/bin/fortio
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081

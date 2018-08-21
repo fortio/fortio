@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package ui // import "istio.io/fortio/ui"
+package ui // import "fortio.org/fortio/ui"
 
 import (
 	"bytes"
@@ -37,13 +37,13 @@ import (
 	"sync"
 	"time"
 
-	"istio.io/fortio/fgrpc"
-	"istio.io/fortio/fhttp"
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
-	"istio.io/fortio/stats"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/fgrpc"
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/stats"
+	"fortio.org/fortio/version"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)

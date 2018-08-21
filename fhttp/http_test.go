@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
 )
 
 func init() {

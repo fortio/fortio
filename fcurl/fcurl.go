@@ -22,9 +22,9 @@ import (
 	"io"
 	"os"
 
-	"istio.io/fortio/bincommon"
-	"istio.io/fortio/log"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/bincommon"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/version"
 )
 
 // Prints usage

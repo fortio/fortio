@@ -27,10 +27,10 @@ import (
 
 	"io"
 
-	"istio.io/fortio/fhttp"
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/version"
 )
 
 // -- Support for multiple instances of -H flag on cmd line:
