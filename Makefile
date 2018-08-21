@@ -63,7 +63,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # build image
 lint: dependencies
 	docker run -v $(shell pwd):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd fortio && time go install $(LINT_PACKAGES) \
+		"cd /go/src/fortio.org/fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # This really also tests the release process and build on windows,mac,linux
