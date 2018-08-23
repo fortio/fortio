@@ -139,7 +139,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 	}
 }
 
-var userAgent = "istio/fortio-" + version.Short()
+var userAgent = "fortio.org/fortio-" + version.Short()
 
 const (
 	retcodeOffset = len("HTTP/1.X ")

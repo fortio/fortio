@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM istio/fortio.build:v8 as build
+FROM docker.io/fortio/fortio.build:v10 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
 # Submodule handling
@@ -27,7 +27,7 @@ COPY --from=build /go/src/fortio.org/fortio_go1.10.bin /usr/local/bin/fortio
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081
-VOLUME /var/lib/istio/fortio
+VOLUME /var/lib/fortio
 ENTRYPOINT ["/usr/local/bin/fortio"]
 # start the server mode (grpc ping on 8079, http echo and UI on 8080, redirector on 8081) by default
 CMD ["server"]

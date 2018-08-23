@@ -6,9 +6,9 @@
 
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
-DOCKER_PREFIX := docker.io/istio/fortio
-BUILD_IMAGE_TAG := v8
-BUILD_IMAGE := istio/fortio.build:$(BUILD_IMAGE_TAG)
+DOCKER_PREFIX := docker.io/fortio/fortio
+BUILD_IMAGE_TAG := v10
+BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
 
@@ -136,9 +136,8 @@ FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
-# Change . to .. when getting to v10 and up...
 update-build-image-tag:
-	sed -i .bak -e 's!istio/fortio.build:v.!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	sed -i .bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -155,10 +154,7 @@ docker-push-internal: docker-internal
 release: dependencies
 	release/release.sh
 
-authorize:
-	gcloud docker --authorize-only --project istio-testing
-
-.PHONY: all docker-internal docker-push-internal docker-version authorize test dependencies
+.PHONY: all docker-internal docker-push-internal docker-version test dependencies
 
 .PHONY: install lint install-linters coverage webtest release-test update-build-image
 
@@ -167,7 +163,7 @@ authorize:
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
 LIB_DIR := /usr/local/lib/fortio
-DATA_DIR := /var/lib/istio/fortio
+DATA_DIR := /var/lib/fortio
 OFFICIAL_BIN := ../fortio_go1.10.bin
 GOOS := 
 GO_BIN := go

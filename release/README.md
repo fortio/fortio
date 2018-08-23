@@ -12,7 +12,7 @@
 
 - Upload the release/fortio-\*.tgz to GitHub
 
-- The docker official builds are done automatically based on tag, check [fortio's cloud docker build page](https://cloud.docker.com/app/istio/repository/docker/istio/fortio/builds)
+- The docker official builds are done automatically based on tag, check [fortio's cloud docker build page](https://cloud.docker.com/app/fortio/repository/docker/fortio/fortio/builds)
 
 - Increment the `patch` and commit that right away so the first point is true next time and so master/latest docker images have the correct next-pre version.
 
@@ -30,9 +30,9 @@
 
   ```Shell
   # for instance for 0.11.0:
-  docker image pull istio/fortio:0.11.0
-  docker tag istio/fortio:0.11.0 istio/fortio:latest_release
-  docker push istio/fortio:latest_release
+  docker image pull fortio/fortio:1.1.1
+  docker tag fortio/fortio:1.1.1 fortio/fortio:latest_release
+  docker push fortio/fortio:latest_release
   ```
 
 - To update the command line flags in the ../README.md; go install the right version of fortio so it is in your path and run updateFlags.sh
@@ -52,7 +52,7 @@ run
 make update-build-image
 ```
 
-Make sure it gets successfully pushed to the istio/fortio registry
+Make sure it gets successfully pushed to the fortio registry (requires org access)
 
 run
 
