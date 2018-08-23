@@ -159,7 +159,7 @@ func TestGRPCRunner(t *testing.T) {
 			return
 		case err == nil && test.expect:
 			totalReq := res.DurationHistogram.Count
-			ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+			ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING.String()]
 			if totalReq != ok {
 				t.Errorf("Test case: %s failed. Mismatch between requests %d and ok %v",
 					test.name, totalReq, res.RetCodes)
@@ -191,7 +191,7 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 	}
 	totalReq := res.DurationHistogram.Count
 	avg10 := res.DurationHistogram.Avg
-	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING.String()]
 	if totalReq != ok {
 		t.Errorf("Mismatch1 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
@@ -207,7 +207,7 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 	}
 	totalReq = res.DurationHistogram.Count
 	avg20 := res.DurationHistogram.Avg
-	ok = res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING]
+	ok = res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING.String()]
 	if totalReq != ok {
 		t.Errorf("Mismatch2 between requests %d and ok %v", totalReq, res.RetCodes)
 	}
@@ -302,7 +302,7 @@ func TestGRPCRunnerWithError(t *testing.T) {
 			return
 		}
 		totalReq := res.DurationHistogram.Count
-		numErrors := res.RetCodes[-1]
+		numErrors := res.RetCodes[Error]
 		if totalReq != numErrors {
 			t.Errorf("Test case: %s failed. Mismatch between requests %d and errors %v",
 				test.name, totalReq, res.RetCodes)

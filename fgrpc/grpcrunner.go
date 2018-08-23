@@ -105,9 +105,9 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 	log.Debugf("For %d (ping=%v) got %v %v", t, grpcstate.Ping, err, res)
 	if err != nil {
 		log.Warnf("Error making grpc call: %v", err)
-		grpcstate.RetCodes[-1]++
+		grpcstate.RetCodes[Error]++
 	} else {
-		grpcstate.RetCodes[status]++
+		grpcstate.RetCodes[status.String()]++
 	}
 }
 
@@ -228,7 +228,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	}
 	// Numthreads may have reduced
 	numThreads = r.Options().NumThreads
-	keys := []grpc_health_v1.HealthCheckResponse_ServingStatus{}
+	keys := []string{}
 	for i := 0; i < numThreads; i++ {
 		// Q: is there some copying each time stats[i] is used?
 		for k := range grpcstate[i].RetCodes {
@@ -246,7 +246,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		which = "Ping"
 	}
 	for _, k := range keys {
-		fmt.Fprintf(out, "%s %s : %d\n", which, k.String(), total.RetCodes[k])
+		fmt.Fprintf(out, "%s %s : %d\n", which, k, total.RetCodes[k])
 	}
 	return &total, nil
 }

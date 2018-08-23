@@ -36,6 +36,8 @@ import (
 const (
 	// DefaultHealthServiceName is the default health service name used by fortio.
 	DefaultHealthServiceName = "ping"
+	//Error indicates that something went wrong with healthcheck in grpc
+	Error = "ERROR"
 )
 
 type pingSrv struct {
@@ -156,8 +158,8 @@ func PingClientCall(serverAddr, cacert string, n int, payload string, delay time
 	return rttHistogram.Avg() / 1e6, nil
 }
 
-// HealthResultMap short cut for the map of results to count. -1 for errors.
-type HealthResultMap map[grpc_health_v1.HealthCheckResponse_ServingStatus]int64
+// HealthResultMap short cut for the map of results to count.
+type HealthResultMap map[string]int64
 
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
@@ -182,12 +184,12 @@ func GrpcHealthCheck(serverAddr, cacert string, svcname string, n int) (*HealthR
 			log.Errf("grpc error from Check %v", err)
 			return nil, err
 		}
-		statuses[res.Status]++
+		statuses[res.Status.String()]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)
 	}
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})
 	for k, v := range statuses {
-		fmt.Printf("Health %s : %d\n", k.String(), v)
+		fmt.Printf("Health %s : %d\n", k, v)
 	}
 	return &statuses, nil
 }

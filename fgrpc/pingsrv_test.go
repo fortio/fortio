@@ -60,7 +60,7 @@ func TestPingServer(t *testing.T) {
 	if creds, err := credentials.NewServerTLSFromFile(failCrt, failKey); err == nil {
 		t.Errorf("Should have had an error instead of result %f for ping server", creds)
 	}
-	serving := grpc_health_v1.HealthCheckResponse_SERVING
+	serving := grpc_health_v1.HealthCheckResponse_SERVING.String()
 	if r, err := GrpcHealthCheck(iAddr, "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
