@@ -23,7 +23,7 @@ RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 # Install meta linters
 RUN go get -u github.com/alecthomas/gometalinter
 RUN gometalinter -i -u
-WORKDIR /go/src/istio.io
+WORKDIR /go/src/fortio.org
 # Docker:
 RUN curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | apt-key add
 RUN echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable" > /etc/apt/sources.list.d/docker.list

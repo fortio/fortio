@@ -28,9 +28,9 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/stats"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/stats"
 )
 
 const (

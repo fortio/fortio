@@ -22,9 +22,9 @@ import (
 	"runtime/pprof"
 	"sort"
 
-	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
-	"istio.io/fortio/stats"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/stats"
 )
 
 // Most of the code in this file is the library-fication of code originally
