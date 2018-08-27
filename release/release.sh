@@ -4,8 +4,8 @@ set -x
 set -e
 # Release tgz Dockerfile is based on the normal docker one
 cat Dockerfile release/Dockerfile.in > release/Dockerfile
-docker build -f release/Dockerfile -t istio/fortio:release .
-DOCKERID=$(docker create --name fortio_release istio/fortio:release x)
+docker build -f release/Dockerfile -t fortio/fortio:release .
+DOCKERID=$(docker create --name fortio_release fortio/fortio:release x)
 function cleanup {
   docker rm fortio_release
 }

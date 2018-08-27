@@ -1,6 +1,6 @@
 # How to make a fortio release
 
-- Make sure `version/version.go`'s `major`/`minor`/`patch` is newer than the most recent [release](https://github.com/istio/fortio/releases)
+- Make sure `version/version.go`'s `major`/`minor`/`patch` is newer than the most recent [release](https://github.com/fortio/fortio/releases)
 
 - Make a release there and document the changes since the previous release
 

@@ -1,13 +1,13 @@
 # Fortio
 
-[![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
+[![Awesome Go](https://raw.githubusercontent.com/fortio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
 [![Go Report Card](https://goreportcard.com/badge/fortio.org/fortio)](https://goreportcard.com/report/fortio.org/fortio)
 [![GoDoc](https://godoc.org/fortio.org/fortio?status.svg)](https://godoc.org/fortio.org/fortio)
-[![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
-[![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=shield)](https://circleci.com/gh/istio/fortio)
+[![codecov](https://codecov.io/gh/fortio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/fortio/fortio)
+[![CircleCI](https://circleci.com/gh/fortio/fortio.svg?style=shield)](https://circleci.com/gh/fortio/fortio)
 <img src="https://fortio.org/fortio-logo-color.png" height=141 width=141 align=right>
 
-Fortio (Φορτίο) started as [Istio](https://istio.io/)'s load testing tool.
+Fortio (Φορτίο) started as [Istio](https://fortio.org/)'s load testing tool and now graduated to be its own project.
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
@@ -17,8 +17,10 @@ The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) w
 Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
+Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp proxying, GRPC echo/health in addition to http, etc...
+
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
-and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, I'm proud to announce we just reached 1.0 !
+and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
 ## Installation
 
@@ -36,7 +38,7 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v1.2.0/fortio-linux_x64-1.2.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.2.0/fortio-linux_x64-1.2.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -227,7 +229,7 @@ should be user:password
 </pre>
 </details>
 
-See also the FAQ entry about [fortio flags for best results](https://github.com/istio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
+See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
 
 ## Example use and output
 
@@ -649,7 +651,7 @@ Code 200 : 300000
 Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 </pre></details>
 
-Or you can get the data in [JSON format](https://github.com/istio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
+Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
 
 ### Web/Graphical UI
 
@@ -679,7 +681,7 @@ Contributions whether through issues, documentation, bug fixes, or new features
 are most welcome !
 
 Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
-and [Getting started contributing to Fortio](https://github.com/istio/fortio/wiki/FAQ#how-do-i-get-started-contributing-to-fortio) in the FAQ.
+and [Getting started contributing to Fortio](https://github.com/fortio/fortio/wiki/FAQ#how-do-i-get-started-contributing-to-fortio) in the FAQ.
 
 If you are not using the binary releases, please do `make pull` to pull/update to the latest of the current branch.
 
@@ -699,4 +701,4 @@ standard --fix ui/static/js/fortio_chart.js
 
 ## See also
 
-Our wiki and the [Fortio FAQ](https://github.com/istio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
