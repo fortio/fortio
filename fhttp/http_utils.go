@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "istio.io/fortio/fhttp"
+package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"encoding/base64"
@@ -26,9 +26,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/stats"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/stats"
 )
 
 // Used for the fast case insensitive search

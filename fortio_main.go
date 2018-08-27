@@ -27,16 +27,16 @@ import (
 	"strings"
 	"time"
 
-	"istio.io/fortio/bincommon"
-	"istio.io/fortio/fnet"
+	"fortio.org/fortio/bincommon"
+	"fortio.org/fortio/fnet"
 
-	"istio.io/fortio/fgrpc"
-	"istio.io/fortio/fhttp"
-	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
-	"istio.io/fortio/stats"
-	"istio.io/fortio/ui"
-	"istio.io/fortio/version"
+	"fortio.org/fortio/fgrpc"
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/stats"
+	"fortio.org/fortio/ui"
+	"fortio.org/fortio/version"
 )
 
 // -- Support for multiple proxies (-P) flags on cmd line:

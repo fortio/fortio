@@ -13,10 +13,6 @@
 // limitations under the License.
 //
 
-// Adapted from istio/proxy/test/backend/echo with error handling and
-// concurrency fixes and making it as low overhead as possible
-// (no std output by default)
-
 package fgrpc
 
 import (
@@ -24,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
 )

@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
 )
 
 func init() {

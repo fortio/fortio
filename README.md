@@ -1,42 +1,44 @@
 # Fortio
 
-[![Awesome Go](https://raw.githubusercontent.com/istio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
-[![Go Report Card](https://goreportcard.com/badge/istio.io/fortio)](https://goreportcard.com/report/istio.io/fortio)
-[![GoDoc](https://godoc.org/istio.io/fortio?status.svg)](https://godoc.org/istio.io/fortio)
-[![codecov](https://codecov.io/gh/istio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/istio/fortio)
-[![CircleCI](https://circleci.com/gh/istio/fortio.svg?style=shield)](https://circleci.com/gh/istio/fortio)
-<img src="https://raw.githubusercontent.com/istio/fortio/master/docs/fortio-logo-color.png" height=141 width=141 align=right>
+[![Awesome Go](https://raw.githubusercontent.com/fortio/fortio/master/docs/mentioned-badge.svg?sanitize=true)](https://github.com/avelino/awesome-go#networking)
+[![Go Report Card](https://goreportcard.com/badge/fortio.org/fortio)](https://goreportcard.com/report/fortio.org/fortio)
+[![GoDoc](https://godoc.org/fortio.org/fortio?status.svg)](https://godoc.org/fortio.org/fortio)
+[![codecov](https://codecov.io/gh/fortio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/fortio/fortio)
+[![CircleCI](https://circleci.com/gh/fortio/fortio.svg?style=shield)](https://circleci.com/gh/fortio/fortio)
+<img src="https://fortio.org/fortio-logo-color.png" height=141 width=141 align=right>
 
-Fortio (Φορτίο) started as [Istio](https://istio.io/)'s load testing tool.
+Fortio (Φορτίο) started as [Istio](https://fortio.org/)'s load testing tool and now graduated to be its own project.
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
 
-The name fortio comes from greek [φορτίο](https://translate.google.com/translate_tts?q=Φορτίο&tl=el&tk=452076.38818&client=t) which means load/burden.
+The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
 Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
+Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp proxying, GRPC echo/health in addition to http, etc...
+
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
-and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, I'm proud to announce we just reached 1.0 !
+and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
 ## Installation
 
 1. [Install go](https://golang.org/doc/install) (golang 1.8 or later)
-2. `go get istio.io/fortio`
+2. `go get fortio.org/fortio`
 3. you can now run `fortio` (from your gopath bin/ directory)
 
 Or use docker, for instance:
 
 ```shell
-docker run -p 8080:8080 -p 8079:8079 istio/fortio server & # For the server
-docker run istio/fortio load http://www.google.com/ # For a test run
+docker run -p 8080:8080 -p 8079:8079 fortio/fortio server & # For the server
+docker run fortio/fortio load http://www.google.com/ # For a test run
 ```
 
 Or download the binary distribution, for instance:
 
 ```shell
-curl -L https://github.com/istio/fortio/releases/download/v1.1.0/fortio-linux_x64-1.1.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.2.0/fortio-linux_x64-1.2.0.tgz \
  | sudo tar -C / -xvzpf -
 ```
 
@@ -82,7 +84,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.1.0 usage:
+Φορτίο 1.2.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report
@@ -227,7 +229,7 @@ should be user:password
 </pre>
 </details>
 
-See also the FAQ entry about [fortio flags for best results](https://github.com/istio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
+See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
 
 ## Example use and output
 
@@ -235,13 +237,13 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 
 ```Shell
 $ fortio server &
-Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
-Fortio 1.1.0 https redirector server listening on [::]:8081
-Fortio 1.1.0 echo server listening on [::]:8080
+Fortio 1.2.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.2.0 https redirector server listening on [::]:8081
+Fortio 1.2.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:57:12 I fortio_main.go:217> All fortio 1.1.0 release go1.10.3 servers started!
+14:57:12 I fortio_main.go:217> All fortio 1.2.0 release go1.10.3 servers started!
 ```
 
 ### Change the port / binding address
@@ -254,8 +256,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 1.1.0 grpc ping server listening on port :8079
-Fortio 1.1.0 echo server listening on port 10.10.10.10:8088
+Fortio 1.2.0 grpc ping server listening on port :8079
+Fortio 1.2.0 echo server listening on port 10.10.10.10:8088
 ```
 
 ### Unix domain sockets
@@ -264,12 +266,12 @@ You can use unix domain socket for any server/client:
 
 ```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
-Fortio 1.1.0 grpc 'ping' server listening on [::]:8079
-Fortio 1.1.0 https redirector server listening on [::]:8081
-Fortio 1.1.0 echo server listening on /tmp/fortio-uds-http
+Fortio 1.2.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.2.0 https redirector server listening on [::]:8081
+Fortio 1.2.0 echo server listening on /tmp/fortio-uds-http
 UI started - visit:
 fortio curl -unix-socket=/tmp/fortio-uds-http http://localhost/fortio/
-14:58:45 I fortio_main.go:217> All fortio 1.1.0 unknown go1.10.3 servers started!
+14:58:45 I fortio_main.go:217> All fortio 1.2.0 unknown go1.10.3 servers started!
 $ fortio curl -unix-socket=/tmp/fortio-uds-http http://foo.bar/debug
 15:00:48 I http_client.go:428> Using unix domain socket /tmp/fortio-uds-http instead of foo.bar http
 HTTP/1.1 200 OK
@@ -277,14 +279,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Wed, 08 Aug 2018 22:00:48 GMT
 Content-Length: 231
 
-Φορτίο version 1.1.0 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro.roam.corp.google.com - request from
+Φορτίο version 1.2.0 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro.roam.corp.google.com - request from
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: foo.bar
-User-Agent: istio/fortio-1.1.0
+User-Agent: fortio.org/fortio-1.2.0
 
 body:
 ```
@@ -338,8 +340,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 1.1.0 grpc ping server listening on port :8079
-Fortio 1.1.0 echo server listening on port localhost:8080
+Fortio 1.2.0 grpc ping server listening on port :8079
+Fortio 1.2.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -384,7 +386,7 @@ Load (low default qps/threading) test:
 
 ```Shell
 $ fortio load http://www.google.com
-Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+Fortio 1.2.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
 19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
@@ -415,7 +417,7 @@ Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hi
 
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
-Fortio 1.1.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+Fortio 1.2.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
 16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
 16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
 16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
@@ -520,14 +522,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 1.1.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 1.2.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: istio/fortio-1.1.0
+User-Agent: fortio.org/fortio-1.2.0
 Foo: Bar
 
 body:
@@ -584,7 +586,7 @@ You may find fortio's [logger](log/logger.go) useful as well.
 You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 
 There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light http client without grpc or server side).
-A matching tiny (2Mb compressed) docker image is [istio/fortio.fcurl](https://hub.docker.com/r/istio/fortio.fcurl/tags/)
+A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/)
 
 ## More examples
 
@@ -649,7 +651,7 @@ Code 200 : 300000
 Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 </pre></details>
 
-Or you can get the data in [JSON format](https://github.com/istio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
+Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
 
 ### Web/Graphical UI
 
@@ -679,7 +681,7 @@ Contributions whether through issues, documentation, bug fixes, or new features
 are most welcome !
 
 Please also see [Contributing to Istio](https://github.com/istio/community/blob/master/CONTRIBUTING.md#contributing-to-istio)
-and [Getting started contributing to Fortio](https://github.com/istio/fortio/wiki/FAQ#how-do-i-get-started-contributing-to-fortio) in the FAQ.
+and [Getting started contributing to Fortio](https://github.com/fortio/fortio/wiki/FAQ#how-do-i-get-started-contributing-to-fortio) in the FAQ.
 
 If you are not using the binary releases, please do `make pull` to pull/update to the latest of the current branch.
 
@@ -699,4 +701,4 @@ standard --fix ui/static/js/fortio_chart.js
 
 ## See also
 
-Our wiki and the [Fortio FAQ](https://github.com/istio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)

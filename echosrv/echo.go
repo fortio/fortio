@@ -23,7 +23,7 @@ import (
 	"flag"
 	"os"
 
-	"istio.io/fortio/fhttp"
+	"fortio.org/fortio/fhttp"
 )
 
 var (

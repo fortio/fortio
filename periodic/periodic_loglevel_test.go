@@ -19,7 +19,7 @@ package periodic
 import (
 	"testing"
 
-	"istio.io/fortio/log"
+	"fortio.org/fortio/log"
 )
 
 // Rerun some test with various log level for coverage of the print statements

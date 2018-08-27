@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fgrpc // import "istio.io/fortio/fgrpc"
+package fgrpc // import "fortio.org/fortio/fgrpc"
 
 import (
 	"context"
@@ -29,9 +29,9 @@ import (
 
 	"strings"
 
-	"istio.io/fortio/fnet"
-	"istio.io/fortio/log"
-	"istio.io/fortio/periodic"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
 )
 
 // Dial dials grpc using insecure or tls transport security when serverAddr

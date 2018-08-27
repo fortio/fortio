@@ -1,6 +1,6 @@
 # Build the binaries in larger image
-FROM istio/fortio.build:v8 as build
-WORKDIR /go/src/istio.io
+FROM docker.io/fortio/fortio.build:v10 as build
+WORKDIR /go/src/fortio.org
 COPY . fortio
 # Submodule handling
 RUN make -C fortio submodule
@@ -19,15 +19,15 @@ RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio.exe GO
 FROM scratch as release
 # NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/src/istio.io/fortio/ui/static /usr/local/lib/fortio/static
-COPY --from=build /go/src/istio.io/fortio/ui/templates /usr/local/lib/fortio/templates
-#COPY --from=build /go/src/istio.io/fortio_go1.10.bin /usr/local/bin/fortio_go1.10
-#COPY --from=build /go/src/istio.io/fortio_go1.8.bin /usr/local/bin/fortio_go1.8
-COPY --from=build /go/src/istio.io/fortio_go1.10.bin /usr/local/bin/fortio
+COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/local/lib/fortio/static
+COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/local/lib/fortio/templates
+#COPY --from=build /go/src/fortio.org/fortio_go1.10.bin /usr/local/bin/fortio_go1.10
+#COPY --from=build /go/src/fortio.org/fortio_go1.8.bin /usr/local/bin/fortio_go1.8
+COPY --from=build /go/src/fortio.org/fortio_go1.10.bin /usr/local/bin/fortio
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081
-VOLUME /var/lib/istio/fortio
+VOLUME /var/lib/fortio
 ENTRYPOINT ["/usr/local/bin/fortio"]
 # start the server mode (grpc ping on 8079, http echo and UI on 8080, redirector on 8081) by default
 CMD ["server"]
