@@ -21,9 +21,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"strings"
 
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/version"
 )
 
 var (
@@ -33,6 +36,10 @@ var (
 
 func main() {
 	flag.Parse()
+	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
+		fmt.Println(version.Long())
+		os.Exit(0)
+	}
 	if _, addr := fhttp.Serve(*port, *debugPath); addr == nil {
 		os.Exit(1) // error already logged
 	}

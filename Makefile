@@ -169,6 +169,8 @@ GOOS :=
 GO_BIN := go
 GIT_STATUS := $(strip $(shell git status --porcelain | wc -l))
 GIT_TAG := $(shell git describe --tags --match 'v*')
+# Main/default binary to build: (can be changed to build fcurl or echosrv instead)
+OFFICIAL_TARGET := fortio.org/fortio
 
 # Putting spaces in linker replaced variables is hard but does work.
 # This sets up the static directory outside of the go source tree and
@@ -189,7 +191,7 @@ $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 
 official-build: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
-	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) fortio.org/fortio
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 	
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
