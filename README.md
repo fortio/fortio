@@ -348,7 +348,7 @@ Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
 
 * Next, use `grpcping` with the `-cacert` flag:
-  
+
 `/path/to/fortio/ca.crt` is the path to the CA certificate
 that issued the server certificate for `localhost`. In our example, the server certificate is
 `/path/to/fortio/server.crt`:
@@ -674,7 +674,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are newer/live examples on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
+There are newer/live examples on [istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks](https://istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks)
 
 ## Contributing
 
