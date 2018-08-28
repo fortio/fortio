@@ -7,7 +7,8 @@
 [![CircleCI](https://circleci.com/gh/fortio/fortio.svg?style=shield)](https://circleci.com/gh/fortio/fortio)
 <img src="https://fortio.org/fortio-logo-color.png" height=141 width=141 align=right>
 
-Fortio (Φορτίο) started as [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
+Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
+
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
@@ -702,3 +703,7 @@ standard --fix ui/static/js/fortio_chart.js
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+
+## Disclaimer
+
+This is not an officially supported Google product.
