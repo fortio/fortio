@@ -53,7 +53,7 @@ func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
 	if len(msgs) > 0 {
-		fmt.Fprintln(w, msgs...) // nolint: gas
+		_, _ = fmt.Fprintln(w, msgs...)
 	}
 }
 

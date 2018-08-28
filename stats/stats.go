@@ -391,9 +391,9 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		return
 	}
 	// the base counter part:
-	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", // nolint(errorcheck)
+	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n",
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
-	fmt.Fprintln(out, "# range, mid point, percentile, count") // nolint: gas
+	_, _ = fmt.Fprintln(out, "# range, mid point, percentile, count")
 	sep := ">="
 	for i, b := range e.Data {
 		if i > 0 {

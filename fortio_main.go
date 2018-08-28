@@ -307,7 +307,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
-		_ , _ = fmt.Fprintf(out, "Aborting because %v\n", err)
+		_, _ = fmt.Fprintf(out, "Aborting because %v\n", err)
 		os.Exit(1)
 	}
 	rr := res.Result()
@@ -315,7 +315,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	if ro.Exactly > 0 {
 		warmup = 0
 	}
-	_ , _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
+	_, _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		rr.DurationHistogram.Count,
 		warmup,
 		1000.*rr.DurationHistogram.Avg,
@@ -350,7 +350,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 				log.Fatalf("Close error for %s: %v", jsonFileName, err)
 			}
 		}
-		_ , _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }
 
