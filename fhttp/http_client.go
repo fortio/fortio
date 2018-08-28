@@ -87,6 +87,7 @@ const (
 // GenerateHeaders completes the header generation, including Content-Type/Length
 // and user credential coming from the http options in addition to extra headers
 // coming from flags and AddAndValidateExtraHeader().
+// Warning this gets called more than once, do not generate duplicate headers.
 func (h *HTTPOptions) GenerateHeaders() http.Header {
 	if h.extraHeaders == nil { // not already initialized from flags.
 		h.InitHeaders()
@@ -99,11 +100,11 @@ func (h *HTTPOptions) GenerateHeaders() http.Header {
 		h.ContentType = "application/octet-stream"
 	}
 	if len(h.ContentType) > 0 {
-		allHeaders.Add(contentType, h.ContentType)
+		allHeaders.Set(contentType, h.ContentType)
 	}
 	// Add content-length unless already set in custom headers (or we're not doing a POST)
 	if (payloadLen > 0 || len(h.ContentType) > 0) && len(allHeaders.Get(contentLength)) == 0 {
-		allHeaders.Add(contentLength, strconv.Itoa(payloadLen))
+		allHeaders.Set(contentLength, strconv.Itoa(payloadLen))
 	}
 	err := h.ValidateAndAddBasicAuthentication(allHeaders)
 	if err != nil {
@@ -207,7 +208,7 @@ func (h *HTTPOptions) ValidateAndAddBasicAuthentication(headers http.Header) err
 	if len(s) != 2 {
 		return fmt.Errorf("invalid user credentials \"%s\", expecting \"user:password\"", h.UserCredentials)
 	}
-	headers.Add("Authorization", generateBase64UserCredentials(h.UserCredentials))
+	headers.Set("Authorization", generateBase64UserCredentials(h.UserCredentials))
 	return nil
 }
 
