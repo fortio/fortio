@@ -702,3 +702,7 @@ standard --fix ui/static/js/fortio_chart.js
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+
+## Disclaimer
+
+This is not an officially supported Google product.
