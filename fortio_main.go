@@ -55,7 +55,7 @@ func (f *proxiesFlagList) Set(value string) error {
 
 // Usage to a writer
 func usage(w io.Writer, msgs ...interface{}) {
-	fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts grpc ping and",
@@ -241,7 +241,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
-	fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
+	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
 		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {
 		fmt.Fprintf(out, ", for %d calls: %s\n", *exactlyFlag, url)
@@ -249,9 +249,9 @@ func fortioLoad(justCurl bool, percList []float64) {
 		if *durationFlag <= 0 {
 			// Infinite mode is determined by having a negative duration value
 			*durationFlag = -1
-			fmt.Fprintf(out, ", until interrupted: %s\n", url)
+			_, _ = fmt.Fprintf(out, ", until interrupted: %s\n", url)
 		} else {
-			fmt.Fprintf(out, ", for %v: %s\n", *durationFlag, url)
+			_, _ = fmt.Fprintf(out, ", for %v: %s\n", *durationFlag, url)
 		}
 	}
 	if qps <= 0 {
