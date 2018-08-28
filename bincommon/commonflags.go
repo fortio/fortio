@@ -49,7 +49,7 @@ func (f *headersFlagList) Set(value string) error {
 // FlagsUsage prints end of the usage() (flags part + error message).
 func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	// nolint: gas
-	fmt.Fprintf(w, "flags are:\n")
+	_, _ = fmt.Fprintf(w, "flags are:\n")
 	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
 	if len(msgs) > 0 {
