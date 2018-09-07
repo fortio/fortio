@@ -42,7 +42,8 @@ Or download one the binary distributions, from the [releases](https://github.com
 curl -L https://github.com/fortio/fortio/releases/download/v1.2.2/fortio-linux_x64-1.2.2.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-dpkg -i https://github.com/fortio/fortio/releases/download/v1.2.2/fortio_1.2.2_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.2.2/fortio_1.2.2_amd64.deb
+dpkg -i fortio_1.2.2_amd64.deb
 # or the rpm
 rpm -i https://github.com/fortio/fortio/releases/download/v1.2.2/fortio-1.2.2-1.x86_64.rpm
 ```
