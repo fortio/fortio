@@ -8,9 +8,9 @@
 
 - Make sure your git status is clean, and the tag is present before the next step or it will get marked dirty/pre
 
-- Create the binary tgz: `make release` (from/in the toplevel directory)
+- Create the binary tgz, deb and rpm packages: `make release` (from/in the toplevel directory)
 
-- Upload the release/fortio-\*.tgz to GitHub
+- Upload the release/fortio-\*.tgz .deb and .rpm to GitHub
 
 - The docker official builds are done automatically based on tag, check [fortio's cloud docker build page](https://cloud.docker.com/app/fortio/repository/docker/fortio/fortio/builds)
 
