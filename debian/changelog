@@ -1,0 +1,5 @@
+fortio (1.2.1-0ubuntu1) bionic; urgency=medium
+
+  * Initial release (Closes: #908172)
+
+ -- Laurent Demailly <ldemailly@gmail.com>  Thu, 06 Sep 2018 16:21:28 -0700
