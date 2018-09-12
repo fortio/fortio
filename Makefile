@@ -25,12 +25,12 @@ PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templ
 # Marker for whether vendor submodule is here or not already
 GRPC_DIR:=./vendor/google.golang.org/grpc
 
-# Run dependencies
-dependencies: submodule certs
-
 # Local targets:
-install: dependencies
+go-install: submodule
 	go install $(PACKAGES)
+
+# Run/test dependencies
+dependencies: submodule certs
 
 # Only generate certs if needed
 certs: $(CERT_TEMP_DIR)/server.cert
@@ -123,7 +123,7 @@ vendor.check:
 
 
 # Docker: Pushes the combo image and the smaller image(s)
-all: test install lint docker-version docker-push-internal
+all: test go-install lint docker-version docker-push-internal
 	@for img in $(IMAGES); do \
 		$(MAKE) docker-push-internal IMAGE=.$$img TAG=$(TAG); \
 	done
@@ -157,7 +157,7 @@ release: dist
 
 .PHONY: all docker-internal docker-push-internal docker-version test dependencies
 
-.PHONY: install lint install-linters coverage webtest release-test update-build-image
+.PHONY: go-install lint install-linters coverage webtest release-test update-build-image
 
 .PHONY: local-lint update-build-image-tag release submodule submodule-sync pull certs certs-clean
 
@@ -213,3 +213,20 @@ dist: submodule
 
 dist-sign:
 	gpg --armor --detach-sign $(DIST_PATH)
+
+# Install target more compatible with standard gnu/debian practices. Uses DESTDIR as staging prefix
+
+install: official-install
+
+.PHONY: install official-install
+
+BIN_INSTALL_DIR = $(DESTDIR)/usr/bin
+LIB_INSTALL_DIR = $(DESTDIR)$(LIB_DIR)
+DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
+BIN_INSTALL_EXEC = fortio
+
+official-install: official-build-clean official-build-version
+	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) $(DATA_INSTALL_DIR)
+	-chmod 1777 $(DATA_INSTALL_DIR)
+	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
+	cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
