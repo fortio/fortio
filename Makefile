@@ -199,3 +199,14 @@ official-build-version: official-build
 
 official-build-clean:
 	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN)
+
+# Create a complete source tree (including submodule) with naming matching debian package conventions
+TAR:=gtar # on macos need gtar to get --owner
+DIST_VERSION:= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
+DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar.gz
+
+dist: submodule
+	git ls-files --recurse-submodules \
+		| awk '{printf("go/src/fortio.org/fortio/%s\n", $$0)}' \
+		| (cd ../../../.. ; $(TAR) --owner=0 --group=0 -cvz -f - -T -) > $(DIST_PATH)
+	@echo "Created $(DIST_PATH)"

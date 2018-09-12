@@ -1,5 +1,5 @@
 Source: fortio
-Section: unknown
+Section: web
 Priority: optional
 Maintainer: Laurent Demailly <ldemailly@gmail.com>
 Build-Depends: debhelper (>= 10),

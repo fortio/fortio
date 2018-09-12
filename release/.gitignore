@@ -1,4 +1,5 @@
 tgz/
+*.tar.gz
 *.tgz
 *.deb
 *.rpm
