@@ -210,3 +210,6 @@ dist: submodule
 		| awk '{printf("go/src/fortio.org/fortio/%s\n", $$0)}' \
 		| (cd ../../../.. ; $(TAR) --owner=0 --group=0 -cvz -f - -T -) > $(DIST_PATH)
 	@echo "Created $(DIST_PATH)"
+
+dist-sign:
+	gpg --armor --detach-sign $(DIST_PATH)
