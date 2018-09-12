@@ -152,7 +152,7 @@ docker-push-internal: docker-internal
 	@echo "### Now pushing $(DOCKER_TAG)"
 	docker push $(DOCKER_TAG)
 
-release: dependencies
+release: dist
 	release/release.sh
 
 .PHONY: all docker-internal docker-push-internal docker-version test dependencies

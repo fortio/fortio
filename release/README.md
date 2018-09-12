@@ -10,7 +10,7 @@
 
 - Create the binary tgz, deb and rpm packages: `make release` (from/in the toplevel directory)
 
-- Upload the release/fortio-\*.tgz .deb and .rpm to GitHub
+- Upload the release/fortio-\*.tgz, .orig.tar.gz, .deb and .rpm to GitHub
 
 - The docker official builds are done automatically based on tag, check [fortio's cloud docker build page](https://cloud.docker.com/app/fortio/repository/docker/fortio/fortio/builds)
 
