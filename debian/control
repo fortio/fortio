@@ -3,7 +3,7 @@ Section: web
 Priority: optional
 Maintainer: Laurent Demailly <ldemailly@gmail.com>
 Build-Depends: debhelper (>= 10),
-	golang-go
+	golang-go (>= 1.8)
 Standards-Version: 4.1.2
 Homepage: https://github.com/fortio/fortio
 #Vcs-Git: https://anonscm.debian.org/git/collab-maint/fortio.git
