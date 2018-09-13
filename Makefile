@@ -21,7 +21,7 @@ CERT_TEMP_DIR := ./cert-tmp/
 # note that only go1.8 needs the grep -v vendor but we are compatible with 1.8
 # ps: can't use go list (and get packages as canonical fortio.org/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
-PACKAGES:=$(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp|debian)")
+PACKAGES ?= $(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp|debian)")
 # Marker for whether vendor submodule is here or not already
 GRPC_DIR:=./vendor/google.golang.org/grpc
 
@@ -65,7 +65,7 @@ LINT_PACKAGES:=$(PACKAGES)
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
 lint: dependencies
-	docker run -v $(shell pwd):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
+	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
 		"cd /go/src/fortio.org/fortio && time go install $(LINT_PACKAGES) \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
@@ -170,9 +170,9 @@ DATA_DIR := /var/lib/fortio
 OFFICIAL_BIN := ../fortio.bin
 GOOS := 
 GO_BIN := go
-GIT_STATUS := $(strip $(shell git status --porcelain | wc -l))
-GIT_TAG := $(shell git describe --tags --match 'v*')
-GIT_SHA := $(shell git rev-parse HEAD)
+GIT_STATUS ?= $(strip $(shell git status --porcelain | wc -l))
+GIT_TAG ?= $(shell git describe --tags --match 'v*')
+GIT_SHA ?= $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
 
@@ -204,8 +204,8 @@ official-build-clean:
 	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree (including submodule) with naming matching debian package conventions
-TAR:=gtar # on macos need gtar to get --owner
-DIST_VERSION:= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
+TAR ?= gtar # on macos need gtar to get --owner
+DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 
 .PHONY: dist dist-sign distclean
@@ -222,13 +222,13 @@ dist: submodule release/Makefile
 		| (cd ../../.. ; $(TAR) --xform="s|^src|fortio-$(DIST_VERSION)/src|" --owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
 	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" --owner=0 --group=0 -r -f $(DIST_PATH) release/Makefile
 	gzip -f $(DIST_PATH)
-	@echo "Created $(DIST_PATH).gz"
+	@echo "Created $(CURDIR)/$(DIST_PATH).gz"
 
 dist-sign:
 	gpg --armor --detach-sign $(DIST_PATH)
 
-distclean:
-	-rm -rf *.profile.* */*.profile.* $(CERT_TEMP_DIR) release/Makefile
+distclean: official-build-clean
+	-rm -rf *.profile.* */*.profile.* $(CERT_TEMP_DIR)
 
 # Install target more compatible with standard gnu/debian practices. Uses DESTDIR as staging prefix
 
