@@ -1,0 +1,6 @@
+# template for top level Makefile in tar ball distribution. used by "make dist" with variables prepended
+# so the rest of the build works for debian without a git repo / from a tar ball
+GOPATH := ${CURDIR}
+
+%:
+	cd src/fortio.org/fortio; GOPATH=$(GOPATH) make $@ GIT_TAG=$(GIT_TAG) GIT_STATUS=0 GIT_SHA=$(GIT_SHA)

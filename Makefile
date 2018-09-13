@@ -43,9 +43,11 @@ $(CERT_TEMP_DIR)/server.cert: cert-gen
 certs-clean:
 	rm -rf $(CERT_TEMP_DIR)
 
+TEST_TIMEOUT:=90s
+
 # Local test
 test: dependencies
-	go test -timeout 60s -race $(PACKAGES)
+	go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
@@ -170,6 +172,7 @@ GOOS :=
 GO_BIN := go
 GIT_STATUS := $(strip $(shell git status --porcelain | wc -l))
 GIT_TAG := $(shell git describe --tags --match 'v*')
+GIT_SHA := $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
 
@@ -180,7 +183,7 @@ OFFICIAL_TARGET := fortio.org/fortio
 
 $(BUILD_DIR)/build-info.txt:
 	-mkdir -p $(BUILD_DIR)
-	echo "$(shell date +'%Y-%m-%d %H:%M') $(shell git rev-parse HEAD)" > $@
+	echo "$(shell date +'%Y-%m-%d %H:%M') $(GIT_SHA)" > $@
 
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
@@ -198,18 +201,31 @@ official-build-version: official-build
 	$(OFFICIAL_BIN) version
 
 official-build-clean:
-	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN)
+	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree (including submodule) with naming matching debian package conventions
 TAR:=gtar # on macos need gtar to get --owner
 DIST_VERSION:= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
-DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar.gz
+DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 
-dist: submodule
+.PHONY: dist dist-sign distclean
+
+release/Makefile: release/Makefile.dist
+	echo "GIT_TAG := $(GIT_TAG)" > $@
+	echo "GIT_STATUS := $(GIT_STATUS)" >> $@
+	echo "GIT_SHA := $(GIT_SHA)" >> $@
+	cat $< >> $@
+
+dist: submodule release/Makefile
 	git ls-files --recurse-submodules \
-		| awk '{printf("go/src/fortio.org/fortio/%s\n", $$0)}' \
-		| (cd ../../../.. ; $(TAR) --owner=0 --group=0 -cvz -f - -T -) > $(DIST_PATH)
-	@echo "Created $(DIST_PATH)"
+		| awk '{printf("src/fortio.org/fortio/%s\n", $$0)}' \
+		| (cd ../../.. ; $(TAR) --xform="s|^src|fortio-$(DIST_VERSION)/src|" --owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
+	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" --owner=0 --group=0 -r -f $(DIST_PATH) release/Makefile
+	gzip -f $(DIST_PATH)
+	@echo "Created $(DIST_PATH).gz"
 
 dist-sign:
 	gpg --armor --detach-sign $(DIST_PATH)
+
+distclean:
+	-rm -rf *.profile.* */*.profile.* $(CERT_TEMP_DIR) release/Makefile
