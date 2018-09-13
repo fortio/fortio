@@ -269,7 +269,7 @@ debian-dist-test:
 	-mkdir -p $(TMP_DIST_DIR)
 	rm -rf $(TMP_DIST_DIR)/fortio*
 	cp $(CURDIR)/$(DIST_PATH).gz $(TMP_DIST_DIR)
-	cd $(TMP_DIST_DIR); tar xvfz *.tar.gz
+	cd $(TMP_DIST_DIR); tar xfz *.tar.gz
 	cd $(TMP_DIST_DIR);\
 		ln -s *.tar.gz fortio_`cd fortio-$(DIST_VERSION); dpkg-parsechangelog -S Version | sed -e "s/-.*//"`.orig.tar.gz
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); dpkg-buildpackage -us -uc
