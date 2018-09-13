@@ -166,7 +166,7 @@ release: dist
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
 LIB_DIR := /usr/share/fortio
-DATA_DIR := /var/lib/fortio
+DATA_DIR := .
 OFFICIAL_BIN := ../fortio.bin
 GOOS := 
 GO_BIN := go
@@ -245,12 +245,12 @@ install: official-install
 
 BIN_INSTALL_DIR = $(DESTDIR)/usr/bin
 LIB_INSTALL_DIR = $(DESTDIR)$(LIB_DIR)
-DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
+#DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
 BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
-	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) $(DATA_INSTALL_DIR)
-	-chmod 1777 $(DATA_INSTALL_DIR)
+	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) # $(DATA_INSTALL_DIR)
+	# -chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
 	cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
 

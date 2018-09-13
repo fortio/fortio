@@ -15,7 +15,7 @@
 #
 # Ran from the release/Dockerfile[.in] to invoke fpm with common arguments
 # Assumes the layout from the Dockerfiles (/stage source, /tgz destination etc)
-fpm -v $(/stage/usr/local/bin/fortio version -s) -n fortio --license "Apache License, Version 2.0" \
+fpm -v $(/stage/usr/bin/fortio version -s) -n fortio --license "Apache License, Version 2.0" \
     --category utils --url https://fortio.org/ --maintainer fortio@fortio.org \
     --description "Fortio is a load testing library, command line tool, advanced echo server and web UI in go (golang)." \
     -s tar -t $1 /tgz/*.tgz
