@@ -6,13 +6,13 @@ Build-Depends: debhelper (>= 10),
 	golang-go (>= 1.8)
 Standards-Version: 4.1.2
 Homepage: https://github.com/fortio/fortio
-#Vcs-Git: https://anonscm.debian.org/git/collab-maint/fortio.git
-#Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/fortio.git
+#Vcs-Git: https://github.com/fortio/fortio.git
+#Vcs-Browser: https://github.com/fortio/fortio/tree/master/
 
 Package: fortio
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${misc:Depends}
 Description: load testing library, command line tool, echo server, web UI
  Fortio is a microservices (http, grpc) load testing library, command line tool,
- advanced echo server, and web UI in go (golang). Fortio allows to specify a set
- query-per-second load and record latency histograms and other useful stats.
+ advanced echo server, and web UI in go (golang). Fortio allows one to specify a
+ set query-per-second load and record latency histograms and other useful stats.

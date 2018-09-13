@@ -165,7 +165,7 @@ release: dist
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
-LIB_DIR := /usr/local/lib/fortio
+LIB_DIR := /usr/share/fortio
 DATA_DIR := /var/lib/fortio
 OFFICIAL_BIN := ../fortio.bin
 GOOS := 
@@ -217,10 +217,16 @@ release/Makefile: release/Makefile.dist
 	cat $< >> $@
 
 dist: submodule release/Makefile
+	# put the source files where they can be used as gopath by go,
+	# except leave the debian dir where it needs to be (below the version dir)
 	git ls-files --recurse-submodules \
 		| awk '{printf("src/fortio.org/fortio/%s\n", $$0)}' \
-		| (cd ../../.. ; $(TAR) --xform="s|^src|fortio-$(DIST_VERSION)/src|" --owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
-	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" --owner=0 --group=0 -r -f $(DIST_PATH) release/Makefile
+		| (cd ../../.. ; $(TAR) \
+		--xform="s|^src|fortio-$(DIST_VERSION)/src|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
+		--owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
+	# move the release/Makefile at the top (after the version dir)
+	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" \
+		--owner=0 --group=0 -r -f $(DIST_PATH) release/Makefile
 	gzip -f $(DIST_PATH)
 	@echo "Created $(CURDIR)/$(DIST_PATH).gz"
 
@@ -228,7 +234,8 @@ dist-sign:
 	gpg --armor --detach-sign $(DIST_PATH)
 
 distclean: official-build-clean
-	-rm -rf *.profile.* */*.profile.* $(CERT_TEMP_DIR)
+	-rm -f *.profile.* */*.profile.*
+	-rm -rf $(CERT_TEMP_DIR)
 
 # Install target more compatible with standard gnu/debian practices. Uses DESTDIR as staging prefix
 
@@ -246,3 +253,25 @@ official-install: official-build-clean official-build-version
 	-chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
 	cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
+
+# Test distribution (only used by maintainer)
+
+.PHONY: debian-test-dist
+
+# warning, will be cleaned
+TMP_DIST_DIR:=~/tmp/fortio-dist-test
+
+# debian getting version from debian/changelog while we get it from git tags
+# doesn't help making this simple: (TODO: unify or autoupdate the 3 versions)
+
+debian-dist-test:
+	$(MAKE) dist TAR=tar
+	-mkdir -p $(TMP_DIST_DIR)
+	rm -rf $(TMP_DIST_DIR)/fortio*
+	cp $(CURDIR)/$(DIST_PATH).gz $(TMP_DIST_DIR)
+	cd $(TMP_DIST_DIR); tar xvfz *.tar.gz
+	cd $(TMP_DIST_DIR);\
+		ln -s *.tar.gz fortio_`cd fortio-$(DIST_VERSION); dpkg-parsechangelog -S Version | sed -e "s/-.*//"`.orig.tar.gz
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); dpkg-buildpackage -us -uc
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
+
