@@ -245,14 +245,16 @@ install: official-install
 
 BIN_INSTALL_DIR = $(DESTDIR)/usr/bin
 LIB_INSTALL_DIR = $(DESTDIR)$(LIB_DIR)
+MAN_INSTALL_DIR = $(DESTDIR)/usr/share/man/man1
 #DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
 BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
-	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) # $(DATA_INSTALL_DIR)
+	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) $(MAN_INSTALL_DIR) # $(DATA_INSTALL_DIR)
 	# -chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
 	cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
+	cp docs/fortio.1 $(MAN_INSTALL_DIR)
 
 # Test distribution (only used by maintainer)
 
@@ -272,6 +274,6 @@ debian-dist-test:
 	cd $(TMP_DIST_DIR); tar xfz *.tar.gz
 	cd $(TMP_DIST_DIR);\
 		ln -s *.tar.gz fortio_`cd fortio-$(DIST_VERSION); dpkg-parsechangelog -S Version | sed -e "s/-.*//"`.orig.tar.gz
-	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); dpkg-buildpackage -us -uc
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=Y dpkg-buildpackage -us -uc
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
 
