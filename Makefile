@@ -258,7 +258,7 @@ official-install: official-build-clean official-build-version
 
 # Test distribution (only used by maintainer)
 
-.PHONY: debian-test-dist
+.PHONY: debian-dist-common debian-dist-test debian-dist
 
 # warning, will be cleaned
 TMP_DIST_DIR:=~/tmp/fortio-dist-test
@@ -266,14 +266,19 @@ TMP_DIST_DIR:=~/tmp/fortio-dist-test
 # debian getting version from debian/changelog while we get it from git tags
 # doesn't help making this simple: (TODO: unify or autoupdate the 3 versions)
 
-debian-dist-test:
+debian-dist-common:
 	$(MAKE) dist TAR=tar
 	-mkdir -p $(TMP_DIST_DIR)
 	rm -rf $(TMP_DIST_DIR)/fortio*
 	cp $(CURDIR)/$(DIST_PATH).gz $(TMP_DIST_DIR)
 	cd $(TMP_DIST_DIR); tar xfz *.tar.gz
-	cd $(TMP_DIST_DIR);\
+	-cd $(TMP_DIST_DIR);\
 		ln -s *.tar.gz fortio_`cd fortio-$(DIST_VERSION); dpkg-parsechangelog -S Version | sed -e "s/-.*//"`.orig.tar.gz
+
+debian-dist-test: debian-dist-common
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=Y dpkg-buildpackage -us -uc
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
 
+debian-dist: debian-dist-common
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); dpkg-buildpackage -ap
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
