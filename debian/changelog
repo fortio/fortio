@@ -1,6 +1,9 @@
-fortio (1.3.0-1.1) unstable; urgency=medium
+fortio (1.3.0-2) unstable; urgency=medium
 
   * Skip tests by default (because build machines don't have internet access)
+  * Added override for Chart.min.js so to not having to further completely
+    revamp the build system for that one file (which does have a header
+    indicating source and (MIT) license)
 
  -- Laurent Demailly <ldemailly@gmail.com>  Fri, 14 Sep 2018 18:06:21 -0700
 
