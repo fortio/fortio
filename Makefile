@@ -258,7 +258,7 @@ official-install: official-build-clean official-build-version
 
 # Test distribution (only used by maintainer)
 
-.PHONY: debian-dist-common debian-dist-test debian-dist
+.PHONY: debian-dist-common debian-dist-test debian-dist debian-sbuild
 
 # warning, will be cleaned
 TMP_DIST_DIR:=~/tmp/fortio-dist
@@ -279,6 +279,10 @@ debian-dist-test: debian-dist-common
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=Y dpkg-buildpackage -us -uc
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
 
-debian-dist: debian-dist-common
+debian-dist: distclean debian-dist-common
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=N dpkg-buildpackage -ap
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
+
+# assumes you ran one of the previous 2 target first
+debian-sbuild:
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); sbuild
