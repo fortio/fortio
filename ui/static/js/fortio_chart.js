@@ -689,3 +689,12 @@ function toggleDuration (el) {
     d.value = lastDuration
   }
 }
+
+let customHeaderElement = '<input type=\"text\" name=\"H\" size=40 value=\"\" /> <br />';
+
+function addCustomHeader() {
+    let customHeaderElements = document.getElementsByName("H");
+    let lastElement = customHeaderElements[customHeaderElements.length - 1];
+    lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
+}
+
