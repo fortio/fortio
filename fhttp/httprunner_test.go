@@ -260,29 +260,44 @@ func TestAbortOn(t *testing.T) {
 	}
 }
 
-//TODO add default client tests when RequestSize() method is filled.
 func TestSentRequestSize(t *testing.T) {
+	tests := []struct {
+		body                 []byte
+		isFastClientDisabled bool
+	}{
+		{body: []byte("footest"), isFastClientDisabled: false},
+		{body: nil, isFastClientDisabled: false},
+		{body: []byte("footest"), isFastClientDisabled: true},
+		{body: nil, isFastClientDisabled: true},
+	}
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo42/", EchoHandler)
 	URL := fmt.Sprintf("http://localhost:%d/echo42", addr.Port)
-	cli := NewFastClient(NewHTTPOptions(URL))
-	opts := HTTPRunnerOptions{}
-	opts.Init(URL)
-	opts.QPS = 10
-	numReq := int64(50) // can't do too many without running out of fds on mac
-	opts.Exactly = numReq
-	opts.NumThreads = 5
-	res, err := RunHTTPTest(&opts)
-	expectedSentSize := cli.RequestSize() * int(res.Sizes.Count)
-	expectedSentSizeBPS := float64(expectedSentSize) / res.ActualDuration.Seconds()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.SentRequestSize != expectedSentSize {
-		t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
-	}
+	for _, test := range tests {
+		opts := HTTPRunnerOptions{}
+		opts.Init(URL)
+		opts.Payload = test.body
+		opts.DisableFastClient = test.isFastClientDisabled
+		opts.QPS = 10
+		numReq := int64(50) // can't do too many without running out of fds on mac
+		opts.Exactly = numReq
+		opts.NumThreads = 5
+		res, err := RunHTTPTest(&opts)
+		cOpts := NewHTTPOptions(URL)
+		cOpts.DisableFastClient = test.isFastClientDisabled
+		cOpts.Payload = test.body
+		cli := NewClient(cOpts)
+		expectedSentSize := cli.GetRequestSize() * int(res.Sizes.Count)
+		expectedSentSizeBPS := float64(expectedSentSize) / res.ActualDuration.Seconds()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.SentRequestSize != expectedSentSize {
+			t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
+		}
 
-	if res.SentRequestSizeBPS != expectedSentSizeBPS {
-		t.Errorf("Expected sent request size per second is %f, but received %f", expectedSentSizeBPS, res.SentRequestSizeBPS)
+		if res.SentRequestSizeBPS != expectedSentSizeBPS {
+			t.Errorf("Expected sent request size per second is %f, but received %f", expectedSentSizeBPS, res.SentRequestSizeBPS)
+		}
 	}
 }

@@ -59,7 +59,7 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 	size := len(body)
 	log.Debugf("Got in %3d hsz %d sz %d - will abort on %d", code, headerSize, size, httpstate.AbortOn)
 	httpstate.RetCodes[code]++
-	httpstate.SentRequestSize += httpstate.client.RequestSize()
+	httpstate.SentRequestSize += httpstate.client.GetRequestSize()
 	httpstate.sizes.Record(float64(size))
 	httpstate.headerSizes.Record(float64(headerSize))
 	if httpstate.AbortOn == code {

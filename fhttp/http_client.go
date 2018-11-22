@@ -43,9 +43,9 @@ type Fetcher interface {
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
 
-	// RequestSize returns the message size that will be sent to server. The return
+	// GetRequestSize returns the message size that will be sent to server. The return
 	// value includes header sizes as well.
-	RequestSize() int
+	GetRequestSize() int
 }
 
 var (
@@ -280,12 +280,6 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	if !log.LogDebug() {
 		return req
 	}
-	bytes, err := httputil.DumpRequestOut(req, false)
-	if err != nil {
-		log.Errf("Unable to dump request: %v", err)
-	} else {
-		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
-	}
 	return req
 }
 
@@ -293,6 +287,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 // http client (net/http)
 type Client struct {
 	url       string
+	reqDump   []byte
 	req       *http.Request
 	client    *http.Client
 	transport *http.Transport
@@ -315,10 +310,12 @@ func (c *Client) Close() int {
 	return 0 // TODO: find a way to track std client socket usage.
 }
 
-// RequestSize returns the message size
-func (c *Client) RequestSize() int {
-	//TODO find a way to get whole body size from http.Request
-	return 0
+// GetRequestSize returns the message size
+func (c *Client) GetRequestSize() int {
+	if c.reqDump == nil {
+		return 0
+	}
+	return len(c.reqDump)
 }
 
 // ChangeURL only for standard client, allows fetching a different URL
@@ -379,6 +376,12 @@ func NewStdClient(o *HTTPOptions) *Client {
 	if req == nil {
 		return nil
 	}
+	bytes, err := httputil.DumpRequestOut(req, false)
+	if err != nil {
+		log.Errf("Unable to dump request: %v", err)
+	} else {
+		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
+	}
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
 		MaxIdleConnsPerHost: o.NumConnections,
@@ -402,6 +405,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 		},
 		transport: &tr,
 	}
+	client.reqDump = bytes
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
 		client.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -543,8 +547,8 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 	return c.code, c.buffer[:c.size], c.headerLen
 }
 
-// RequestSize returns the message size
-func (c *FastClient) RequestSize() int {
+// GetRequestSize returns the message size
+func (c *FastClient) GetRequestSize() int {
 	if c.req == nil {
 		return 0
 	}
