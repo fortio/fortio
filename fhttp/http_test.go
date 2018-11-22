@@ -1105,6 +1105,22 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 	}
 }
 
+func TestPayloadString(t *testing.T) {
+	var tests = []struct {
+		text string
+	}{
+		{text: "test"},
+		{text: ""},
+	}
+	for _, test := range tests {
+		opts := NewHTTPOptions("foo.com")
+		opts.Payload = []byte(test.text)
+		if opts.PayloadString() != test.text {
+			t.Errorf("{%s} is received as payload text but expected {%s}", opts.PayloadString(), test.text)
+		}
+	}
+}
+
 // --- for bench mark/comparison
 
 func asciiFold0(str string) []byte {
