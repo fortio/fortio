@@ -42,6 +42,10 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
+
+	// RequestSize returns the message size that will be sent to server. The return
+	// value includes header sizes as well.
+	RequestSize() int
 }
 
 var (
@@ -311,6 +315,12 @@ func (c *Client) Close() int {
 	return 0 // TODO: find a way to track std client socket usage.
 }
 
+// RequestSize returns the message size
+func (c *Client) RequestSize() int {
+	//TODO find a way to get whole body size from http.Request
+	return 0
+}
+
 // ChangeURL only for standard client, allows fetching a different URL
 func (c *Client) ChangeURL(urlStr string) (err error) {
 	c.url = urlStr
@@ -531,6 +541,14 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 // return the result from the state.
 func (c *FastClient) returnRes() (int, []byte, int) {
 	return c.code, c.buffer[:c.size], c.headerLen
+}
+
+// RequestSize returns the message size
+func (c *FastClient) RequestSize() int {
+	if c.req == nil {
+		return 0
+	}
+	return len(c.req)
 }
 
 // connect to destination.

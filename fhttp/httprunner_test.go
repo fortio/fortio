@@ -259,3 +259,30 @@ func TestAbortOn(t *testing.T) {
 		t.Errorf("Abort2 not working, did %d requests expecting ideally 1 and <= %d", count, o.NumThreads)
 	}
 }
+
+//TODO add default client tests when RequestSize() method is filled.
+func TestSentRequestSize(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo42/", EchoHandler)
+	URL := fmt.Sprintf("http://localhost:%d/echo42", addr.Port)
+	cli := NewFastClient(NewHTTPOptions(URL))
+	opts := HTTPRunnerOptions{}
+	opts.Init(URL)
+	opts.QPS = 10
+	numReq := int64(50) // can't do too many without running out of fds on mac
+	opts.Exactly = numReq
+	opts.NumThreads = 5
+	res, err := RunHTTPTest(&opts)
+	expectedSentSize := cli.RequestSize() * int(res.Sizes.Count)
+	expectedSentSizeBPS := float64(expectedSentSize) / res.ActualDuration.Seconds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.SentRequestSize != expectedSentSize {
+		t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
+	}
+
+	if res.SentRequestSizeBPS != expectedSentSizeBPS {
+		t.Errorf("Expected sent request size per second is %f, but received %f", expectedSentSizeBPS, res.SentRequestSizeBPS)
+	}
+}
