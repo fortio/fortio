@@ -104,7 +104,7 @@ function makeTitle (res) {
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
   var statusOk = res.RetCodes[200]
   if (!statusOk) { // grpc results
-    statusOk = res.RetCodes[1]
+    statusOk = res.RetCodes["SERVING"]
   }
   var total = res.DurationHistogram.Count
   var errStr = 'no error'
