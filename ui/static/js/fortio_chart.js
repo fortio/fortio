@@ -104,7 +104,7 @@ function makeTitle (res) {
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
   var statusOk = res.RetCodes[200]
   if (!statusOk) { // grpc results
-    statusOk = res.RetCodes[1]
+    statusOk = res.RetCodes["SERVING"]
   }
   var total = res.DurationHistogram.Count
   var errStr = 'no error'
@@ -689,3 +689,12 @@ function toggleDuration (el) {
     d.value = lastDuration
   }
 }
+
+let customHeaderElement = '<input type=\"text\" name=\"H\" size=40 value=\"\" /> <br />';
+
+function addCustomHeader() {
+    let customHeaderElements = document.getElementsByName("H");
+    let lastElement = customHeaderElements[customHeaderElements.length - 1];
+    lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
+}
+
