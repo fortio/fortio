@@ -43,8 +43,7 @@ BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
 CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://istio.io/robots.txt
-# Check that browse doesn't 404s
-$CURL ${BASE_FORTIO}browse
+
 # Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we can do it twice despite ulimit - check we get all 200s (exactly 80 of them (default is 8 connections->16 fds + a few))
@@ -72,8 +71,19 @@ if [ "$SIZE" -lt 8191 ] || [ "$SIZE" -gt 8400 ]; then
   exit 1
 fi
 
-# Check the main page
-$CURL $BASE_FORTIO
+# Check main, sync, browse pages
+VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
+for p in "" browse sync; do
+  # Check the page doesn't 404s
+  $CURL ${BASE_FORTIO}${p}
+  # Check that page includes 3 logos
+  LOGOS_COUNT=$($CURL ${BASE_FORTIO}${p} | grep "${VERSION}/static/img/logo.svg" | wc -l)
+  if [ "$LOGOS_COUNT" -ne 3 ]; then
+    echo "expected 3 logos in the ${p} page"
+    exit 1
+  fi
+done
+
 # Do a small http load using std client
 docker exec $DOCKERNAME $FORTIO_BIN_PATH load -stdclient -qps 1 -t 2s -c 1 https://www.google.com/
 # and with normal and with custom headers
