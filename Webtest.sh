@@ -77,8 +77,8 @@ for p in "" browse sync; do
   # Check the page doesn't 404s
   $CURL ${BASE_FORTIO}${p}
   # Check that page includes 3 logos
-  LOGOS_COUNT=$($CURL ${BASE_FORTIO}${p} | grep "${VERSION}/static/img/logo.svg" | wc -l)
-  if [ "$LOGOS_COUNT" -ne 3 ]; then
+  LOGOS=$($CURL ${BASE_FORTIO}${p} | grep -c "${VERSION}/static/img/logo.svg")
+  if [ "$LOGOS" -ne 3 ]; then
     echo "expected 3 logos in the ${p} page"
     exit 1
   fi
