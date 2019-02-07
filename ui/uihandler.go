@@ -339,10 +339,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}
 		// nolint: errcheck, gas
-		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-			res.Result().DurationHistogram.Count,
-			1000.*res.Result().DurationHistogram.Avg,
-			res.Result().ActualQPS)))
+		w.Write([]byte(res.Result().String() + "</pre>\n<script>\n"))
 		ResultToJsData(w, json)
 		w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n")) // nolint: gas
 		delete(runs, runid)

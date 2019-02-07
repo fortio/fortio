@@ -141,6 +141,10 @@ type RunnerResults struct {
 	Version           string
 	DurationHistogram *stats.HistogramData
 	Exactly           int64 // Echo back the requested count
+	// total message size that sent to server in terms of KBPS
+	SentRequestSizeKBPS float64
+	// total message size that received from server in terms of KBPS
+	ReceivedResponseSizeKPBS float64
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -442,7 +446,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, 0, 0}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {
@@ -574,4 +578,35 @@ func (r *RunnerResults) ID() string {
 		return base[:64]
 	}
 	return base
+}
+
+//TODO remove above if condition when receive and sent byte count is added to GRPC as well.
+// String prints the Runner Results
+func (r *RunnerResults) String() string {
+	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
+		return fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps,\n",
+			r.DurationHistogram.Count,
+			1000.*r.DurationHistogram.Avg,
+			r.ActualQPS)
+	}
+	return fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent.\n",
+		r.DurationHistogram.Count,
+		1000.*r.DurationHistogram.Avg,
+		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
+}
+
+// StringWithWarmUp prints the Runner Results with Warmup
+func (r *RunnerResults) StringWithWarmUp(warmup int) string {
+	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
+		return fmt.Sprintf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps.\n",
+			r.DurationHistogram.Count,
+			warmup,
+			1000.*r.DurationHistogram.Avg,
+			r.ActualQPS)
+	}
+	return fmt.Sprintf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent.\n",
+		r.DurationHistogram.Count,
+		warmup,
+		1000.*r.DurationHistogram.Avg,
+		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
 }

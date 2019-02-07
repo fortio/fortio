@@ -40,12 +40,15 @@ type HTTPRunnerResults struct {
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
 	// exported result
-	Sizes              *stats.HistogramData
-	HeaderSizes        *stats.HistogramData
-	URL                string
-	SentRequestSize    int
-	SentRequestSizeBPS float64
-	SocketCount        int
+	Sizes       *stats.HistogramData
+	HeaderSizes *stats.HistogramData
+	URL         string
+	// total message size that sent to server
+	SentRequestSize int
+	// total message size that received from the server
+	ReceivedResponseSize int
+	// the number of used sockets
+	SocketCount int
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
 	aborter *periodic.Aborter
@@ -60,6 +63,7 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 	log.Debugf("Got in %3d hsz %d sz %d - will abort on %d", code, headerSize, size, httpstate.AbortOn)
 	httpstate.RetCodes[code]++
 	httpstate.SentRequestSize += httpstate.client.GetRequestSize()
+	httpstate.ReceivedResponseSize += headerSize + len(body)
 	httpstate.sizes.Record(float64(size))
 	httpstate.headerSizes.Record(float64(headerSize))
 	if httpstate.AbortOn == code {
@@ -148,6 +152,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		total.SocketCount += httpstate[i].client.Close()
 		total.SentRequestSize += httpstate[i].SentRequestSize
+		total.ReceivedResponseSize += httpstate[i].ReceivedResponseSize
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {
@@ -158,7 +163,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
-	total.SentRequestSizeBPS = float64(total.SentRequestSize) / total.ActualDuration.Seconds()
+	total.SentRequestSizeKBPS = float64(total.SentRequestSize) / (total.ActualDuration.Seconds() * 1000)
+	total.ReceivedResponseSizeKPBS = float64(total.ReceivedResponseSize) / (total.ActualDuration.Seconds() * 1000)
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	sort.Ints(keys)

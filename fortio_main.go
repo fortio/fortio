@@ -315,11 +315,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	if ro.Exactly > 0 {
 		warmup = 0
 	}
-	_, _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
-		rr.DurationHistogram.Count,
-		warmup,
-		1000.*rr.DurationHistogram.Avg,
-		rr.ActualQPS)
+	_, _ = fmt.Fprint(out, rr.StringWithWarmUp(warmup))
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 {
 		var j []byte

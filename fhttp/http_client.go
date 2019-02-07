@@ -42,7 +42,6 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
-
 	// GetRequestSize returns the message size that will be sent to server. The return
 	// value includes header sizes as well.
 	GetRequestSize() int
@@ -312,9 +311,6 @@ func (c *Client) Close() int {
 
 // GetRequestSize returns the message size
 func (c *Client) GetRequestSize() int {
-	if c.reqDump == nil {
-		return 0
-	}
 	return len(c.reqDump)
 }
 
@@ -549,9 +545,6 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 
 // GetRequestSize returns the message size
 func (c *FastClient) GetRequestSize() int {
-	if c.req == nil {
-		return 0
-	}
 	return len(c.req)
 }
 

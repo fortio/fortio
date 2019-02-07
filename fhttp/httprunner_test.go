@@ -260,7 +260,7 @@ func TestAbortOn(t *testing.T) {
 	}
 }
 
-func TestSentRequestSize(t *testing.T) {
+func TestSentAndReceivedSize(t *testing.T) {
 	tests := []struct {
 		body                 []byte
 		isFastClientDisabled bool
@@ -288,7 +288,11 @@ func TestSentRequestSize(t *testing.T) {
 		cOpts.Payload = test.body
 		cli := NewClient(cOpts)
 		expectedSentSize := cli.GetRequestSize() * int(res.Sizes.Count)
-		expectedSentSizeBPS := float64(expectedSentSize) / res.ActualDuration.Seconds()
+		expectedSentSizeKBPS := float64(expectedSentSize) / (res.ActualDuration.Seconds() * 1000)
+		_, body, headerSize := cli.Fetch()
+		expectedReceivedSize := (len(body) + headerSize) * int(numReq) // request is done 50 times...
+		expectedReceivedSizeKBPS := float64(expectedReceivedSize) / (res.ActualDuration.Seconds() * 1000)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -296,8 +300,15 @@ func TestSentRequestSize(t *testing.T) {
 			t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
 		}
 
-		if res.SentRequestSizeBPS != expectedSentSizeBPS {
-			t.Errorf("Expected sent request size per second is %f, but received %f", expectedSentSizeBPS, res.SentRequestSizeBPS)
+		if res.SentRequestSizeKBPS != expectedSentSizeKBPS {
+			t.Errorf("Expected sent request KBPS is %f, but received %f", expectedSentSizeKBPS, res.SentRequestSizeKBPS)
+		}
+		if res.ReceivedResponseSize != expectedReceivedSize {
+			t.Errorf("Expected ReceivedResponseSize is %d, but received %d", expectedReceivedSize, res.ReceivedResponseSize)
+		}
+
+		if res.ReceivedResponseSizeKPBS != expectedReceivedSizeKBPS {
+			t.Errorf("Expected received response KBPS is %f, but received %f", expectedReceivedSizeKBPS, res.ReceivedResponseSizeKPBS)
 		}
 	}
 }
