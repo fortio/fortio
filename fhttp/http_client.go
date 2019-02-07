@@ -383,6 +383,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 		MaxIdleConnsPerHost: o.NumConnections,
 		DisableCompression:  !o.Compression,
 		DisableKeepAlives:   o.DisableKeepAlive,
+		Proxy:               http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
 			Timeout: o.HTTPReqTimeOut,
 		}).Dial,

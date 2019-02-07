@@ -13,10 +13,7 @@ h1 {
 }
 </style>
 </head>
-<body style="background: linear-gradient(to right, #d8aa20 , #c75228);">
-<a href="https://fortio.org/" target="_blank"><img src="{{.LogoPath}}" alt="." height="69" width="45" align="right" /></a>
-<img src="{{.LogoPath}}" alt="." height="92" width="60" align="right" />
-<img src="{{.LogoPath}}" alt="istio logo" height="123" width="80" align="right" />
+{{template "header" .}}
 <h1>Φορτίο (fortio) v{{.Version}}{{.Extra}}</h1>
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
 <script>

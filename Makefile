@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v12
+BUILD_IMAGE_TAG := v13
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -140,7 +140,7 @@ update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
 update-build-image-tag:
-	sed -i .bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	sed --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -204,7 +204,7 @@ official-build-clean:
 	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree (including submodule) with naming matching debian package conventions
-TAR ?= gtar # on macos need gtar to get --owner
+TAR ?= tar # on macos need gtar to get --owner
 DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 
@@ -258,10 +258,10 @@ official-install: official-build-clean official-build-version
 
 # Test distribution (only used by maintainer)
 
-.PHONY: debian-dist-common debian-dist-test debian-dist
+.PHONY: debian-dist-common debian-dist-test debian-dist debian-sbuild
 
 # warning, will be cleaned
-TMP_DIST_DIR:=~/tmp/fortio-dist-test
+TMP_DIST_DIR:=~/tmp/fortio-dist
 
 # debian getting version from debian/changelog while we get it from git tags
 # doesn't help making this simple: (TODO: unify or autoupdate the 3 versions)
@@ -279,6 +279,10 @@ debian-dist-test: debian-dist-common
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=Y dpkg-buildpackage -us -uc
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
 
-debian-dist: debian-dist-common
-	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); dpkg-buildpackage -ap
+debian-dist: distclean debian-dist-common
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); FORTIO_SKIP_TESTS=N dpkg-buildpackage -ap
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); lintian
+
+# assumes you ran one of the previous 2 target first
+debian-sbuild:
+	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); sbuild
