@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v12
+BUILD_IMAGE_TAG := v13
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -140,7 +140,7 @@ update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
 update-build-image-tag:
-	sed -i .bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	sed --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -204,7 +204,7 @@ official-build-clean:
 	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree (including submodule) with naming matching debian package conventions
-TAR ?= gtar # on macos need gtar to get --owner
+TAR ?= tar # on macos need gtar to get --owner
 DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 

@@ -1,5 +1,5 @@
 # Concatenated after ../Dockerfile to create the tgz
-FROM docker.io/fortio/fortio.build:v12 as stage
+FROM docker.io/fortio/fortio.build:v13 as stage
 WORKDIR /stage
 COPY --from=release /usr/bin/fortio usr/bin/fortio
 COPY --from=release /usr/share/fortio usr/share/fortio
