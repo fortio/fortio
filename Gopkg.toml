@@ -10,7 +10,7 @@
   version = "1.2.0"
 
 [[constraint]]
-  branch = "master"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0" # before go 1.8 support drop
   name = "golang.org/x/net"
 
 [[constraint]]
