@@ -48,6 +48,12 @@ var DefaultRunnerOptions = RunnerOptions{
 	Resolution:  0.001, // milliseconds
 }
 
+const (
+	warmupFormatText                   = "(plus %d warmup) "
+	runnerResultInfoFormatText         = "All done %d calls %s%.3f ms avg, %.1f qps."
+	runnerResultDetailedInfoFormatText = "All done %d calls %s%.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent."
+)
+
 // Runnable are the function to run periodically.
 type Runnable interface {
 	Run(tid int)
@@ -581,32 +587,36 @@ func (r *RunnerResults) ID() string {
 }
 
 //TODO remove above if condition when receive and sent byte count is added to GRPC as well.
-// String prints the Runner Results
-func (r *RunnerResults) String() string {
+
+// InfoText Returns the Runner Results in text
+func (r *RunnerResults) InfoText() string {
 	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
-		return fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps,\n",
+		return fmt.Sprintf(runnerResultInfoFormatText,
 			r.DurationHistogram.Count,
+			"",
 			1000.*r.DurationHistogram.Avg,
 			r.ActualQPS)
 	}
-	return fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent.\n",
+	return fmt.Sprintf(runnerResultDetailedInfoFormatText,
 		r.DurationHistogram.Count,
+		"",
 		1000.*r.DurationHistogram.Avg,
 		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
 }
 
-// StringWithWarmUp prints the Runner Results with Warmup
-func (r *RunnerResults) StringWithWarmUp(warmup int) string {
+// InfoTextWithWarmup Returns the Runner Results with Warmup in text
+func (r *RunnerResults) InfoTextWithWarmup(warmup int) string {
+	warmupText := fmt.Sprintf(warmupFormatText, warmup)
 	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
-		return fmt.Sprintf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps.\n",
+		return fmt.Sprintf(runnerResultInfoFormatText,
 			r.DurationHistogram.Count,
-			warmup,
+			warmupText,
 			1000.*r.DurationHistogram.Avg,
 			r.ActualQPS)
 	}
-	return fmt.Sprintf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent.\n",
+	return fmt.Sprintf(runnerResultDetailedInfoFormatText,
 		r.DurationHistogram.Count,
-		warmup,
+		warmupText,
 		1000.*r.DurationHistogram.Avg,
 		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
 }

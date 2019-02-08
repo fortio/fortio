@@ -315,7 +315,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	if ro.Exactly > 0 {
 		warmup = 0
 	}
-	_, _ = fmt.Fprint(out, rr.StringWithWarmUp(warmup))
+	_, _ = fmt.Fprintln(out, rr.InfoTextWithWarmup(warmup))
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 {
 		var j []byte

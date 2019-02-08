@@ -287,7 +287,7 @@ func TestSentAndReceivedSize(t *testing.T) {
 		cOpts.DisableFastClient = test.isFastClientDisabled
 		cOpts.Payload = test.body
 		cli := NewClient(cOpts)
-		expectedSentSize := cli.GetRequestSize() * int(res.Sizes.Count)
+		expectedSentSize := uint64(cli.GetRequestSize() * int(res.Sizes.Count))
 		expectedSentSizeKBPS := float64(expectedSentSize) / (res.ActualDuration.Seconds() * 1000)
 		_, body, headerSize := cli.Fetch()
 		expectedReceivedSize := (len(body) + headerSize) * int(numReq) // request is done 50 times...
@@ -299,14 +299,9 @@ func TestSentAndReceivedSize(t *testing.T) {
 		if res.SentRequestSize != expectedSentSize {
 			t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
 		}
-
 		if res.SentRequestSizeKBPS != expectedSentSizeKBPS {
 			t.Errorf("Expected sent request KBPS is %f, but received %f", expectedSentSizeKBPS, res.SentRequestSizeKBPS)
 		}
-		if res.ReceivedResponseSize != expectedReceivedSize {
-			t.Errorf("Expected ReceivedResponseSize is %d, but received %d", expectedReceivedSize, res.ReceivedResponseSize)
-		}
-
 		if res.ReceivedResponseSizeKPBS != expectedReceivedSizeKBPS {
 			t.Errorf("Expected received response KBPS is %f, but received %f", expectedReceivedSizeKBPS, res.ReceivedResponseSizeKPBS)
 		}
