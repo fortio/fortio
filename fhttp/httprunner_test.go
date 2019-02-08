@@ -288,10 +288,10 @@ func TestSentAndReceivedSize(t *testing.T) {
 		cOpts.Payload = test.body
 		cli := NewClient(cOpts)
 		expectedSentSize := uint64(cli.GetRequestSize() * int(res.Sizes.Count))
-		expectedSentSizeKBPS := float64(expectedSentSize) / (res.ActualDuration.Seconds() * 1000)
+		expectedSentSizeKBperSec := float64(expectedSentSize) / (res.ActualDuration.Seconds() * 1000)
 		_, body, headerSize := cli.Fetch()
 		expectedReceivedSize := (len(body) + headerSize) * int(numReq) // request is done 50 times...
-		expectedReceivedSizeKBPS := float64(expectedReceivedSize) / (res.ActualDuration.Seconds() * 1000)
+		expectedReceivedSizeKBperSec := float64(expectedReceivedSize) / (res.ActualDuration.Seconds() * 1000)
 
 		if err != nil {
 			t.Fatal(err)
@@ -299,11 +299,12 @@ func TestSentAndReceivedSize(t *testing.T) {
 		if res.SentRequestSize != expectedSentSize {
 			t.Errorf("Expected SentRequestSize is %d, but received %d", expectedSentSize, res.SentRequestSize)
 		}
-		if res.SentRequestSizeKBPS != expectedSentSizeKBPS {
-			t.Errorf("Expected sent request KBPS is %f, but received %f", expectedSentSizeKBPS, res.SentRequestSizeKBPS)
+		if res.SentRequestSizeKBperSec != expectedSentSizeKBperSec {
+			t.Errorf("Expected sent request KBPS is %f, but received %f", expectedSentSizeKBperSec, res.SentRequestSizeKBperSec)
 		}
-		if res.ReceivedResponseSizeKPBS != expectedReceivedSizeKBPS {
-			t.Errorf("Expected received response KBPS is %f, but received %f", expectedReceivedSizeKBPS, res.ReceivedResponseSizeKPBS)
+		if res.ReceivedResponseSizeKBperSec != expectedReceivedSizeKBperSec {
+			t.Errorf("Expected received response KBPS is %f, but received %f", expectedReceivedSizeKBperSec,
+				res.ReceivedResponseSizeKBperSec)
 		}
 	}
 }

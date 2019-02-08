@@ -148,9 +148,9 @@ type RunnerResults struct {
 	DurationHistogram *stats.HistogramData
 	Exactly           int64 // Echo back the requested count
 	// total message size that sent to server in terms of KBPS
-	SentRequestSizeKBPS float64
+	SentRequestSizeKBperSec float64
 	// total message size that received from server in terms of KBPS
-	ReceivedResponseSizeKPBS float64
+	ReceivedResponseSizeKBperSec float64
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -586,11 +586,11 @@ func (r *RunnerResults) ID() string {
 	return base
 }
 
-//TODO remove above if condition when receive and sent byte count is added to GRPC as well.
+//TODO remove below if condition when receive and sent byte count is added to GRPC as well.
 
 // InfoText Returns the Runner Results in text
 func (r *RunnerResults) InfoText() string {
-	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
+	if r.SentRequestSizeKBperSec < 0.01 && r.ReceivedResponseSizeKBperSec < 0.01 {
 		return fmt.Sprintf(runnerResultInfoFormatText,
 			r.DurationHistogram.Count,
 			"",
@@ -601,13 +601,13 @@ func (r *RunnerResults) InfoText() string {
 		r.DurationHistogram.Count,
 		"",
 		1000.*r.DurationHistogram.Avg,
-		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
+		r.ActualQPS, r.ReceivedResponseSizeKBperSec, r.SentRequestSizeKBperSec)
 }
 
 // InfoTextWithWarmup Returns the Runner Results with Warmup in text
 func (r *RunnerResults) InfoTextWithWarmup(warmup int) string {
 	warmupText := fmt.Sprintf(warmupFormatText, warmup)
-	if r.SentRequestSizeKBPS < 0.01 && r.ReceivedResponseSizeKPBS < 0.01 {
+	if r.SentRequestSizeKBperSec < 0.01 && r.ReceivedResponseSizeKBperSec < 0.01 {
 		return fmt.Sprintf(runnerResultInfoFormatText,
 			r.DurationHistogram.Count,
 			warmupText,
@@ -618,5 +618,5 @@ func (r *RunnerResults) InfoTextWithWarmup(warmup int) string {
 		r.DurationHistogram.Count,
 		warmupText,
 		1000.*r.DurationHistogram.Avg,
-		r.ActualQPS, r.ReceivedResponseSizeKPBS, r.SentRequestSizeKBPS)
+		r.ActualQPS, r.ReceivedResponseSizeKBperSec, r.SentRequestSizeKBperSec)
 }

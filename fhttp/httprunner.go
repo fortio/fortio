@@ -159,8 +159,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
-	total.SentRequestSizeKBPS = float64(total.SentRequestSize) / (total.ActualDuration.Seconds() * 1000)
-	total.ReceivedResponseSizeKPBS = (total.sizes.Sum + total.headerSizes.Sum) / (total.ActualDuration.Seconds() * 1000)
+	total.SentRequestSizeKBperSec = float64(total.SentRequestSize) / (total.ActualDuration.Seconds() * 1000)
+	total.ReceivedResponseSizeKBperSec = (total.sizes.Sum + total.headerSizes.Sum) / (total.ActualDuration.Seconds() * 1000)
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	sort.Ints(keys)
