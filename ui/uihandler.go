@@ -893,17 +893,20 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 		mux.Handle(faviconPath, LogAndAddCacheControl(fs))
 		var err error
-		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"))
+		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"),
+			path.Join(staticRsrcDir, "templates/header.html"))
 		if err != nil {
 			log.Critf("Unable to parse main template: %v", err)
 		}
-		browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
+		browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"),
+			path.Join(staticRsrcDir, "templates/header.html"))
 		if err != nil {
 			log.Critf("Unable to parse browse template: %v", err)
 		} else {
 			mux.HandleFunc(uiPath+"browse", BrowseHandler)
 		}
-		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"))
+		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"),
+			path.Join(staticRsrcDir, "templates/header.html"))
 		if err != nil {
 			log.Critf("Unable to parse sync template: %v", err)
 		} else {
@@ -965,7 +968,8 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 	mux.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
-	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"))
+	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"),
+		path.Join(staticRsrcDir, "templates/header.html"))
 	if err != nil {
 		log.Critf("Unable to parse browse template: %v", err)
 	} else {

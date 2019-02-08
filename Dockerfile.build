@@ -15,7 +15,7 @@ RUN curl -f https://storage.googleapis.com/golang/go1.8.7.linux-amd64.tar.gz | t
 #RUN mkdir /go1.10
 #RUN curl -f https://dl.google.com/go/go1.10.4.linux-amd64.tar.gz | tar xfz - -C /go1.10
 RUN mkdir /go1.11
-RUN curl -f https://dl.google.com/go/go1.11.linux-amd64.tar.gz | tar xfz - -C /go1.11
+RUN curl -f https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz | tar xfz - -C /go1.11
 ENV GOPATH /go
 RUN mkdir -p $GOPATH/bin
 # We do pick the latest go first in the path

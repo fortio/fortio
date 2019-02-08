@@ -1105,6 +1105,31 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 	}
 }
 
+func TestInsecureRequest(t *testing.T) {
+	expiredURL := "https://expired.badssl.com/"
+	var tests = []struct {
+		fastClient bool // use FastClient
+		insecure   bool // insecure option
+		code       int  // expected code
+	}{
+		{false, true, http.StatusOK},
+		{false, false, http.StatusBadRequest},
+		{true, true, http.StatusOK},
+		{true, false, http.StatusBadRequest},
+	}
+	for _, tst := range tests {
+		o := HTTPOptions{
+			DisableFastClient: tst.fastClient,
+			URL:               expiredURL,
+			Insecure:          tst.insecure,
+		}
+		code, _ := Fetch(&o)
+		if code != tst.code {
+			t.Errorf("Got %d code while expecting status (%d)", code, tst.code)
+		}
+	}
+}
+
 // --- for bench mark/comparison
 
 func asciiFold0(str string) []byte {
