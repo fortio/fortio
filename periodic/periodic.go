@@ -49,9 +49,8 @@ var DefaultRunnerOptions = RunnerOptions{
 }
 
 const (
-	warmupFormatText                   = "(plus %d warmup) "
-	runnerResultInfoFormatText         = "All done %d calls %s%.3f ms avg, %.1f qps."
-	runnerResultDetailedInfoFormatText = "All done %d calls %s%.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent."
+	warmupFormatText           = "(plus %d warmup) "
+	runnerResultInfoFormatText = "All done %d calls %s%.3f ms avg, %.1f qps, %.1f kB/s received, %.1f kB/s sent."
 )
 
 // Runnable are the function to run periodically.
@@ -586,18 +585,9 @@ func (r *RunnerResults) ID() string {
 	return base
 }
 
-//TODO remove below if condition when receive and sent byte count is added to GRPC as well.
-
 // InfoText Returns the Runner Results in text
 func (r *RunnerResults) InfoText() string {
-	if r.SentRequestSizeKBperSec < 0.01 && r.ReceivedResponseSizeKBperSec < 0.01 {
-		return fmt.Sprintf(runnerResultInfoFormatText,
-			r.DurationHistogram.Count,
-			"",
-			1000.*r.DurationHistogram.Avg,
-			r.ActualQPS)
-	}
-	return fmt.Sprintf(runnerResultDetailedInfoFormatText,
+	return fmt.Sprintf(runnerResultInfoFormatText,
 		r.DurationHistogram.Count,
 		"",
 		1000.*r.DurationHistogram.Avg,
@@ -607,14 +597,7 @@ func (r *RunnerResults) InfoText() string {
 // InfoTextWithWarmup Returns the Runner Results with Warmup in text
 func (r *RunnerResults) InfoTextWithWarmup(warmup int) string {
 	warmupText := fmt.Sprintf(warmupFormatText, warmup)
-	if r.SentRequestSizeKBperSec < 0.01 && r.ReceivedResponseSizeKBperSec < 0.01 {
-		return fmt.Sprintf(runnerResultInfoFormatText,
-			r.DurationHistogram.Count,
-			warmupText,
-			1000.*r.DurationHistogram.Avg,
-			r.ActualQPS)
-	}
-	return fmt.Sprintf(runnerResultDetailedInfoFormatText,
+	return fmt.Sprintf(runnerResultInfoFormatText,
 		r.DurationHistogram.Count,
 		warmupText,
 		1000.*r.DurationHistogram.Avg,

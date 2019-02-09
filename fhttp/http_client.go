@@ -276,9 +276,6 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	if o.hostOverride != "" {
 		req.Host = o.hostOverride
 	}
-	if !log.LogDebug() {
-		return req
-	}
 	return req
 }
 

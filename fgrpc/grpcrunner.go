@@ -22,6 +22,9 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+	"unsafe"
+
+	"google.golang.org/grpc/metadata"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -83,6 +86,23 @@ type GRPCRunnerResults struct {
 	Destination string
 	Streams     int
 	Ping        bool
+	//Message header that received from grpc server
+	ReceivedMessageHeaderSize uint64
+	//Message header size that sent to grpc server
+	SentMessageHeaderSize uint64
+	//Message body size that sent to grpc server
+	SentMessageSize uint64
+}
+
+// GetRequestSize returns the request body size. If the request is Ping, Ping Message size will return. Otherwise
+// HealthCheckRequest's service len will return.
+func (grpcstate *GRPCRunnerResults) GetRequestSize() int {
+	if grpcstate.Ping {
+		size := int(unsafe.Sizeof(&grpcstate.reqP))
+		size += len(grpcstate.reqP.Payload)
+		return size
+	}
+	return len(grpcstate.reqH.Service)
 }
 
 // Run exercises GRPC health check or ping at the target QPS.
@@ -92,15 +112,24 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 	var err error
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
+	ctx := context.Background()
 	if grpcstate.Ping {
-		res, err = grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
+		res, err = grpcstate.clientP.Ping(ctx, &grpcstate.reqP)
 	} else {
 		var r *grpc_health_v1.HealthCheckResponse
-		r, err = grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
+		r, err = grpcstate.clientH.Check(ctx, &grpcstate.reqH)
 		if r != nil {
 			status = r.Status
 			res = r
 		}
+	}
+	headers, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		grpcstate.SentMessageHeaderSize += uint64(headers.Len())
+	}
+	headers, ok = metadata.FromOutgoingContext(ctx)
+	if ok {
+		grpcstate.ReceivedMessageHeaderSize += uint64(headers.Len())
 	}
 	log.Debugf("For %d (ping=%v) got %v %v", t, grpcstate.Ping, err, res)
 	if err != nil {
@@ -235,10 +264,15 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			if _, exists := total.RetCodes[k]; !exists {
 				keys = append(keys, k)
 			}
+			total.SentMessageSize += uint64(grpcstate[i].GetRequestSize())
 			total.RetCodes[k] += grpcstate[i].RetCodes[k]
 		}
 		// TODO: if grpc client needs 'cleanup'/Close like http one, do it on original NumThreads
 	}
+	total.SentRequestSizeKBperSec = float64(total.SentMessageSize+total.SentMessageHeaderSize) /
+		(total.ActualDuration.Seconds() * 1000)
+	total.ReceivedResponseSizeKBperSec = (total.DurationHistogram.Sum + float64(total.ReceivedMessageHeaderSize)) /
+		(total.ActualDuration.Seconds() * 1000)
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	which := "Health"

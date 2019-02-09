@@ -160,6 +160,21 @@ func TestGRPCRunner(t *testing.T) {
 				t.Errorf("Test case: %s failed. Mismatch between requests %d and ok %v",
 					test.name, totalReq, res.RetCodes)
 			}
+			res.reqP = PingMessage{Payload: test.runnerOpts.Payload}
+			expectedSentRequestSize := uint64(res.DurationHistogram.Count * int64(res.GetRequestSize()))
+			expectedReceivedResponseSizeKBperSec := res.DurationHistogram.Sum / (res.ActualDuration.Seconds() * 1000)
+			expectedSentRequestSizeKBperSec := float64(expectedSentRequestSize) / (res.ActualDuration.Seconds() * 1000)
+			if res.SentMessageSize != expectedSentRequestSize {
+				t.Errorf("Got %d sent req size, but expected %d", res.SentMessageSize, expectedSentRequestSize)
+			}
+			if res.ReceivedResponseSizeKBperSec != expectedReceivedResponseSizeKBperSec {
+				t.Errorf("Got %f received res size KBPS, but expected %f", res.ReceivedResponseSizeKBperSec,
+					expectedReceivedResponseSizeKBperSec)
+			}
+			if res.SentRequestSizeKBperSec != expectedSentRequestSizeKBperSec {
+				t.Errorf("Got %f sent req size KBPS, but expected %f", res.SentRequestSizeKBperSec,
+					expectedSentRequestSizeKBperSec)
+			}
 		}
 	}
 }

@@ -15,11 +15,14 @@
 package periodic
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"fortio.org/fortio/stats"
 
 	"fortio.org/fortio/log"
 )
@@ -366,4 +369,38 @@ func Test2Watchers(t *testing.T) {
 		t.Errorf("found %d watches while expecting 0", gOutstandingRuns)
 	}
 	gAbortMutex.Unlock()
+}
+
+func TestInfoText(t *testing.T) {
+	tests := []struct {
+		callCount       int64
+		average         float64
+		actualQPS       float64
+		reqSizeKBPerSec float64
+		resSizeKBPerSec float64
+		warmup          int
+	}{
+		{callCount: 10, actualQPS: 123, reqSizeKBPerSec: 125, resSizeKBPerSec: 130, warmup: -1},
+		{callCount: 10, actualQPS: 123, reqSizeKBPerSec: 125, resSizeKBPerSec: 130, warmup: 10},
+	}
+
+	for _, test := range tests {
+		runner := RunnerResults{ActualQPS: test.actualQPS, DurationHistogram: &stats.HistogramData{Count: test.callCount,
+			Avg: test.average}, ReceivedResponseSizeKBperSec: test.resSizeKBPerSec, SentRequestSizeKBperSec: test.reqSizeKBPerSec}
+		var expectedText string
+		var resultText string
+		if test.warmup > 0 {
+			warmupText := fmt.Sprintf(warmupFormatText, test.warmup)
+			expectedText = fmt.Sprintf(runnerResultInfoFormatText, test.callCount, warmupText, 1000.*test.average, test.actualQPS,
+				test.resSizeKBPerSec, test.reqSizeKBPerSec)
+			resultText = runner.InfoTextWithWarmup(test.warmup)
+		} else {
+			expectedText = fmt.Sprintf(runnerResultInfoFormatText, test.callCount, "", 1000.*test.average, test.actualQPS,
+				test.resSizeKBPerSec, test.reqSizeKBPerSec)
+			resultText = runner.InfoText()
+		}
+		if resultText != expectedText {
+			t.Errorf("Got \"%s\" as text, but expected \"%s\"", resultText, expectedText)
+		}
+	}
 }
