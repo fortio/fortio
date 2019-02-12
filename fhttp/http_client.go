@@ -500,13 +500,17 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	bc.dest = addr
 	// Create the bytes for the request:
 	host := bc.host
-	if o.hostOverride != "" {
+	customHostHeader := (o.hostOverride != "")
+	if customHostHeader {
 		host = o.hostOverride
 	}
 	var buf bytes.Buffer
 	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
-	if !bc.http10 {
+	if !bc.http10 || customHostHeader {
 		buf.WriteString("Host: " + host + "\r\n")
+	}
+	if !bc.http10 {
+		// Rest of normal http 1.1 processing:
 		bc.parseHeaders = true
 		if !o.DisableKeepAlive {
 			bc.keepAlive = true
