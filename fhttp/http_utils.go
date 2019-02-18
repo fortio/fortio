@@ -208,7 +208,30 @@ func removeTrailingPercent(s string) string {
 	return s
 }
 
-func parseFromFormattedString(input, about string, parseFunc func(string) (int64, error)) (int64, error) {
+func parseEntry(entry, about, input string, parseFunc func(input string) (int64, error)) (int64, float64, error) {
+	l2 := strings.Split(entry, ":")
+	if len(l2) != 2 {
+		log.Warnf("Should have exactly 1 : in %s list %s -> %v", about, input, entry)
+		return -1, -1, errors.New("invalid format")
+	}
+	s, err := parseFunc(l2[0])
+	if err != nil {
+		log.Warnf("Bad input %s %v -> %v, not a number before colon", input, about, l2[0])
+		return -1, -1, errors.New("invalid format")
+	}
+	percStr := removeTrailingPercent(l2[1])
+	p, err := strconv.ParseFloat(percStr, 32)
+	if err != nil || p < 0 || p > 100 {
+		log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", input, percStr, err, p)
+		return -1, -1, errors.New("invalid format")
+	}
+	return s, p, nil
+}
+
+// input="XX:20,YY:10,ZZ:0.5" for 20% parsed_XX, 10% parsed_YY, 0.5% parsed_ZZ 69.5% -1(means default value)
+// entry parsed by parseFunc
+// when parseFromFormattedString raise error, return -1, error(not nil)
+func parseFormattedString(input, about string, parseFunc func(string) (int64, error)) (int64, error) {
 	// Input is empty case:
 	if len(input) == 0 {
 		return -1, errors.New("input is empty")
@@ -219,30 +242,19 @@ func parseFromFormattedString(input, about string, parseFunc func(string) (int64
 	if len(lst) == 1 && !strings.ContainsRune(input, ':') {
 		s, err := parseFunc(input)
 		if err != nil {
-			return -1, err
+			s = -1
 		}
-		return s, nil
+		return s, err
 	}
+	// Parse each entry
 	weights := make([]float32, len(lst))
 	values := make([]int64, len(lst))
 	lastPercent := float64(0)
 	i := 0
 	for _, entry := range lst {
-		l2 := strings.Split(entry, ":")
-		if len(l2) != 2 {
-			log.Warnf("Should have exactly 1 : in %s list %s -> %v", about, input, entry)
-			return -1, errors.New("invalid format")
-		}
-		s, err := parseFunc(l2[0])
+		s, p, err := parseEntry(entry, about, input, parseFunc)
 		if err != nil {
-			log.Warnf("Bad input %s %v -> %v, not a number before colon", input, about, l2[0])
-			return -1, errors.New("invalid format")
-		}
-		percStr := removeTrailingPercent(l2[1])
-		p, err := strconv.ParseFloat(percStr, 32)
-		if err != nil || p < 0 || p > 100 {
-			log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", input, percStr, err, p)
-			return -1, errors.New("invalid format")
+			return -1, err
 		}
 		lastPercent += p
 		// Round() needed to cover 'exactly' 100% and not more or less because of rounding errors
@@ -278,7 +290,7 @@ func generateStatus(status string) int {
 		return int64(s), nil
 	}
 
-	parsed, err := parseFromFormattedString(status, "status", parseStatusCodeFunc)
+	parsed, err := parseFormattedString(status, "status", parseStatusCodeFunc)
 	if parsed == -1 && err == nil {
 		return http.StatusOK
 	} else if err != nil {
@@ -303,7 +315,7 @@ func generateSize(sizeInput string) (size int) {
 		return int64(s), nil
 	}
 
-	parsed, _ := parseFromFormattedString(sizeInput, "size", parseSizeFunc)
+	parsed, _ := parseFormattedString(sizeInput, "size", parseSizeFunc)
 	if parsed == -1 {
 		return -1
 	}
@@ -330,7 +342,7 @@ func generateDelay(delay string) time.Duration {
 		return d.Nanoseconds(), nil
 	}
 
-	parsed, err := parseFromFormattedString(delay, "delay", parseDelayFunc)
+	parsed, err := parseFormattedString(delay, "delay", parseDelayFunc)
 	if parsed == -1 && err == nil {
 		return 0
 	} else if err != nil {
