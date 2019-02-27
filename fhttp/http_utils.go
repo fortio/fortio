@@ -208,7 +208,8 @@ func removeTrailingPercent(s string) string {
 	return s
 }
 
-func parseEntry(entry, about, input string, parseFunc func(input string) (int64, error)) (int64, float64, error) {
+// parse input, i.e. "XX:20", using parseFunc
+func parseEntry(entry, about, input string, parseFunc func(string) (int64, error)) (int64, float64, error) {
 	l2 := strings.Split(entry, ":")
 	if len(l2) != 2 {
 		log.Warnf("Should have exactly 1 : in %s list %s -> %v", about, input, entry)
@@ -226,6 +227,21 @@ func parseEntry(entry, about, input string, parseFunc func(input string) (int64,
 		return -1, -1, errors.New("invalid format")
 	}
 	return s, p, nil
+}
+
+func getWeightedValue(input string, weights []float32, values []int64) int64 {
+	res := 100. * rand.Float32()
+	for i, v := range weights {
+		if res <= v {
+			if i >= len(values) {
+				return -1
+			}
+			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %d", input, res, i, values[i])
+			return values[i]
+		}
+	}
+	log.Debugf("[0. - 100.] for %s roll %f no hit, return default value", input, res)
+	return -1 // default/reminder of probability table
 }
 
 // input="XX:20,YY:10,ZZ:0.5" for 20% parsed_XX, 10% parsed_YY, 0.5% parsed_ZZ 69.5% -1(means default value)
@@ -253,29 +269,22 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 	i := 0
 	for _, entry := range lst {
 		s, p, err := parseEntry(entry, about, input, parseFunc)
-		if err != nil {
-			return -1, err
-		}
 		lastPercent += p
 		// Round() needed to cover 'exactly' 100% and not more or less because of rounding errors
 		p32 := float32(stats.Round(lastPercent))
 		if p32 > 100. {
 			log.Warnf("Sum of percentage is greater than 100 in %v %f %f %f", input, lastPercent, p, p32)
-			return -1, errors.New("invalid format")
+			err = errors.New("invalid format")
+		}
+		if err != nil {
+			return -1, err
 		}
 		weights[i] = p32
 		values[i] = s
 		i++
 	}
-	res := 100. * rand.Float32()
-	for i, v := range weights {
-		if res <= v {
-			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %d", input, res, i, values[i])
-			return values[i], nil
-		}
-	}
-	log.Debugf("[0. - 100.] for %s roll %f no hit, return default value", input, res)
-	return -1, nil // default/reminder of probability table
+	s := getWeightedValue(input, weights, values)
+	return s, nil
 }
 
 // generateStatus from string, format: status="503" for 100% 503s
