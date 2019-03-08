@@ -155,8 +155,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
 	grpcPing := (r.FormValue("ping") == "on")
 	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
-
 	stdClient := (r.FormValue("stdclient") == "on")
+	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
 		dur = -1
@@ -204,6 +204,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	httpopts := fhttp.NewHTTPOptions(url)
 	httpopts.DisableFastClient = stdClient
+	httpopts.Insecure = httpsInsecure
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
