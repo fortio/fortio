@@ -553,9 +553,22 @@ http://localhost:8080/
 Https redirector running on :8081
 ```
 
-### Using the proxy server(s) feature
+### Using the TCP proxy server(s) feature
 
+Example: open 2 additional listening ports and forward all requests received on 8888 and 8889 (ipv6) to 8080 (regular http server)
 
+```Shell
+$ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080" 
+Fortio 1.3.1-pre grpc 'ping' server listening on [::]:8079
+Fortio 1.3.1 https redirector server listening on [::]:8081
+Fortio 1.3.1 echo server listening on [::]:8080
+Data directory is /home/dl
+UI started - visit:
+http://localhost:8080/fortio/
+(or any host/ip reachable on this server)
+Fortio 1.3.1 proxy for [::1]:8080 server listening on [::]:8888
+Fortio 1.3.1 proxy for [::1]:8080 server listening on [::1]:8889
+```
 
 ## Server URLs and features
 
