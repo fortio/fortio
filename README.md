@@ -544,7 +544,7 @@ body:
 
 ### Report only UI
 
-If you have json files saved from running the full UI, you can serve just the reports:
+If you have json files saved from running the full UI (or downloaded from an amazon or google clould storage bucket, or from a peer fortio server, using the `-sync` option) you can then serve just the reports:
 
 ```Shell
 $ fortio report
@@ -552,6 +552,9 @@ Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081
 ```
+
+### Using the proxy server
+
 
 ## Server URLs and features
 
