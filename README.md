@@ -544,13 +544,30 @@ body:
 
 ### Report only UI
 
-If you have json files saved from running the full UI, you can serve just the reports:
+If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google clould storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
 
 ```Shell
-$ fortio report
+$ fortio report -sync-interval 15m -sync http://storage.googleapis.com:443/fortio-data?prefix=fortio.istio.io/
 Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081
+```
+
+### Using the TCP proxy server(s) feature
+
+Example: open 2 additional listening ports and forward all requests received on 8888 and 8889 (ipv6) to 8080 (regular http server)
+
+```Shell
+$ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080" 
+Fortio 1.3.1-pre grpc 'ping' server listening on [::]:8079
+Fortio 1.3.1 https redirector server listening on [::]:8081
+Fortio 1.3.1 echo server listening on [::]:8080
+Data directory is /home/dl
+UI started - visit:
+http://localhost:8080/fortio/
+(or any host/ip reachable on this server)
+Fortio 1.3.1 proxy for [::1]:8080 server listening on [::]:8888
+Fortio 1.3.1 proxy for [::1]:8080 server listening on [::1]:8889
 ```
 
 ## Server URLs and features
