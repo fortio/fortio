@@ -229,15 +229,18 @@ func parseEntry(entry, about, input string, parseFunc func(string) (int64, error
 	return s, p, nil
 }
 
-func getWeightedValue(input string, weights []float32, values []int64) int64 {
+// WeightValuePair include wighted value.
+type WeightValuePair struct {
+	weight float32
+	value  int64
+}
+
+func getWeightedValue(input string, wvpairs []WeightValuePair) int64 {
 	res := 100. * rand.Float32()
-	for i, v := range weights {
-		if res <= v {
-			if i >= len(values) {
-				return -1
-			}
-			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %d", input, res, i, values[i])
-			return values[i]
+	for i, wv := range wvpairs {
+		if res <= wv.weight {
+			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %d", input, res, i, wv.value)
+			return wv.value
 		}
 	}
 	log.Debugf("[0. - 100.] for %s roll %f no hit, return default value", input, res)
@@ -258,13 +261,13 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 	if len(lst) == 1 && !strings.ContainsRune(input, ':') {
 		s, err := parseFunc(input)
 		if err != nil {
+			log.Warnf("Bad input %s %v, not a number nor comma and colon separated %% list", about, input)
 			s = -1
 		}
 		return s, err
 	}
 	// Parse each entry
-	weights := make([]float32, len(lst))
-	values := make([]int64, len(lst))
+	wvpairs := make([]WeightValuePair, len(lst))
 	lastPercent := float64(0)
 	i := 0
 	for _, entry := range lst {
@@ -279,11 +282,10 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 		if err != nil {
 			return -1, err
 		}
-		weights[i] = p32
-		values[i] = s
+		wvpairs[i] = WeightValuePair{p32, s}
 		i++
 	}
-	s := getWeightedValue(input, weights, values)
+	s := getWeightedValue(input, wvpairs)
 	return s, nil
 }
 
@@ -317,7 +319,7 @@ func generateSize(sizeInput string) (size int) {
 	parseSizeFunc := func(input string) (int64, error) {
 		s, err := strconv.Atoi(input)
 		if err != nil {
-			log.Warnf("Bad input status %v -> %v, not a number before colon", input, s)
+			log.Warnf("Bad input size %v -> %v, not a number before colon", input, s)
 			return -1, errors.New("parse error")
 		}
 		fnet.ValidatePayloadSize(&s)
