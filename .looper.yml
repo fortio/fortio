@@ -1,0 +1,30 @@
+tools:
+
+envs:
+  global:
+    variables:
+      dockerFilePath: "Dockerfile"
+
+#disabling auto-triggers, should be orchestrated from concord
+triggers:
+  push: { manualOnly: true }
+  pr: { manualOnly: true }
+  manual:
+    parameters:
+    - areYouSure: { type: boolean }
+
+flows:
+  default:
+    - call: buildOneDockerImage
+
+  # Build docker image and publish to docker hub
+  buildOneDockerImage:
+  - node(docker-daemon):
+    - dockerImage:
+        baseDir: './'
+        tags:
+          - docker.prod.walmart.com/ali/fortio:1.3.2-sni
+        push: true
+        noCache: true
+        clean: true
+        dockerfile: ./Dockerfile
