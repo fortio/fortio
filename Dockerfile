@@ -1,18 +1,18 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v13 as build
+FROM hub.docker.prod.walmart.com/fortio/fortio.build:v13 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
 # Submodule handling
 RUN make -C fortio submodule
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
-RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_BIN=../fortio_go_latest.bin
+RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_BIN=../fortio_go_latest.bin GOOS=linux
 # Check we still build with go 1.8 (and macos does not break)
-RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio_go1.8.mac GOOS=darwin GO_BIN=/usr/local/go/bin/go
+#RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio_go1.8.mac GOOS=darwin GO_BIN=/usr/local/go/bin/go
 # Optionally (comment out) Build with 1.8 for perf comparison
 # RUN make -C fortio official-build-version BUILD_DIR= OFFICIAL_BIN=../fortio_go1.8.bin GO_BIN=/usr/local/go/bin/go
 # Just check it stays compiling on Windows (would need to set the rsrcDir too)
-RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio.exe GOOS=windows
+#RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio.exe GOOS=windows
 # Minimal image with just the binary and certs
 FROM scratch as release
 # NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too
