@@ -1,4 +1,4 @@
-# Build the binaries in larger image
+# Build the binaries in larger image - just a test
 FROM docker.io/fortio/fortio.build:v13 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
