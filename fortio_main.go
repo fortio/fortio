@@ -142,6 +142,7 @@ var (
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
+	requestJitterFlag = flag.Bool("request-jitter", false, "set to true to de-synchronize parallel clients' requests")
 )
 
 func main() {
@@ -279,6 +280,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Out:         out,
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
+		RequestJitter: *requestJitterFlag,
 	}
 	var res periodic.HasRunnerResult
 	var err error

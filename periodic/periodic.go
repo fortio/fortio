@@ -30,6 +30,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"math/rand"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -126,6 +127,11 @@ type RunnerOptions struct {
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
+	// When multiple clients are used to generate requests, they tend to send
+	// the requests very close to one another, causing a thundering herb problem
+	// Jitter (+/-10%) added allows the requests to be de-synchronized
+	// When enabled, it is only effective in the '-qps' mode
+	RequestJitter bool
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -508,6 +514,9 @@ MainLoop:
 			}
 			targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
 			sleepDuration := targetElapsedDuration - elapsed
+			if r.RequestJitter {
+				sleepDuration += addJitter(sleepDuration)
+			}
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
 			select {
@@ -544,6 +553,13 @@ MainLoop:
 func formatDate(d *time.Time) string {
 	return fmt.Sprintf("%d-%02d-%02d-%02d%02d%02d", d.Year(), d.Month(), d.Day(),
 		d.Hour(), d.Minute(), d.Second())
+}
+
+// Return a jitter time that is (+/-)10% of the duration t
+func addJitter(t time.Duration) time.Duration {
+	i := int64(t/10)
+	j := rand.Int63n(2*i)-i
+	return time.Duration(j)
 }
 
 // ID Returns an id for the result: 64 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
