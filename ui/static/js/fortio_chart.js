@@ -117,8 +117,8 @@ function makeTitle (res) {
   }
   title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
         myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), ' +
-        errStr)
+        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), req jitter: ' + 
+		res.RequestJitter + ", " + errStr)
   title.push(percStr)
   return title
 }
