@@ -147,6 +147,7 @@ type RunnerResults struct {
 	Version           string
 	DurationHistogram *stats.HistogramData
 	Exactly           int64 // Echo back the requested count
+	RequestJitter     bool
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -448,7 +449,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly}
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.RequestJitter}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {

@@ -245,6 +245,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.UsePing {
 		which = "Ping"
 	}
+	_, _ = fmt.Fprintf(out, "Request Jitter: %t\n", total.RequestJitter)
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "%s %s : %d\n", which, k, total.RetCodes[k])
 	}
