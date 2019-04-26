@@ -25,12 +25,12 @@ package periodic // import "fortio.org/fortio/periodic"
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
 	"sync"
 	"time"
-	"math/rand"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -557,8 +557,8 @@ func formatDate(d *time.Time) string {
 
 // Return a jitter time that is (+/-)10% of the duration t
 func addJitter(t time.Duration) time.Duration {
-	i := int64(t/10)
-	j := rand.Int63n(2*i)-i
+	i := int64(t / 10)
+	j := rand.Int63n(2*i) - i
 	return time.Duration(j)
 }
 

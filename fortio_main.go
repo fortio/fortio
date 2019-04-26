@@ -272,14 +272,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 		log.LogVf("Generated Labels: %s", labels)
 	}
 	ro := periodic.RunnerOptions{
-		QPS:         qps,
-		Duration:    *durationFlag,
-		NumThreads:  *numThreadsFlag,
-		Percentiles: percList,
-		Resolution:  *resolutionFlag,
-		Out:         out,
-		Labels:      labels,
-		Exactly:     *exactlyFlag,
+		QPS:           qps,
+		Duration:      *durationFlag,
+		NumThreads:    *numThreadsFlag,
+		Percentiles:   percList,
+		Resolution:    *resolutionFlag,
+		Out:           out,
+		Labels:        labels,
+		Exactly:       *exactlyFlag,
 		RequestJitter: *requestJitterFlag,
 	}
 	var res periodic.HasRunnerResult
