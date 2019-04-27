@@ -128,10 +128,10 @@ type RunnerOptions struct {
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
 	// When multiple clients are used to generate requests, they tend to send
-	// the requests very close to one another, causing a thundering herb problem
-	// Jitter (+/-10%) added allows the requests to be de-synchronized
+	// requests very close to one another, causing a thundering herd problem
+	// Enabling jitter (+/-10%) allows these requests to be de-synchronized
 	// When enabled, it is only effective in the '-qps' mode
-	RequestJitter bool
+	Jitter bool
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -147,7 +147,7 @@ type RunnerResults struct {
 	Version           string
 	DurationHistogram *stats.HistogramData
 	Exactly           int64 // Echo back the requested count
-	RequestJitter     bool
+	Jitter            bool
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -449,7 +449,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.RequestJitter}
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.Jitter}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {
@@ -515,8 +515,8 @@ MainLoop:
 			}
 			targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
 			sleepDuration := targetElapsedDuration - elapsed
-			if r.RequestJitter {
-				sleepDuration += addJitter(sleepDuration)
+			if r.Jitter {
+				sleepDuration += getJitter(sleepDuration)
 			}
 			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
 			sleepTimes.Record(sleepDuration.Seconds())
@@ -556,8 +556,8 @@ func formatDate(d *time.Time) string {
 		d.Hour(), d.Minute(), d.Second())
 }
 
-// Return a jitter time that is (+/-)10% of the duration t
-func addJitter(t time.Duration) time.Duration {
+// getJitter returns a jitter time that is (+/-)10% of the duration t if t is >0
+func getJitter(t time.Duration) time.Duration {
 	if t <= 0 {
 		return time.Duration(0)
 	}
