@@ -152,6 +152,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
 	durStr := r.FormValue("t")
+	jitter := (r.FormValue("jitter") == "on")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
 	grpcPing := (r.FormValue("ping") == "on")
 	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
@@ -193,6 +194,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Percentiles: percList,
 		Labels:      labels,
 		Exactly:     n,
+		Jitter:      jitter,
 	}
 	if mode == run {
 		ro.Normalize()
