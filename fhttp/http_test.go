@@ -1138,7 +1138,7 @@ func TestInsecureRequestWithResolvedIP(t *testing.T) {
 	srv := httptest.NewTLSServer(handler)
 	defer srv.Close()
 
-	url := strings.Replace(srv.URL, "127.0.0.1","example.com", 1)
+	url := strings.Replace(srv.URL, "127.0.0.1", "example.com", 1)
 	var tests = []struct {
 		fastClient bool // use FastClient
 		insecure   bool // insecure option

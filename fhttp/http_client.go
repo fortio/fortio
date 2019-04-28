@@ -165,7 +165,7 @@ type HTTPOptions struct {
 	Insecure          bool // do not verify certs for https
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
-	https             bool // whether URLSchemeCheck determined this was an https:// call or not
+	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
 	ResovledIP        string // resolve Common Name to this ip, when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
