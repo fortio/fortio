@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -1122,6 +1123,38 @@ func TestInsecureRequest(t *testing.T) {
 			DisableFastClient: tst.fastClient,
 			URL:               expiredURL,
 			Insecure:          tst.insecure,
+		}
+		code, _ := Fetch(&o)
+		if code != tst.code {
+			t.Errorf("Got %d code while expecting status (%d)", code, tst.code)
+		}
+	}
+}
+
+func TestInsecureRequestWithResolvedIP(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewTLSServer(handler)
+	defer srv.Close()
+
+	url := strings.Replace(srv.URL, "127.0.0.1","example.com", 1)
+	var tests = []struct {
+		fastClient bool // use FastClient
+		insecure   bool // insecure option
+		code       int  // expected code
+	}{
+		{false, true, http.StatusOK},
+		{false, false, http.StatusBadRequest},
+		{true, true, http.StatusOK},
+		{true, false, http.StatusBadRequest},
+	}
+	for _, tst := range tests {
+		o := HTTPOptions{
+			DisableFastClient: tst.fastClient,
+			URL:               url,
+			Insecure:          tst.insecure,
+			ResovledIP:        "127.0.0.1",
 		}
 		code, _ := Fetch(&o)
 		if code != tst.code {
