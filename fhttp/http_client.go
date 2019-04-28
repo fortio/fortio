@@ -156,17 +156,17 @@ const (
 // HTTPOptions holds the common options of both http clients and the headers.
 type HTTPOptions struct {
 	URL               string
-	NumConnections    int    // num connections (for std client)
-	Compression       bool   // defaults to no compression, only used by std client
-	DisableFastClient bool   // defaults to fast client
-	HTTP10            bool   // defaults to http1.1
-	DisableKeepAlive  bool   // so default is keep alive
-	AllowHalfClose    bool   // if not keepalive, whether to half close after request
-	Insecure          bool   // do not verify certs for https
-	ResovledIP        string // resolve Common Name to this ip, when use CN as target url
-	FollowRedirects   bool   // For the Std Client only: follow redirects.
+	NumConnections    int  // num connections (for std client)
+	Compression       bool // defaults to no compression, only used by std client
+	DisableFastClient bool // defaults to fast client
+	HTTP10            bool // defaults to http1.1
+	DisableKeepAlive  bool // so default is keep alive
+	AllowHalfClose    bool // if not keepalive, whether to half close after request
+	Insecure          bool // do not verify certs for https
+	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool // whether URLSchemeCheck determined this was an https:// call or not
+	ResovledIP        string // resolve Common Name to this ip, when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
