@@ -66,7 +66,7 @@ var (
 	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https connections")
-	resolvedIP          = flag.String("resolve", "", "Resolve CN of cert to this IP, so that we can call https://cn directly")
+	resolve             = flag.String("resolve", "", "Resolve CN of cert to this IP, so that we can call https://cn directly")
 	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
@@ -145,7 +145,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
 	httpOpts.Insecure = *httpsInsecureFlag
-	httpOpts.ResovledIP = *resolvedIP
+	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
 	httpOpts.ContentType = *contentTypeFlag
 	httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)

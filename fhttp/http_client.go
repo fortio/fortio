@@ -166,7 +166,7 @@ type HTTPOptions struct {
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
-	ResovledIP        string // resolve Common Name to this ip, when use CN as target url
+	Resolve           string // resolve Common Name to this ip when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
@@ -379,8 +379,8 @@ func NewStdClient(o *HTTPOptions) *Client {
 		Proxy:               http.ProxyFromEnvironment,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			// redirect all connections to resolved ip, and use cn as sni host
-			if o.ResovledIP != "" {
-				addr = o.ResovledIP + addr[strings.LastIndex(addr, ":"):]
+			if o.Resolve != "" {
+				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
 			return (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
@@ -499,8 +499,8 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
-		if o.ResovledIP != "" {
-			addr = fnet.Resolve(o.ResovledIP, bc.port)
+		if o.Resolve != "" {
+			addr = fnet.Resolve(o.Resolve, bc.port)
 		} else {
 			addr = fnet.Resolve(bc.hostname, bc.port)
 		}

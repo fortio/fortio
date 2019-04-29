@@ -1131,7 +1131,7 @@ func TestInsecureRequest(t *testing.T) {
 	}
 }
 
-func TestInsecureRequestWithResolvedIP(t *testing.T) {
+func TestInsecureRequestWithResolve(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -1154,7 +1154,7 @@ func TestInsecureRequestWithResolvedIP(t *testing.T) {
 			DisableFastClient: tst.fastClient,
 			URL:               url,
 			Insecure:          tst.insecure,
-			ResovledIP:        "127.0.0.1",
+			Resolve:           "127.0.0.1",
 		}
 		code, _ := Fetch(&o)
 		if code != tst.code {
