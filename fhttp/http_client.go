@@ -17,6 +17,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -164,7 +165,8 @@ type HTTPOptions struct {
 	Insecure          bool // do not verify certs for https
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
-	https             bool // whether URLSchemeCheck determined this was an https:// call or not
+	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
+	Resolve           string // resolve Common Name to this ip when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
@@ -375,9 +377,15 @@ func NewStdClient(o *HTTPOptions) *Client {
 		DisableCompression:  !o.Compression,
 		DisableKeepAlives:   o.DisableKeepAlive,
 		Proxy:               http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout: o.HTTPReqTimeOut,
-		}).Dial,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// redirect all connections to resolved ip, and use cn as sni host
+			if o.Resolve != "" {
+				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
+			}
+			return (&net.Dialer{
+				Timeout: o.HTTPReqTimeOut,
+			}).DialContext(ctx, network, addr)
+		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
 	if o.Insecure && o.https {
@@ -491,7 +499,11 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
-		addr = fnet.Resolve(bc.hostname, bc.port)
+		if o.Resolve != "" {
+			addr = fnet.Resolve(o.Resolve, bc.port)
+		} else {
+			addr = fnet.Resolve(bc.hostname, bc.port)
+		}
 	}
 	if addr == nil {
 		// Error already logged
