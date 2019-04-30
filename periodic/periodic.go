@@ -132,6 +132,7 @@ type RunnerOptions struct {
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
+
 	// When multiple clients are used to generate requests, they tend to send
 	// requests very close to one another, causing a thundering herd problem
 	// Enabling jitter (+/-10%) allows these requests to be de-synchronized
@@ -156,7 +157,8 @@ type RunnerResults struct {
 	SentRequestSizeKBperSec float64
 	// total message size that received from server in terms of KBPS
 	ReceivedResponseSizeKBperSec float64
-	Jitter            bool
+
+	Jitter bool
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -458,8 +460,8 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.Jitter}
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, 0, 0}
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
+		r.Exactly, 0, 0, r.Jitter}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {
