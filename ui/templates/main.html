@@ -43,6 +43,7 @@
     or run until interrupted:<input type="checkbox" name="t" onchange="toggleDuration(this)" />
     or run for exactly <input type="text" name="n" size="6" value="" /> calls. <br />
     Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
+    Jitter:<input type="checkbox" name="jitter" /> <br />
     Percentiles: <input type="text" name="p" size="20" value="50, 75, 90, 99, 99.9" /> <br />
     Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
     Headers: <br />
@@ -57,7 +58,8 @@
     Load using:<br />
     http: <input type="radio" name="runner" value="http" checked/>
     (https insecure:<input type="checkbox" name="https-insecure" />,
-    standard go client instead of fastclient:<input type="checkbox" name="stdclient"/>)
+    standard go client instead of fastclient:<input type="checkbox" name="stdclient"/>,
+    resolve: <input type="text" name="resolve" size="12" value="" />)
     <br />&nbsp;&nbsp;or<br />
     grpc: <input type="radio" name="runner" value="grpc"/>
     (grpc secure transport (tls):<input type="checkbox" name="grpc-secure" />,
