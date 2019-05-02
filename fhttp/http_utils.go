@@ -208,23 +208,20 @@ func removeTrailingPercent(s string) string {
 	return s
 }
 
-// parse input, i.e. "XX:20", using parseFunc
-func parseEntry(entry, about, input string, parseFunc func(string) (int64, error)) (int64, float64, error) {
+// parse input, i.e. received "XX:20", return "XX", 20, nil
+// for error case, return ""(zero value), 0(zero value), error
+func parseEntry(entry, about, input string) (string, float64, error) {
 	l2 := strings.Split(entry, ":")
 	if len(l2) != 2 {
 		log.Warnf("Should have exactly 1 : in %s list %s -> %v", about, input, entry)
-		return -1, -1, errors.New("invalid format")
+		return "", 0, errors.New("invalid format")
 	}
-	s, err := parseFunc(l2[0])
-	if err != nil {
-		log.Warnf("Bad input %s %v -> %v, not a number before colon", input, about, l2[0])
-		return -1, -1, errors.New("invalid format")
-	}
+	s := l2[0]
 	percStr := removeTrailingPercent(l2[1])
 	p, err := strconv.ParseFloat(percStr, 32)
 	if err != nil || p < 0 || p > 100 {
 		log.Warnf("Percentage is not a [0. - 100.] number in %v -> %v : %v %f", input, percStr, err, p)
-		return -1, -1, errors.New("invalid format")
+		return "", 0, errors.New("invalid format")
 	}
 	return s, p, nil
 }
@@ -232,37 +229,41 @@ func parseEntry(entry, about, input string, parseFunc func(string) (int64, error
 // WeightValuePair include wighted value.
 type WeightValuePair struct {
 	weight float32
-	value  int64
+	value  string
 }
 
-func getWeightedValue(input string, wvpairs []WeightValuePair) int64 {
+// Returns value that is randomly selected from weighted values.
+// default value is "" empty string.
+func getWeightedValue(input string, wvpairs []WeightValuePair) string {
 	res := 100. * rand.Float32()
 	for i, wv := range wvpairs {
 		if res <= wv.weight {
-			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %d", input, res, i, wv.value)
+			log.Debugf("[0. - 100.] for %s roll %f got #%d -> %s", input, res, i, wv.value)
 			return wv.value
 		}
 	}
 	log.Debugf("[0. - 100.] for %s roll %f no hit, return default value", input, res)
-	return -1 // default/reminder of probability table
+	return "" // default/reminder of probability table
 }
 
-// input="XX:20,YY:10,ZZ:0.5" for 20% parsed_XX, 10% parsed_YY, 0.5% parsed_ZZ 69.5% -1(means default value)
-// entry parsed by parseFunc
-// when parseFromFormattedString raise error, return -1, error(not nil)
-func parseFormattedString(input, about string, parseFunc func(string) (int64, error)) (int64, error) {
+// input="XX:20,YY:10,ZZ:0.5" for 20% "XX", 10% "YY", 0.5% "ZZ" 69.5% ""(means default value)
+// when parseFromFormattedString raise error, return "", error(not nil)
+// checkConvertible function validates value before colon.
+func parseFormattedString(input, about string, checkConvertible func(string) bool) (string, error) {
 	// Input is empty case:
 	if len(input) == 0 {
-		return -1, errors.New("input is empty")
+		return "", errors.New("input is empty")
 	}
 	lst := strings.Split(input, ",")
 	log.Debugf("Parsing %s %s -> %v", about, input, lst)
 	// Simple non probabilistic status case:
 	if len(lst) == 1 && !strings.ContainsRune(input, ':') {
-		s, err := parseFunc(input)
-		if err != nil {
-			log.Warnf("Bad input %s %v, not a number nor comma and colon separated %% list", about, input)
-			s = -1
+		s := input
+		var err error
+		if !checkConvertible(input) {
+			log.Warnf("Bad input %s %v, not convertible value", about, input)
+			s = ""
+			err = errors.New("invalid format")
 		}
 		return s, err
 	}
@@ -271,7 +272,7 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 	lastPercent := float64(0)
 	i := 0
 	for _, entry := range lst {
-		s, p, err := parseEntry(entry, about, input, parseFunc)
+		s, p, err := parseEntry(entry, about, input)
 		lastPercent += p
 		// Round() needed to cover 'exactly' 100% and not more or less because of rounding errors
 		p32 := float32(stats.Round(lastPercent))
@@ -279,8 +280,14 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 			log.Warnf("Sum of percentage is greater than 100 in %v %f %f %f", input, lastPercent, p, p32)
 			err = errors.New("invalid format")
 		}
+
+		if !checkConvertible(s) {
+			log.Warnf("Bad input %s %v -> %v, not convertible value before colon", about, input, s)
+			err = errors.New("invalid format")
+		}
+
 		if err != nil {
-			return -1, err
+			return "", err
 		}
 		wvpairs[i] = WeightValuePair{p32, s}
 		i++
@@ -291,23 +298,27 @@ func parseFormattedString(input, about string, parseFunc func(string) (int64, er
 
 // generateStatus from string, format: status="503" for 100% 503s
 // status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
+// for error case, return http.StatusBadRequest
 func generateStatus(status string) int {
-	parseStatusCodeFunc := func(input string) (int64, error) {
-		s, err := strconv.Atoi(input)
-		if err != nil {
-			log.Warnf("Bad input status %v -> %v, not a number before colon", input, s)
-			return http.StatusBadRequest, errors.New("parse error")
-		}
-		return int64(s), nil
-	}
-
-	parsed, err := parseFormattedString(status, "status", parseStatusCodeFunc)
-	if parsed == -1 && err == nil {
-		return http.StatusOK
-	} else if err != nil {
+	value, err := parseFormattedString(status, "status", func(input string) bool {
+		_, err := strconv.Atoi(input)
+		return err == nil
+	})
+	if err != nil {
 		return http.StatusBadRequest
 	}
-	return int(parsed)
+
+	if value == "" {
+		// default status
+		return http.StatusOK
+	}
+
+	s, err := strconv.Atoi(value)
+	if err != nil {
+		return http.StatusBadRequest
+	}
+
+	return s
 }
 
 // generateSize from string, format: "size=512" for 100% 512 bytes body replies,
@@ -316,21 +327,23 @@ func generateStatus(status string) int {
 // even if it's a post request with a payload (to test asymmetric large inbound
 // small outbound).
 func generateSize(sizeInput string) (size int) {
-	parseSizeFunc := func(input string) (int64, error) {
-		s, err := strconv.Atoi(input)
-		if err != nil {
-			log.Warnf("Bad input size %v -> %v, not a number before colon", input, s)
-			return -1, errors.New("parse error")
-		}
-		fnet.ValidatePayloadSize(&s)
-		return int64(s), nil
-	}
-
-	parsed, _ := parseFormattedString(sizeInput, "size", parseSizeFunc)
-	if parsed == -1 {
+	value, err := parseFormattedString(sizeInput, "size", func(input string) bool {
+		_, err := strconv.Atoi(input)
+		return err == nil
+	})
+	if err != nil || value == "" {
+		// default value to echo back or error case value
 		return -1
 	}
-	return int(parsed)
+
+	s, err := strconv.Atoi(value)
+	if err != nil {
+		// default value to echo back or error case value
+		return -1
+	}
+
+	fnet.ValidatePayloadSize(&s)
+	return s
 }
 
 // MaxDelay is the maximum delay allowed for the echoserver responses.
@@ -339,27 +352,31 @@ const MaxDelay = 1500 * time.Millisecond
 
 // generateDelay from string, format: delay="100ms" for 100% 100ms delay
 // delay="10ms:20,20ms:10,1s:0.5" for 20% 10ms, 10% 20ms, 0.5% 1s and 69.5% 0
+// for error case, return -1
 func generateDelay(delay string) time.Duration {
-	parseDelayFunc := func(input string) (int64, error) {
-		d, err := time.ParseDuration(input)
-		if err != nil {
-			log.Warnf("Bad input delay %v, not a duration nor comma and colon separated %% list", input)
-			return -1, errors.New("parse error")
-		}
-		log.Debugf("Parsed delay %s -> %d", delay, d)
-		if d > MaxDelay {
-			d = MaxDelay
-		}
-		return d.Nanoseconds(), nil
-	}
-
-	parsed, err := parseFormattedString(delay, "delay", parseDelayFunc)
-	if parsed == -1 && err == nil {
-		return 0
-	} else if err != nil {
+	value, err := parseFormattedString(delay, "delay", func(input string) bool {
+		_, err := time.ParseDuration(input)
+		return err == nil
+	})
+	if err != nil {
 		return -1
 	}
-	return time.Duration(parsed) * time.Nanosecond
+
+	if value == "" {
+		// default delay
+		return 0
+	}
+
+	d, err := time.ParseDuration(value)
+	if err != nil {
+		return -1
+	}
+
+	log.Debugf("Parsed delay %s -> %d", delay, d)
+	if d > MaxDelay {
+		d = MaxDelay
+	}
+	return d
 }
 
 // RoundDuration rounds to 10th of second. Only for positive durations.
