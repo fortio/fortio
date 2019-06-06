@@ -15,7 +15,7 @@ It can run for a set duration, for a fixed number of calls, or until interrupted
 
 The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (3MB docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
 Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp proxying, GRPC echo/health in addition to http, etc...
