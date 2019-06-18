@@ -32,7 +32,7 @@ WORKDIR /var/lib/fortio
 
 RUN apt update -y && apt install curl -y
 
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint-wait-for-istio-proxy.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 # start the server mode (grpc ping on 8079, http echo and UI on 8080, redirector on 8081) by default
 CMD ["server"]
