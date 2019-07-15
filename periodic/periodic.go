@@ -31,6 +31,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"strconv"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -271,6 +272,45 @@ func (r *RunnerOptions) Abort() {
 	if r.Stop != nil {
 		r.Stop.Abort()
 	}
+}
+
+// // RunnerResults encapsulates the actual QPS observed and duration histogram.
+// type RunnerResults struct {
+// 	RunType           string
+// 	Labels            string
+// 	StartTime         time.Time
+// 	RequestedQPS      string
+// 	RequestedDuration string // String version of the requested duration or exact count
+// 	ActualQPS         float64
+// 	ActualDuration    time.Duration
+// 	NumThreads        int
+// 	Version           string
+// 	DurationHistogram *stats.HistogramData
+// 	Exactly           int64 // Echo back the requested count
+// 	Jitter            bool
+// }
+
+func Merge(rr1 *RunnerResults, rr2 *RunnerResults) *RunnerResults {
+	ret := RunnerResults{}
+	ret.RunType = rr1.RunType + " " + rr1.RunType
+	ret.Labels = rr1.Labels + " " + rr2.Labels
+
+	if rr1.StartTime.After(rr2.StartTime) {
+		ret.StartTime = rr2.StartTime
+	} else {
+		ret.StartTime = rr1.StartTime
+	}
+
+	rQPS1, _ := strconv.Atoi(rr1.RequestedQPS)
+	rQPS2, _ := strconv.Atoi(rr2.RequestedQPS)
+	ret.RequestedQPS = strconv.Itoa(rQPS1 + rQPS2)
+
+	ret.ActualQPS = rr1.ActualQPS + rr2.ActualQPS
+	ret.ActualDuration = rr1.ActualDuration + rr2.ActualDuration
+	ret.NumThreads = rr1.NumThreads + rr2.NumThreads
+
+	ret.DurationHistogram = stats.MergeHistData(rr1.DurationHistogram, rr2.DurationHistogram)
+	return &ret
 }
 
 // internal version, returning the concrete implementation. logical std::move

@@ -183,6 +183,9 @@ type Percentile struct {
 // HistogramData is the exported Histogram data, a sorted list of intervals
 // covering [Min, Max]. Pure data, so Counter for instance is flattened
 type HistogramData struct {
+	Offset  float64 
+	Divider float64 // Need to keep both Offset and Divided to recover Histogram data.
+
 	Count       int64
 	Min         float64
 	Max         float64
@@ -308,6 +311,49 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 	return e.Max // not reached
 }
 
+func sumOfSquares(stdev float64, sum float64, count int64) float64 {
+	fC := float64(count)
+	variance := math.Pow(stdev, 2)
+
+	ret := (variance * fC) + (sum * sum / fC)
+	return ret
+}
+
+func indexSlice(slice []int32, value int32) int {
+    for p, v := range slice {
+        if (v == value) {
+            return p
+        }
+    }
+    return -1
+}
+
+// Import translate the external representation of the histogram data in 
+// an internally usable one.
+func (histData *HistogramData) Import() *Histogram {
+	res := NewHistogram(histData.Offset, 
+		                histData.Divider)
+	res.Counter.Count = histData.Count
+	res.Counter.Min = histData.Min
+	res.Counter.Max = histData.Max
+	res.Counter.Sum = histData.Sum
+	res.Counter.sumOfSquares = sumOfSquares(histData.StdDev, histData.Sum, histData.Count)
+
+	for idx, bucket := range histData.Data {
+		if idx < len(histData.Data) - 1 {
+			e := bucket.Interval.End
+			val := int32((e - res.Offset) / res.Divider)
+			res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)
+		} else {
+			// Last Entry
+			s := bucket.Interval.Start
+			val := int32((s - res.Offset) / res.Divider)
+			res.Hdata[indexSlice(histogramBucketValues, val) + 1] = int32(bucket.Count)
+		}
+	}
+
+	return res
+}
 // Export translate the internal representation of the histogram data in
 // an externally usable one. Calculates the request Percentiles.
 func (h *Histogram) Export() *HistogramData {
@@ -318,8 +364,10 @@ func (h *Histogram) Export() *HistogramData {
 	res.Sum = h.Counter.Sum
 	res.Avg = h.Counter.Avg()
 	res.StdDev = h.Counter.StdDev()
-	multiplier := h.Divider
-	offset := h.Offset
+	
+	res.Divider = h.Divider
+	res.Offset = h.Offset
+
 	// calculate the last bucket index
 	lastIdx := -1
 	for i := numBuckets - 1; i >= 0; i-- {
@@ -351,16 +399,16 @@ func (h *Histogram) Export() *HistogramData {
 			// First entry, start is min
 			b.Start = h.Min
 		} else {
-			b.Start = multiplier*float64(prev) + offset
+			b.Start = res.Divider*float64(prev) + res.Offset
 		}
 		b.Percent = 100. * float64(total) / ctrTotal
 		if i < numValues {
 			cur := histogramBucketValues[i]
-			b.End = multiplier*float64(cur) + offset
+			b.End = res.Divider*float64(cur) + res.Offset
 			prev = cur
 		} else {
 			// Last Entry
-			b.Start = multiplier*float64(prev) + offset
+			b.Start = res.Divider*float64(prev) + res.Offset
 			b.End = h.Max
 		}
 		b.Count = int64(h.Hdata[i])
@@ -461,6 +509,15 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	for _, data := range hData.Data {
 		h.record((data.Start+data.End)/2, int(data.Count))
 	}
+}
+
+func MergeHistData(hd1 *HistogramData, hd2 *HistogramData) *HistogramData {
+	h1 := hd1.Import()
+	h2 := hd2.Import()
+
+	mergedHist := Merge(h1, h2)
+
+	return mergedHist.Export()
 }
 
 // Merge two different histogram with different scale parameters

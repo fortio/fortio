@@ -26,6 +26,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"io/ioutil"
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fnet"
@@ -171,6 +172,8 @@ func main() {
 	}
 	isServer := false
 	switch command {
+	case "merge":
+		fortioMerge(os.Args[1:])
 	case "curl":
 		fortioLoad(true, nil)
 	case "load":
@@ -224,6 +227,34 @@ func main() {
 			select {}
 		}
 	}
+}
+
+func fortioMerge(fileList []string) {
+	if len(fileList) <= 1 {
+		usageErr("Error: fortio merge needs to be provided with at least 2 json files")
+	}
+
+	var ret periodic.RunnerResults = periodic.RunnerResults{}
+
+	for idx, fileName := range fileList {
+		bytes, err := ioutil.ReadFile(fileName)
+		if err != nil {
+			// ADD ERROR
+			os.Exit(1)
+		}
+
+		var data periodic.RunnerResults
+		json.Unmarshal(bytes, &data)
+
+		if idx == 0 {
+			ret = data
+		} else {
+			ret = *periodic.Merge(&ret, &data)
+		}
+	}
+
+	fmt.Printf("%+v\n", ret)
+	fmt.Printf("%+v\n", ret.DurationHistogram)
 }
 
 func fortioLoad(justCurl bool, percList []float64) {
@@ -280,7 +311,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Out:         out,
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
-		Jitter:      *jitterFlag,
+		// Jitter:      *jitterFlag,
 	}
 	var res periodic.HasRunnerResult
 	var err error
