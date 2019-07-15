@@ -318,6 +318,8 @@ func TestHistogramExport1(t *testing.T) {
 		t.Error(err)
 	}
 	CheckEquals(t, string(data), `{
+ "Offset": 0,
+ "Divider": 10,
  "Count": 5,
  "Min": -137.4,
  "Max": 1001.67,

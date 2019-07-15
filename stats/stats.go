@@ -183,7 +183,7 @@ type Percentile struct {
 // HistogramData is the exported Histogram data, a sorted list of intervals
 // covering [Min, Max]. Pure data, so Counter for instance is flattened
 type HistogramData struct {
-	Offset  float64 
+	Offset  float64
 	Divider float64 // Need to keep both Offset and Divided to recover Histogram data.
 
 	Count       int64
@@ -320,19 +320,19 @@ func sumOfSquares(stdev float64, sum float64, count int64) float64 {
 }
 
 func indexSlice(slice []int32, value int32) int {
-    for p, v := range slice {
-        if (v == value) {
-            return p
-        }
-    }
-    return -1
+	for p, v := range slice {
+		if v == value {
+			return p
+		}
+	}
+	return -1
 }
 
-// Import translate the external representation of the histogram data in 
+// Import translate the external representation of the histogram data in
 // an internally usable one.
 func (histData *HistogramData) Import() *Histogram {
-	res := NewHistogram(histData.Offset, 
-		                histData.Divider)
+	res := NewHistogram(histData.Offset,
+		histData.Divider)
 	res.Counter.Count = histData.Count
 	res.Counter.Min = histData.Min
 	res.Counter.Max = histData.Max
@@ -340,7 +340,7 @@ func (histData *HistogramData) Import() *Histogram {
 	res.Counter.sumOfSquares = sumOfSquares(histData.StdDev, histData.Sum, histData.Count)
 
 	for idx, bucket := range histData.Data {
-		if idx < len(histData.Data) - 1 {
+		if idx < len(histData.Data)-1 {
 			e := bucket.Interval.End
 			val := int32((e - res.Offset) / res.Divider)
 			res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)
@@ -348,12 +348,13 @@ func (histData *HistogramData) Import() *Histogram {
 			// Last Entry
 			s := bucket.Interval.Start
 			val := int32((s - res.Offset) / res.Divider)
-			res.Hdata[indexSlice(histogramBucketValues, val) + 1] = int32(bucket.Count)
+			res.Hdata[indexSlice(histogramBucketValues, val)+1] = int32(bucket.Count)
 		}
 	}
 
 	return res
 }
+
 // Export translate the internal representation of the histogram data in
 // an externally usable one. Calculates the request Percentiles.
 func (h *Histogram) Export() *HistogramData {
@@ -364,7 +365,7 @@ func (h *Histogram) Export() *HistogramData {
 	res.Sum = h.Counter.Sum
 	res.Avg = h.Counter.Avg()
 	res.StdDev = h.Counter.StdDev()
-	
+
 	res.Divider = h.Divider
 	res.Offset = h.Offset
 
@@ -511,13 +512,12 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
-func MergeHistData(hd1 *HistogramData, hd2 *HistogramData) *HistogramData {
+func MergeHistData(hd1 *HistogramData, hd2 *HistogramData, percList []float64) *HistogramData {
 	h1 := hd1.Import()
 	h2 := hd2.Import()
-
 	mergedHist := Merge(h1, h2)
 
-	return mergedHist.Export()
+	return mergedHist.Export().CalcPercentiles(percList)
 }
 
 // Merge two different histogram with different scale parameters

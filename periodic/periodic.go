@@ -29,9 +29,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -274,26 +274,11 @@ func (r *RunnerOptions) Abort() {
 	}
 }
 
-// // RunnerResults encapsulates the actual QPS observed and duration histogram.
-// type RunnerResults struct {
-// 	RunType           string
-// 	Labels            string
-// 	StartTime         time.Time
-// 	RequestedQPS      string
-// 	RequestedDuration string // String version of the requested duration or exact count
-// 	ActualQPS         float64
-// 	ActualDuration    time.Duration
-// 	NumThreads        int
-// 	Version           string
-// 	DurationHistogram *stats.HistogramData
-// 	Exactly           int64 // Echo back the requested count
-// 	Jitter            bool
-// }
-
-func Merge(rr1 *RunnerResults, rr2 *RunnerResults) *RunnerResults {
+func Merge(rr1 *RunnerResults, rr2 *RunnerResults,
+	percList []float64) *RunnerResults {
 	ret := RunnerResults{}
-	ret.RunType = rr1.RunType + " " + rr1.RunType
-	ret.Labels = rr1.Labels + " " + rr2.Labels
+	ret.RunType = rr1.RunType + " : " + rr1.RunType
+	ret.Labels = rr1.Labels + " : " + rr2.Labels
 
 	if rr1.StartTime.After(rr2.StartTime) {
 		ret.StartTime = rr2.StartTime
@@ -305,11 +290,20 @@ func Merge(rr1 *RunnerResults, rr2 *RunnerResults) *RunnerResults {
 	rQPS2, _ := strconv.Atoi(rr2.RequestedQPS)
 	ret.RequestedQPS = strconv.Itoa(rQPS1 + rQPS2)
 
+	rDuration1, _ := strconv.Atoi(rr1.RequestedDuration)
+	rDuration2, _ := strconv.Atoi(rr2.RequestedDuration)
+	ret.RequestedDuration = strconv.Itoa(rDuration1 + rDuration2)
+
 	ret.ActualQPS = rr1.ActualQPS + rr2.ActualQPS
 	ret.ActualDuration = rr1.ActualDuration + rr2.ActualDuration
 	ret.NumThreads = rr1.NumThreads + rr2.NumThreads
+	ret.Version = rr1.Version
 
-	ret.DurationHistogram = stats.MergeHistData(rr1.DurationHistogram, rr2.DurationHistogram)
+	ret.DurationHistogram = stats.MergeHistData(rr1.DurationHistogram, rr2.DurationHistogram, percList)
+
+	ret.Exactly = rr1.Exactly + rr2.Exactly
+	ret.Jitter = (rr1.Jitter || rr2.Jitter)
+
 	return &ret
 }
 

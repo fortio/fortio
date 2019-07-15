@@ -21,12 +21,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
 	"strings"
 	"time"
-	"io/ioutil"
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fnet"
@@ -86,6 +86,7 @@ var (
 	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
 	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
+	mergeFilesFlag    = flag.String("files", "", "List of json files to merge")
 	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
@@ -173,7 +174,7 @@ func main() {
 	isServer := false
 	switch command {
 	case "merge":
-		fortioMerge(os.Args[1:])
+		fortioMerge(*mergeFilesFlag, percList)
 	case "curl":
 		fortioLoad(true, nil)
 	case "load":
@@ -229,17 +230,18 @@ func main() {
 	}
 }
 
-func fortioMerge(fileList []string) {
-	if len(fileList) <= 1 {
+func fortioMerge(fileList string, percList []float64) {
+	files := strings.Split(fileList, ",")
+	if len(files) <= 1 {
 		usageErr("Error: fortio merge needs to be provided with at least 2 json files")
 	}
 
 	var ret periodic.RunnerResults = periodic.RunnerResults{}
 
-	for idx, fileName := range fileList {
+	for idx, fileName := range files {
 		bytes, err := ioutil.ReadFile(fileName)
 		if err != nil {
-			// ADD ERROR
+			fmt.Println(err)
 			os.Exit(1)
 		}
 
@@ -249,12 +251,43 @@ func fortioMerge(fileList []string) {
 		if idx == 0 {
 			ret = data
 		} else {
-			ret = *periodic.Merge(&ret, &data)
+			ret = *periodic.Merge(&ret, &data, percList)
 		}
 	}
 
-	fmt.Printf("%+v\n", ret)
-	fmt.Printf("%+v\n", ret.DurationHistogram)
+	out := os.Stderr
+	jsonFileName := *jsonFlag
+	if *autoSaveFlag || len(jsonFileName) > 0 {
+		var j []byte
+		j, err := json.MarshalIndent(ret, "", "  ")
+		if err != nil {
+			log.Fatalf("Unable to json serialize result: %v", err)
+		}
+		var f *os.File
+		if jsonFileName == "-" {
+			f = os.Stdout
+			jsonFileName = "stdout"
+		} else {
+			if len(jsonFileName) == 0 {
+				jsonFileName = path.Join(*dataDirFlag, ret.ID()+".json")
+			}
+			f, err = os.Create(jsonFileName)
+			if err != nil {
+				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
+			}
+		}
+		n, err := f.Write(append(j, '\n'))
+		if err != nil {
+			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
+		}
+		if f != os.Stdout {
+			err := f.Close()
+			if err != nil {
+				log.Fatalf("Close error for %s: %v", jsonFileName, err)
+			}
+		}
+		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+	}
 }
 
 func fortioLoad(justCurl bool, percList []float64) {
