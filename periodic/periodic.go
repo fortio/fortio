@@ -274,6 +274,7 @@ func (r *RunnerOptions) Abort() {
 	}
 }
 
+// Merge two different RunnerResults
 func Merge(rr1 *RunnerResults, rr2 *RunnerResults,
 	percList []float64) *RunnerResults {
 	ret := RunnerResults{}

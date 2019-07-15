@@ -330,17 +330,17 @@ func indexSlice(slice []int32, value int32) int {
 
 // Import translate the external representation of the histogram data in
 // an internally usable one.
-func (histData *HistogramData) Import() *Histogram {
-	res := NewHistogram(histData.Offset,
-		histData.Divider)
-	res.Counter.Count = histData.Count
-	res.Counter.Min = histData.Min
-	res.Counter.Max = histData.Max
-	res.Counter.Sum = histData.Sum
-	res.Counter.sumOfSquares = sumOfSquares(histData.StdDev, histData.Sum, histData.Count)
+func (e *HistogramData) Import() *Histogram {
+	res := NewHistogram(e.Offset,
+		e.Divider)
+	res.Counter.Count = e.Count
+	res.Counter.Min = e.Min
+	res.Counter.Max = e.Max
+	res.Counter.Sum = e.Sum
+	res.Counter.sumOfSquares = sumOfSquares(e.StdDev, e.Sum, e.Count)
 
-	for idx, bucket := range histData.Data {
-		if idx < len(histData.Data)-1 {
+	for idx, bucket := range e.Data {
+		if idx < len(e.Data)-1 {
 			e := bucket.Interval.End
 			val := int32((e - res.Offset) / res.Divider)
 			res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)

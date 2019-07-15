@@ -230,6 +230,42 @@ func main() {
 	}
 }
 
+func generateJsonFile(res periodic.HasRunnerResult, out io.Writer) {
+	jsonFileName := *jsonFlag
+
+	if *autoSaveFlag || len(jsonFileName) > 0 {
+		var j []byte
+		j, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			log.Fatalf("Unable to json serialize result: %v", err)
+		}
+		var f *os.File
+		if jsonFileName == "-" {
+			f = os.Stdout
+			jsonFileName = "stdout"
+		} else {
+			if len(jsonFileName) == 0 {
+				jsonFileName = path.Join(*dataDirFlag, res.Result().ID()+".json")
+			}
+			f, err = os.Create(jsonFileName)
+			if err != nil {
+				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
+			}
+		}
+		n, err := f.Write(append(j, '\n'))
+		if err != nil {
+			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
+		}
+		if f != os.Stdout {
+			err := f.Close()
+			if err != nil {
+				log.Fatalf("Close error for %s: %v", jsonFileName, err)
+			}
+		}
+		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
+	}
+}
+
 func fortioMerge(fileList string, percList []float64) {
 	files := strings.Split(fileList, ",")
 	if len(files) <= 1 {
@@ -256,38 +292,7 @@ func fortioMerge(fileList string, percList []float64) {
 	}
 
 	out := os.Stderr
-	jsonFileName := *jsonFlag
-	if *autoSaveFlag || len(jsonFileName) > 0 {
-		var j []byte
-		j, err := json.MarshalIndent(ret, "", "  ")
-		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		var f *os.File
-		if jsonFileName == "-" {
-			f = os.Stdout
-			jsonFileName = "stdout"
-		} else {
-			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, ret.ID()+".json")
-			}
-			f, err = os.Create(jsonFileName)
-			if err != nil {
-				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
-			}
-		}
-		n, err := f.Write(append(j, '\n'))
-		if err != nil {
-			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
-		}
-		if f != os.Stdout {
-			err := f.Close()
-			if err != nil {
-				log.Fatalf("Close error for %s: %v", jsonFileName, err)
-			}
-		}
-		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
-	}
+	generateJsonFile(ret.Result(), out)
 }
 
 func fortioLoad(justCurl bool, percList []float64) {
@@ -386,38 +391,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		warmup,
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
-	jsonFileName := *jsonFlag
-	if *autoSaveFlag || len(jsonFileName) > 0 {
-		var j []byte
-		j, err = json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		var f *os.File
-		if jsonFileName == "-" {
-			f = os.Stdout
-			jsonFileName = "stdout"
-		} else {
-			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
-			}
-			f, err = os.Create(jsonFileName)
-			if err != nil {
-				log.Fatalf("Unable to create %s: %v", jsonFileName, err)
-			}
-		}
-		n, err := f.Write(append(j, '\n'))
-		if err != nil {
-			log.Fatalf("Unable to write json to %s: %v", jsonFileName, err)
-		}
-		if f != os.Stdout {
-			err := f.Close()
-			if err != nil {
-				log.Fatalf("Close error for %s: %v", jsonFileName, err)
-			}
-		}
-		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
-	}
+	generateJsonFile(res, out)
 }
 
 func grpcClient() {
