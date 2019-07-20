@@ -86,7 +86,6 @@ var (
 	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
 	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
-	mergeFilesFlag    = flag.String("files", "", "List of json files to merge")
 	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
@@ -174,7 +173,7 @@ func main() {
 	isServer := false
 	switch command {
 	case "merge":
-		fortioMerge(*mergeFilesFlag, percList)
+		fortioMerge(os.Args[1:], percList)
 	case "curl":
 		fortioLoad(true, nil)
 	case "load":
@@ -230,7 +229,7 @@ func main() {
 	}
 }
 
-func generateJsonFile(res periodic.HasRunnerResult, out io.Writer) {
+func generateJSONFile(res periodic.HasRunnerResult, out io.Writer) {
 	jsonFileName := *jsonFlag
 
 	if *autoSaveFlag || len(jsonFileName) > 0 {
@@ -266,10 +265,10 @@ func generateJsonFile(res periodic.HasRunnerResult, out io.Writer) {
 	}
 }
 
-func fortioMerge(fileList string, percList []float64) {
-	files := strings.Split(fileList, ",")
+func fortioMerge(args []string, percList []float64) {
+	files := args[2:]
 	if len(files) <= 1 {
-		usageErr("Error: fortio merge needs to be provided with at least 2 json files")
+		usageErr("Error: Command Usage -- fortio merge <MergedResultsFile> <ListofFiles>\nExample: fortio merge -json MergedResults.json File1.json File2.json File3.json")
 	}
 
 	var ret periodic.RunnerResults = periodic.RunnerResults{}
@@ -292,7 +291,7 @@ func fortioMerge(fileList string, percList []float64) {
 	}
 
 	out := os.Stderr
-	generateJsonFile(ret.Result(), out)
+	generateJSONFile(ret.Result(), out)
 }
 
 func fortioLoad(justCurl bool, percList []float64) {
@@ -391,7 +390,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		warmup,
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
-	generateJsonFile(res, out)
+	generateJSONFile(res, out)
 }
 
 func grpcClient() {

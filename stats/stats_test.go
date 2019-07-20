@@ -136,6 +136,76 @@ func TestZeroDivider(t *testing.T) {
 	}
 }
 
+func TestImportFunction1(t *testing.T) {
+	h := NewHistogram(0, 0.0001)
+	h.Record(0.04)
+	h.Record(0.05)
+	h.Record(0.08)
+	h.Record(0.10)
+	h.Record(0.50)
+	h.Print(os.Stdout, "TestImportFunction1", []float64{50})
+
+	var tests = []struct {
+		actual   Histogram
+		expected Histogram
+		msg      string
+	}{
+		{*h, *h.Export().Import(), ""},
+	}
+
+	for _, test := range tests {
+		if !reflect.DeepEqual(test.actual, test.expected) {
+			t.Errorf("%s: got %+v, not as expected %+v", test.msg, test.actual, test.expected)
+		}
+	}
+}
+
+func TestImportFunction2(t *testing.T) {
+	h := NewHistogram(0, 0.1)
+	h.Print(os.Stdout, "TestImportFunction2", []float64{50})
+
+	var tests = []struct {
+		actual   Histogram
+		expected Histogram
+		msg      string
+	}{
+		{*h, *h.Export().Import(), ""},
+	}
+
+	for _, test := range tests {
+		if !reflect.DeepEqual(test.actual, test.expected) {
+			t.Errorf("%s: got %+v, not as expected %+v", test.msg, test.actual, test.expected)
+		}
+	}
+}
+
+func TestImportFunction3(t *testing.T) {
+	h := NewHistogram(0, 1)
+	h.Record(-1)
+	h.Record(-0.5)
+	h.RecordN(0, 3)
+	h.Record(1)
+	h.Record(2)
+	h.Record(3)
+	h.Record(4)
+	h.RecordN(5, 2)
+	h.Print(os.Stdout, "TestImportFunction3", []float64{50})
+
+	var tests = []struct {
+		actual   Histogram
+		expected Histogram
+		msg      string
+	}{
+		{*h, *h.Export().Import(), ""},
+	}
+
+	for _, test := range tests {
+		if !reflect.DeepEqual(test.actual, test.expected) {
+			t.Errorf("%s: got %+v, not as expected %+v", test.msg, test.actual, test.expected)
+		}
+	}
+}
+
 func TestHistogram(t *testing.T) {
 	h := NewHistogram(0, 10)
 	h.Record(1)

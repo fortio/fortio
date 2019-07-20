@@ -316,6 +316,10 @@ func sumOfSquares(stdev float64, sum float64, count int64) float64 {
 	variance := math.Pow(stdev, 2)
 
 	ret := (variance * fC) + (sum * sum / fC)
+	if math.IsNaN(ret) {
+		return 0
+	}
+
 	return ret
 }
 
@@ -512,6 +516,10 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
+/* Merge two different HistogramData's. The function calls Import on both
+HistogramData's which converts them into Histograms which are then merged
+using the already present Merge Function.
+*/
 func MergeHistData(hd1 *HistogramData, hd2 *HistogramData, percList []float64) *HistogramData {
 	h1 := hd1.Import()
 	h2 := hd2.Import()
