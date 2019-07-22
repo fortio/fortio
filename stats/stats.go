@@ -516,10 +516,8 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
-/* MergeHistData merges two different HistogramData's. The function calls Import on both
-HistogramData's which converts them into Histograms which are then merged
-using the already present Merge Function.
-*/
+// MergeHistData merges two different HistogramData's. 
+// The function calls Import on both HistogramData's.
 func MergeHistData(hd1 *HistogramData, hd2 *HistogramData, percList []float64) *HistogramData {
 	h1 := hd1.Import()
 	h2 := hd2.Import()
