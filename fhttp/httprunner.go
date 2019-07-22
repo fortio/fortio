@@ -51,8 +51,8 @@ type HTTPRunnerResults struct {
 
 // Merge two different HTTPRunnerResults
 func Merge(rr1 *HTTPRunnerResults,
-	       rr2 *HTTPRunnerResults,
-	       percList []float64) (*HTTPRunnerResults, error) {
+	rr2 *HTTPRunnerResults,
+	percList []float64) (*HTTPRunnerResults, error) {
 
 	ret := HTTPRunnerResults{}
 
@@ -61,17 +61,17 @@ func Merge(rr1 *HTTPRunnerResults,
 	}
 
 	ret.RunnerResults = *periodic.Merge(rr1.Result(),
-                                        rr2.Result(),
-                                        percList)
+		rr2.Result(),
+		percList)
 
 	for k, v := range rr2.RetCodes {
-    	_, ok := rr1.RetCodes[k]
+		_, ok := rr1.RetCodes[k]
 
-    	if ok {
-    		rr1.RetCodes[k] += rr2.RetCodes[k]
-    	} else {
-    		rr1.RetCodes[k] = v
-    	}
+		if ok {
+			rr1.RetCodes[k] += rr2.RetCodes[k]
+		} else {
+			rr1.RetCodes[k] = v
+		}
 	}
 
 	ret.RetCodes = rr1.RetCodes

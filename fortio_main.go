@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
 	// "reflect"
 
 	"fortio.org/fortio/bincommon"
@@ -269,14 +270,15 @@ func generateJSONFile(res periodic.HasRunnerResult, out io.Writer) {
 func fortioMerge(args []string, percList []float64) {
 	files := args[2:]
 	if len(files) <= 1 {
-		usageErr("Error: Command Usage -- fortio merge <MergedResultsFile> <ListofFiles>\nExample: fortio merge -json MergedResults.json File1.json File2.json File3.json")
+		usageErr("Error: Command Usage -- fortio merge <MergedResultsFile> <ListofFiles>",
+			"\nExample: fortio merge -json MergedResults.json File1.json File2.json File3.json")
 	}
 
 	var ret periodic.HasRunnerResult
 	for idx, fileName := range files {
 		bytes, err := ioutil.ReadFile(fileName)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Aborting because %v\n", err)
 			os.Exit(1)
 		}
 
@@ -288,7 +290,11 @@ func fortioMerge(args []string, percList []float64) {
 			data = &fhttp.HTTPRunnerResults{}
 		}
 
-		json.Unmarshal(bytes, data)
+		err = json.Unmarshal(bytes, data)
+		if err != nil {
+			fmt.Println("Aborting because %v\n", err)
+			os.Exit(1)
+		}
 
 		if idx == 0 {
 			if !(*grpcFlag) {
@@ -296,9 +302,13 @@ func fortioMerge(args []string, percList []float64) {
 			}
 		} else {
 			if !(*grpcFlag) {
-				ret, _ = fhttp.Merge(ret.(*fhttp.HTTPRunnerResults),
-				                     data.(*fhttp.HTTPRunnerResults),
-				                     percList)
+				ret, err = fhttp.Merge(ret.(*fhttp.HTTPRunnerResults),
+					data.(*fhttp.HTTPRunnerResults),
+					percList)
+				if err != nil {
+					fmt.Println("Aborting because %v\n", err)
+					os.Exit(1)
+				}
 			}
 		}
 	}
