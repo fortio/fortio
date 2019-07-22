@@ -49,6 +49,51 @@ type HTTPRunnerResults struct {
 	aborter *periodic.Aborter
 }
 
+// Merge two different HTTPRunnerResults
+func Merge(rr1 *HTTPRunnerResults,
+	       rr2 *HTTPRunnerResults,
+	       percList []float64) (*HTTPRunnerResults, error) {
+
+	ret := HTTPRunnerResults{}
+
+	if rr1.URL != rr2.URL {
+		return nil, fmt.Errorf("error: %s and %s are different URLs", rr1.URL, rr2.URL)
+	}
+
+	ret.RunnerResults = *periodic.Merge(rr1.Result(),
+                                        rr2.Result(),
+                                        percList)
+
+	for k, v := range rr2.RetCodes {
+    	_, ok := rr1.RetCodes[k]
+
+    	if ok {
+    		rr1.RetCodes[k] += rr2.RetCodes[k]
+    	} else {
+    		rr1.RetCodes[k] = v
+    	}
+	}
+
+	ret.RetCodes = rr1.RetCodes
+
+	if rr1.sizes != nil && rr2.sizes != nil {
+		ret.sizes = stats.Merge(rr1.sizes, rr2.sizes)
+	}
+
+	if rr1.headerSizes != nil && rr2.headerSizes != nil {
+		ret.headerSizes = stats.Merge(rr1.headerSizes, rr2.headerSizes)
+	}
+
+	ret.Sizes = stats.MergeHistData(rr1.Sizes, rr2.Sizes, percList)
+	ret.HeaderSizes = stats.MergeHistData(rr1.HeaderSizes, rr2.HeaderSizes, percList)
+
+	ret.URL = rr1.URL
+	ret.SocketCount = rr1.SocketCount + rr2.SocketCount
+
+	return &ret, nil
+
+}
+
 // Run tests http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (httpstate *HTTPRunnerResults) Run(t int) {

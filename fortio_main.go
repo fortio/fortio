@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	// "reflect"
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fnet"
@@ -271,8 +272,7 @@ func fortioMerge(args []string, percList []float64) {
 		usageErr("Error: Command Usage -- fortio merge <MergedResultsFile> <ListofFiles>\nExample: fortio merge -json MergedResults.json File1.json File2.json File3.json")
 	}
 
-	var ret periodic.RunnerResults = periodic.RunnerResults{}
-
+	var ret periodic.HasRunnerResult
 	for idx, fileName := range files {
 		bytes, err := ioutil.ReadFile(fileName)
 		if err != nil {
@@ -280,18 +280,31 @@ func fortioMerge(args []string, percList []float64) {
 			os.Exit(1)
 		}
 
-		var data periodic.RunnerResults
-		json.Unmarshal(bytes, &data)
+		var data periodic.HasRunnerResult
+
+		if *grpcFlag {
+			data = &fgrpc.GRPCRunnerResults{}
+		} else {
+			data = &fhttp.HTTPRunnerResults{}
+		}
+
+		json.Unmarshal(bytes, data)
 
 		if idx == 0 {
-			ret = data
+			if !(*grpcFlag) {
+				ret = data.(*fhttp.HTTPRunnerResults)
+			}
 		} else {
-			ret = *periodic.Merge(&ret, &data, percList)
+			if !(*grpcFlag) {
+				ret, _ = fhttp.Merge(ret.(*fhttp.HTTPRunnerResults),
+				                     data.(*fhttp.HTTPRunnerResults),
+				                     percList)
+			}
 		}
 	}
 
 	out := os.Stderr
-	generateJSONFile(ret.Result(), out)
+	generateJSONFile(ret, out)
 }
 
 func fortioLoad(justCurl bool, percList []float64) {
@@ -348,7 +361,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Out:         out,
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
-		// Jitter:      *jitterFlag,
+		Jitter:      *jitterFlag,
 	}
 	var res periodic.HasRunnerResult
 	var err error

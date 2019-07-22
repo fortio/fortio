@@ -516,7 +516,7 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 	}
 }
 
-/* Merge two different HistogramData's. The function calls Import on both
+/* MergeHistData merges two different HistogramData's. The function calls Import on both
 HistogramData's which converts them into Histograms which are then merged
 using the already present Merge Function.
 */
