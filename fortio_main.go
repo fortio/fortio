@@ -278,7 +278,7 @@ func fortioMerge(args []string, percList []float64) {
 	for idx, fileName := range files {
 		bytes, err := ioutil.ReadFile(fileName)
 		if err != nil {
-			fmt.Println("Aborting because %v\n", err)
+			fmt.Printf("Aborting because %v\n", err)
 			os.Exit(1)
 		}
 
@@ -292,7 +292,7 @@ func fortioMerge(args []string, percList []float64) {
 
 		err = json.Unmarshal(bytes, data)
 		if err != nil {
-			fmt.Println("Aborting because %v\n", err)
+			fmt.Printf("Aborting because %v\n", err)
 			os.Exit(1)
 		}
 
@@ -306,7 +306,7 @@ func fortioMerge(args []string, percList []float64) {
 					data.(*fhttp.HTTPRunnerResults),
 					percList)
 				if err != nil {
-					fmt.Println("Aborting because %v\n", err)
+					fmt.Printf("Aborting because %v\n", err)
 					os.Exit(1)
 				}
 			}
