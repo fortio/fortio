@@ -188,6 +188,19 @@ type HistogramData struct {
 	Divider      float64 // Need to keep both Offset and Divided to recover Histogram data.
 	SumOfSquares float64
 
+	/*
+		TODO(saimsalman): Fix this hack.
+
+		If all the values are mapped to the same bucket
+		by the Export Function then the bucket values
+		are set to the minimum and maximum which loses
+		out on the original information the Import
+		Function needs. This value contains the
+		bucket maximum (upper value of the last bucket)
+		which preserves this information.
+	*/
+	BucketMax float64
+
 	Count       int64
 	Min         float64
 	Max         float64
@@ -341,8 +354,13 @@ func (e *HistogramData) Import() *Histogram {
 			val := int32(math.Round((end - res.Offset) / res.Divider))
 			res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)
 		} else {
-			val := int32(math.Round((start - res.Offset) / res.Divider))
-			res.Hdata[indexSlice(histogramBucketValues, val)+1] = int32(bucket.Count)
+			if len(e.Data) > 1 {
+				val := int32(math.Round((start - res.Offset) / res.Divider))
+				res.Hdata[indexSlice(histogramBucketValues, val)+1] = int32(bucket.Count)
+			} else if len(e.Data) == 1 {
+				val := int32(math.Round((e.BucketMax - res.Offset) / res.Divider))
+				res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)
+			}
 		}
 	}
 
@@ -410,6 +428,7 @@ func (h *Histogram) Export() *HistogramData {
 		b.Count = int64(h.Hdata[i])
 		res.Data = append(res.Data, b)
 	}
+	res.BucketMax = res.Data[len(res.Data)-1].End
 	res.Data[len(res.Data)-1].End = h.Max
 	return &res
 }
