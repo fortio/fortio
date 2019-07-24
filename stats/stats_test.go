@@ -206,6 +206,37 @@ func TestImportFunction3(t *testing.T) {
 	}
 }
 
+const (
+	NumRandomHistogram = 10000
+	NumValues          = 2000
+)
+
+func TestImportFunction4(t *testing.T) {
+	for i := 0; i < NumRandomHistogram; i++ {
+		h := NewHistogram(rand.Float64(), rand.Float64())
+
+		for j := 0; j < NumValues; j++ {
+			h.Record(rand.Float64())
+		}
+
+		h.Print(os.Stdout, "TestImportFunction4", []float64{20})
+
+		var tests = []struct {
+			actual   Histogram
+			expected Histogram
+			msg      string
+		}{
+			{*h, *h.Export().Import(), ""},
+		}
+
+		for _, test := range tests {
+			if !reflect.DeepEqual(test.actual, test.expected) {
+				t.Errorf("%+v, %+v, %+v", h, *h.Export(), *h.Export().Import())
+			}
+		}
+	}
+}
+
 func TestHistogram(t *testing.T) {
 	h := NewHistogram(0, 10)
 	h.Record(1)
@@ -390,6 +421,7 @@ func TestHistogramExport1(t *testing.T) {
 	CheckEquals(t, string(data), `{
  "Offset": 0,
  "Divider": 10,
+ "SumOfSquares": 1900224.5488999998,
  "Count": 5,
  "Min": -137.4,
  "Max": 1001.67,
@@ -444,10 +476,6 @@ func TestHistogramExport1(t *testing.T) {
  ]
 }`, "Json output")
 }
-
-const (
-	NumRandomHistogram = 2000
-)
 
 func TestHistogramExportRandom(t *testing.T) {
 	for i := 0; i < NumRandomHistogram; i++ {

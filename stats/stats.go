@@ -122,6 +122,7 @@ func (c *Counter) Transfer(src *Counter) {
 // that way a cumulative % up to that bucket means X% of the data <= 90 (or 100-X% > 90), works well for max too
 // There are 2 special buckets - the first one is from min to and including 0,
 // one after the last for value > last and up to max
+
 var (
 	histogramBucketValues = []int32{
 		0, 1, 2, 3, 4, 5, 6,
@@ -183,8 +184,9 @@ type Percentile struct {
 // HistogramData is the exported Histogram data, a sorted list of intervals
 // covering [Min, Max]. Pure data, so Counter for instance is flattened
 type HistogramData struct {
-	Offset  float64
-	Divider float64 // Need to keep both Offset and Divided to recover Histogram data.
+	Offset       float64
+	Divider      float64 // Need to keep both Offset and Divided to recover Histogram data.
+	SumOfSquares float64
 
 	Count       int64
 	Min         float64
@@ -311,21 +313,9 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 	return e.Max // not reached
 }
 
-func sumOfSquares(stdev float64, sum float64, count int64) float64 {
-	fC := float64(count)
-	variance := math.Pow(stdev, 2)
-
-	ret := (variance * fC) + (sum * sum / fC)
-	if math.IsNaN(ret) {
-		return 0
-	}
-
-	return ret
-}
-
 func indexSlice(slice []int32, value int32) int {
 	for p, v := range slice {
-		if v == value {
+		if value <= v {
 			return p
 		}
 	}
@@ -341,17 +331,17 @@ func (e *HistogramData) Import() *Histogram {
 	res.Counter.Min = e.Min
 	res.Counter.Max = e.Max
 	res.Counter.Sum = e.Sum
-	res.Counter.sumOfSquares = sumOfSquares(e.StdDev, e.Sum, e.Count)
+	res.Counter.sumOfSquares = e.SumOfSquares
 
-	for idx, bucket := range e.Data {
-		if idx < len(e.Data)-1 {
-			e := bucket.Interval.End
-			val := int32((e - res.Offset) / res.Divider)
+	for _, bucket := range e.Data {
+		start := bucket.Interval.Start
+		end := bucket.Interval.End
+
+		if e.Max != end {
+			val := int32(math.Round((end - res.Offset) / res.Divider))
 			res.Hdata[indexSlice(histogramBucketValues, val)] = int32(bucket.Count)
 		} else {
-			// Last Entry
-			s := bucket.Interval.Start
-			val := int32((s - res.Offset) / res.Divider)
+			val := int32(math.Round((start - res.Offset) / res.Divider))
 			res.Hdata[indexSlice(histogramBucketValues, val)+1] = int32(bucket.Count)
 		}
 	}
@@ -372,6 +362,7 @@ func (h *Histogram) Export() *HistogramData {
 
 	res.Divider = h.Divider
 	res.Offset = h.Offset
+	res.SumOfSquares = h.sumOfSquares
 
 	// calculate the last bucket index
 	lastIdx := -1
