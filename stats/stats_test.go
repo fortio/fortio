@@ -209,8 +209,8 @@ func TestImportFunction3(t *testing.T) {
 const (
 	NumRandomHistogram = 10000
 	NumValues1         = 1
-	NumValues2         = 200
-	NumValues3         = 20000
+	NumValues2         = 20
+	NumValues3         = 2000
 )
 
 func TestImportFunction4(t *testing.T) {
