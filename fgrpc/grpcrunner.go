@@ -121,6 +121,7 @@ type GRPCRunnerOptions struct {
 	Payload            string        // Payload to be sent for grpc ping service
 	Streams            int           // number of streams. total go routines and data streams will be streams*numthreads.
 	Delay              time.Duration // Delay to be sent when using grpc ping service
+	ErrorPercent       int           // Error percentage
 	CACert             string        // Path to CA certificate for grpc TLS
 	CertOverride       string        // Override the cert virtual host of authority for testing
 	AllowInitialErrors bool          // whether initial errors don't cause an abort
@@ -141,6 +142,9 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		o.RunType = "GRPC Ping"
 		if o.Delay > 0 {
 			o.RunType += fmt.Sprintf(" Delay=%v", o.Delay)
+		}
+		if o.ErrorPercent > 0 {
+			o.RunType += fmt.Sprintf(" ErrorPercent=%v", o.ErrorPercent)
 		}
 	} else {
 		o.RunType = "GRPC Health"
@@ -183,7 +187,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
 			}
-			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
+			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts, ErrorPercent: int32(o.ErrorPercent)}
 			if o.Exactly <= 0 {
 				_, err = grpcstate[i].clientP.Ping(context.Background(), &grpcstate[i].reqP)
 			}

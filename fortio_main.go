@@ -115,7 +115,7 @@ var (
 
 	defaultDataDir = "."
 
-	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
+	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", true, "Allow and don't abort on initial warmup errors")
 	abortOnFlag            = flag.Int("abort-on", 0, "Http code that if encountered aborts the run. e.g. 503 or -1 for socket errors.")
 	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
 	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
@@ -138,6 +138,7 @@ var (
 	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
 	pingDelayFlag  = flag.Duration("grpc-ping-delay", 0, "grpc ping delay in response")
+	pingErrorFlag  = flag.Int("grpc-ping-error", 0, "grpc ping error percentage")
 	streamsFlag    = flag.Int("s", 1, "Number of streams per grpc connection")
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
@@ -294,6 +295,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			AllowInitialErrors: *allowInitialErrorsFlag,
 			Payload:            httpOpts.PayloadString(),
 			Delay:              *pingDelayFlag,
+			ErrorPercent:       *pingErrorFlag,
 			UsePing:            *doPingLoadFlag,
 			UnixDomainSocket:   httpOpts.UnixDomainSocket,
 		}

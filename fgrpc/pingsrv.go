@@ -17,16 +17,19 @@ package fgrpc
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -52,7 +55,22 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 		log.LogVf("GRPC ping: sleeping for %v", s)
 		time.Sleep(s)
 	}
+	if in.ErrorPercent > 0 && shouldInjectError(int(in.ErrorPercent)) {
+		log.Infof("GRPC ping: injecting error")
+		return nil, status.Errorf(codes.Unavailable, "Injected by fortio")
+	}
 	return &out, nil
+}
+
+func shouldInjectError(errorRate int) bool {
+	rand.Seed(time.Now().UnixNano())
+	number := rand.Intn(100 + 1)
+	fail := false
+
+	if number < errorRate {
+		fail = true
+	}
+	return fail
 }
 
 // PingServer starts a grpc ping (and health) echo server.

@@ -8,6 +8,7 @@ message PingMessage {
   int64 ts       = 2; // src send ts / dest receive ts
   string payload = 3; // extra packet data
   int64 delayNanos = 4; // delay the response by x nanoseconds
+  int32 errorPercent = 5; // percentage of error
 }
 
 service PingServer {
