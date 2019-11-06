@@ -234,6 +234,9 @@ func fortioLoad(justCurl bool, percList []float64) {
 	if *httpsInsecureFlag {
 		httpOpts.Insecure = true
 	}
+	httpOpts.Cacert = *caCertFlag
+	httpOpts.Cert = *certFlag
+	httpOpts.Key = *keyFlag
 	if justCurl {
 		bincommon.FetchURL(httpOpts)
 		return

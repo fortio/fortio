@@ -166,6 +166,9 @@ type HTTPOptions struct {
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
+	Cacert            string // `Path` to a custom CA certificate file to be used
+	Cert              string // `Path` to the certificate file to be used
+	Key               string // `Path` to the key file used
 	Resolve           string // resolve Common Name to this ip when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
@@ -388,9 +391,20 @@ func NewStdClient(o *HTTPOptions) *Client {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-	if o.Insecure && o.https {
-		log.LogVf("using insecure https")
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
+	if o.https {
+		tr.TLSClientConfig = &tls.Config{}
+		if o.Insecure {
+			log.LogVf("using insecure https")
+			tr.TLSClientConfig.InsecureSkipVerify = true
+		}
+		if len(o.Cert) > 0 && len(o.Key) > 0 {
+			cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
+			if err != nil {
+				log.LogVf(fmt.Sprintf("%v", err))
+			} else {
+				tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
+			}
+		}
 	}
 	client := Client{
 		url: o.URL,
