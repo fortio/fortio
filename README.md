@@ -56,8 +56,7 @@ brew install fortio
 
 Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
-You can get a preview of the reporting/graphing UI at [https://fortio.istio.io/](https://fortio.istio.io/)
-and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
+You can preview some official benchmarks that were conducted with fortio in the [Istio scalability report/documentation](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/).
 
 ## Command line arguments
 
