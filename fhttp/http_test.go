@@ -614,7 +614,7 @@ func TestBadUrl(t *testing.T) {
 		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
 	}
-	opts.URL = "http://doesnotexist.istio.io"
+	opts.URL = "http://doesnotexist.fortio.org"
 	cli = NewFastClient(opts)
 	if cli != nil {
 		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)

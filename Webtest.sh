@@ -91,11 +91,12 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH load -H Foo:Bar -H Blah:Blah -qps 1 -t 
 # Do a grpcping
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 # Do a grpcping to a scheme-prefixed destination. Fortio should append port number
-docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping https://fortio.istio.io
-docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping http://fortio.istio.io
+# re-enable once we get https://demo.fortio.org/
+# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping https://fortio.istio.io
+# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping http://fortio.istio.io
 # Do a grpcping with -cert flag. Fortio should use valid cert.
-docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT fortio.istio.io:443
-docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT https://fortio.istio.io
+# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT fortio.istio.io:443
+# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT https://fortio.istio.io
 # Do a local grpcping. Fortio should append default grpc port number to destination
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 # pprof should be there, no 404/error
