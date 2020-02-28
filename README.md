@@ -90,7 +90,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.3.2-pre usage:
+Φορτίο 1.3.1 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report
@@ -132,7 +132,7 @@ from GET to POST.
         http echo server URI for debug, empty turns off that part (more secure)
 (default "/debug")
   -gomaxprocs int
-        Setting for runtime.GOMAXPROCS, <1 doesn't change the default
+        Setting for runtime.GOMAXPROCS, &lt;1 doesn't change the default
   -grpc
         Use GRPC (health check by default, add -ping for ping) for load testing
   -grpc-max-streams uint
