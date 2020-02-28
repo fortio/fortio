@@ -76,7 +76,7 @@ Most important flags for http load generation:
 | -------------|----------------------|
 | `-qps rate` | Queries Per Seconds or 0 for no wait/max qps |
 | `-c connections` | Number of parallel simultaneous connections (and matching go routine) |
-| `-t duration` | How long to run the test  (for instance `-t 30min` for 30 minutes) or 0 to run until ^C, example (default 5s) |
+| `-t duration` | How long to run the test  (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |
 | `-n numcalls` | Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). |
 | `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e 1ms), use 1/10th of your expected typical latency |
 | `-H "header: value"` | Can be specified multiple times to add headers (including Host:) |
