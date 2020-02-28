@@ -88,6 +88,7 @@ func TestGRPCRunner(t *testing.T) {
 			},
 			expect: false,
 		},
+		/* re-enable once we have a replacement / we have demo.fortio.org running https
 		{
 			name: "valid secure runner using nil credentials to Internet https server",
 			runnerOpts: GRPCRunnerOptions{
@@ -124,6 +125,7 @@ func TestGRPCRunner(t *testing.T) {
 			},
 			expect: false,
 		},
+		*/
 		{
 			name: "invalid name in secure runner cert",
 			runnerOpts: GRPCRunnerOptions{
@@ -263,6 +265,7 @@ func TestGRPCRunnerWithError(t *testing.T) {
 				CertOverride: "invalidName",
 			},
 		},
+		/* re-enable once we get replacement
 		{
 			name: "valid runner using nil credentials to Internet https server",
 			runnerOpts: GRPCRunnerOptions{
@@ -283,6 +286,7 @@ func TestGRPCRunnerWithError(t *testing.T) {
 				CACert:      caCrt,
 			},
 		},
+		*/
 	}
 	for _, test := range tests {
 		test.runnerOpts.Service = "svc2"
