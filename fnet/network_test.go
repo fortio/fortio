@@ -94,7 +94,7 @@ func TestResolveDestination(t *testing.T) {
 		// Error cases:
 		{"missing :", "foo", ""},
 		{"using ip:bogussvc", "8.8.8.8:doesnotexisthopefully", ""},
-		{"using bogus hostname", "doesnotexist.istio.io:443", ""},
+		{"using bogus hostname", "doesnotexist.fortio.org:443", ""},
 		// Good cases:
 		{"using ip:portname", "8.8.8.8:http", "8.8.8.8:80"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
@@ -195,7 +195,7 @@ func TestUnixDomain(t *testing.T) {
 
 }
 func TestProxyErrors(t *testing.T) {
-	addr := ProxyToDestination(":0", "doesnotexist.istio.io:80")
+	addr := ProxyToDestination(":0", "doesnotexist.fortio.org:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
