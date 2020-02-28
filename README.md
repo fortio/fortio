@@ -162,6 +162,8 @@ kbytes (default 128)
         Check for Connection: Close Header
   -https-insecure
         Long form of the -k flag
+  -jitter
+        set to true to de-synchronize parallel clients' requests
   -json path
         Json output to provided file path or '-' for stdout (empty = no json
 output, unless -a is used)
@@ -210,6 +212,8 @@ smaller than -maxpayloadsizekb. Setting this switches http to POST.
         Redirect all incoming traffic to https URL (need ingress to work
 properly). Can be in the form of host:port, ip:port, port or "disabled" to
 disable the feature. (default "8081")
+  -resolve string
+        Resolve CN of cert to this IP, so that we can call https://cn directly
   -s int
         Number of streams per grpc connection (default 1)
   -static-dir path
@@ -696,7 +700,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are newer/live examples on [istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks](https://istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks)
+There are newer/live examples on [istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks](https://archive.istio.io/v1.0/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks)
 
 ## Contributing
 
