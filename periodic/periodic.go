@@ -566,9 +566,9 @@ func getJitter(t time.Duration) time.Duration {
 	return time.Duration(j)
 }
 
-// ID Returns an id for the result: 64 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
+// ID Returns an id for the result: 96 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
 // where alpha_labels is the filtered labels with only alphanumeric characters
-// and all non alpha num replaced by _; truncated to 64 bytes.
+// and all non alpha num replaced by _; truncated to 96 bytes.
 func (r *RunnerResults) ID() string {
 	base := formatDate(&r.StartTime)
 	if r.Labels == "" {
@@ -590,8 +590,8 @@ func (r *RunnerResults) ID() string {
 	if last == '_' {
 		base = base[:len(base)-1]
 	}
-	if len(base) > 64 {
-		return base[:64]
+	if len(base) > 96 {
+		return base[:96]
 	}
 	return base
 }
