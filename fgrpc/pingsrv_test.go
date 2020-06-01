@@ -24,7 +24,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 )
 
@@ -44,10 +43,12 @@ func TestPingServer(t *testing.T) {
 	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
 		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
 	}
+	/* re-enable once we get https://demo.fortio.org/
 	if latency, err := PingClientCall(fnet.PrefixHTTPS+"fortio.istio.io:443", "", 7,
 		"test payload", 0); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
+	*/
 	if latency, err := PingClientCall(sAddr, caCrt, 7, "test payload", 0); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
@@ -67,9 +68,11 @@ func TestPingServer(t *testing.T) {
 	if r, err := GrpcHealthCheck(sAddr, caCrt, "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
+	/* re-enable once we get https://demo.fortio.org/
 	if r, err := GrpcHealthCheck(fnet.PrefixHTTPS+"fortio.istio.io:443", "", "", 1); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
+	*/
 	if r, err := GrpcHealthCheck(iAddr, "", "foo", 3); err != nil || (*r)[serving] != 3 {
 		t.Errorf("Unexpected result %+v, %v with health check for same service as started (foo)", r, err)
 	}
