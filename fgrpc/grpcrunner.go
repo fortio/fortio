@@ -58,8 +58,8 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 	serverAddr := grpcDestination(o.Destination)
 	if o.UnixDomainSocket != "" {
 		log.Warnf("Using domain socket %v instead of %v for grpc connection", o.UnixDomainSocket, serverAddr)
-		opts = append(opts, grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout(fnet.UnixDomainSocket, o.UnixDomainSocket, timeout)
+		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
 	conn, err = grpc.Dial(serverAddr, opts...)
