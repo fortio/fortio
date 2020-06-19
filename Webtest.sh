@@ -16,7 +16,7 @@ set -x
 # Check we can build the image
 make docker-internal TAG=webtest || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
-FILE_LIMIT=20 # must be low to detect leaks
+FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1.8 (!)
 LOGLEVEL=info # change to debug to debug
 MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
 CERT=/etc/ssl/certs/ca-certificates.crt
@@ -28,6 +28,7 @@ FORTIO_BIN_PATH=fortio # /usr/bin/fortio is the full path but isn't needed
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
 function cleanup {
   set +e # errors are ok during cleanup
+#  docker logs $DOCKERID # uncomment to debug
   docker stop $DOCKERID
   docker rm -f $DOCKERNAME
   docker stop $DOCKERSECID # may not be set yet, it's ok
@@ -42,7 +43,7 @@ BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
 CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
-$CURL https://istio.io/robots.txt
+$CURL https://www.google.com/robots.txt > /dev/null
 
 # Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
@@ -103,7 +104,7 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v13 /bin/true # cleaned up by name
+docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v20 /bin/true # cleaned up by name
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f $DOCKERSECVOLNAME:$TEST_CERT_VOL/$f; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.

@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v13
+BUILD_IMAGE_TAG := v20
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -22,15 +22,14 @@ CERT_TEMP_DIR := ./cert-tmp/
 # ps: can't use go list (and get packages as canonical fortio.org/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
 PACKAGES ?= $(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp|debian)")
-# Marker for whether vendor submodule is here or not already
-GRPC_DIR:=./vendor/google.golang.org/grpc
+# from fortio 2.0 we use go 1.14 (from go 1.8 in fortio 1.x) and go modules
 
 # Local targets:
-go-install: submodule
+go-install:
 	go install $(PACKAGES)
 
 # Run/test dependencies
-dependencies: submodule certs
+dependencies: certs
 
 # Only generate certs if needed
 certs: $(CERT_TEMP_DIR)/server.cert
@@ -52,7 +51,7 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: dependencies vendor.check
+local-lint: dependencies
 	gometalinter $(DEBUG_LINTERS) \
 	--deadline=180s --enable-all --aggregate --exclude=.pb.go \
 	--disable=gocyclo --disable=gas --disable=gosec \
@@ -81,47 +80,9 @@ coverage: dependencies
 	./.circleci/coverage.sh
 	curl -s https://codecov.io/bash | bash
 
-# Submodule handling when not already there
-submodule: $(GRPC_DIR)
-
-$(GRPC_DIR):
-	$(MAKE) submodule-sync
-
-# If you want to force update/sync, invoke 'make submodule-sync' directly
-submodule-sync:
-	git submodule sync
-	git submodule update --init
-
 # Short cut for pulling/updating to latest of the current branch
 pull:
 	git pull
-	$(MAKE) submodule-sync
-
-# https://github.com/istio/vendor-istio#how-do-i-add--change-a-dependency
-# PS: for fortio no dependencies should be added, only grpc updated.
-depend.status:
-	@echo "No error means your Gopkg.* are in sync and ok with vendor/"
-	dep status
-	cp Gopkg.* vendor/
-
-depend.update.full: depend.cleanlock depend.update
-
-depend.cleanlock:
-	-rm Gopkg.lock
-
-depend.update:
-	@echo "Running dep ensure with DEPARGS=$(DEPARGS)"
-	time dep ensure $(DEPARGS)
-	cp Gopkg.* vendor/
-	@echo "now check the diff in vendor/ and make a PR"
-
-vendor.check:
-	@echo "Checking that Gopkg.* are in sync with vendor/ submodule:"
-	@echo "if this fails, 'make pull' and/or seek on-call help"
-	diff Gopkg.toml vendor/
-	diff Gopkg.lock vendor/
-
-.PHONY: depend.status depend.cleanlock depend.update depend.update.full vendor.check
 
 
 # Docker: Pushes the combo image and the smaller image(s)
@@ -140,6 +101,7 @@ update-build-image:
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
 update-build-image-tag:
+	@echo 'Need to use gnu sed (brew install gnu-sed; PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$$PATH")'
 	sed --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
@@ -161,7 +123,7 @@ release: dist
 
 .PHONY: go-install lint install-linters coverage webtest release-test update-build-image
 
-.PHONY: local-lint update-build-image-tag release submodule submodule-sync pull certs certs-clean
+.PHONY: local-lint update-build-image-tag release pull certs certs-clean
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
@@ -203,7 +165,7 @@ official-build-version: official-build
 official-build-clean:
 	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
-# Create a complete source tree (including submodule) with naming matching debian package conventions
+# Create a complete source tree with naming matching debian package conventions
 TAR ?= tar # on macos need gtar to get --owner
 DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
@@ -216,10 +178,10 @@ release/Makefile: release/Makefile.dist
 	echo "GIT_SHA := $(GIT_SHA)" >> $@
 	cat $< >> $@
 
-dist: submodule release/Makefile
+dist: release/Makefile
 	# put the source files where they can be used as gopath by go,
 	# except leave the debian dir where it needs to be (below the version dir)
-	git ls-files --recurse-submodules \
+	git ls-files \
 		| awk '{printf("src/fortio.org/fortio/%s\n", $$0)}' \
 		| (cd ../../.. ; $(TAR) \
 		--xform="s|^src|fortio-$(DIST_VERSION)/src|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
