@@ -400,7 +400,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 		if len(o.Cert) > 0 && len(o.Key) > 0 {
 			cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
 			if err != nil {
-				log.LogVf(fmt.Sprintf("%v", err))
+				log.Errf(fmt.Sprintf("%v", err))
 			} else {
 				tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
 			}
