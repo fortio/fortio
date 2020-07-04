@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
 	// get /debug/pprof endpoints on a mux through SetupPPROF
 	"net/http/pprof"
 
@@ -407,5 +408,13 @@ func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, msg)
 		hf(w, r)
+	})
+}
+
+// LogAndCallNoArg is LogAndCall for functions not needing the response/request args
+func LogAndCallNoArg(msg string, f func()) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogRequest(r, msg)
+		f()
 	})
 }
