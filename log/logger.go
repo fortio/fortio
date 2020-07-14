@@ -161,12 +161,12 @@ func logPrintf(lvl Level, format string, rest ...interface{}) {
 	}
 }
 
-// SetOutput sets the output to a different writer (forwards to system logger).
+// SetOutput sets the output to a different writer (forwards to system loggerShm).
 func SetOutput(w io.Writer) {
 	log.SetOutput(w)
 }
 
-// SetFlags forwards flags to the system logger.
+// SetFlags forwards flags to the system loggerShm.
 func SetFlags(f int) {
 	log.SetFlags(f)
 }
@@ -216,4 +216,20 @@ func LogDebug() bool { //nolint: golint
 // LogVerbose shortcut for fortio.Log(fortio.Verbose)
 func LogVerbose() bool { //nolint: golint
 	return Log(Verbose)
+}
+
+type LoggerI interface {
+	Printf(format string, rest ...interface{})
+}
+type loggerShm struct {
+}
+
+func (l *loggerShm) Printf(format string, rest ...interface{}) {
+	logPrintf(Info, format, rest...)
+}
+
+// Logger() returns a loggerShm Logger compatible that can be used for simple logging
+func Logger() LoggerI {
+	logger := loggerShm{}
+	return &logger
 }
