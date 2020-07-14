@@ -217,3 +217,20 @@ func LogDebug() bool { //nolint: golint
 func LogVerbose() bool { //nolint: golint
 	return Log(Verbose)
 }
+
+// LoggerI defines a log.Logger like interface for simple logging.
+type LoggerI interface {
+	Printf(format string, rest ...interface{})
+}
+type loggerShm struct {
+}
+
+func (l *loggerShm) Printf(format string, rest ...interface{}) {
+	logPrintf(Info, format, rest...)
+}
+
+// Logger returns a LoggerI (standard logger compatible) that can be used for simple logging
+func Logger() LoggerI {
+	logger := loggerShm{}
+	return &logger
+}
