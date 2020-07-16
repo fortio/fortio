@@ -93,6 +93,8 @@ func (s *updaterTestSuite) TestInitializeFailsOnBadFormedFlag() {
 func (s *updaterTestSuite) TestSetupFunction() {
 	tmpU, err := configmap.Setup(s.flagSet, path.Join(s.tempDir, "testdata"), &testingLog{T: s.T()})
 	require.NoError(s.T(), err, "setup for a config map must not fail")
+	require.Error(s.T(), tmpU.Initialize(), "should error with already started")
+	require.Error(s.T(), tmpU.Start(), "should error with already started")
 	require.NoError(s.T(), tmpU.Stop(), "stopping the watcher should succeed")
 }
 

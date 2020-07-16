@@ -41,6 +41,7 @@ type DynJSONValue struct {
 	flagSet    *flag.FlagSet
 }
 
+// IsJSON always return true (method is present for the DynamicJSONFlagValue interface tagging)
 func (d *DynJSONValue) IsJSON() bool {
 	return true
 }
@@ -92,19 +93,8 @@ func (d *DynJSONValue) WithNotifier(notifier func(oldValue interface{}, newValue
 // is set to empty string, nothing is read.
 //
 // Flag value reads are subject to notifiers and validators.
-func (d *DynJSONValue) WithFileFlag(defaultPath string) *DynJSONValue {
-	FileReadFlag(d.flagSet, d.flagName, defaultPath)
-	return d
-}
-
-// PrettyString returns a nicely structured representation of the type.
-// In this case it returns a pretty-printed JSON.
-func (d *DynJSONValue) PrettyString() string {
-	out, err := json.MarshalIndent(d.Get(), "", "  ")
-	if err != nil {
-		return "ERR"
-	}
-	return string(out)
+func (d *DynJSONValue) WithFileFlag(defaultPath string) (*DynJSONValue, *FileReadValue) {
+	return d, FileReadFlag(d.flagSet, d.flagName, defaultPath)
 }
 
 // String returns the canonical string representation of the type.
