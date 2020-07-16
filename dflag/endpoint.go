@@ -153,9 +153,7 @@ func flagToJSON(f *flag.Flag) *flagJSON {
 		IsDynamic:    IsFlagDynamic(f),
 	}
 	if dj, ok := f.Value.(DynamicJSONFlagValue); ok {
-		if !dj.IsJSON() {
-			log.Fatalf("bug... we have DynamicJSONFlagValue but IsJSON is false")
-		}
+		_ = dj.IsJSON() // could assert true
 		fj.CurrentValue = prettyPrintJSON(fj.CurrentValue)
 		fj.DefaultValue = prettyPrintJSON(fj.DefaultValue)
 	}

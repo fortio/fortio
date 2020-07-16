@@ -20,6 +20,8 @@ func TestDynDuration_SetAndGet(t *testing.T) {
 	err := set.Set("some_duration_1", "10h\n")
 	assert.NoError(t, err, "setting value must succeed")
 	assert.Equal(t, 10*time.Hour, dynFlag.Get(), "value must be set after update")
+	err = set.Set("some_duration_1", "not-a-duration")
+	assert.Error(t, err, "setting bogus value should fail")
 }
 
 func TestDynDuration_IsMarkedDynamic(t *testing.T) {
