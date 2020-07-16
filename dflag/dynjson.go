@@ -41,7 +41,7 @@ type DynJSONValue struct {
 	flagSet    *flag.FlagSet
 }
 
-func (d *DynJSONValue) IsJson() bool {
+func (d *DynJSONValue) IsJSON() bool {
 	return true
 }
 
@@ -120,9 +120,8 @@ func (d *DynJSONValue) usageString() string {
 	s := d.String()
 	if len(s) > 128 {
 		return "{ ... truncated ... }"
-	} else {
-		return s
 	}
+	return s
 }
 
 func (d *DynJSONValue) unsafeToStoredType(p unsafe.Pointer) interface{} {

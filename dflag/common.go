@@ -12,7 +12,7 @@ type DynamicFlagValue interface {
 }
 
 type DynamicJsonFlagValue interface {
-	IsJson() bool
+	IsJSON() bool
 }
 
 type DynamicFlagValueTag struct{}

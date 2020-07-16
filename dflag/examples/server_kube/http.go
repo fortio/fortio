@@ -30,7 +30,7 @@ var (
 	dynInt = dflag.DynInt64(serverFlags, "example_my_dynamic_int", 1337, "Something integery here.")
 
 	// This is an example of a dynamically-modifiable JSON flag of an arbitrary type.
-	dynJson = dflag.DynJSON(
+	dynJSON = dflag.DynJSON(
 		serverFlags,
 		"example_my_dynamic_json",
 		&exampleConfig{
@@ -94,12 +94,12 @@ func handleDefaultPage(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	resp.Header().Add("Content-Type", "text/html")
 
-	actualJson, _ := dynJson.Get().(*exampleConfig)
+	actualJSON, _ := dynJSON.Get().(*exampleConfig)
 	err := defaultPage.Execute(resp, map[string]interface{}{
 		"DynString":  dynStr.Get(),
 		"DynInt":     dynInt.Get(),
-		"Policy":     actualJson.Policy,
-		"NumEntries": len(actualJson.Entries),
+		"Policy":     actualJSON.Policy,
+		"NumEntries": len(actualJSON.Entries),
 	})
 	if err != nil {
 		panic(err)

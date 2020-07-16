@@ -49,6 +49,7 @@ func (f *FileReadValue) String() string {
 	return fmt.Sprintf("fileread_for(%v)", f.parentFlagName)
 }
 
+// Set updates the value from a string representation of the file path.
 func (f *FileReadValue) Set(path string) error {
 	f.filePath = path
 	return nil
