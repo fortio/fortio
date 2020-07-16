@@ -25,17 +25,9 @@ func (*DynamicFlagValueTag) IsDynamicFlag() bool {
 
 // IsFlagDynamic returns whether the given Flag has been created in a Dynamic mode.
 func IsFlagDynamic(f *flag.Flag) bool {
-	_, ok := f.Value.(DynamicFlagValue)
-	return ok
-}
-
-// TODO: consider caching this
-func IsFlagSet(name string) bool {
-	found := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-	return found
+	df, ok := f.Value.(DynamicFlagValue)
+	if !ok {
+		return false
+	}
+	return df.IsDynamicFlag() // will clearly return true if it exists
 }
