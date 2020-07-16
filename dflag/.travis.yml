@@ -1,0 +1,21 @@
+language: go
+sudo: false
+go:
+  - 1.7.x
+  - 1.8.x
+
+install:
+  - go get github.com/coreos/etcd
+  - go get github.com/mwitkow/go-etcd-harness
+  - go get github.com/prometheus/client_golang/prometheus
+  - go get github.com/stretchr/testify
+  - go get github.com/spf13/pflag
+  - go get github.com/fsnotify/fsnotify
+  - go get golang.org/x/net/context
+
+
+script:
+ - ./test_all.sh
+ 
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
