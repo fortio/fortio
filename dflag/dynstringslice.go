@@ -71,11 +71,6 @@ func (d *DynStringSliceValue) WithNotifier(notifier func(oldValue []string, newV
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynStringSliceValue) Type() string {
-	return "dyn_stringslice"
-}
-
 // String represents the canonical representation of the type.
 func (d *DynStringSliceValue) String() string {
 	return fmt.Sprintf("%v", d.Get())

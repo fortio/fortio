@@ -54,10 +54,6 @@ func (f *FileReadValue) Set(path string) error {
 	return nil
 }
 
-func (f *FileReadValue) Type() string {
-	return "fileread"
-}
-
 func (f *FileReadValue) readFile() error {
 	if f.filePath == "" {
 		return nil

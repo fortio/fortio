@@ -80,11 +80,6 @@ func (d *DynStringSetValue) WithNotifier(notifier func(oldValue map[string]struc
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynStringSetValue) Type() string {
-	return "dyn_stringslice"
-}
-
 // String represents the canonical representation of the type.
 func (d *DynStringSetValue) String() string {
 	v := d.Get()

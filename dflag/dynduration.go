@@ -68,11 +68,6 @@ func (d *DynDurationValue) WithNotifier(notifier func(oldValue time.Duration, ne
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynDurationValue) Type() string {
-	return "dyn_duration"
-}
-
 // String represents the canonical representation of the type.
 func (d *DynDurationValue) String() string {
 	return fmt.Sprintf("%v", d.Get())

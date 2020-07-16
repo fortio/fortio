@@ -64,11 +64,6 @@ func (d *DynStringValue) WithNotifier(notifier func(oldValue string, newValue st
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynStringValue) Type() string {
-	return "dyn_string"
-}
-
 // String represents the canonical representation of the type.
 func (d *DynStringValue) String() string {
 	return fmt.Sprintf("%v", d.Get())

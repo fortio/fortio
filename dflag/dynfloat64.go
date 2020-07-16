@@ -70,11 +70,6 @@ func (d *DynFloat64Value) WithNotifier(notifier func(oldValue float64, newValue 
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynFloat64Value) Type() string {
-	return "dyn_float64"
-}
-
 // String returns the canonical string representation of the type.
 func (d *DynFloat64Value) String() string {
 	return fmt.Sprintf("%v", d.Get())

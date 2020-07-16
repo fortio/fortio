@@ -97,11 +97,6 @@ func (d *DynJSONValue) WithFileFlag(defaultPath string) *DynJSONValue {
 	return d
 }
 
-// Type is an indicator of what this flag represents.
-func (d *DynJSONValue) Type() string {
-	return "dyn_json"
-}
-
 // PrettyString returns a nicely structured representation of the type.
 // In this case it returns a pretty-printed JSON.
 func (d *DynJSONValue) PrettyString() string {
