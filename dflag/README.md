@@ -1,14 +1,10 @@
 This came from https://github.com/ldemailly/go-flagz, a fork of the code originally on https://github.com/mwitkow/go-flagz and https://github.com/improbable-eng/go-flagz with initial changes to get the go modules to work, reduce boiler plate needed for configmap watcher, avoid panic when there is extra whitespace, make the watcher work with regular files and relative paths and switched to standard golang flags.
+And now further changes, simplification, etc... as part of fortio.
 
 Thanks to @mwitkow for having created this originally.
 
-# Go FlagZ 
+# Fortio Dynamic Flags (was Go FlagZ)
 
-[![CircleCI Build](https://circleci.com/gh/ldemailly/go-flagz.svg?style=shield)](https://circleci.com/gh/ldemailly/go-flagz)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ldemailly/go-flagz)](http://goreportcard.com/report/ldemailly/go-flagz)
-[![GoDoc](http://img.shields.io/badge/GoDoc-Reference-blue.svg)](https://godoc.org/github.com/ldemailly/go-flagz)
-[![SourceGraph](https://sourcegraph.com/github.com/ldemailly/go-flagz/-/badge.svg)](https://sourcegraph.com/github.com/ldemailly/go-flagz/?badge)
-[![codecov](https://codecov.io/gh/ldemailly/go-flagz/branch/master/graph/badge.svg)](https://codecov.io/gh/ldemailly/go-flagz)
 [![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Dynamic, thread-safe `flag` variables that can be modified at runtime through files,
@@ -41,7 +37,7 @@ All of this can be done simultaneously across a whole shard of your services.
  * `validator` functions for each `flag`, allows the user to provide checks for newly set values
  * `notifier` functions allow user code to be subscribed to `flag` changes
  * Kubernetes `ConfigMap` watcher, see [configmap/README.md](configmap/README.md).
- * a `/debug/flagz` HandlerFunc endpoint that allows for easy inspection of the service's runtime configuration
+ * a `/fortio/flags` HandlerFunc endpoint that allows for easy inspection of the service's runtime configuration
 
 Here's a teaser of the debug endpoint:
 
@@ -49,14 +45,14 @@ Here's a teaser of the debug endpoint:
 
 ## Examples
 
-Declare a single `pflag.FlagSet` in some public package (e.g. `common.SharedFlagSet`) that you'll use throughout your server.
+Declare a single `flag.FlagSet` in some public package (e.g. `common.SharedFlagSet`) that you'll use throughout your server or stick to `flag.CommandLine` default flagset for your binary.
 
 
 ### Dynamic JSON flag with a validator and notifier
 
 ```go
 var (
-  limitsConfigFlag = flagz.DynJSON(
+  limitsConfigFlag = dflag.DynJSON(
     common.SharedFlagSet, 
     "rate_limiting_config", 
     &rateLimitConfig{ DefaultRate: 10, Policy: "allow"},
@@ -71,7 +67,7 @@ This declares a JSON flag of type `rateLimitConfig` with a default value. Whenev
 
 ```go
 var (
-  featuresFlag = flagz.DynStringSlice(common.SharedFlagSet, "enabled_features", []string{"fast_index"}, "list of enabled feature markers")
+  featuresFlag = dflag.DynStringSlice(common.SharedFlagSet, "enabled_features", []string{"fast_index"}, "list of enabled feature markers")
 )
 ...
 func MyHandler(resp http.ResponseWriter, req *http.Request) {
@@ -96,4 +92,4 @@ This code is *production* quality. It's been running happily in production at Im
 
 ### License
 
-`go-flagz` is released under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+`dflag` (was `go-flagz`) is released under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.

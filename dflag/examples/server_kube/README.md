@@ -13,7 +13,7 @@ server2020/07/15 13:14:08 Serving at: 0.0.0.0:8080
 ```
 
 - see port you are serving
-- visit the debug flagz endpoint `http://0.0.0.0:8080/debug/flagz`
+- visit the debug dflag endpoint `http://0.0.0.0:8080/debug/dflag`
 
 Should see this if successful:
 ![screenshot](https://raw.githubusercontent.com/ldemailly/go-flagz/screenshots/screenshot_endpoint.png)

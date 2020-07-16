@@ -39,7 +39,7 @@ type updaterTestSuite struct {
 
 	flagSet   *flag.FlagSet
 	staticInt *int
-	dynInt    *flagz.DynInt64Value
+	dynInt    *dflag.DynInt64Value
 
 	updater *configmap.Updater
 }
@@ -52,7 +52,7 @@ func (s *updaterTestSuite) SetupTest() {
 	s.linkDataDirTo(firstGoodDir)
 
 	s.flagSet = flag.NewFlagSet("updater_test", flag.ContinueOnError)
-	s.dynInt = flagz.DynInt64(s.flagSet, "some_dynint", 1, "dynamic int for testing")
+	s.dynInt = dflag.DynInt64(s.flagSet, "some_dynint", 1, "dynamic int for testing")
 	s.staticInt = s.flagSet.Int("some_int", 1, "static int for testing")
 
 	s.updater, err = configmap.New(s.flagSet, path.Join(s.tempDir, "testdata"), &testingLog{T: s.T()})

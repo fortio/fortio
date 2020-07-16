@@ -22,15 +22,15 @@ var (
 	listenPort = serverFlags.Int("port", 8080, "Port the example server listens on.")
 	listenHost = serverFlags.String("host", "0.0.0.0", "Host to bind the example server to.")
 
-	dirPathWatch = serverFlags.String("flagz_dir_path", "/tmp/foobar", "path to dir to watch updates from.")
+	dirPathWatch = serverFlags.String("dflag_dir_path", "/tmp/foobar", "path to dir to watch updates from.")
 
 	staticInt = serverFlags.Int("example_my_static_int", 1337, "Something integery here.")
 
-	dynStr = flagz.DynString(serverFlags, "example_my_dynamic_string", "initial_value", "Something interesting here.")
-	dynInt = flagz.DynInt64(serverFlags, "example_my_dynamic_int", 1337, "Something integery here.")
+	dynStr = dflag.DynString(serverFlags, "example_my_dynamic_string", "initial_value", "Something interesting here.")
+	dynInt = dflag.DynInt64(serverFlags, "example_my_dynamic_int", 1337, "Something integery here.")
 
 	// This is an example of a dynamically-modifiable JSON flag of an arbitrary type.
-	dynJson = flagz.DynJSON(
+	dynJson = dflag.DynJSON(
 		serverFlags,
 		"example_my_dynamic_json",
 		&exampleConfig{
@@ -61,8 +61,8 @@ func main() {
 	}
 	logger.Printf("configmap flag value watching initialized")
 
-	flagzEndpoint := flagz.NewStatusEndpoint(serverFlags)
-	http.HandleFunc("/debug/flagz", flagzEndpoint.ListFlags)
+	dflagEndpoint := dflag.NewStatusEndpoint(serverFlags)
+	http.HandleFunc("/debug/dflag", dflagEndpoint.ListFlags)
 	http.HandleFunc("/", handleDefaultPage)
 
 	addr := fmt.Sprintf("%s:%d", *listenHost, *listenPort)

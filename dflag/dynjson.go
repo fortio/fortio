@@ -1,7 +1,7 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
 	"encoding/json"
@@ -86,7 +86,7 @@ func (d *DynJSONValue) WithNotifier(notifier func(oldValue interface{}, newValue
 	return d
 }
 
-// WithFileFlag adds an companion <name>_path flag that allows this value to be read from a file with flagz.ReadFileFlags.
+// WithFileFlag adds an companion <name>_path flag that allows this value to be read from a file with dflag.ReadFileFlags.
 //
 // This is useful for reading large JSON files as flags. If the companion flag's value (whether default or overwritten)
 // is set to empty string, nothing is read.

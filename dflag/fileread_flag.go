@@ -1,7 +1,7 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ type FileReadValue struct {
 
 // FileReadFlag creates a `Flag` that allows you to pass a flag.
 //
-// If defaultFilePath is non empty, the flagz.ReadFileFlags will expect the file to be there.
+// If defaultFilePath is non empty, the dflag.ReadFileFlags will expect the file to be there.
 func FileReadFlag(flagSet *flag.FlagSet, parentFlagName string, defaultFilePath string) *FileReadValue {
 	dynValue := &FileReadValue{parentFlagName: parentFlagName, filePath: defaultFilePath, flagSet: flagSet}
 	flagSet.Var(dynValue,

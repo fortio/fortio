@@ -1,7 +1,7 @@
 # Kubernetes (K8s) ConfigMap support
 
 This package allows you to use [ConfigMap](http://kubernetes.io/docs/user-guide/configmap/) objects in Kubernetes to 
-drive the update of [dynamic](https://github.com/ldemailly/go-flagz/#dynamic-json-flag-with-a-validator-and-notifier) `go-flagz` at runtime of your service.
+drive the update of [dynamic](../README.md#dynamic-json-flag-with-a-validator-and-notifier) `dflag` at runtime of your service.
 
 ## Semantics
 
@@ -18,7 +18,7 @@ The `Updater` is split into two phases:
 // First parse the flags from the command line, as normal.
 flag.Parse()
 // Setup watcher and start watching for change (including initial read)
-u, err := configmaps.Setup(flag.CommandLine, "/etc/flagz", logger)
+u, err := configmaps.Setup(flag.CommandLine, "/etc/dflag", logger)
 if err != nil {
   logger.Fatalf("failed setting up: %v", err)
 }
@@ -51,7 +51,7 @@ Then you just push it to your Kubernetes cluster:
 # kubectl replace -f example.yaml
 ```
 
-And all your jobs referencing this ConfigMap via a volume mount will see updates `go-flagz` updates to keys in your data. For an end to end example see [server_kube](../examples/server_kube).
+And all your jobs referencing this ConfigMap via a volume mount will see updates `dflag` updates to keys in your data. For an end to end example see [server_kube](../examples/server_kube).
 
 ## Caveats
 

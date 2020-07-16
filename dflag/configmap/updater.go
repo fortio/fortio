@@ -62,7 +62,7 @@ func Setup(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Upd
 func New(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updater, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("flagz: error initializing fsnotify watcher.")
+		return nil, fmt.Errorf("dflag: error initializing fsnotify watcher.")
 	}
 	return &Updater{
 		flagSet:    flagSet,
@@ -75,7 +75,7 @@ func New(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updat
 
 func (u *Updater) Initialize() error {
 	if u.started {
-		return fmt.Errorf("flagz: already initialized updater.")
+		return fmt.Errorf("dflag: already initialized updater.")
 	}
 	return u.readAll( /* allowNonDynamic */ false)
 }
@@ -83,7 +83,7 @@ func (u *Updater) Initialize() error {
 // Start kicks off the go routine that watches the directory for updates of values.
 func (u *Updater) Start() error {
 	if u.started {
-		return fmt.Errorf("flagz: updater already started.")
+		return fmt.Errorf("dflag: updater already started.")
 	}
 	if err := u.watcher.Add(u.parentPath); err != nil {
 		return fmt.Errorf("unable to add parent dir %v to watch: %v", u.parentPath, err)
@@ -100,7 +100,7 @@ func (u *Updater) Start() error {
 // Stops the auto-updating go-routine.
 func (u *Updater) Stop() error {
 	if !u.started {
-		return fmt.Errorf("flagz: not updating")
+		return fmt.Errorf("dflag: not updating")
 	}
 	u.done <- true
 	_ = u.watcher.Remove(u.dirPath)
@@ -111,7 +111,7 @@ func (u *Updater) Stop() error {
 func (u *Updater) readAll(dynamicOnly bool) error {
 	files, err := ioutil.ReadDir(u.dirPath)
 	if err != nil {
-		return fmt.Errorf("flagz: updater initialization: %v", err)
+		return fmt.Errorf("dflag: updater initialization: %v", err)
 	}
 	errorStrings := []string{}
 	for _, f := range files {
@@ -141,7 +141,7 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 	if flag == nil {
 		return errFlagNotFound
 	}
-	if dynamicOnly && !flagz.IsFlagDynamic(flag) {
+	if dynamicOnly && !dflag.IsFlagDynamic(flag) {
 		return errFlagNotDynamic
 	}
 	content, err := ioutil.ReadFile(fullPath)
@@ -167,9 +167,9 @@ func (u *Updater) watchForUpdates() {
 					if err := u.watcher.Add(u.dirPath); err != nil { // add the dir itself.
 						u.logger.Printf("unable to add config dir %v to watch: %v", u.dirPath, err)
 					}
-					u.logger.Printf("flagz: Re-reading flags after ConfigMap update.")
+					u.logger.Printf("dflag: Re-reading flags after ConfigMap update.")
 					if err := u.readAll( /* dynamicOnly */ true); err != nil {
-						u.logger.Printf("flagz: directory reload yielded errors: %v", err.Error())
+						u.logger.Printf("dflag: directory reload yielded errors: %v", err.Error())
 					}
 				case fsnotify.Remove:
 				}
@@ -179,7 +179,7 @@ func (u *Updater) watchForUpdates() {
 				case fsnotify.Create, fsnotify.Write, fsnotify.Rename:
 					flagName := path.Base(event.Name)
 					if err := u.readFlagFile(event.Name, true); err != nil {
-						u.logger.Printf("flagz: failed setting flag %s: %v", flagName, err.Error())
+						u.logger.Printf("dflag: failed setting flag %s: %v", flagName, err.Error())
 					}
 				}
 			}

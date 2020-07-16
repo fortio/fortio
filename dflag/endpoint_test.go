@@ -1,7 +1,7 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
 	"encoding/json"
@@ -42,43 +42,43 @@ func (s *endpointTestSuite) SetupTest() {
 }
 
 func (s *endpointTestSuite) TestReturnsAll() {
-	req, _ := http.NewRequest("GET", "/debug/flagz", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_static_float", "some_dyn_stringslice", "some_dyn_json"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyChanged() {
-	req, _ := http.NewRequest("GET", "/debug/flagz?only_changed=true", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag?only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_dyn_stringslice"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyStatic() {
-	req, _ := http.NewRequest("GET", "/debug/flagz?type=static", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag?type=static", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_static_float"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyDynamic() {
-	req, _ := http.NewRequest("GET", "/debug/flagz?type=dynamic", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag?type=dynamic", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_dyn_stringslice", "some_dyn_json"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyDynamicAndChanged() {
-	req, _ := http.NewRequest("GET", "/debug/flagz?type=dynamic&only_changed=true", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag?type=dynamic&only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_dyn_stringslice"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyStaticAndChanged() {
-	req, _ := http.NewRequest("GET", "/debug/flagz?type=static&only_changed=true", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag?type=static&only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string"}, list)
 }
 
 func (s *endpointTestSuite) TestCorrectlyRepresentsResources() {
-	req, _ := http.NewRequest("GET", "/debug/flagz", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag", nil)
 	list := s.processFlagSetJSONResponse(req)
 
 	assert.Equal(s.T(),
@@ -108,11 +108,11 @@ func (s *endpointTestSuite) TestCorrectlyRepresentsResources() {
 }
 
 func (s *endpointTestSuite) TestServesHTML() {
-	req, _ := http.NewRequest("GET", "/debug/flagz", nil)
+	req, _ := http.NewRequest("GET", "/debug/dflag", nil)
 	req.Header.Add("Accept", "application/xhtml+xml")
 	resp := httptest.NewRecorder()
 	s.endpoint.ListFlags(resp, req)
-	require.Equal(s.T(), http.StatusOK, resp.Code, "flagz list request must return 200 OK")
+	require.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
 	require.Contains(s.T(), resp.Header().Get("Content-Type"), "html", "must indicate html in content type")
 
 	out := resp.Body.String()
@@ -123,7 +123,7 @@ func (s *endpointTestSuite) TestServesHTML() {
 func (s *endpointTestSuite) processFlagSetJSONResponse(req *http.Request) *flagSetJSON {
 	resp := httptest.NewRecorder()
 	s.endpoint.ListFlags(resp, req)
-	require.Equal(s.T(), http.StatusOK, resp.Code, "flagz list request must return 200 OK")
+	require.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
 	require.Equal(s.T(), "application/json", resp.Header().Get("Content-Type"), "type must be indicated")
 	ret := &flagSetJSON{}
 	require.NoError(s.T(), json.Unmarshal(resp.Body.Bytes(), ret), "unmarshaling JSON response must succeed")

@@ -1,7 +1,7 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
 	"bytes"
@@ -52,7 +52,7 @@ func (e *StatusEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) 
 	if requestIsBrowser(req) && req.URL.Query().Get("format") != "json" {
 		resp.WriteHeader(http.StatusOK)
 		resp.Header().Add("Content-Type", "text/html")
-		if err := flagzListTemplate.Execute(resp, flagSetJSON); err != nil {
+		if err := dflagListTemplate.Execute(resp, flagSetJSON); err != nil {
 			log.Fatalf("Bad template evaluation: %v", err)
 		}
 	} else {
@@ -72,7 +72,7 @@ func requestIsBrowser(req *http.Request) bool {
 }
 
 var (
-	flagzListTemplate = template.Must(template.New("flagz_list").Parse(
+	dflagListTemplate = template.Must(template.New("dflag_list").Parse(
 		`
 <html><head>
 <title>Flagz List</title>
@@ -87,7 +87,7 @@ var (
 	This page presents the configuration flags of this server (<a href="?format=json">JSON</a>).
 	</p>
 	<p>
-	You can easily filter only <a href="?only_changed=true"><span class="label label-primary">changed</span> flagz</a> or filter flags by type:
+	You can easily filter only <a href="?only_changed=true"><span class="label label-primary">changed</span> dflag</a> or filter flags by type:
 	</p>
 	<ul>
 	  <li><a href="?type=dynamic"><span class="label label-success">dynamic</span></a> - flags tweakable dynamically - checksum <code>{{ .ChecksumDynamic }}</code></li>
