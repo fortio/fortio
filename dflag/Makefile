@@ -1,2 +1,2 @@
 tests:
-	docker build -f Dockerfile.tests .
+	docker build -f Dockerfile.tests ..

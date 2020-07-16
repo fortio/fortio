@@ -13,8 +13,8 @@ import (
 
 	"flag"
 
-	"github.com/fsnotify/fsnotify"
 	"fortio.org/fortio/dflag"
+	"github.com/fsnotify/fsnotify"
 )
 
 const (
@@ -92,6 +92,7 @@ func (u *Updater) Start() error {
 		return fmt.Errorf("unable to add config dir %v to watch: %v", u.dirPath, err)
 	}
 	u.logger.Printf("Now watching %v and %v", u.parentPath, u.dirPath)
+	u.started = true
 	u.done = make(chan bool)
 	go u.watchForUpdates()
 	return nil

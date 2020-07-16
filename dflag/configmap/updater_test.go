@@ -62,7 +62,6 @@ func (s *updaterTestSuite) SetupTest() {
 // Tear down the updater
 func (s *updaterTestSuite) TearDownTest() {
 	require.NoError(s.T(), os.RemoveAll(s.tempDir), "clearing up the test dir must not fail")
-
 	_ = s.updater.Stop()
 	time.Sleep(100 * time.Millisecond)
 }
@@ -89,6 +88,12 @@ func (s *updaterTestSuite) linkDataDirTo(newDataDir string) {
 func (s *updaterTestSuite) TestInitializeFailsOnBadFormedFlag() {
 	s.linkDataDirTo(badStaticDir)
 	require.Error(s.T(), s.updater.Initialize(), "the updater initialize should return error on bad flags")
+}
+
+func (s *updaterTestSuite) TestSetupFunction() {
+	tmpU, err := configmap.Setup(s.flagSet, path.Join(s.tempDir, "testdata"), &testingLog{T: s.T()})
+	require.NoError(s.T(), err, "setup for a config map must not fail")
+	require.NoError(s.T(), tmpU.Stop(), "stopping the watcher should succeed")
 }
 
 func (s *updaterTestSuite) TestInitializeSetsValues() {
