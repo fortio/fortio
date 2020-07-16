@@ -152,7 +152,7 @@ func flagToJSON(f *flag.Flag) *flagJSON {
 		IsChanged:    f.Value.String() != f.DefValue,
 		IsDynamic:    IsFlagDynamic(f),
 	}
-	if _, ok := f.Value.(DynamicJsonFlagValue); ok {
+	if _, ok := f.Value.(DynamicJSONFlagValue); ok {
 		fj.CurrentValue = prettyPrintJSON(fj.CurrentValue)
 		fj.DefaultValue = prettyPrintJSON(fj.DefaultValue)
 	}

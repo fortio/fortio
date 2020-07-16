@@ -7,16 +7,20 @@ import (
 	"flag"
 )
 
+// DynamicFlagValue interface is a tag to know if a type is dynamic or not.
 type DynamicFlagValue interface {
 	IsDynamicFlag() bool
 }
 
-type DynamicJsonFlagValue interface {
+// DynamicJSONFlagValue is a tag interface for JSON dynamic flags.
+type DynamicJSONFlagValue interface {
 	IsJSON() bool
 }
 
+// DynamicFlagValueTag is a struct all dynamic flag inherit for marking they are dynamic.
 type DynamicFlagValueTag struct{}
 
+// IsDynamicFlag returns true
 func (*DynamicFlagValueTag) IsDynamicFlag() bool {
 	return true
 }

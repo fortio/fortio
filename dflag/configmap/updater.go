@@ -33,6 +33,8 @@ type loggerCompatible interface {
 	Printf(format string, v ...interface{})
 }
 
+// Updater is the encapsulation of the directory watcher.
+// TODO: hide details, just return opaque interface
 type Updater struct {
 	started    bool
 	dirPath    string
@@ -43,6 +45,7 @@ type Updater struct {
 	done       chan bool
 }
 
+// Setup is a combination/shortcut for New+Initialize+Start
 func Setup(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updater, error) {
 	u, err := New(flagSet, dirPath, logger)
 	if err != nil {
@@ -59,10 +62,11 @@ func Setup(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Upd
 	return u, nil
 }
 
+// New creates an Updater for the directory.
 func New(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updater, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("dflag: error initializing fsnotify watcher.")
+		return nil, fmt.Errorf("dflag: error initializing fsnotify watcher")
 	}
 	return &Updater{
 		flagSet:    flagSet,
@@ -73,9 +77,10 @@ func New(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updat
 	}, nil
 }
 
+// Initialize reads the values from the directory for the first time
 func (u *Updater) Initialize() error {
 	if u.started {
-		return fmt.Errorf("dflag: already initialized updater.")
+		return fmt.Errorf("dflag: already initialized updater")
 	}
 	return u.readAll( /* allowNonDynamic */ false)
 }
@@ -83,7 +88,7 @@ func (u *Updater) Initialize() error {
 // Start kicks off the go routine that watches the directory for updates of values.
 func (u *Updater) Start() error {
 	if u.started {
-		return fmt.Errorf("dflag: updater already started.")
+		return fmt.Errorf("dflag: updater already started")
 	}
 	if err := u.watcher.Add(u.parentPath); err != nil {
 		return fmt.Errorf("unable to add parent dir %v to watch: %v", u.parentPath, err)
@@ -98,7 +103,7 @@ func (u *Updater) Start() error {
 	return nil
 }
 
-// Stops the auto-updating go-routine.
+// Stop stops the auto-updating go-routine.
 func (u *Updater) Stop() error {
 	if !u.started {
 		return fmt.Errorf("dflag: not updating")
