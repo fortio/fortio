@@ -14,7 +14,7 @@ import (
 	"flag"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/ldemailly/go-flagz"
+	"fortio.org/fortio/dflag"
 )
 
 const (

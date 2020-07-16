@@ -19,8 +19,8 @@ import (
 
 	"os"
 
-	"github.com/ldemailly/go-flagz"
-	"github.com/ldemailly/go-flagz/configmap"
+	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/dflag/configmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

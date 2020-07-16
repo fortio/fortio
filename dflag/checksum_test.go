@@ -9,7 +9,7 @@ import (
 
 	"flag"
 
-	"github.com/ldemailly/go-flagz"
+	"fortio.org/fortio/dflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@
 you should see the following:
 ```
 server2020/07/15 13:14:08 Now watching /tmp and /tmp/foobar
-server2020/07/15 13:14:08 etcd flag value watching initialized
+server2020/07/15 13:14:08 configmap flag value watching initialized
 server2020/07/15 13:14:08 starting watching
 server2020/07/15 13:14:08 Serving at: 0.0.0.0:8080
 ```

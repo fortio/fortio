@@ -1,3 +1,7 @@
+This came from https://github.com/ldemailly/go-flagz, a fork of the code originally on https://github.com/mwitkow/go-flagz and https://github.com/improbable-eng/go-flagz with initial changes to get the go modules to work, reduce boiler plate needed for configmap watcher, avoid panic when there is extra whitespace, make the watcher work with regular files and relative paths and switched to standard golang flags.
+
+Thanks to @mwitkow for having created this originally.
+
 # Go FlagZ 
 
 [![CircleCI Build](https://circleci.com/gh/ldemailly/go-flagz.svg?style=shield)](https://circleci.com/gh/ldemailly/go-flagz)
@@ -7,12 +11,10 @@
 [![codecov](https://codecov.io/gh/ldemailly/go-flagz/branch/master/graph/badge.svg)](https://codecov.io/gh/ldemailly/go-flagz)
 [![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Dynamic, thread-safe `flag` variables that can be modified at runtime through [etcd](https://github.com/coreos/etcd)
-or [Kubernetes](http://kubernetes.io).
+Dynamic, thread-safe `flag` variables that can be modified at runtime through files,
+or [Kubernetes](http://kubernetes.io) configmap changes.
 
 For a similar project for JVM languages (Java, scala) see [java-flagz](https://github.com/mwitkow/java-flagz)
-
-Code originally on https://github.com/mwitkow/go-flagz and https://github.com/improbable-eng/go-flagz
  
 ## This sounds crazy. Why?
 
@@ -36,12 +38,9 @@ All of this can be done simultaneously across a whole shard of your services.
    - `DynDuration`
    - `DynStringSlice`
    - `DynJSON` - a `flag` that takes an arbitrary JSON struct
-   - `DynProto3` - a `flag` that takes a `proto3` struct in JSONpb or binary form
  * `validator` functions for each `flag`, allows the user to provide checks for newly set values
  * `notifier` functions allow user code to be subscribed to `flag` changes
  * Kubernetes `ConfigMap` watcher, see [configmap/README.md](configmap/README.md).
- * `etcd` based watcher that syncs values from a distributed Key-Value store into the program's memory
- * Prometheus metric for checksums of the current flag configuration
  * a `/debug/flagz` HandlerFunc endpoint that allows for easy inspection of the service's runtime configuration
 
 Here's a teaser of the debug endpoint:
@@ -85,25 +84,6 @@ func MyHandler(resp http.ResponseWriter, req *http.Request) {
 ```
 
 All access to `featuresFlag`, which is a `[]string` flag, is synchronised across go-routines using `atomic` pointer swaps. 
-
-## Watching for changes from etcd
-
-```go
-// First parse the flags from the command line, as normal.
-common.SharedFlagSet.Parse(os.Args[1:])
-w, err := watcher.New(common.SharedFlagSet, etcdClient, "/my_service/flagz", logger)
-if err != nil {
-  logger.Fatalf("failed setting up %v", err)
-}
-// Read flagz from etcd and update their values in common.SharedFlagSet
-if err := w.Initialize(); err != nil {
-	log.Fatalf("failed setting up %v", err)
-}
-// Start listening of dynamic flags from etcd.
-w.Start()
-```
-
-The `watcher`'s go-routine will watch for `etcd` value changes and synchronise them with values in memory. In case a value fails parsing or the user-specified `validator`, the key in `etcd` will be atomically rolled back.
 
 ## More examples:
 

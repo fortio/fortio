@@ -16,17 +16,12 @@ The `Updater` is split into two phases:
 
 ```go
 // First parse the flags from the command line, as normal.
-common.SharedFlagSet.Parse(os.Args[1:])
-u, err := configmaps.New(common.SharedFlagSet, "/etc/flagz", logger)
+flag.Parse()
+// Setup watcher and start watching for change (including initial read)
+u, err := configmaps.Setup(flag.CommandLine, "/etc/flagz", logger)
 if err != nil {
-  logger.Fatalf("failed setting up %v", err)
+  logger.Fatalf("failed setting up: %v", err)
 }
-// Read flagz from etcd and update their values in common.SharedFlagSet
-if err := u.Initialize(); err != nil {
-    log.Fatalf("failed setting up %v", err)
-}
-// Start listening of ConfigMap updates mounted in /etc/flagz.
-u.Start()
 ```
 
 ## In a nutshell

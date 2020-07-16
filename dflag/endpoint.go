@@ -90,7 +90,7 @@ var (
 	You can easily filter only <a href="?only_changed=true"><span class="label label-primary">changed</span> flagz</a> or filter flags by type:
 	</p>
 	<ul>
-	  <li><a href="?type=dynamic"><span class="label label-success">dynamic</span></a> - flags tweakable by etcd - checksum <code>{{ .ChecksumDynamic }}</code></li>
+	  <li><a href="?type=dynamic"><span class="label label-success">dynamic</span></a> - flags tweakable dynamically - checksum <code>{{ .ChecksumDynamic }}</code></li>
 	  <li><a href="?type=static"><span class="label label-default">static</span></a> - initialization-time only flags - checksum <code>{{ .ChecksumStatic }}</code></li>
 	</ul>
 

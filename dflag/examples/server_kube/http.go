@@ -12,8 +12,8 @@ import (
 
 	"flag"
 
-	"github.com/ldemailly/go-flagz"
-	"github.com/ldemailly/go-flagz/configmap"
+	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/dflag/configmap"
 )
 
 var (
@@ -59,7 +59,7 @@ func main() {
 	if err := u.Start(); err != nil {
 		logger.Fatalf("Could not start: %v", err)
 	}
-	logger.Printf("etcd flag value watching initialized")
+	logger.Printf("configmap flag value watching initialized")
 
 	flagzEndpoint := flagz.NewStatusEndpoint(serverFlags)
 	http.HandleFunc("/debug/flagz", flagzEndpoint.ListFlags)
