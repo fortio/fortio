@@ -21,7 +21,7 @@ CERT_TEMP_DIR := ./cert-tmp/
 # note that only go1.8 needs the grep -v vendor but we are compatible with 1.8
 # ps: can't use go list (and get packages as canonical fortio.org/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
-PACKAGES ?= $(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp|debian)")
+PACKAGES ?= $(shell go list ./...)
 # from fortio 1.4 we use go 1.14 (from go 1.8 up to fortio 1.3) and switched to go modules (from vendor)
 
 # Local targets:
