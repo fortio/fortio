@@ -17,6 +17,10 @@ package ui // import "fortio.org/fortio/ui"
 
 import (
 	"bytes"
+	"flag"
+
+	"fortio.org/fortio/dflag"
+
 	// md5 is mandated, not our choice
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
@@ -917,6 +921,8 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		} else {
 			mux.HandleFunc(uiPath+"sync", SyncHandler)
 		}
+		dflagEndPt := dflag.NewStatusEndpoint(flag.CommandLine)
+		mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))

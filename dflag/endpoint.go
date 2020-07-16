@@ -75,19 +75,19 @@ var (
 	dflagListTemplate = template.Must(template.New("dflag_list").Parse(
 		`
 <html><head>
-<title>Flagz List</title>
+<title>Flags List</title>
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.css" rel="stylesheet">
 
 </head>
 <body>
 <div class="container-fluid">
 <div class="col-md-10 col-md-offset-1">
-	<h1>Flagz Debug View</h1>
+	<h1>Flags Debug View</h1>
 	<p>
 	This page presents the configuration flags of this server (<a href="?format=json">JSON</a>).
 	</p>
 	<p>
-	You can easily filter only <a href="?only_changed=true"><span class="label label-primary">changed</span> dflag</a> or filter flags by type:
+	You can easily filter only <a href="?only_changed=true"><span class="label label-primary">changed</span> flag</a> or filter flags by type:
 	</p>
 	<ul>
 	  <li><a href="?type=dynamic"><span class="label label-success">dynamic</span></a> - flags tweakable dynamically - checksum <code>{{ .ChecksumDynamic }}</code></li>
