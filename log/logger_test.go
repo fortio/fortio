@@ -79,7 +79,7 @@ func TestLoggerFilenameLine(t *testing.T) {
 
 func TestSetLevel(t *testing.T) {
 	prev := SetLogLevel(Info)
-	err := SetLogLevelStr("debug")
+	err := setLogLevelStr("debug")
 	if err != nil {
 		t.Errorf("unexpected error for valid level %v", err)
 	}
@@ -87,7 +87,7 @@ func TestSetLevel(t *testing.T) {
 	if prev != Debug {
 		t.Errorf("unexpected level after setting debug %v", prev)
 	}
-	err = SetLogLevelStr("bogus")
+	err = setLogLevelStr("bogus")
 	if err == nil {
 		t.Errorf("Didn't get an error setting bogus level")
 	}

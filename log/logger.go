@@ -73,7 +73,7 @@ func init() {
 		_, err := ValidateLevel(new)
 		return err
 	}).WithNotifier(func(old, new string) {
-		SetLogLevelStr(new)
+		setLogLevelStr(new)
 	})
 	log.SetFlags(log.Ltime)
 }
@@ -97,7 +97,8 @@ func ValidateLevel(str string) (Level, error) {
 	return lvl, nil
 }
 
-func SetLogLevelStr(str string) error {
+// Sets from string
+func setLogLevelStr(str string) error {
 	var lvl Level
 	var err error
 	if lvl, err = ValidateLevel(str); err != nil {
