@@ -161,7 +161,7 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 }
 
 func (u *Updater) watchForUpdates() {
-	u.logger.Printf("starting watching")
+	u.logger.Printf("Starting watching")
 	for {
 		select {
 		case event := <-u.watcher.Events:

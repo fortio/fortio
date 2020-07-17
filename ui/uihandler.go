@@ -922,7 +922,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 			mux.HandleFunc(uiPath+"sync", SyncHandler)
 		}
 		dflagEndPt := dflag.NewStatusEndpoint(flag.CommandLine)
-		mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
+		mux.HandleFunc(uiPath+"flags", fhttp.LogAndCall("flags", dflagEndPt.ListFlags))
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))

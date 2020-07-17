@@ -28,8 +28,11 @@ type DynStringValue struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynStringValue) Get() string {
-	p := (*string)(atomic.LoadPointer(&d.ptr))
-	return *p
+	ptr := atomic.LoadPointer(&d.ptr)
+	if ptr == nil {
+		return ""
+	}
+	return *(*string)(ptr)
 }
 
 // Set updates the value from a string representation in a thread-safe manner.

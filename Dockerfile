@@ -20,8 +20,11 @@ COPY --from=build /go/src/fortio.org/fortio_go_latest.bin /usr/bin/fortio
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081
+# configmap (dynamic flags)
+VOLUME /etc/fortio
+# data files etc
 VOLUME /var/lib/fortio
 WORKDIR /var/lib/fortio
 ENTRYPOINT ["/usr/bin/fortio"]
 # start the server mode (grpc ping on 8079, http echo and UI on 8080, redirector on 8081) by default
-CMD ["server"]
+CMD ["server", "-config", "/etc/fortio"]

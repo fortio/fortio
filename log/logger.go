@@ -21,6 +21,9 @@ import (
 	"log"
 	"runtime"
 	"strings"
+	"sync"
+
+	"fortio.org/fortio/dflag"
 )
 
 // Level is the level of logging (0 Debug -> 6 Fatal).
@@ -46,6 +49,8 @@ var (
 	LogPrefix = flag.String("logprefix", "> ", "Prefix to log lines before logged messages")
 	// LogFileAndLine determines if the log lines will contain caller file name and line number.
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
+	dynLevel       *dflag.DynStringValue
+	mutex          sync.Mutex
 )
 
 func init() {
@@ -64,7 +69,14 @@ func init() {
 		levelToStrM[name] = Level(l)
 		levelToStrM[strings.ToLower(name)] = Level(l)
 	}
-	flag.Var(&level, "loglevel", fmt.Sprintf("loglevel, one of %v", levelToStrA))
+	dynLevel = dflag.DynString(flag.CommandLine, "loglevel", level.ToString(), fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
+		_, err := ValidateLevel(new)
+		return err
+	}).WithNotifier(func(old, new string) {
+		mutex.Lock()
+		defer mutex.Unlock()
+		level.Set(new)
+	})
 	log.SetFlags(log.Ltime)
 }
 
@@ -80,16 +92,25 @@ func (l Level) ToString() string {
 	return levelToStrA[l]
 }
 
+// ValidateLevel returns error if the level string is not valid.
+func ValidateLevel(str string) (Level, error) {
+	var lvl Level
+	var ok bool
+	if lvl, ok = levelToStrM[strings.TrimSpace(str)]; !ok {
+		return -1, fmt.Errorf("should be one of %v", levelToStrA)
+	}
+	return lvl, nil
+}
+
 // Set is called by the flags.
 func (l *Level) Set(str string) error {
 	var lvl Level
-	var ok bool
-	if lvl, ok = levelToStrM[str]; !ok {
-		// flag processing already logs the value
-		return fmt.Errorf("should be one of %v", levelToStrA)
+	var err error
+	if lvl, err = ValidateLevel(str); err != nil {
+		return err
 	}
 	SetLogLevel(lvl)
-	return nil
+	return err // nil
 }
 
 // SetLogLevel sets the log level and returns the previous one.

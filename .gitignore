@@ -1,3 +1,4 @@
+tmp/
 coverage.txt
 *.bak
 *.json
