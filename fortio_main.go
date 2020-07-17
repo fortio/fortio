@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/bincommon"
+	"fortio.org/fortio/dflag/configmap"
 	"fortio.org/fortio/fnet"
 
 	"fortio.org/fortio/fgrpc"
@@ -154,6 +155,14 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	confDir := *bincommon.ConfigDirectoryFlag
+	if confDir != "" {
+		if _, err := configmap.Setup(flag.CommandLine, confDir, log.Logger()); err != nil {
+			log.Critf("Unable to watch config/flag changes in %v: %v", confDir, err)
+		}
+	} else {
+		log.Infof("Not using dynamic flag watching (use -config to set watch directory)")
+	}
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * 1024)
 	if *bincommon.QuietFlag {
 		log.SetLogLevelQuiet(log.Error)

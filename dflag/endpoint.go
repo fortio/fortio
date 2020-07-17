@@ -11,8 +11,6 @@ import (
 	"strings"
 	"text/template"
 
-	"fortio.org/fortio/fhttp"
-
 	"fmt"
 
 	"flag"
@@ -31,7 +29,6 @@ func NewStatusEndpoint(flagSet *flag.FlagSet) *StatusEndpoint {
 // ListFlags provides an HTML and JSON `http.HandlerFunc` that lists all Flags of a `FlagSet`.
 // Additional URL query parameters can be used such as `type=[dynamic,static]` or `only_changed=true`.
 func (e *StatusEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) {
-	fhttp.LogRequest(req, "flags request")
 	onlyChanged := req.URL.Query().Get("only_changed") != ""
 	onlyDynamic := req.URL.Query().Get("type") == "dynamic"
 	onlyStatic := req.URL.Query().Get("type") == "static"
