@@ -24,7 +24,7 @@ Fortio is quite mature and very stable with no known major bugs (lots of possibl
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
 Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
-As well as the newly intergrated [Dynamic Flags](dflag/) support (greatly insipired/imported initially from https://github.com/mwitkow/go-flagz)
+As well as the newly integrated [Dynamic Flags](dflag/) support (greatly insipired/imported initially from https://github.com/mwitkow/go-flagz)
 
 ## Installation
 
