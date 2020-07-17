@@ -51,7 +51,7 @@ func TestDynamicLogLevel(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	newLevel := GetLogLevel()
 	if newLevel != Info {
-		t.Errorf("Loglevel didn't change as expected, still %v %v", newLevel, newLevel.ToString())
+		t.Errorf("Loglevel didn't change as expected, still %v %v", newLevel, newLevel.String())
 	}
 }
 
@@ -79,7 +79,7 @@ func TestLoggerFilenameLine(t *testing.T) {
 
 func TestSetLevel(t *testing.T) {
 	prev := SetLogLevel(Info)
-	err := prev.Set("debug")
+	err := SetLogLevelStr("debug")
 	if err != nil {
 		t.Errorf("unexpected error for valid level %v", err)
 	}
@@ -87,7 +87,7 @@ func TestSetLevel(t *testing.T) {
 	if prev != Debug {
 		t.Errorf("unexpected level after setting debug %v", prev)
 	}
-	err = prev.Set("bogus")
+	err = SetLogLevelStr("bogus")
 	if err == nil {
 		t.Errorf("Didn't get an error setting bogus level")
 	}
@@ -129,7 +129,7 @@ func TestLogger1(t *testing.T) {
 	i++
 	expected += "E test E 5\n"
 	// test the rest of the api
-	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().ToString())
+	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().String())
 	expected += "C test 6 level str Debug, cur Error\n"
 	i++
 	SetLogLevel(Debug) // should be fine and invisible change
@@ -158,14 +158,14 @@ func TestLogFatal(t *testing.T) {
 }
 
 func BenchmarkLogDirect1(b *testing.B) {
-	level = Error
+	setLevel(Error)
 	for n := 0; n < b.N; n++ {
 		Debugf("foo bar %d", n)
 	}
 }
 
 func BenchmarkLogDirect2(b *testing.B) {
-	level = Error
+	setLevel(Error)
 	for n := 0; n < b.N; n++ {
 		Logf(Debug, "foo bar %d", n)
 	}
