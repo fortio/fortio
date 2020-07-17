@@ -1,7 +1,7 @@
 This came from https://github.com/ldemailly/go-flagz, a fork of the code originally on https://github.com/mwitkow/go-flagz and https://github.com/improbable-eng/go-flagz with initial changes to get the go modules to work, reduce boiler plate needed for configmap watcher, avoid panic when there is extra whitespace, make the watcher work with regular files and relative paths and switched to standard golang flags.
 And now further changes, simplification, etc... as part of fortio.
 
-Thanks to @mwitkow for having created this originally.
+Thanks to [@mwitkow](https://github.com/mwitkow) for having created this originally.
 
 # Fortio Dynamic Flags (was Go FlagZ)
 
