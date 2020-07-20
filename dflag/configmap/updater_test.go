@@ -55,7 +55,7 @@ func (s *updaterTestSuite) SetupTest() {
 	s.dynInt = dflag.DynInt64(s.flagSet, "some_dynint", 1, "dynamic int for testing")
 	s.staticInt = s.flagSet.Int("some_int", 1, "static int for testing")
 
-	s.updater, err = configmap.New(s.flagSet, path.Join(s.tempDir, "testdata"), &testingLog{T: s.T()})
+	s.updater, err = configmap.New(s.flagSet, path.Join(s.tempDir, "testdata"))
 	require.NoError(s.T(), err, "creating a config map must not fail")
 }
 
@@ -91,7 +91,7 @@ func (s *updaterTestSuite) TestInitializeFailsOnBadFormedFlag() {
 }
 
 func (s *updaterTestSuite) TestSetupFunction() {
-	tmpU, err := configmap.Setup(s.flagSet, path.Join(s.tempDir, "testdata"), &testingLog{T: s.T()})
+	tmpU, err := configmap.Setup(s.flagSet, path.Join(s.tempDir, "testdata"))
 	require.NoError(s.T(), err, "setup for a config map must not fail")
 	require.Error(s.T(), tmpU.Initialize(), "should error with already started")
 	require.Error(s.T(), tmpU.Start(), "should error with already started")
@@ -135,13 +135,4 @@ func eventually(t *testing.T, duration time.Duration,
 		}
 	}
 	t.Fatalf(msgFmt, msgArgs...)
-}
-
-// Abstraction that allows us to pass the *testing.T as a logger to the updater.
-type testingLog struct {
-	T *testing.T
-}
-
-func (tl *testingLog) Printf(format string, v ...interface{}) {
-	tl.T.Logf(format+"\n", v...)
 }

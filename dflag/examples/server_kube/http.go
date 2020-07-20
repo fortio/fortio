@@ -6,32 +6,29 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
-	"os"
 
 	"flag"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
+	"fortio.org/fortio/log"
 )
 
 var (
-	serverFlags = flag.NewFlagSet("server_flags", flag.ContinueOnError)
+	listenPort = flag.Int("port", 8080, "Port the example server listens on.")
+	listenHost = flag.String("host", "0.0.0.0", "Host to bind the example server to.")
 
-	listenPort = serverFlags.Int("port", 8080, "Port the example server listens on.")
-	listenHost = serverFlags.String("host", "0.0.0.0", "Host to bind the example server to.")
+	dirPathWatch = flag.String("dflag_dir_path", "/tmp/foobar", "path to dir to watch updates from.")
 
-	dirPathWatch = serverFlags.String("dflag_dir_path", "/tmp/foobar", "path to dir to watch updates from.")
+	staticInt = flag.Int("example_my_static_int", 1337, "Something integery here.")
 
-	staticInt = serverFlags.Int("example_my_static_int", 1337, "Something integery here.")
-
-	dynStr = dflag.DynString(serverFlags, "example_my_dynamic_string", "initial_value", "Something interesting here.")
-	dynInt = dflag.DynInt64(serverFlags, "example_my_dynamic_int", 1337, "Something integery here.")
+	dynStr = dflag.DynString(flag.CommandLine, "example_my_dynamic_string", "initial_value", "Something interesting here.")
+	dynInt = dflag.DynInt64(flag.CommandLine, "example_my_dynamic_int", 1337, "Something integery here.")
 
 	// This is an example of a dynamically-modifiable JSON flag of an arbitrary type.
 	dynJSON = dflag.DynJSON(
-		serverFlags,
+		flag.CommandLine,
 		"example_my_dynamic_json",
 		&exampleConfig{
 			Policy: "allow",
@@ -43,34 +40,23 @@ var (
 )
 
 func main() {
-	logger := log.New(os.Stderr, "server", log.LstdFlags)
-	if err := serverFlags.Parse(os.Args[1:]); err != nil {
-		logger.Fatalf("%v", err)
-	}
 
-	u, err := configmap.New(serverFlags, *dirPathWatch, logger)
+	flag.Parse()
+	u, err := configmap.Setup(flag.CommandLine, *dirPathWatch)
 	if err != nil {
-		logger.Fatalf("Failed setting up an updater %v", err)
+		log.Fatalf("Failed setting up an updater %v", err)
 	}
-	err = u.Initialize()
-	if err != nil {
-		logger.Fatalf("Failed initializing watcher %v", err)
-	}
-	if err := u.Start(); err != nil {
-		logger.Fatalf("Could not start: %v", err)
-	}
-	logger.Printf("configmap flag value watching initialized")
-
-	dflagEndpoint := dflag.NewStatusEndpoint(serverFlags)
+	defer u.Stop()
+	dflagEndpoint := dflag.NewStatusEndpoint(flag.CommandLine)
 	http.HandleFunc("/debug/dflag", dflagEndpoint.ListFlags)
 	http.HandleFunc("/", handleDefaultPage)
 
 	addr := fmt.Sprintf("%s:%d", *listenHost, *listenPort)
-	logger.Printf("Serving at: %v", addr)
+	log.Infof("Serving at: %v", addr)
 	if err := http.ListenAndServe(addr, http.DefaultServeMux); err != nil {
-		logger.Fatalf("Failed serving: %v", err)
+		log.Fatalf("Failed serving: %v", err)
 	}
-	logger.Printf("Done, bye.")
+	log.Infof("Done, bye.")
 }
 
 var (

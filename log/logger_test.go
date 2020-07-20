@@ -17,45 +17,11 @@ package log // import "fortio.org/fortio/log"
 import (
 	"bufio"
 	"bytes"
-	"flag"
-	"io/ioutil"
 	"log"
-	"os"
-	"path"
 	"testing"
-	"time"
-
-	"fortio.org/fortio/dflag/configmap"
 )
 
-func TestDynamicLogLevel(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "fortio-logger-test")
-	if err != nil {
-		t.Fatalf("unexpected error getting tempdir %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-	pDir := path.Join(tmpDir, "config")
-	if err = os.Mkdir(pDir, 0755); err != nil {
-		t.Fatalf("unable to make %v: %v", pDir, err)
-	}
-	var u *configmap.Updater
-	SetLogLevel(Debug)
-	if u, err = configmap.Setup(flag.CommandLine, pDir, Logger()); err != nil {
-		t.Fatalf("unexpected error setting up config watch: %v", err)
-	}
-	defer u.Stop()
-	fName := path.Join(pDir, "loglevel")
-	if err = ioutil.WriteFile(fName, []byte("Info"), 0644); err != nil {
-		t.Fatalf("unable to write %v: %v", fName, err)
-	}
-	time.Sleep(1 * time.Second)
-	newLevel := GetLogLevel()
-	if newLevel != Info {
-		t.Errorf("Loglevel didn't change as expected, still %v %v", newLevel, newLevel.String())
-	}
-}
-
-// leave this test where it is as it relies on line number not changing
+// leave this test first/where it is as it relies on line number not changing
 func TestLoggerFilenameLine(t *testing.T) {
 	SetLogLevel(Debug) // make sure it's already debug when we capture
 	on := true
@@ -67,11 +33,11 @@ func TestLoggerFilenameLine(t *testing.T) {
 	SetFlags(0)
 	SetLogLevel(Debug)
 	if LogDebug() {
-		Debugf("test") // line 70
+		Debugf("test") // line 36
 	}
 	w.Flush()
 	actual := b.String()
-	expected := "D logger_test.go:70-prefix-test\n"
+	expected := "D logger_test.go:36-prefix-test\n"
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
 	}
