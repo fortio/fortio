@@ -157,7 +157,7 @@ func main() {
 	flag.Parse()
 	confDir := *bincommon.ConfigDirectoryFlag
 	if confDir != "" {
-		if _, err := configmap.Setup(flag.CommandLine, confDir, log.Logger()); err != nil {
+		if _, err := configmap.Setup(flag.CommandLine, confDir); err != nil {
 			log.Critf("Unable to watch config/flag changes in %v: %v", confDir, err)
 		}
 	} else {

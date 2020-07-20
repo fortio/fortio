@@ -14,6 +14,7 @@ import (
 	"flag"
 
 	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/log"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -27,12 +28,6 @@ var (
 	errFlagNotFound   = fmt.Errorf("flag not found")
 )
 
-// Minimum logger interface needed.
-// Default "log" and "logrus" should support these.
-type loggerCompatible interface {
-	Printf(format string, v ...interface{})
-}
-
 // Updater is the encapsulation of the directory watcher.
 // TODO: hide details, just return opaque interface
 type Updater struct {
@@ -41,13 +36,12 @@ type Updater struct {
 	parentPath string
 	watcher    *fsnotify.Watcher
 	flagSet    *flag.FlagSet
-	logger     loggerCompatible
 	done       chan bool
 }
 
 // Setup is a combination/shortcut for New+Initialize+Start
-func Setup(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updater, error) {
-	u, err := New(flagSet, dirPath, logger)
+func Setup(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
+	u, err := New(flagSet, dirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -58,19 +52,18 @@ func Setup(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Upd
 	if err := u.Start(); err != nil {
 		return nil, err
 	}
-	logger.Printf("Configmap flag value watching initialized on %v", dirPath)
+	log.Infof("Configmap flag value watching initialized on %v", dirPath)
 	return u, nil
 }
 
 // New creates an Updater for the directory.
-func New(flagSet *flag.FlagSet, dirPath string, logger loggerCompatible) (*Updater, error) {
+func New(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("dflag: error initializing fsnotify watcher")
 	}
 	return &Updater{
 		flagSet:    flagSet,
-		logger:     logger,
 		dirPath:    path.Clean(dirPath),
 		parentPath: path.Clean(path.Join(dirPath, "..")), // add parent in case the dirPath is a symlink itself
 		watcher:    watcher,
@@ -96,7 +89,7 @@ func (u *Updater) Start() error {
 	if err := u.watcher.Add(u.dirPath); err != nil { // add the dir itself.
 		return fmt.Errorf("unable to add config dir %v to watch: %v", u.dirPath, err)
 	}
-	u.logger.Printf("Now watching %v and %v", u.parentPath, u.dirPath)
+	log.Infof("Now watching %v and %v", u.parentPath, u.dirPath)
 	u.started = true
 	u.done = make(chan bool)
 	go u.watchForUpdates()
@@ -155,37 +148,37 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 		return err
 	}
 	str := string(content)
-	u.logger.Printf("updating %v to %q", flagName, str)
+	log.Infof("updating %v to %q", flagName, str)
 	// do not call flag.Value.Set, instead go through flagSet.Set to change "changed" state.
 	return u.flagSet.Set(flagName, str)
 }
 
 func (u *Updater) watchForUpdates() {
-	u.logger.Printf("Starting watching")
+	log.Infof("Starting watching")
 	for {
 		select {
 		case event := <-u.watcher.Events:
-			//u.logger.Printf("ConfigMap got fsnotify %v ", event)
+			log.LogVf("ConfigMap got fsnotify %v ", event)
 			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) {
 				// case of the whole directory being re-symlinked
 				switch event.Op {
 				case fsnotify.Create:
 					if err := u.watcher.Add(u.dirPath); err != nil { // add the dir itself.
-						u.logger.Printf("unable to add config dir %v to watch: %v", u.dirPath, err)
+						log.Errf("unable to add config dir %v to watch: %v", u.dirPath, err)
 					}
-					u.logger.Printf("dflag: Re-reading flags after ConfigMap update.")
+					log.Infof("dflag: Re-reading flags after ConfigMap update.")
 					if err := u.readAll( /* dynamicOnly */ true); err != nil {
-						u.logger.Printf("dflag: directory reload yielded errors: %v", err.Error())
+						log.Errf("dflag: directory reload yielded errors: %v", err.Error())
 					}
 				case fsnotify.Remove:
 				}
 			} else if strings.HasPrefix(event.Name, u.dirPath) && !isK8sInternalDirectory(event.Name) {
-				//u.logger.Printf("ConfigMap got prefix %v", event)
+				log.LogVf("ConfigMap got prefix %v", event)
 				switch event.Op {
 				case fsnotify.Create, fsnotify.Write, fsnotify.Rename:
 					flagName := path.Base(event.Name)
 					if err := u.readFlagFile(event.Name, true); err != nil {
-						u.logger.Printf("dflag: failed setting flag %s: %v", flagName, err.Error())
+						log.Errf("dflag: failed setting flag %s: %v", flagName, err.Error())
 					}
 				}
 			}
