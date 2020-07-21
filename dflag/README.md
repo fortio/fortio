@@ -7,7 +7,7 @@ Thanks to [@mwitkow](https://github.com/mwitkow) for having created this origina
 
 [![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Dynamic, thread-safe `flag` variables that can be modified at runtime through files,
+Dynamic, thread-safe `flag` variables that can be modified at runtime through files, URL endpoint,
 or [Kubernetes](http://kubernetes.io) configmap changes.
 
 For a similar project for JVM languages (Java, scala) see [java-flagz](https://github.com/mwitkow/java-flagz)
@@ -37,11 +37,12 @@ All of this can be done simultaneously across a whole shard of your services.
  * `validator` functions for each `flag`, allows the user to provide checks for newly set values
  * `notifier` functions allow user code to be subscribed to `flag` changes
  * Kubernetes `ConfigMap` watcher, see [configmap/README.md](configmap/README.md).
- * a `/fortio/flags` HandlerFunc endpoint that allows for easy inspection of the service's runtime configuration
+ * a HandlerFunc `endpoint.ListFlags` that allows for easy inspection of the service's runtime configuration
+ * a HandlerFunc `endpoint.SetFlag` that let's you update the flag values
 
 Here's a teaser of the debug endpoint:
 
-![Status Endpoint](https://raw.githubusercontent.com/ldemailly/go-flagz/screenshots/screenshot_endpoint.png)
+![Status Endpoint](https://user-images.githubusercontent.com/3664595/88000279-1d225480-cab2-11ea-82ca-68658ad16148.png)
 
 ## Examples
 
@@ -81,14 +82,13 @@ func MyHandler(resp http.ResponseWriter, req *http.Request) {
 
 All access to `featuresFlag`, which is a `[]string` flag, is synchronised across go-routines using `atomic` pointer swaps. 
 
-## More examples:
+## Complete example
 
- * [simple http server](examples/server)
- * [printing CLI command](examples/simple)
+See a [http server](examples/server_kube) complete example.
 
 # Status
 
-This code is *production* quality. It's been running happily in production at Improbable for a few months.
+This code is *production* quality. It's been running happily in production in its earlier incarnation at Improbable for years and now everywhere fortio runs.
 
 ### License
 
