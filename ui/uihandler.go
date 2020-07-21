@@ -19,8 +19,6 @@ import (
 	"bytes"
 	"flag"
 
-	"fortio.org/fortio/dflag"
-
 	// md5 is mandated, not our choice
 	"crypto/md5" // nolint: gas
 	"encoding/base64"
@@ -41,6 +39,7 @@ import (
 	"sync"
 	"time"
 
+	"fortio.org/fortio/dflag/endpoint"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
@@ -921,8 +920,10 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 		} else {
 			mux.HandleFunc(uiPath+"sync", SyncHandler)
 		}
-		dflagEndPt := dflag.NewStatusEndpoint(flag.CommandLine)
-		mux.HandleFunc(uiPath+"flags", fhttp.LogAndCall("flags", dflagEndPt.ListFlags))
+		dflagSetURL := uiPath + "flags/set"
+		dflagEndPt := endpoint.NewFlagsEndpoint(flag.CommandLine, dflagSetURL)
+		mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
+		mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
 	}
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))

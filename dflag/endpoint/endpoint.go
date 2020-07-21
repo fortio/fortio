@@ -1,34 +1,74 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package dflag
+package endpoint
 
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"flag"
+	"fmt"
 	"net/http"
 	"strings"
 	"text/template"
 
-	"fmt"
-
-	"flag"
+	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/log"
 )
 
-// StatusEndpoint is a collection of `http.HandlerFunc` that serve debug pages about a given `FlagSet.
-type StatusEndpoint struct {
+// FlagsEndpoint is a collection of `http.HandlerFunc` that serve debug pages about a given `FlagSet.
+type FlagsEndpoint struct {
 	flagSet *flag.FlagSet
+	setURL  string
 }
 
-// NewStatusEndpoint creates a new debug `http.HandlerFunc` collection for a given `FlagSet`
-func NewStatusEndpoint(flagSet *flag.FlagSet) *StatusEndpoint {
-	return &StatusEndpoint{flagSet: flagSet}
+// NewFlagsEndpoint creates a new debug `http.HandlerFunc` collection for a given `FlagSet`
+// and an optional URL for Setter (needs to be secured). if setURL is empty, no setter function
+// will be enabled.
+func NewFlagsEndpoint(flagSet *flag.FlagSet, setURL string) *FlagsEndpoint {
+	return &FlagsEndpoint{flagSet: flagSet, setURL: setURL}
+}
+
+// HTTPErrf logs and returns an error on the response
+func HTTPErrf(resp http.ResponseWriter, statusCode int, message string, rest ...interface{}) {
+	resp.WriteHeader(statusCode)
+	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	log.Errf(message, rest...)
+	resp.Write([]byte(fmt.Sprintf(message, rest...)))
+}
+
+// SetFlag updates a dynamic flag to a new value.
+func (e *FlagsEndpoint) SetFlag(resp http.ResponseWriter, req *http.Request) {
+	fhttp.LogRequest(req, "SetFlag")
+	if e.setURL == "" {
+		HTTPErrf(resp, http.StatusForbidden, "setting flags is not enabled")
+		return
+	}
+	name := req.URL.Query().Get("name")
+	value := req.URL.Query().Get("value")
+	f := e.flagSet.Lookup(name)
+	if f == nil {
+		HTTPErrf(resp, http.StatusForbidden, "Flag %q not found", name)
+		return
+	}
+	if !dflag.IsFlagDynamic(f) {
+		HTTPErrf(resp, http.StatusBadRequest, "Trying to set non dynamic flag %q", name)
+		return
+	}
+	if err := e.flagSet.Set(name, value); err != nil {
+		HTTPErrf(resp, http.StatusNotAcceptable, "Error setting %q to %q: %v", name, value, err)
+		return
+	}
+	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	resp.Write([]byte(fmt.Sprintf("Success %q -> %q", name, value)))
 }
 
 // ListFlags provides an HTML and JSON `http.HandlerFunc` that lists all Flags of a `FlagSet`.
 // Additional URL query parameters can be used such as `type=[dynamic,static]` or `only_changed=true`.
-func (e *StatusEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) {
+func (e *FlagsEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) {
+	fhttp.LogRequest(req, "ListFlags")
+
 	onlyChanged := req.URL.Query().Get("only_changed") != ""
 	onlyDynamic := req.URL.Query().Get("type") == "dynamic"
 	onlyStatic := req.URL.Query().Get("type") == "static"
@@ -38,16 +78,17 @@ func (e *StatusEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) 
 		if onlyChanged && f.Value.String() == f.DefValue { // not exactly the same as "changed" (!)
 			return
 		}
-		if onlyDynamic && !IsFlagDynamic(f) {
+		if onlyDynamic && !dflag.IsFlagDynamic(f) {
 			return
 		}
-		if onlyStatic && IsFlagDynamic(f) {
+		if onlyStatic && dflag.IsFlagDynamic(f) {
 			return
 		}
 		flagSetJSON.Flags = append(flagSetJSON.Flags, flagToJSON(f))
 	})
-	flagSetJSON.ChecksumDynamic = fmt.Sprintf("%x", ChecksumFlagSet(e.flagSet, IsFlagDynamic))
-	flagSetJSON.ChecksumStatic = fmt.Sprintf("%x", ChecksumFlagSet(e.flagSet, func(f *flag.Flag) bool { return !IsFlagDynamic(f) }))
+	flagSetJSON.ChecksumDynamic = fmt.Sprintf("%x", dflag.ChecksumFlagSet(e.flagSet, dflag.IsFlagDynamic))
+	flagSetJSON.ChecksumStatic = fmt.Sprintf("%x", dflag.ChecksumFlagSet(e.flagSet, func(f *flag.Flag) bool { return !dflag.IsFlagDynamic(f) }))
+	flagSetJSON.FlagSetURL = e.setURL
 
 	if requestIsBrowser(req) && req.URL.Query().Get("format") != "json" {
 		resp.WriteHeader(http.StatusOK)
@@ -115,7 +156,18 @@ var (
 			  <dt>Default</dt>
 			  <dd><pre style="font-size: 8pt">{{ $flag.DefaultValue }}</pre></dd>
 			  <dt>Current</dt>
+			  {{ if and $flag.IsDynamic (ne $.FlagSetURL "") }}
+			  <form action="{{ $.FlagSetURL }}">
+			  <input type="hidden" name="name" value="{{ $flag.Name }}" />
+				  {{ if $flag.IsJSON }}
+					  <dd><pre class="success" style="font-size: 8pt"><textarea name="value">{{ $flag.CurrentValue }}</textarea></pre><input type="submit" value="Update"/></dd>
+				  {{ else }}
+					  <dd><pre class="success" style="font-size: 8pt"><input type="text" name="value" value="{{ $flag.CurrentValue }}" /></pre></dd>
+				  {{ end }}
+			  </form>
+			  {{ else }}
 			  <dd><pre class="success" style="font-size: 8pt">{{ $flag.CurrentValue }}</pre></dd>
+			  {{ end }}
 		    </dl>
 		  </div>
 		</div>
@@ -127,10 +179,10 @@ var (
 )
 
 type flagSetJSON struct {
-	ChecksumStatic  string `json:"checksum_static"`
-	ChecksumDynamic string `json:"checksum_dynamic"`
-
-	Flags []*flagJSON `json:"flags"`
+	ChecksumStatic  string      `json:"checksum_static"`
+	ChecksumDynamic string      `json:"checksum_dynamic"`
+	FlagSetURL      string      `json:"set_url"`
+	Flags           []*flagJSON `json:"flags"`
 }
 
 type flagJSON struct {
@@ -141,6 +193,7 @@ type flagJSON struct {
 
 	IsChanged bool `json:"is_changed"`
 	IsDynamic bool `json:"is_dynamic"`
+	IsJSON    bool `json:"is_json"`
 }
 
 func flagToJSON(f *flag.Flag) *flagJSON {
@@ -150,10 +203,10 @@ func flagToJSON(f *flag.Flag) *flagJSON {
 		CurrentValue: f.Value.String(),
 		DefaultValue: f.DefValue,
 		IsChanged:    f.Value.String() != f.DefValue,
-		IsDynamic:    IsFlagDynamic(f),
+		IsDynamic:    dflag.IsFlagDynamic(f),
 	}
-	if dj, ok := f.Value.(DynamicJSONFlagValue); ok {
-		_ = dj.IsJSON() // could assert true
+	if dj, ok := f.Value.(dflag.DynamicJSONFlagValue); ok {
+		fj.IsJSON = dj.IsJSON() // could assert true
 		fj.CurrentValue = prettyPrintJSON(fj.CurrentValue)
 		fj.DefaultValue = prettyPrintJSON(fj.DefaultValue)
 	}

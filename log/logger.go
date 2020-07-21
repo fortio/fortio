@@ -72,7 +72,7 @@ func init() {
 	dynLevel = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(), fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
 		_, err := ValidateLevel(new)
 		return err
-	}).WithNotifier(func(old, new string) {
+	}).WithSyncNotifier(func(old, new string) {
 		setLogLevelStr(new)
 	})
 	log.SetFlags(log.Ltime)
