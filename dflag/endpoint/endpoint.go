@@ -159,7 +159,11 @@ var (
 			  {{ if and $flag.IsDynamic (ne $.FlagSetURL "") }}
 			  <form action="{{ $.FlagSetURL }}">
 			  <input type="hidden" name="name" value="{{ $flag.Name }}" />
-			  <dd><pre class="success" style="font-size: 8pt"><input type="text" name="value" value="{{ $flag.CurrentValue }}" /></pre></dd>
+				  {{ if $flag.IsJSON }}
+					  <dd><pre class="success" style="font-size: 8pt"><textarea name="value">{{ $flag.CurrentValue }}</textarea></pre><input type="submit" value="Update"/></dd>
+				  {{ else }}
+					  <dd><pre class="success" style="font-size: 8pt"><input type="text" name="value" value="{{ $flag.CurrentValue }}" /></pre></dd>
+				  {{ end }}
 			  </form>
 			  {{ else }}
 			  <dd><pre class="success" style="font-size: 8pt">{{ $flag.CurrentValue }}</pre></dd>
@@ -189,6 +193,7 @@ type flagJSON struct {
 
 	IsChanged bool `json:"is_changed"`
 	IsDynamic bool `json:"is_dynamic"`
+	IsJSON    bool `json:"is_json"`
 }
 
 func flagToJSON(f *flag.Flag) *flagJSON {
@@ -201,7 +206,7 @@ func flagToJSON(f *flag.Flag) *flagJSON {
 		IsDynamic:    dflag.IsFlagDynamic(f),
 	}
 	if dj, ok := f.Value.(dflag.DynamicJSONFlagValue); ok {
-		_ = dj.IsJSON() // could assert true
+		fj.IsJSON = dj.IsJSON() // could assert true
 		fj.CurrentValue = prettyPrintJSON(fj.CurrentValue)
 		fj.DefaultValue = prettyPrintJSON(fj.DefaultValue)
 	}
