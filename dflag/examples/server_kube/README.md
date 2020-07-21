@@ -15,7 +15,7 @@ you should see the following:
 ```
 
 - see port you are serving
-- visit the debug flag endpoint `http://localhost:8080/debug/flags`
+- visit the debug flag endpoint http://localhost:8080/debug/flags
 
 Should see this if successful:
 ![screenshot](https://user-images.githubusercontent.com/3664595/88000279-1d225480-cab2-11ea-82ca-68658ad16148.png)
