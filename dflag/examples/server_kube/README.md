@@ -1,6 +1,6 @@
 # Kubernetes ConfigMap example
 
-- For production you would use docker and kubernetes. And use a ConfigMap mapped as a Volume in your service
+- For production you would use docker and kubernetes. And use a ConfigMap mapped as a Volume in your service (see [dflag/configmap](../../configmap) for how/sample yaml files)
 - For local testing you can use [Docker Desktop](https://www.docker.com/products/docker-desktop)
 Or simply run from command line and simulate the changes
 - initialize empty tmp mapping `mkdir -p /tmp/foobar` for kubernetes
