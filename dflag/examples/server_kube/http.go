@@ -19,6 +19,7 @@ import (
 var (
 	listenPort = flag.Int("port", 8080, "Port the example server listens on.")
 	listenHost = flag.String("host", "0.0.0.0", "Host to bind the example server to.")
+	hasSetFlag = flag.Bool("has_set", true, "Whether the /debug/flags/set endpoint is enabled or not")
 
 	dirPathWatch = flag.String("dflag_dir_path", "/tmp/foobar", "path to dir to watch updates from.")
 
@@ -48,10 +49,15 @@ func main() {
 		log.Fatalf("Failed setting up an updater %v", err)
 	}
 	defer u.Stop()
-	setURL := "/debug/flags/set"
-	dflagEndpoint := endpoint.NewFlagsEndpoint(flag.CommandLine, setURL)
+	var dflagEndpoint *endpoint.FlagsEndpoint
+	if *hasSetFlag {
+		setURL := "/debug/flags/set"
+		dflagEndpoint = endpoint.NewFlagsEndpoint(flag.CommandLine, setURL)
+		http.HandleFunc(setURL, dflagEndpoint.SetFlag)
+	} else {
+		dflagEndpoint = endpoint.NewFlagsEndpoint(flag.CommandLine, "")
+	}
 	http.HandleFunc("/debug/flags", dflagEndpoint.ListFlags)
-	http.HandleFunc(setURL, dflagEndpoint.SetFlag)
 	http.HandleFunc("/", handleDefaultPage)
 
 	addr := fmt.Sprintf("%s:%d", *listenHost, *listenPort)

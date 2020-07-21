@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fhttp"
