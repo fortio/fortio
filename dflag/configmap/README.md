@@ -69,7 +69,7 @@ spec:
       args: [ "-c", "while true; do date; sleep 60; done" ]
       volumeMounts:
         - name: config-volume
-          mountPath: /etc/my-config
+          mountPath: /etc/dflag
   volumes:
     - name: config-volume
       configMap:
