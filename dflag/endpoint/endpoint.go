@@ -30,7 +30,8 @@ func NewFlagsEndpoint(flagSet *flag.FlagSet, setURL string) *FlagsEndpoint {
 	return &FlagsEndpoint{flagSet: flagSet, setURL: setURL}
 }
 
-func HttpErrf(resp http.ResponseWriter, statusCode int, message string, rest ...interface{}) {
+// HTTPErrf logs and returns an error on the response
+func HTTPErrf(resp http.ResponseWriter, statusCode int, message string, rest ...interface{}) {
 	resp.WriteHeader(statusCode)
 	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	log.Errf(message, rest...)
@@ -41,22 +42,22 @@ func HttpErrf(resp http.ResponseWriter, statusCode int, message string, rest ...
 func (e *FlagsEndpoint) SetFlag(resp http.ResponseWriter, req *http.Request) {
 	fhttp.LogRequest(req, "SetFlag")
 	if e.setURL == "" {
-		HttpErrf(resp, http.StatusForbidden, "setting flags is not enabled")
+		HTTPErrf(resp, http.StatusForbidden, "setting flags is not enabled")
 		return
 	}
 	name := req.URL.Query().Get("name")
 	value := req.URL.Query().Get("value")
 	f := e.flagSet.Lookup(name)
 	if f == nil {
-		HttpErrf(resp, http.StatusForbidden, "Flag %q not found", name)
+		HTTPErrf(resp, http.StatusForbidden, "Flag %q not found", name)
 		return
 	}
 	if !dflag.IsFlagDynamic(f) {
-		HttpErrf(resp, http.StatusBadRequest, "Trying to set non dynamic flag %q", name)
+		HTTPErrf(resp, http.StatusBadRequest, "Trying to set non dynamic flag %q", name)
 		return
 	}
 	if err := e.flagSet.Set(name, value); err != nil {
-		HttpErrf(resp, http.StatusNotAcceptable, "Error setting %q to %q: %v", name, value, err)
+		HTTPErrf(resp, http.StatusNotAcceptable, "Error setting %q to %q: %v", name, value, err)
 		return
 	}
 	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")

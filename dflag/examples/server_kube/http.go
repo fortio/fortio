@@ -48,10 +48,10 @@ func main() {
 		log.Fatalf("Failed setting up an updater %v", err)
 	}
 	defer u.Stop()
-	setUrl := "/debug/flags/set"
-	dflagEndpoint := endpoint.NewFlagsEndpoint(flag.CommandLine, setUrl)
+	setURL := "/debug/flags/set"
+	dflagEndpoint := endpoint.NewFlagsEndpoint(flag.CommandLine, setURL)
 	http.HandleFunc("/debug/flags", dflagEndpoint.ListFlags)
-	http.HandleFunc(setUrl, dflagEndpoint.SetFlag)
+	http.HandleFunc(setURL, dflagEndpoint.SetFlag)
 	http.HandleFunc("/", handleDefaultPage)
 
 	addr := fmt.Sprintf("%s:%d", *listenHost, *listenPort)
