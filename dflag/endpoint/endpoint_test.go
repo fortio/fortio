@@ -1,7 +1,7 @@
 // Copyright 2015 Michal Witkowski. All Rights Reserved.
 // See LICENSE for licensing terms.
 
-package dflag
+package endpoint
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"sort"
 	"testing"
 
+	"fortio.org/fortio/dflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -19,7 +20,7 @@ import (
 type endpointTestSuite struct {
 	suite.Suite
 	flagSet  *flag.FlagSet
-	endpoint *StatusEndpoint
+	endpoint *FlagsEndpoint
 }
 
 func TestEndpointTestSuite(t *testing.T) {
@@ -28,13 +29,13 @@ func TestEndpointTestSuite(t *testing.T) {
 
 func (s *endpointTestSuite) SetupTest() {
 	s.flagSet = flag.NewFlagSet("foobar", flag.ContinueOnError)
-	s.endpoint = NewStatusEndpoint(s.flagSet)
+	s.endpoint = NewFlagsEndpoint(s.flagSet, "") // TODO add setter tests
 
 	s.flagSet.String("some_static_string", "trolololo", "Some static string text")
 	s.flagSet.Float64("some_static_float", 3.14, "Some static int text")
 
-	DynStringSlice(s.flagSet, "some_dyn_stringslice", []string{"foo", "bar"}, "Some dynamic slice text")
-	DynJSON(s.flagSet, "some_dyn_json", &testJSON{SomeString: "foo", SomeInt: 1337}, "Some dynamic JSON text")
+	dflag.DynStringSlice(s.flagSet, "some_dyn_stringslice", []string{"foo", "bar"}, "Some dynamic slice text")
+	dflag.DynJSON(s.flagSet, "some_dyn_json", &testJSON{SomeString: "foo", SomeInt: 1337}, "Some dynamic JSON text")
 
 	// Mark one static and one dynamic flag as changed.
 	s.flagSet.Set("some_static_string", "yolololo")

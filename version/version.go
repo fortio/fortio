@@ -23,7 +23,7 @@ import (
 
 const (
 	major = 1
-	minor = 5
+	minor = 6
 	patch = 0
 
 	debug = false // turn on to debug init()

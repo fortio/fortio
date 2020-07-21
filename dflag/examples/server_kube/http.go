@@ -12,6 +12,7 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
+	"fortio.org/fortio/dflag/endpoint"
 	"fortio.org/fortio/log"
 )
 
@@ -47,8 +48,10 @@ func main() {
 		log.Fatalf("Failed setting up an updater %v", err)
 	}
 	defer u.Stop()
-	dflagEndpoint := dflag.NewStatusEndpoint(flag.CommandLine)
-	http.HandleFunc("/debug/dflag", dflagEndpoint.ListFlags)
+	setUrl := "/debug/flags/set"
+	dflagEndpoint := endpoint.NewFlagsEndpoint(flag.CommandLine, setUrl)
+	http.HandleFunc("/debug/flags", dflagEndpoint.ListFlags)
+	http.HandleFunc(setUrl, dflagEndpoint.SetFlag)
 	http.HandleFunc("/", handleDefaultPage)
 
 	addr := fmt.Sprintf("%s:%d", *listenHost, *listenPort)
