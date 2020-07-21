@@ -21,9 +21,10 @@ func DynString(flagSet *flag.FlagSet, name string, value string, usage string) *
 // DynStringValue is a flag-related `time.Duration` value wrapper.
 type DynStringValue struct {
 	DynamicFlagValueTag
-	ptr       unsafe.Pointer
-	validator func(string) error
-	notifier  func(oldValue string, newValue string)
+	ptr          unsafe.Pointer
+	validator    func(string) error
+	notifier     func(oldValue string, newValue string)
+	syncNotifier bool
 }
 
 // Get retrieves the value in a thread-safe manner.
@@ -44,7 +45,11 @@ func (d *DynStringValue) Set(val string) error {
 	}
 	oldPtr := atomic.SwapPointer(&d.ptr, unsafe.Pointer(&val))
 	if d.notifier != nil {
-		go d.notifier(*(*string)(oldPtr), val)
+		if d.syncNotifier {
+			d.notifier(*(*string)(oldPtr), val)
+		} else {
+			go d.notifier(*(*string)(oldPtr), val)
+		}
 	}
 	return nil
 }
@@ -61,6 +66,13 @@ func (d *DynStringValue) WithValidator(validator func(string) error) *DynStringV
 // Each notifier is executed in a new go-routine.
 func (d *DynStringValue) WithNotifier(notifier func(oldValue string, newValue string)) *DynStringValue {
 	d.notifier = notifier
+	return d
+}
+
+// WithSyncNotifier adds a function is called synchronously every time a new value is successfully set.
+func (d *DynStringValue) WithSyncNotifier(notifier func(oldValue string, newValue string)) *DynStringValue {
+	d.notifier = notifier
+	d.syncNotifier = true
 	return d
 }
 
