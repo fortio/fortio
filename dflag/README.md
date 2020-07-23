@@ -28,11 +28,13 @@ All of this can be done simultaneously across a whole shard of your services.
 
  * compatible with standard go `flag` package
  * dynamic `flag` that are thread-safe and efficient:
+   - `DynBool`
    - `DynInt64`
    - `DynFloat64`
    - `DynString`
    - `DynDuration`
    - `DynStringSlice`
+   - `DynStringSet`
    - `DynJSON` - a `flag` that takes an arbitrary JSON struct
  * `validator` functions for each `flag`, allows the user to provide checks for newly set values
  * `notifier` functions allow user code to be subscribed to `flag` changes
