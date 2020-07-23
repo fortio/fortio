@@ -31,6 +31,9 @@ type DynStringSliceValue struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynStringSliceValue) Get() []string {
+	if d.ptr == nil {
+		return []string{}
+	}
 	p := (*[]string)(atomic.LoadPointer(&d.ptr))
 	return *p
 }

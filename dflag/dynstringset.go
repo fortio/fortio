@@ -32,6 +32,9 @@ type DynStringSetValue struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynStringSetValue) Get() map[string]struct{} {
+	if d.ptr == nil {
+		return make(map[string]struct{})
+	}
 	p := (*map[string]struct{})(atomic.LoadPointer(&d.ptr))
 	return *p
 }

@@ -1,35 +1,42 @@
 // Copyright (c) Improbable Worlds Ltd, All Rights Reserved
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
+	"flag"
 	"fmt"
 	"strconv"
 	"sync/atomic"
-
-	flag "github.com/spf13/pflag"
 )
 
 // DynBool creates a `Flag` that represents `bool` which is safe to change dynamically at runtime.
 func DynBool(flagSet *flag.FlagSet, name string, value bool, usage string) *DynBoolValue {
 	v := boolToInt(value)
 	dynValue := &DynBoolValue{ptr: &v}
-	flag := flagSet.VarPF(dynValue, name, "", usage)
-	flag.NoOptDefVal = "true"
-	MarkFlagDynamic(flag)
+	flagSet.Var(dynValue, name, usage)
+	flagSet.Lookup(name).DefValue = strconv.FormatBool(value)
 	return dynValue
 }
 
 // DynBoolValue is a flag-related `int64` value wrapper.
 type DynBoolValue struct {
+	DynamicFlagValueTag
 	ptr       *uint32
 	validator func(bool) error
 	notifier  func(oldValue bool, newValue bool)
 }
 
+// IsBoolFlag lets the flag parsing know that -flagname is enough to turn to true.
+func (d *DynBoolValue) IsBoolFlag() bool {
+	return true
+}
+
 // Get retrieves the value in a thread-safe manner.
 func (d *DynBoolValue) Get() bool {
+	if d.ptr == nil {
+		return false
+	}
 	return atomic.LoadUint32(d.ptr) == 1
 }
 

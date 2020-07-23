@@ -48,6 +48,9 @@ func (d *DynJSONValue) IsJSON() bool {
 
 // Get retrieves the value in its original JSON struct type in a thread-safe manner.
 func (d *DynJSONValue) Get() interface{} {
+	if d.ptr == nil {
+		return ""
+	}
 	return d.unsafeToStoredType(atomic.LoadPointer(&d.ptr))
 }
 

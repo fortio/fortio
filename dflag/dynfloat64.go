@@ -30,6 +30,9 @@ type DynFloat64Value struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynFloat64Value) Get() float64 {
+	if d.ptr == nil {
+		return 0.0
+	}
 	p := (*float64)(atomic.LoadPointer(&d.ptr))
 	return *p
 }

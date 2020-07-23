@@ -1,14 +1,14 @@
 // Copyright (c) Improbable Worlds Ltd, All Rights Reserved
 // See LICENSE for licensing terms.
 
-package flagz
+package dflag
 
 import (
+	"flag"
 	"fmt"
 	"testing"
 	"time"
 
-	flag "github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 )
 
