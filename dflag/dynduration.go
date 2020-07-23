@@ -29,6 +29,9 @@ type DynDurationValue struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynDurationValue) Get() time.Duration {
+	if d.ptr == nil {
+		return (time.Duration)(0)
+	}
 	return (time.Duration)(atomic.LoadInt64(d.ptr))
 }
 

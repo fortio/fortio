@@ -29,6 +29,9 @@ type DynInt64Value struct {
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynInt64Value) Get() int64 {
+	if d.ptr == nil {
+		return 0
+	}
 	return atomic.LoadInt64(d.ptr)
 }
 
