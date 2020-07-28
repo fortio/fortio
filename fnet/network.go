@@ -319,3 +319,25 @@ func GetUniqueUnixDomainPath(prefix string) string {
 	_ = os.Remove(fname)
 	return fname
 }
+
+// SmallReadUntil will read one byte at a time until stopByte is found and up to max bytes total.
+// Returns what was read (without the stop byte when found), whether the stop byte was found, whether an error occurred (eof...).
+// Because we read one by one directly (no buffer) this should only be used for short variable length preamble type read.
+func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
+	buf := make([]byte, max)
+	i := 0
+	for i < max {
+		n, err := r.Read(buf[i : i+1])
+		if err != nil {
+			return buf[0:i], false, err
+		}
+		if n != 1 {
+			log.Critf("Bug/unexpected case, read %d instead of 1 byte yet no error", n)
+		}
+		if buf[i] == stopByte {
+			return buf[0:i], true, nil
+		}
+		i += n
+	}
+	return buf[0:i], false, nil
+}

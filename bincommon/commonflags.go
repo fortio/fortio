@@ -89,7 +89,8 @@ var (
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
 
 	// ConfigDirectoryFlag is where to watch for dynamic flag updates
-	ConfigDirectoryFlag = flag.String("config", "", "Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
+	ConfigDirectoryFlag = flag.String("config", "",
+		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.

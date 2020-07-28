@@ -59,7 +59,7 @@ local-lint: dependencies
 	--line-length=132 $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
-LINT_PACKAGES:=$(PACKAGES)
+LINT_PACKAGES:=./...
 # TODO: do something about cyclomatic complexity; maybe reenable gas and gosec
 # Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
 # build image
