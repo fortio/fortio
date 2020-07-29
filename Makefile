@@ -53,7 +53,7 @@ test: dependencies
 
 local-lint: dependencies
 	gometalinter $(DEBUG_LINTERS) \
-	--deadline=180s --enable-all --aggregate --exclude=.pb.go \
+	--deadline=180s --enable-all --aggregate --exclude=dflag/ --exclude=.pb.go \
 	--disable=gocyclo --disable=gas --disable=gosec \
 	--disable=gochecknoglobals --disable=gochecknoinits \
 	--line-length=132 $(LINT_PACKAGES)
