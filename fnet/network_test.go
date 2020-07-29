@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"bytes"
 
@@ -130,8 +131,8 @@ func TestProxy(t *testing.T) {
 	}
 	defer d.Close()
 	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
-	d.Write([]byte(data))
-	d.CloseWrite()
+	_, _ = d.Write([]byte(data))
+	_ = d.CloseWrite()
 	res := make([]byte, 4096)
 	n, err := d.Read(res)
 	if err != nil {
@@ -141,6 +142,61 @@ func TestProxy(t *testing.T) {
 	expectedStart := "HTTP/1.0 200 OK\r\n"
 	if !strings.HasPrefix(resStr, expectedStart) {
 		t.Errorf("Unexpected reply '%q', expected starting with '%q'", resStr, expectedStart)
+	}
+}
+
+func TestSmallReadUntil(t *testing.T) {
+	d, err := net.Dial("tcp", "www.google.com:80")
+	if err != nil {
+		t.Fatalf("can't connect to google to test: %v", err)
+	}
+	defer d.Close()
+	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
+	_, _ = d.Write([]byte(data))
+	_ = d.(*net.TCPConn).CloseWrite()
+	// expecting `HTTP/1.0 200 OK\r\n...` :
+	byteStop := byte('H')
+	res, found, err := SmallReadUntil(d, byteStop, 1) // should read the H and use it as stop byte
+	if res == nil || len(res) != 0 || !found || err != nil {
+		t.Errorf("Unexpected result %v, %v, %v for SmallReadUntil() 1 separator", res, found, err)
+	}
+	byteStop = byte(' ')
+	res, found, err = SmallReadUntil(d, byteStop, 7)
+	sres := string(res)
+	if sres != "TTP/1.0" || found || err != nil {
+		t.Errorf("Unexpected result %q (%v), %v, %v for SmallReadUntil() 7/exact not found", sres, res, found, err)
+	}
+	byteStop = byte('2')
+	res, found, err = SmallReadUntil(d, byteStop, 2)
+	sres = string(res)
+	if sres != " " || !found || err != nil {
+		t.Errorf("Unexpected result %q (%v), %v, %v for SmallReadUntil() 2/exact found", sres, res, found, err)
+	}
+	byteStop = byte('\r')
+	res, found, err = SmallReadUntil(d, byteStop, 128)
+	sres = string(res)
+	if sres != "00 OK" || !found || err != nil {
+		t.Errorf("Unexpected result %q (%v), %v, %v for SmallReadUntil() remaining of first line found", sres, res, found, err)
+	}
+	res, found, err = SmallReadUntil(d, byteStop, 128)
+	sres = string(res)
+	// second line (this can break whenever google changes something)
+	expected := "\nContent-Type: text/html; charset=ISO-8859-1"
+	if sres != expected || !found || err != nil {
+		t.Errorf("Unexpected result %q (%v), %v, %v for SmallReadUntil() second line found", sres, res, found, err)
+	}
+}
+
+func TestSmallReadUntilTimeOut(t *testing.T) {
+	d, err := net.Dial("tcp", "www.google.com:80")
+	if err != nil {
+		t.Fatalf("can't connect to google to test: %v", err)
+	}
+	defer d.Close()
+	_ = d.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	res, found, err := SmallReadUntil(d, 0, 200)
+	if res == nil || len(res) != 0 || found || !os.IsTimeout(err) {
+		t.Errorf("Unexpected result %v, %v, %v for SmallReadUntil() with timeout", res, found, err)
 	}
 }
 
@@ -180,8 +236,8 @@ func TestUnixDomain(t *testing.T) {
 	}
 	defer d.Close()
 	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
-	d.Write([]byte(data))
-	d.CloseWrite()
+	_, _ = d.Write([]byte(data))
+	_ = d.CloseWrite()
 	res := make([]byte, 4096)
 	n, err := d.Read(res)
 	if err != nil {

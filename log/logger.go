@@ -69,11 +69,12 @@ func init() {
 		levelToStrM[name] = Level(l)
 		levelToStrM[strings.ToLower(name)] = Level(l)
 	}
-	dynLevel = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(), fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
+	dynLevel = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
+		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
 		_, err := ValidateLevel(new)
 		return err
 	}).WithSyncNotifier(func(old, new string) {
-		setLogLevelStr(new)
+		_ = setLogLevelStr(new) // will succeed as we just validated it first
 	})
 	log.SetFlags(log.Ltime)
 }
