@@ -29,6 +29,7 @@ const (
 	debug = false // turn on to debug init()
 )
 
+// nolint:gochecknoglobals // we do need these
 var (
 	// The following are set by Dockerfile during link time:
 	tag       = "n/a"
@@ -72,8 +73,9 @@ func Long() string {
 	return longVersion
 }
 
-// Carefully manually tested all the combinations in pair with Dockerfile
-func init() {
+// Carefully manually tested all the combinations in pair with Dockerfile.
+
+func init() { // nolint:gochecknoinits //we do need an init for this
 	if debug {
 		log.SetLogLevel(log.Debug)
 	}

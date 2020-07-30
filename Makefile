@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v20
+BUILD_IMAGE_TAG := v21
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -52,11 +52,7 @@ test: dependencies
 # DEBUG_LINTERS="--debug"
 
 local-lint: dependencies
-	gometalinter $(DEBUG_LINTERS) \
-	--deadline=180s --enable-all --aggregate --exclude=dflag/ --exclude=.pb.go \
-	--disable=gocyclo --disable=gas --disable=gosec \
-	--disable=gochecknoglobals --disable=gochecknoinits \
-	--line-length=132 $(LINT_PACKAGES)
+	golangci-lint $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
