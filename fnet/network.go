@@ -59,12 +59,12 @@ var (
 	Payload []byte
 )
 
-// nolint: gochecknoinit // needed here (unit change)
+// nolint: gochecknoinits // needed here (unit change)
 func init() {
 	ChangeMaxPayloadSize(MaxPayloadSize)
 }
 
-// ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content
+// ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content.
 func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	if newMaxPayloadSize >= 0 {
 		MaxPayloadSize = newMaxPayloadSize
@@ -73,9 +73,8 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	}
 	Payload = make([]byte, MaxPayloadSize)
 	// One shared and 'constant' (over time) but pseudo random content for payload
-	// (to defeat compression). We don't need crypto strength here, just low cpu
-	// and speed:
-	_, err := rand.Read(Payload)
+	// (to defeat compression).
+	_, err := rand.Read(Payload) // nolint: gosec // We don't need crypto strength here, just low cpu and speed
 	if err != nil {
 		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
@@ -197,8 +196,12 @@ func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {
 	wg.Done()
 }
 
+// ErrNilDestination returned when trying to proxy to a nil address.
+// nolint: gochecknoglobals // required by err113: do not define dynamic errors, use wrapped static errors instead
+var ErrNilDestination = fmt.Errorf("nil destination")
+
 func handleProxyRequest(conn net.Conn, dest net.Addr) {
-	err := fmt.Errorf("nil destination")
+	err := ErrNilDestination
 	var d net.Conn
 	if dest != nil {
 		d, err = net.Dial(dest.Network(), dest.String())
@@ -209,7 +212,7 @@ func handleProxyRequest(conn net.Conn, dest net.Addr) {
 		return
 	}
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(2) // nolint:gomnd // 2 threads to wait for...
 	go transfer(&wg, d, conn)
 	transfer(&wg, conn, d)
 	wg.Wait()
@@ -233,7 +236,7 @@ func Proxy(port string, dest net.Addr) net.Addr {
 			} else {
 				log.LogVf("Proxy: Accepted proxy connection from %v -> %v (for listener %v)",
 					conn.RemoteAddr(), conn.LocalAddr(), dest)
-				// TODO limit number of go request, use worker pool, etc...
+				// TOmaybeDO limit number of go request, use worker pool, etc...
 				go handleProxyRequest(conn, dest)
 			}
 		}
@@ -242,13 +245,13 @@ func Proxy(port string, dest net.Addr) net.Addr {
 }
 
 // ProxyToDestination opens a proxy from the listenPort (or addr:port or unix domain socket path) and forwards
-// all traffic to destination (host:port)
+// all traffic to destination (host:port).
 func ProxyToDestination(listenPort string, destination string) net.Addr {
 	return Proxy(listenPort, ResolveDestination(destination))
 }
 
 // NormalizeHostPort generates host:port string for the address or uses localhost instead of [::]
-// when the original port binding input didn't specify an address
+// when the original port binding input didn't specify an address.
 func NormalizeHostPort(inputPort string, addr net.Addr) string {
 	urlHostPort := addr.String()
 	if addr.Network() == UnixDomainSocket {
@@ -262,7 +265,7 @@ func NormalizeHostPort(inputPort string, addr net.Addr) string {
 }
 
 // ValidatePayloadSize compares input size with MaxPayLoadSize. If size exceeds the MaxPayloadSize
-// size will set to MaxPayLoadSize
+// size will set to MaxPayLoadSize.
 func ValidatePayloadSize(size *int) {
 	if *size > MaxPayloadSize && *size > 0 {
 		log.Warnf("Requested size %d greater than max size %d, using max instead (change max using -maxpayloadsizekb)",
@@ -274,13 +277,13 @@ func ValidatePayloadSize(size *int) {
 	}
 }
 
-// GenerateRandomPayload generates a random payload with given input size
+// GenerateRandomPayload generates a random payload with given input size.
 func GenerateRandomPayload(payloadSize int) []byte {
 	ValidatePayloadSize(&payloadSize)
 	return Payload[:payloadSize]
 }
 
-// ReadFileForPayload reads the file from given input path
+// ReadFileForPayload reads the file from given input path.
 func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
 	data, err := ioutil.ReadFile(payloadFilePath)
 	if err != nil {
@@ -290,7 +293,7 @@ func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
 }
 
 // GeneratePayload generates a payload with given inputs.
-// First tries filePath, then random payload, at last payload
+// First tries filePath, then random payload, at last payload.
 func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []byte {
 	if len(payloadFilePath) > 0 {
 		p, err := ReadFileForPayload(payloadFilePath)
