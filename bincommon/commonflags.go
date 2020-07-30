@@ -21,11 +21,10 @@ package bincommon
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
-
-	"io"
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
@@ -33,13 +32,14 @@ import (
 	"fortio.org/fortio/version"
 )
 
-// -- Support for multiple instances of -H flag on cmd line:
+// -- Support for multiple instances of -H flag on cmd line.
 type headersFlagList struct {
 }
 
 func (f *headersFlagList) String() string {
 	return ""
 }
+
 func (f *headersFlagList) Set(value string) error {
 	return httpOpts.AddAndValidateExtraHeader(value)
 }
@@ -57,6 +57,7 @@ func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	}
 }
 
+// nolint: gochecknoglobals
 var (
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
@@ -101,7 +102,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) < 2 {
+	if len(os.Args) < 2 { //nolint: gonmd
 		return
 	}
 	if strings.Contains(os.Args[1], "version") {
@@ -130,7 +131,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	os.Stdout.Write(data) //nolint: errcheck
+	os.Stdout.Write(data)
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 		os.Exit(1)
