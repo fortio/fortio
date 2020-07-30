@@ -418,7 +418,7 @@ issues:
   # large codebase. It's not practical to fix all existing issues at the moment
   # of integration: much better don't allow issues in new code.
   # Default is false.
-  new: false
+  new: true
 
   # Show only new issues created after git revision `REV`
 #  new-from-rev: REV

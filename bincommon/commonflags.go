@@ -102,7 +102,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) < 2 { //nolint: gonmd
+	if len(os.Args) < 2 { //nolint: gomnd
 		return
 	}
 	if strings.Contains(os.Args[1], "version") {
