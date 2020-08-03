@@ -4,24 +4,21 @@
 package dflag
 
 import (
+	"flag"
 	"fmt"
 	"testing"
 	"time"
 
-	"flag"
-
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	defaultJSON = &outerJSON{
-		FieldInts:   []int{1, 3, 3, 7},
-		FieldString: "non-empty",
-		FieldInner: &innerJSON{
-			FieldBool: true,
-		},
-	}
-)
+var defaultJSON = &outerJSON{
+	FieldInts:   []int{1, 3, 3, 7},
+	FieldString: "non-empty",
+	FieldInner: &innerJSON{
+		FieldBool: true,
+	},
+}
 
 func TestDynJSON_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)

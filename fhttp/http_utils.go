@@ -191,7 +191,7 @@ func EscapeBytes(buf []byte) string {
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
 	l := len(buf)
-	if l <= max+3 { //no point in shortening to add ... if we could return those 3
+	if l <= max+3 { // no point in shortening to add ... if we could return those 3
 		return EscapeBytes(buf)
 	}
 	max /= 2

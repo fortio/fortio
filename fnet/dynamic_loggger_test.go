@@ -33,7 +33,7 @@ func TestDynamicLogLevel(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 	pDir := path.Join(tmpDir, "config")
-	if err = os.Mkdir(pDir, 0755); err != nil {
+	if err = os.Mkdir(pDir, 0o755); err != nil {
 		t.Fatalf("unable to make %v: %v", pDir, err)
 	}
 	var u *configmap.Updater
@@ -43,7 +43,7 @@ func TestDynamicLogLevel(t *testing.T) {
 	}
 	defer u.Stop()
 	fName := path.Join(pDir, "loglevel")
-	if err = ioutil.WriteFile(fName, []byte("Info"), 0644); err != nil {
+	if err = ioutil.WriteFile(fName, []byte("Info"), 0o644); err != nil {
 		t.Fatalf("unable to write %v: %v", fName, err)
 	}
 	time.Sleep(1 * time.Second)

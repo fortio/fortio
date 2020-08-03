@@ -4,11 +4,9 @@
 package dflag
 
 import (
-	"fmt"
-
-	"io/ioutil"
-
 	"flag"
+	"fmt"
+	"io/ioutil"
 )
 
 // ReadFileFlags parses the flagset to discover all "fileread" flags and evaluates them.

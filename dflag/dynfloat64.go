@@ -4,13 +4,12 @@
 package dflag
 
 import (
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"unsafe"
-
-	"flag"
 )
 
 // DynFloat64 creates a `Flag` that represents `float64` which is safe to change dynamically at runtime.

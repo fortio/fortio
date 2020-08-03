@@ -4,10 +4,9 @@
 package dflag_test
 
 import (
+	"flag"
 	"testing"
 	"time"
-
-	"flag"
 
 	"fortio.org/fortio/dflag"
 	"github.com/stretchr/testify/assert"

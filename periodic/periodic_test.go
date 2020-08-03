@@ -34,7 +34,7 @@ func (n *Noop) Run(t int) {
 var bogusTestChan = NewAborter()
 
 func TestNewPeriodicRunner(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		qps                float64 // input
 		numThreads         int     // input
 		expectedQPS        float64 // expected
@@ -54,7 +54,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
-			Stop:       bogusTestChan, //TODO: use bogusTestChan so gOutstandingRuns does reach 0
+			Stop:       bogusTestChan, // TODO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})
@@ -223,7 +223,7 @@ func TestExactlyMaxQps(t *testing.T) {
 }
 
 func TestID(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		labels string // input
 		id     string // expected suffix after the date
 	}{
@@ -234,8 +234,10 @@ func TestID(t *testing.T) {
 		{"A  ", "_A"},
 		{" ", ""},
 		// truncated to fit 96 (17 from date/time + _ + 78 from labels)
-		{"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
-			"_123456789012345678901234567890123456789012345678901234567890123456789012345678"},
+		{
+			"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+			"_123456789012345678901234567890123456789012345678901234567890123456789012345678",
+		},
 	}
 	startTime := time.Date(2001, time.January, 2, 3, 4, 5, 0, time.Local)
 	prefix := "2001-01-02-030405"

@@ -4,20 +4,16 @@
 package configmap_test
 
 import (
+	"flag"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
-
-	"flag"
-
-	"io/ioutil"
-	"os/exec"
-
-	"path"
-
-	"os"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
@@ -121,8 +117,10 @@ func TestUpdaterSuite(t *testing.T) {
 	suite.Run(t, &updaterTestSuite{})
 }
 
-type assertFunc func(expected, actual interface{}) bool
-type getter func() interface{}
+type (
+	assertFunc func(expected, actual interface{}) bool
+	getter     func() interface{}
+)
 
 // eventually tries a given Assert function 5 times over the period of time.
 func eventually(t *testing.T, duration time.Duration,

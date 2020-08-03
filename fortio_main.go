@@ -39,8 +39,6 @@ import (
 	"fortio.org/fortio/version"
 )
 
-var Foo string
-
 // -- Start of support for multiple proxies (-P) flags on cmd line.
 type proxiesFlagList struct {
 }

@@ -4,11 +4,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
-
-	"flag"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
@@ -40,7 +39,8 @@ var (
 			Rate:   50,
 			Entries: []*exampleEntry{
 				{Name: "foobar", Allowed: true},
-			}},
+			},
+		},
 		"An arbitrary JSON struct.")
 )
 
@@ -70,9 +70,8 @@ func main() {
 	log.Infof("Done, bye.")
 }
 
-var (
-	defaultPage = template.Must(template.New("default_page").Parse(
-		`
+var defaultPage = template.Must(template.New("default_page").Parse(
+	`
 <html><head>
 <title>Example Server</title>
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.css" rel="stylesheet">
@@ -85,7 +84,6 @@ var (
 	<h1>Default policy: {{ .Policy }} and number of entries {{ .NumEntries }}.
 </html>
 `))
-)
 
 func handleDefaultPage(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)

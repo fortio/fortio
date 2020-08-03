@@ -448,8 +448,10 @@ func (r *periodicRunner) Run() RunnerResults {
 	if useExactly && actualCount != r.Exactly {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
-	result := RunnerResults{r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.Jitter}
+	result := RunnerResults{
+		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.Jitter,
+	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
 	} else {

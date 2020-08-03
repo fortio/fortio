@@ -5,12 +5,11 @@ package dflag
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"unsafe"
-
-	"flag"
 )
 
 // DynStringSet creates a `Flag` that represents `map[string]struct{}` which is safe to change dynamically at runtime.

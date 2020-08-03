@@ -717,7 +717,7 @@ and [Getting started contributing to Fortio](https://github.com/fortio/fortio/wi
 
 If you are not using the binary releases, please do `make pull` to pull/update to the latest of the current branch.
 
-And make sure to go format and run those commands successfully before sending your PRs:
+And make sure to go strict format (`go get mvdan.cc/gofumpt` and `gofumpt -s -w *.go`) and run those commands successfully before sending your PRs:
 
 ```Shell
 make test

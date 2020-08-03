@@ -72,7 +72,7 @@ func TestGetHeaders(t *testing.T) {
 }
 
 func TestNewHTTPRequest(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		url string // input
 		ok  bool   // ok/error
 	}{
@@ -106,7 +106,7 @@ func TestMultiInitAndEscape(t *testing.T) {
 }
 
 func TestSchemeCheck(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input  string
 		output string
 		stdcli bool
@@ -116,11 +116,11 @@ func TestSchemeCheck(t *testing.T) {
 		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
 		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
 		{"", "", false},                      // and error in the logs
-		{"x", "http://x", false},             //should not crash because url is shorter than prefix
-		{"http:/", "http://http:/", false},   //boundary
-		{"http://", "http://", false},        //boundary
-		{"https://", "https://", true},       //boundary
-		{"https:/", "http://https:/", false}, //boundary
+		{"x", "http://x", false},             // should not crash because url is shorter than prefix
+		{"http:/", "http://http:/", false},   // boundary
+		{"http://", "http://", false},        // boundary
+		{"https://", "https://", true},       // boundary
+		{"https:/", "http://https:/", false}, // boundary
 	}
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.input)
@@ -134,7 +134,7 @@ func TestSchemeCheck(t *testing.T) {
 }
 
 func TestFoldFind1(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		haystack string // input
 		needle   string // input
 		found    bool   // expected result
@@ -209,7 +209,7 @@ var utf8Str = "世界aBcdefGHiJklmnopqrstuvwxyZ"
 
 func TestASCIIToUpper(t *testing.T) {
 	log.SetLogLevel(log.Debug)
-	var tests = []struct {
+	tests := []struct {
 		input    string // input
 		expected string // output
 	}{
@@ -236,7 +236,7 @@ func TestASCIIToUpper(t *testing.T) {
 }
 
 func TestParseDecimal(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string // input
 		expected int    // output
 	}{
@@ -257,7 +257,7 @@ func TestParseDecimal(t *testing.T) {
 }
 
 func TestParseChunkSize(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input     string // input
 		expOffset int    // expected offset
 		expValue  int    // expected value
@@ -290,7 +290,7 @@ func TestParseChunkSize(t *testing.T) {
 }
 
 func TestDebugSummary(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected string
 	}{
@@ -312,7 +312,7 @@ func TestDebugSummary(t *testing.T) {
 }
 
 func TestParseStatus(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -340,7 +340,7 @@ func TestParseStatus(t *testing.T) {
 }
 
 func TestParseDelay(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected time.Duration
 	}{
@@ -372,7 +372,7 @@ func TestParseDelay(t *testing.T) {
 }
 
 func TestGenerateStatusBasic(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -443,7 +443,7 @@ func TestGenerateStatusDistribution(t *testing.T) {
 }
 
 func TestRoundDuration(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    time.Duration
 		expected time.Duration
 	}{
@@ -462,7 +462,7 @@ func TestRoundDuration(t *testing.T) {
 }
 
 func TestGenerateSize(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -493,12 +493,12 @@ func TestGenerateSize(t *testing.T) {
 }
 
 func TestPayloadWithEchoBack(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		payload           []byte
 		disableFastClient bool
 	}{
-		{[]byte{44, 45, 00, 46, 47}, false},
-		{[]byte{44, 45, 00, 46, 47}, true},
+		{[]byte{44, 45, 0o0, 46, 47}, false},
+		{[]byte{44, 45, 0o0, 46, 47}, true},
 		{[]byte("groß"), false},
 		{[]byte("groß"), true},
 	}
@@ -735,20 +735,26 @@ func TestPayloadSizeSmall(t *testing.T) {
 // TODO: improve/unify/simplify those payload/POST tests: just go to /debug handler for both clients and check what is echoed back
 
 func TestPayloadForClient(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		contentType    string
 		payload        []byte
 		expectedMethod string
 	}{
-		{"application/json",
+		{
+			"application/json",
 			[]byte("{\"test\" : \"test\"}"),
-			"POST"},
-		{"application/xml",
+			"POST",
+		},
+		{
+			"application/xml",
 			[]byte("<test test=\"test\">"),
-			"POST"},
-		{"",
+			"POST",
+		},
+		{
+			"",
 			nil,
-			"GET"},
+			"GET",
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
@@ -781,22 +787,28 @@ func TestPayloadForClient(t *testing.T) {
 }
 
 func TestPayloadForFastClient(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		contentType     string
 		payload         []byte
 		expectedReqBody string
 	}{
-		{"application/json",
+		{
+			"application/json",
 			[]byte("{\"test\" : \"test\"}"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 17\r\nContent-Type: "+
-				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent)},
-		{"application/xml",
+				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent),
+		},
+		{
+			"application/xml",
 			[]byte("<test test=\"test\">"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 18\r\nContent-Type: "+
-				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent)},
-		{"",
+				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent),
+		},
+		{
+			"",
 			nil,
-			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent),
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
@@ -814,7 +826,7 @@ func TestPayloadForFastClient(t *testing.T) {
 func TestPayloadSizeLarge(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
-	//basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
+	// basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
 	size := 200000
 	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", a.Port, size)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
@@ -844,7 +856,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	if code != http.StatusOK {
 		t.Errorf("Got %d instead of 200", code)
 	}
-	//remove the first line ('Φορτίο version...') from the body
+	// remove the first line ('Φορτίο version...') from the body
 	body := string(data)
 	i := strings.Index(body, "\n")
 	body = body[i+1:]
@@ -864,7 +876,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 
 func TestEchoHeaders(t *testing.T) {
 	_, a := ServeTCP("0", "")
-	var headers = []struct {
+	headers := []struct {
 		key   string
 		value string
 	}{
@@ -993,6 +1005,7 @@ func TestLogAndCallNoArg(t *testing.T) {
 		t.Errorf("handler side effect not detected")
 	}
 }
+
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"
@@ -1011,7 +1024,6 @@ func TestRedirector(t *testing.T) {
 	addr2 := RedirectToHTTPS(port)
 	if addr2 != nil {
 		t.Errorf("2nd RedirectToHTTPS() on same port %s should have failed: %v", port, addr2)
-
 	}
 }
 
@@ -1071,7 +1083,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 }
 
 func TestAddHTTPS(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected string
 	}{
@@ -1098,7 +1110,7 @@ func TestAddHTTPS(t *testing.T) {
 }
 
 func TestValidateAndAddBasicAuthentication(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		o                  HTTPOptions
 		isCredentialsValid bool
 		isAuthHeaderAdded  bool
@@ -1123,7 +1135,7 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 
 func TestInsecureRequest(t *testing.T) {
 	expiredURL := "https://expired.badssl.com/"
-	var tests = []struct {
+	tests := []struct {
 		fastClient bool // use FastClient
 		insecure   bool // insecure option
 		code       int  // expected code
@@ -1154,7 +1166,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 	defer srv.Close()
 
 	url := strings.Replace(srv.URL, "127.0.0.1", "example.com", 1)
-	var tests = []struct {
+	tests := []struct {
 		fastClient bool // use FastClient
 		insecure   bool // insecure option
 		code       int  // expected code
@@ -1201,6 +1213,7 @@ func BenchmarkASCIIFoldNormalToLower(b *testing.B) {
 		lw = asciiFold0(utf8Str)
 	}
 }
+
 func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		lw = asciiFold1(utf8Str)

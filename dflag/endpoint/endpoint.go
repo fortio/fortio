@@ -112,9 +112,8 @@ func requestIsBrowser(req *http.Request) bool {
 	return strings.Contains(req.Header.Get("Accept"), "html")
 }
 
-var (
-	dflagListTemplate = template.Must(template.New("dflag_list").Parse(
-		`
+var dflagListTemplate = template.Must(template.New("dflag_list").Parse(
+	`
 <html><head>
 <title>Flags List</title>
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.css" rel="stylesheet">
@@ -176,7 +175,6 @@ var (
 </body>
 </html>
 `))
-)
 
 type flagSetJSON struct {
 	ChecksumStatic  string      `json:"checksum_static"`

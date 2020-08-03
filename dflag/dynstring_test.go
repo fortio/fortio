@@ -4,11 +4,10 @@
 package dflag
 
 import (
+	"flag"
 	"regexp"
 	"testing"
 	"time"
-
-	"flag"
 
 	"github.com/stretchr/testify/assert"
 )
