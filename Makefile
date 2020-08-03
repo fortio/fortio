@@ -51,12 +51,12 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: dependencies
+local-lint:
 	golangci-lint $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
-lint: dependencies
+lint:
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
 		"cd /go/src/fortio.org/fortio \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
