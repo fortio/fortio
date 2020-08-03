@@ -6,12 +6,11 @@
 package configmap
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"strings"
-
-	"flag"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/log"

@@ -29,10 +29,9 @@ import (
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/dflag/configmap"
-	"fortio.org/fortio/fnet"
-
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"

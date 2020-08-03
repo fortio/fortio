@@ -8,10 +8,9 @@
 package dflag
 
 import (
+	"flag"
 	"testing"
 	"time"
-
-	"flag"
 )
 
 type foo struct {

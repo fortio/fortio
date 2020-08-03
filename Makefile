@@ -51,18 +51,15 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: dependencies
+local-lint:
 	golangci-lint $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
-# TODO: do something about cyclomatic complexity; maybe reenable gas and gosec
-# Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
-# build image
-lint: dependencies
+lint:
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd /go/src/fortio.org/fortio && time go install $(LINT_PACKAGES) \
-		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
+		"cd /go/src/fortio.org/fortio \
+		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.

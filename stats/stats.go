@@ -237,7 +237,7 @@ func init() {
 // TODO: change linear time to O(log(N)) with binary search
 func lookUpIdx(scaledValue int) int {
 	scaledValue32 := int32(scaledValue)
-	if scaledValue32 < maxArrayValue { //constant
+	if scaledValue32 < maxArrayValue { // constant
 		return val2Bucket[scaledValue]
 	}
 	for i := maxArrayValueIndex; i < numValues; i++ {

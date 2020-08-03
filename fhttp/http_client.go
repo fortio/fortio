@@ -486,8 +486,10 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		return nil
 	}
 	// note: Host includes the port
-	bc := FastClient{url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
-		http10: o.HTTP10, halfClose: o.AllowHalfClose}
+	bc := FastClient{
+		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
+		http10: o.HTTP10, halfClose: o.AllowHalfClose,
+	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
 		bc.port = url.Scheme // ie http which turns into 80 later
@@ -536,7 +538,7 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	o.GenerateHeaders().Write(w) // nolint: errcheck,gas
 	w.Flush()                    // nolint: errcheck,gas
 	buf.WriteString("\r\n")
-	//Add the payload to http body
+	// Add the payload to http body
 	if payloadLen > 0 {
 		buf.Write(o.Payload)
 	}
@@ -689,7 +691,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		// at least parse the http retcode:
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
 			// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
-			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) //TODO do that only once...
+			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) // TODO do that only once...
 			// TODO handle 100 Continue
 			if c.code != http.StatusOK {
 				log.Warnf("Parsed non ok code %d (%v)", c.code, string(c.buffer[:retcodeOffset+3]))

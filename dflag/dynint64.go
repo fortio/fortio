@@ -4,12 +4,11 @@
 package dflag
 
 import (
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
-
-	"flag"
 )
 
 // DynInt64 creates a `Flag` that represents `int64` which is safe to change dynamically at runtime.

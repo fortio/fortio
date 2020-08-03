@@ -28,7 +28,7 @@ jobs:
     steps:
       - checkout
       # If ran with default we get random errors because OOM killer kills some linters
-      - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
+      - run: make local-lint DEBUG_LINTERS="--concurrency=2"
   codecov:
     <<: *defaultEnv
     steps:

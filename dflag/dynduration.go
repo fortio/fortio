@@ -4,12 +4,11 @@
 package dflag
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"flag"
 )
 
 // DynDuration creates a `Flag` that represents `time.Duration` which is safe to change dynamically at runtime.

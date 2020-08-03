@@ -245,9 +245,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			URLHostPort                 string
 			DoStop                      bool
 			DoLoad                      bool
-		}{r, httpopts.AllHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
+		}{
+			r, httpopts.AllHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
-			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run})
+			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
+		})
 		if err != nil {
 			log.Critf("Template execution failed: %v", err)
 		}
@@ -376,7 +378,7 @@ func SaveJSON(name string, json []byte) string {
 	}
 	name += ".json"
 	log.Infof("Saving %s in %s", name, dataDir)
-	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0644)
+	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644)
 	if err != nil {
 		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
 		return ""
@@ -491,9 +493,11 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		DoRender            bool
 		DoSearch            bool
 		DoLoadSelected      bool
-	}{r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
+	}{
+		r, extraBrowseLabel, version.Short(), logoPath, chartJSPath,
 		url, search, chartOptions, preselectedDataList, urlHostPort,
-		doRender, doSearch, doLoadSelected})
+		doRender, doSearch, doLoadSelected,
+	})
 	if err != nil {
 		log.Critf("Template execution failed: %v", err)
 	}
@@ -847,7 +851,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
-	err = ioutil.WriteFile(localPath, data1, 0644)
+	err = ioutil.WriteFile(localPath, data1, 0o644)
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck

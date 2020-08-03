@@ -148,7 +148,7 @@ func TestHistogram(t *testing.T) {
 	for i := 25; i <= 100; i += 25 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
-	var tests = []struct {
+	tests := []struct {
 		actual   float64
 		expected float64
 		msg      string
@@ -187,7 +187,7 @@ func TestPercentiles1(t *testing.T) {
 	for i := 0; i <= 100; i += 10 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
-	var tests = []struct {
+	tests := []struct {
 		actual   float64
 		expected float64
 		msg      string
@@ -383,7 +383,7 @@ func TestHistogramExportRandom(t *testing.T) {
 		offset := (rand.Float64() - 0.5) * 1000
 		div := 100 * (1 - rand.Float64())
 		numEntries := 1 + rand.Int31n(10000)
-		//fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
+		// fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
 		h := NewHistogram(offset, div)
 		var n int32
 		var min float64
@@ -656,7 +656,7 @@ h3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 }
 
 func TestParsePercentiles(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		str  string    // input
 		list []float64 // expected
 		err  bool
@@ -684,7 +684,7 @@ func TestParsePercentiles(t *testing.T) {
 }
 
 func TestRound(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    float64
 		expected float64
 	}{
@@ -721,7 +721,7 @@ func TestNaN(t *testing.T) {
 }
 
 func TestBucketLookUp(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input float64 // input
 		start float64 // start
 		end   float64 // end

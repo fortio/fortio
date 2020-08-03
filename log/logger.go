@@ -239,6 +239,7 @@ func LogVerbose() bool { //nolint: golint
 type LoggerI interface {
 	Printf(format string, rest ...interface{})
 }
+
 type loggerShm struct {
 }
 

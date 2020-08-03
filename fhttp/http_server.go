@@ -171,7 +171,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
 	listener, addr := fnet.Listen("closing server", "0")
-	//err = http.ServeTLS(listener, nil, "", "") // go 1.9
+	// err = http.ServeTLS(listener, nil, "", "") // go 1.9
 	go func() {
 		err := closingServer(listener)
 		if err != nil {

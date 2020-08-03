@@ -5,12 +5,11 @@ package dflag
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"unsafe"
-
-	"flag"
 )
 
 // DynStringSlice creates a `Flag` that represents `[]string` which is safe to change dynamically at runtime.

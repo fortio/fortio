@@ -21,13 +21,12 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
-
-	"strings"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
