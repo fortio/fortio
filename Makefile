@@ -56,12 +56,9 @@ local-lint: dependencies
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
-# TODO: do something about cyclomatic complexity; maybe reenable gas and gosec
-# Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
-# build image
 lint: dependencies
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd /go/src/fortio.org/fortio && time go install $(LINT_PACKAGES) \
+		"cd /go/src/fortio.org/fortio \
 		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # This really also tests the release process and build on windows,mac,linux
