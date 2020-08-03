@@ -59,7 +59,7 @@ LINT_PACKAGES:=./...
 lint:
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
 		"cd /go/src/fortio.org/fortio \
-		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
+		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.

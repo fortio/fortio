@@ -421,7 +421,7 @@ issues:
   new: true
 
   # Show only new issues created after git revision `REV`
-  new-from-rev: master
+  new-from-rev: v1.6.4
 
   # Show only new issues created in git patch with set file path.
  # new-from-patch: path/to/patch/file
