@@ -156,6 +156,9 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	if *bincommon.QuietFlag {
+		log.SetLogLevelQuiet(log.Error)
+	}
 	confDir := *bincommon.ConfigDirectoryFlag
 	if confDir != "" {
 		if _, err := configmap.Setup(flag.CommandLine, confDir); err != nil {
@@ -165,9 +168,6 @@ func main() {
 		log.Infof("Not using dynamic flag watching (use -config to set watch directory)")
 	}
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
-	if *bincommon.QuietFlag {
-		log.SetLogLevelQuiet(log.Error)
-	}
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usageErr("Unable to extract percentiles from -p: ", err)

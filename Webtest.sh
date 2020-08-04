@@ -45,6 +45,14 @@ CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://www.google.com/robots.txt > /dev/null
 
+# Check that quiet is quiet. Issue #385.
+QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet www.google.com"
+if [ `$QUIETCURLTEST 2>&1 1> /dev/null | wc -l` -ne 0 ]; then
+  echo "Error, -quiet still outputs logs"
+  $QUIETCURLTEST 2>&1 1> /dev/null
+  exit 1
+fi
+
 # Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we can do it twice despite ulimit - check we get all 200s (exactly 80 of them (default is 8 connections->16 fds + a few))
