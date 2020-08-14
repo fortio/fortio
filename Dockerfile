@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v21 as build
+FROM docker.io/fortio/fortio.build:v22 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
 # We moved a lot of the logic into the Makefile so it can be reused in brew
