@@ -560,10 +560,10 @@ func formatDate(d *time.Time) string {
 
 // getJitter returns a jitter time that is (+/-)10% of the duration t if t is >0
 func getJitter(t time.Duration) time.Duration {
-	if t <= 0 {
+	i := int64(float64(t)/10. + 0.5) // nolint: gomnd // rounding to nearest instead of truncate
+	if i <= 0 {
 		return time.Duration(0)
 	}
-	i := int64(t / 10)
 	j := rand.Int63n(2*i) - i
 	return time.Duration(j)
 }
