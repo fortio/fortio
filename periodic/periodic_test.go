@@ -370,3 +370,10 @@ func Test2Watchers(t *testing.T) {
 	}
 	gAbortMutex.Unlock()
 }
+
+func TestGetJitter(t *testing.T) {
+	d := getJitter(4)
+	if d != time.Duration(0) {
+		t.Errorf("getJitter < 5 got %v instead of expected 0", d)
+	}
+}
