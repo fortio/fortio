@@ -31,12 +31,12 @@ const (
 
 // nolint:gochecknoglobals // we do need these
 var (
-	// The following are set by Dockerfile during link time:
+	// The following are set by Dockerfile during link time.
 	tag       = "n/a"
 	buildInfo = "unknown"
-	// Number of lines in git status --porcelain; 0 means clean
+	// Number of lines in git status --porcelain; 0 means clean.
 	gitstatus = "0" // buildInfo default is unknown so no need to add -dirty
-	// computed in init()
+	// computed in init().
 	version     = ""
 	longVersion = ""
 )

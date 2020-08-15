@@ -150,7 +150,7 @@ var (
 func main() {
 	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	bincommon.SharedMain(usage)
-	if len(os.Args) < 2 { //nolint: gomnd
+	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
 	}
 	command := os.Args[1]
@@ -209,7 +209,7 @@ func main() {
 		}
 		for _, proxy := range proxies {
 			s := strings.SplitN(proxy, " ", 2)
-			if len(s) != 2 { //nolint: gomnd
+			if len(s) != 2 {
 				log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
 			}
 			fnet.ProxyToDestination(s[0], s[1])
@@ -330,7 +330,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	_, _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		rr.DurationHistogram.Count,
 		warmup,
-		1000.*rr.DurationHistogram.Avg, //nolint: gomnd
+		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint: nestif // but probably should breakup this function

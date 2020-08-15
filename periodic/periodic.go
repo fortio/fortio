@@ -41,6 +41,7 @@ import (
 // This is only useful for initializing flag default values.
 // You do not need to use this directly, you can pass a newly created
 // RunnerOptions and 0 valued fields will be reset to these defaults.
+// nolint: golangnoglobals
 var DefaultRunnerOptions = RunnerOptions{
 	QPS:         8,
 	Duration:    5 * time.Second,
@@ -560,11 +561,11 @@ func formatDate(d *time.Time) string {
 
 // getJitter returns a jitter time that is (+/-)10% of the duration t if t is >0
 func getJitter(t time.Duration) time.Duration {
-	i := int64(float64(t)/10. + 0.5) // nolint: gomnd // rounding to nearest instead of truncate
+	i := int64(float64(t)/10. + 0.5) // rounding to nearest instead of truncate
 	if i <= 0 {
 		return time.Duration(0)
 	}
-	j := rand.Int63n(2*i) - i
+	j := rand.Int63n(2*i+1) - i // nolint:gosec // trying to be fast not crypto secure here
 	return time.Duration(j)
 }
 

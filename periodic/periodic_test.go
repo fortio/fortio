@@ -15,6 +15,7 @@
 package periodic
 
 import (
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -30,7 +31,7 @@ func (n *Noop) Run(t int) {
 }
 
 // used for when we don't actually run periodic test/want to initialize
-// watchers
+// watchers.
 var bogusTestChan = NewAborter()
 
 func TestNewPeriodicRunner(t *testing.T) {
@@ -54,7 +55,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
-			Stop:       bogusTestChan, // TODO: use bogusTestChan so gOutstandingRuns does reach 0
+			Stop:       bogusTestChan, // TOmaybeDO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})
@@ -375,5 +376,19 @@ func TestGetJitter(t *testing.T) {
 	d := getJitter(4)
 	if d != time.Duration(0) {
 		t.Errorf("getJitter < 5 got %v instead of expected 0", d)
+	}
+	sum := 0.
+	for i := 0; i < 100; i++ {
+		d = getJitter(6)
+		a := math.Abs(float64(d))
+		// only valid values are -1, 0, 1
+		if a != 1. && d != 0 {
+			t.Errorf("getJitter 6 got %v (%v) instead of expected -1/+1", d, a)
+		}
+		// make sure we don't always get 0
+		sum += a
+	}
+	if sum <= 60 {
+		t.Errorf("getJitter 6 got %v sum of abs value instead of expected > 60 at -1/+1", sum)
 	}
 }

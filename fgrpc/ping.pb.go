@@ -13,9 +13,10 @@ It has these top-level messages:
 package fgrpc
 
 import (
-	proto "github.com/golang/protobuf/proto"
 	fmt "fmt"
 	math "math"
+
+	proto "github.com/golang/protobuf/proto"
 )
 
 import (

@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// leave this test first/where it is as it relies on line number not changing
+// leave this test first/where it is as it relies on line number not changing.
 func TestLoggerFilenameLine(t *testing.T) {
 	SetLogLevel(Debug) // make sure it's already debug when we capture
 	on := true
@@ -107,7 +107,7 @@ func TestLogger1(t *testing.T) {
 	expected += "I Log level is now 5 Critical (was 0 Debug)\n"
 	Critf("testing crit %d", i) // should show
 	expected += "C testing crit 7\n"
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
