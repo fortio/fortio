@@ -23,7 +23,6 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
-
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 

@@ -21,10 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/fortio/log"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
-
-	"fortio.org/fortio/log"
 )
 
 func init() {

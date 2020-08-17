@@ -17,13 +17,13 @@ package ui // import "fortio.org/fortio/ui"
 
 import (
 	"bytes"
-	"flag"
 
 	// md5 is mandated, not our choice
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"html"
 	"html/template"
