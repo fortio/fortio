@@ -27,9 +27,8 @@ import (
 	"fortio.org/fortio/version"
 )
 
-// Prints usage
+// Prints usage.
 func usage(w io.Writer, msgs ...interface{}) {
-	// nolint: gas
 	_, _ = fmt.Fprintf(w, "Φορτίο fortio-curl %s usage:\n\t%s [flags] url\n",
 		version.Short(),
 		os.Args[0])

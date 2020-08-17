@@ -20,7 +20,7 @@ import (
 	"flag"
 
 	// md5 is mandated, not our choice
-	"crypto/md5" // nolint: gas
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -144,16 +144,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		if r.FormValue("stop") == "Stop" {
-			runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64) // nolint: gas
+			runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64)
 			log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
 			mode = stop
 		}
 	}
 	// Those only exist/make sense on run mode but go variable declaration...
 	labels := r.FormValue("labels")
-	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64) // nolint: gas
-	percList, _ := stats.ParsePercentiles(r.FormValue("p"))   // nolint: gas
-	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)      // nolint: gas
+	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
+	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
+	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 	durStr := r.FormValue("t")
 	jitter := (r.FormValue("jitter") == "on")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
@@ -172,7 +172,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
 		}
 	}
-	c, _ := strconv.Atoi(r.FormValue("c")) // nolint: gas
+	c, _ := strconv.Atoi(r.FormValue("c"))
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
@@ -184,7 +184,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if !JSONOnly {
 		out = fhttp.NewHTMLEscapeWriter(w)
 	}
-	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64) // nolint: gas
+	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
 		url = "http://url.needed" // just because url validation doesn't like empty urls
 	}
@@ -320,7 +320,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-			// nolint: errcheck,gas
+
 			w.Write([]byte(fmt.Sprintf(
 				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
@@ -344,17 +344,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if savedAs != "" {
-			// nolint: errcheck, gas
 			w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}
-		// nolint: errcheck, gas
+
 		w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
 			res.Result().DurationHistogram.Count,
 			1000.*res.Result().DurationHistogram.Avg,
 			res.Result().ActualQPS)))
 		ResultToJsData(w, json)
-		w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n")) // nolint: gas
+		w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
 		delete(runs, runid)
 	}
 }
@@ -362,11 +361,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // ResultToJsData converts a result object to chart data arrays and title
 // and creates a chart from the result object
 func ResultToJsData(w io.Writer, json []byte) {
-	// nolint: errcheck, gas
 	w.Write([]byte("var res = "))
-	// nolint: errcheck, gas
+
 	w.Write(json)
-	// nolint: errcheck, gas
+
 	w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 
@@ -519,15 +517,15 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 
 func sendHTMLDataIndex(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	w.Write([]byte("<html><body><ul>\n")) // nolint: errcheck, gas
+	w.Write([]byte("<html><body><ul>\n"))
 	for _, e := range DataList() {
-		w.Write([]byte("<li><a href=\"")) // nolint: errcheck, gas
-		w.Write([]byte(e))                // nolint: errcheck, gas
-		w.Write([]byte(".json\">"))       // nolint: errcheck, gas
-		w.Write([]byte(e))                // nolint: errcheck, gas
-		w.Write([]byte("</a>\n"))         // nolint: errcheck, gas
+		w.Write([]byte("<li><a href=\""))
+		w.Write([]byte(e))
+		w.Write([]byte(".json\">"))
+		w.Write([]byte(e))
+		w.Write([]byte("</a>\n"))
 	}
-	w.Write([]byte("</ul></body></html>")) // nolint: errcheck, gas
+	w.Write([]byte("</ul></body></html>"))
 }
 
 type tsvCache struct {
@@ -553,7 +551,7 @@ func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
 	if !useCache {
 		var b bytes.Buffer
-		b.Write([]byte("TsvHttpData-1.0\n")) // nolint: errcheck, gas
+		b.Write([]byte("TsvHttpData-1.0\n"))
 		for _, e := range DataList() {
 			fname := e + ".json"
 			f, err := os.Open(path.Join(dataDir, fname))
@@ -563,20 +561,20 @@ func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 			}
 			// This isn't a crypto hash, more like a checksum - and mandated by the
 			// spec above, not our choice
-			h := md5.New() // nolint: gas
+			h := md5.New()
 			var sz int64
 			if sz, err = io.Copy(h, f); err != nil {
-				f.Close() // nolint: errcheck, gas
+				f.Close()
 				log.Errf("Copy/read error for %s: %v", fname, err)
 				continue
 			}
-			b.Write([]byte(urlPrefix))                                     // nolint: errcheck, gas
-			b.Write([]byte(fname))                                         // nolint: errcheck, gas
-			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
-			b.Write([]byte(strconv.FormatInt(sz, 10)))                     // nolint: errcheck, gas
-			b.Write([]byte("\t"))                                          // nolint: errcheck, gas
-			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil)))) // nolint: errcheck, gas
-			b.Write([]byte("\n"))                                          // nolint: errcheck, gas
+			b.Write([]byte(urlPrefix))
+			b.Write([]byte(fname))
+			b.Write([]byte("\t"))
+			b.Write([]byte(strconv.FormatInt(sz, 10)))
+			b.Write([]byte("\t"))
+			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil))))
+			b.Write([]byte("\n"))
 		}
 		gTSVCache.cachedDirTime = info.ModTime()
 		gTSVCache.cachedResult = b.Bytes()
@@ -589,7 +587,7 @@ func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	// Cloud transfer requires ETag
 	w.Header().Set("ETag", fmt.Sprintf("\"%s\"", lastModified))
 	w.Header().Set("Last-Modified", lastModified)
-	w.Write(result) // nolint: errcheck, gas
+	w.Write(result)
 }
 
 // LogAndFilterDataRequest logs the data request.
@@ -650,7 +648,7 @@ func (o outHTTPWriter) Write(b []byte) (int, error) {
 
 func (o outHTTPWriter) WriteHeader(code int) {
 	*o.CodePtr = code
-	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code))) // nolint: gas, errcheck
+	o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code)))
 }
 
 func (o outHTTPWriter) Flush() {
@@ -662,8 +660,8 @@ func Sync(out io.Writer, u string, datadir string) bool {
 	dataDir = datadir
 	v := url.Values{}
 	v.Set("url", u)
-	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil) // nolint: gas
-	code := http.StatusOK                                               // default
+	req, _ := http.NewRequest("GET", "/sync-function?"+v.Encode(), nil)
+	code := http.StatusOK // default
 	w := outHTTPWriter{Out: out, CodePtr: &code}
 	SyncHandler(w, req)
 	return (code == http.StatusOK)
@@ -687,7 +685,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 			log.Critf("Sync template execution failed: %v", err)
 		}
 	}
-	w.Write([]byte("Fetch of index/bucket url ... ")) // nolint: gas, errcheck
+	w.Write([]byte("Fetch of index/bucket url ... "))
 	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
 	fhttp.OnBehalfOf(o, r)
@@ -696,14 +694,14 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// use std client to change the url and handle https:
 	client := fhttp.NewStdClient(o)
 	if client == nil {
-		w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
 		w.WriteHeader(422 /*Unprocessable Entity*/)
 		return
 	}
 	code, data, _ := client.Fetch()
 	defer client.Close()
 	if code != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
@@ -715,34 +713,34 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.Write([]byte("</table>"))           // nolint: gas, errcheck
-	w.Write([]byte("\n</body></html>\n")) // nolint: gas, errcheck
+	w.Write([]byte("</table>"))
+	w.Write([]byte("\n</body></html>\n"))
 }
 
 func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
 	flusher := w.(http.Flusher)
 	lines := strings.Split(sdata, "\n")
 	n := len(lines)
-	// nolint: gas, errcheck
+
 	w.Write([]byte(fmt.Sprintf("success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
 		n-1, n)))
-	w.Write([]byte("<table>")) // nolint: gas, errcheck
+	w.Write([]byte("<table>"))
 	flusher.Flush()
 	for i, l := range lines[1:] {
 		parts := strings.Split(l, "\t")
 		u := parts[0]
-		w.Write([]byte("<tr><td>"))                   // nolint: gas, errcheck
-		w.Write([]byte(template.HTMLEscapeString(u))) // nolint: gas, errcheck
+		w.Write([]byte("<tr><td>"))
+		w.Write([]byte(template.HTMLEscapeString(u)))
 		ur, err := url.Parse(u)
 		if err != nil {
-			w.Write([]byte("<td>skipped (not a valid url)")) // nolint: gas, errcheck
+			w.Write([]byte("<td>skipped (not a valid url)"))
 		} else {
 			uPath := ur.Path
 			pathParts := strings.Split(uPath, "/")
 			name := pathParts[len(pathParts)-1]
 			downloadOne(w, client, name, u)
 		}
-		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
 }
@@ -758,35 +756,35 @@ type ListBucketResult struct {
 // @returns true if started a table successfully - false is error
 func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
 	// We already know this parses as we just fetched it:
-	bu, _ := url.Parse(baseURL) // nolint: gas, errcheck
+	bu, _ := url.Parse(baseURL)
 	flusher := w.(http.Flusher)
 	l := ListBucketResult{}
 	err := xml.Unmarshal(data, &l)
 	if err != nil {
 		log.Errf("xml unmarshal error %v", err)
 		// don't show the error / would need html escape to avoid CSS attacks
-		w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n")) // nolint: gas, errcheck
+		w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return false
 	}
 	n := len(l.Names)
 	log.Infof("Parsed %+v", l)
-	// nolint: gas, errcheck
+
 	w.Write([]byte(fmt.Sprintf("success xml fetch #%d! Now fetching %d referenced objects:<script>setPB(1,%d)</script>\n",
 		level+1, n, n+1)))
 	if level == 0 {
-		w.Write([]byte("<table>")) // nolint: gas, errcheck
+		w.Write([]byte("<table>"))
 	}
 	for i, el := range l.Names {
-		w.Write([]byte("<tr><td>"))                    // nolint: gas, errcheck
-		w.Write([]byte(template.HTMLEscapeString(el))) // nolint: gas, errcheck
+		w.Write([]byte("<tr><td>"))
+		w.Write([]byte(template.HTMLEscapeString(el)))
 		pathParts := strings.Split(el, "/")
 		name := pathParts[len(pathParts)-1]
 		newURL := *bu // copy
 		newURL.Path = newURL.Path + "/" + el
 		fullURL := newURL.String()
 		downloadOne(w, client, name, fullURL)
-		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
 	flusher.Flush()
@@ -809,14 +807,14 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	bu.RawQuery = q.Encode()
 	newBaseURL := bu.String()
 	// url already validated
-	w.Write([]byte("<tr><td>"))                            // nolint: gas, errcheck
-	w.Write([]byte(template.HTMLEscapeString(newBaseURL))) // nolint: gas, errcheck
-	w.Write([]byte("<td>"))                                // nolint: gas, errcheck
-	_ = client.ChangeURL(newBaseURL)                       // nolint: gas
+	w.Write([]byte("<tr><td>"))
+	w.Write([]byte(template.HTMLEscapeString(newBaseURL)))
+	w.Write([]byte("<td>"))
+	_ = client.ChangeURL(newBaseURL)
 	ncode, ndata, _ := client.Fetch()
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
-		// nolint: gas, errcheck
+
 		w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return false
@@ -827,41 +825,41 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u string) {
 	log.Infof("downloadOne(%s,%s)", name, u)
 	if !strings.HasSuffix(name, ".json") {
-		w.Write([]byte("<td>skipped (not json)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (not json)"))
 		return
 	}
 	localPath := path.Join(dataDir, name)
 	_, err := os.Stat(localPath)
 	if err == nil {
-		w.Write([]byte("<td>skipped (already exists)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (already exists)"))
 		return
 	}
 	// note that if data dir doesn't exist this will trigger too - TODO: check datadir earlier
 	if !os.IsNotExist(err) {
 		log.Warnf("check %s : %v", localPath, err)
 		// don't return the details of the error to not leak local data dir etc
-		w.Write([]byte("<td>skipped (access error)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (access error)"))
 		return
 	}
 	// url already validated
-	_ = client.ChangeURL(u) // nolint: gas
+	_ = client.ChangeURL(u)
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
-		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1))) // nolint: gas, errcheck
+		w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1)))
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
 	err = ioutil.WriteFile(localPath, data1, 0o644)
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
-		w.Write([]byte("<td>skipped (write error)")) // nolint: gas, errcheck
+		w.Write([]byte("<td>skipped (write error)"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// finally ! success !
 	log.Infof("Success fetching %s - saved at %s", u, localPath)
 	// checkmark
-	w.Write([]byte("<td class='checkmark'>✓")) // nolint: gas, errcheck
+	w.Write([]byte("<td class='checkmark'>✓"))
 }
 
 // Serve starts the fhttp.Serve() plus the UI server on the given port

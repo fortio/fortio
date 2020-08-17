@@ -79,7 +79,6 @@ const (
 	disabled = "disabled"
 )
 
-// nolint: gochecknoglobals
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target
@@ -251,7 +250,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	url := httpOpts.URL
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
-	qps := *qpsFlag // TOmaybeDO possibly use translated <=0 to "max" from results/options normalization in periodic/
+	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
 		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {

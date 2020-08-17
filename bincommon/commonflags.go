@@ -48,7 +48,6 @@ func (f *headersFlagList) Set(value string) error {
 
 // FlagsUsage prints end of the usage() (flags part + error message).
 func FlagsUsage(w io.Writer, msgs ...interface{}) {
-	// nolint: gas
 	_, _ = fmt.Fprintf(w, "flags are:\n")
 	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
@@ -57,7 +56,6 @@ func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	}
 }
 
-// nolint: gochecknoglobals
 var (
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")

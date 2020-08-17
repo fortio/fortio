@@ -210,7 +210,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
-		pprof.StartCPUProfile(fc) //nolint: gas,errcheck
+		pprof.StartCPUProfile(fc)
 	}
 	total.RunnerResults = r.Run()
 	if o.Profiler != "" {
@@ -220,9 +220,9 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			log.Critf("Unable to create .mem profile: %v", err)
 			return nil, err
 		}
-		runtime.GC()               // get up-to-date statistics
-		pprof.WriteHeapProfile(fm) // nolint:gas,errcheck
-		fm.Close()                 // nolint:gas,errcheck
+		runtime.GC() // get up-to-date statistics
+		pprof.WriteHeapProfile(fm)
+		fm.Close()
 		fmt.Printf("Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
 	// Numthreads may have reduced

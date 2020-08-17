@@ -14,21 +14,20 @@
 
 package fhttp // import "fortio.org/fortio/fhttp"
 
+// pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	// get /debug/pprof endpoints on a mux through SetupPPROF
-	"net/http/pprof"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -237,7 +236,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
-	hostname, _ := os.Hostname() // nolint: gas
+	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
@@ -252,7 +251,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string
+	var keys []string // nolint: prealloc // header is multi valued map,...
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
@@ -316,7 +315,7 @@ func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 }
 
 // ServeTCP is Serve() but restricted to TCP (return address is assumed
-// to be TCP - will panic for unix domain)
+// to be TCP - will panic for unix domain).
 func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	mux, addr := Serve(port, debugPath)
 	if addr == nil {
@@ -352,7 +351,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Don't forget to close the connection:
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
 	opts := NewHTTPOptions("http://" + url)
@@ -380,7 +379,7 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
-// (Do not create a loop, make sure this is addressed from an ingress)
+// (Do not create a loop, make sure this is addressed from an ingress).
 func RedirectToHTTPS(port string) net.Addr {
 	m, a := HTTPServer("https redirector", port)
 	if m == nil {
@@ -390,7 +389,7 @@ func RedirectToHTTPS(port string) net.Addr {
 	return a
 }
 
-// LogRequest logs the incoming request, including headers when loglevel is verbose
+// LogRequest logs the incoming request, including headers when loglevel is verbose.
 func LogRequest(r *http.Request, msg string) {
 	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
 		r.Header.Get("X-Forwarded-Proto"))
@@ -411,7 +410,7 @@ func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-// LogAndCallNoArg is LogAndCall for functions not needing the response/request args
+// LogAndCallNoArg is LogAndCall for functions not needing the response/request args.
 func LogAndCallNoArg(msg string, f func()) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, msg)

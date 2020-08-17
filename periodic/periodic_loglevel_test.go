@@ -23,7 +23,7 @@ import (
 )
 
 // Rerun some test with various log level for coverage of the print statements
-// TOmaybeDO: golden copy type check of output ?
+// TODO: golden copy type check of output ?
 
 func TestQuietMode(t *testing.T) {
 	log.SetLogLevel(log.Error)

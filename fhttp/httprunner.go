@@ -124,7 +124,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
-		pprof.StartCPUProfile(fc) //nolint: gas,errcheck
+		pprof.StartCPUProfile(fc)
 	}
 	total.RunnerResults = r.Run()
 	if o.Profiler != "" {
@@ -134,9 +134,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			log.Critf("Unable to create .mem profile: %v", err)
 			return nil, err
 		}
-		runtime.GC()               // get up-to-date statistics
-		pprof.WriteHeapProfile(fm) // nolint:gas,errcheck
-		fm.Close()                 // nolint:gas,errcheck
+		runtime.GC() // get up-to-date statistics
+		pprof.WriteHeapProfile(fm)
+		fm.Close()
 		_, _ = fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
 	// Numthreads may have reduced but it should be ok to accumulate 0s from

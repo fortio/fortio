@@ -55,7 +55,7 @@ func TestNewPeriodicRunner(t *testing.T) {
 		o := RunnerOptions{
 			QPS:        tst.qps,
 			NumThreads: tst.numThreads,
-			Stop:       bogusTestChan, // TOmaybeDO: use bogusTestChan so gOutstandingRuns does reach 0
+			Stop:       bogusTestChan, // TODO: use bogusTestChan so gOutstandingRuns does reach 0
 		}
 		r := newPeriodicRunner(&o)
 		r.MakeRunners(&Noop{})

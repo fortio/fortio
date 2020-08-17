@@ -347,7 +347,7 @@ linters:
   disable:
     - wsl
     - nlreturn
-    - gochecknoinits
+#    - gochecknoinits
     - gochecknoglobals
     - gomnd
     - testpackage
@@ -400,6 +400,9 @@ issues:
     - linters:
         - goerr113
       text: "do not define dynamic errors"
+    - linters:
+        - godox
+      text: "TODO"
 
 
   # Independently from option `exclude` we use default exclude patterns,

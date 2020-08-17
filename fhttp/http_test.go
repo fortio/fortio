@@ -410,7 +410,7 @@ func TestGenerateStatusEdgeSum(t *testing.T) {
 	}
 }
 
-// Round down to the nearest thousand
+// Round down to the nearest thousand.
 func roundthousand(x int) int {
 	return int(float64(x)+500.) / 1000
 }
@@ -901,6 +901,7 @@ func TestEchoHeaders(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed get for %s : %v", url, err)
 		}
+		defer resp.Body.Close()
 		t.Logf("TestEchoHeaders url = %s : status %s", url, resp.Status)
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Got %d instead of 200", resp.StatusCode)
@@ -1129,7 +1130,6 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 		if test.isAuthHeaderAdded && len(h.Get("Authorization")) <= 0 {
 			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
 		}
-
 	}
 }
 
@@ -1220,7 +1220,7 @@ func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 	}
 }
 
-// Package's version (3x fastest)
+// Package's version (3x fastest).
 func BenchmarkASCIIToUpper(b *testing.B) {
 	log.SetLogLevel(log.Warning)
 	for n := 0; n < b.N; n++ {
@@ -1228,7 +1228,7 @@ func BenchmarkASCIIToUpper(b *testing.B) {
 	}
 }
 
-// Note: newline inserted in set-cookie line because of linter (line too long)
+// Note: newline inserted in set-cookie line because of linter (line too long).
 var testHaystack = []byte(`HTTP/1.1 200 OK
 Date: Sun, 16 Jul 2017 21:00:29 GMT
 Expires: -1

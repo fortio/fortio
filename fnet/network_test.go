@@ -72,7 +72,7 @@ func TestListen(t *testing.T) {
 	if a.(*net.TCPAddr).Port == 0 {
 		t.Errorf("Unexpected 0 port after listen %+v", a)
 	}
-	_ = l.Close() // nolint: gas
+	_ = l.Close()
 }
 
 func TestListenFailure(t *testing.T) {

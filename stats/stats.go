@@ -234,7 +234,7 @@ func init() {
 }
 
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
-// TOmaybeDO: change linear time to O(log(N)) with binary search.
+// TODO: change linear time to O(log(N)) with binary search.
 func lookUpIdx(scaledValue int) int {
 	scaledValue32 := int32(scaledValue)
 	if scaledValue32 < maxArrayValue { // constant
@@ -283,7 +283,7 @@ func (h *Histogram) record(v float64, count int) {
 // where 90.0% of the data is below said threshold.
 // with 3 data points 10, 20, 30; p0-p33.33 == 10, p 66.666 = 20, p100 = 30
 // p33.333 - p66.666 = linear between 10 and 20; so p50 = 15
-// TOmaybeDO: consider spreading the count of the bucket evenly from start to end
+// TODO: consider spreading the count of the bucket evenly from start to end
 // so the % grows by at least to 1/N on start of range, and for last range
 // when start == end we should get to that % faster.
 func (e *HistogramData) CalcPercentile(percentile float64) float64 {
@@ -405,7 +405,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 	}
 	// print the information of target percentiles
 	for _, p := range e.Percentiles {
-		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 	}
 }
 
