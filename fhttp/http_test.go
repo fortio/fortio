@@ -548,7 +548,7 @@ func TestEchoBack(t *testing.T) {
 	v := url.Values{}
 	v.Add("foo", "bar")
 	url := fmt.Sprintf("http://localhost:%d/?delay=2s", a.Port) // trigger max delay
-	resp, err := http.PostForm(url, v)
+	resp, err := http.PostForm(url, v)                          // nolint: noctx // it's just a test!
 	if err != nil {
 		t.Fatalf("post form err %v", err)
 	}
@@ -897,7 +897,7 @@ func TestEchoHeaders(t *testing.T) {
 	// proper encoding
 	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
 	for _, url := range urls {
-		resp, err := http.Get(url)
+		resp, err := http.Get(url) // nolint: noctx // it's just a test!
 		if err != nil {
 			t.Fatalf("Failed get for %s : %v", url, err)
 		}

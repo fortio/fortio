@@ -143,7 +143,7 @@ func ParseChunkSize(inp []byte) (int, int) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits {
+		if inDigits { // nolint: nestif
 			b := toUpper(inp[off])
 			var digit int
 			if b >= 'A' && b <= 'F' {

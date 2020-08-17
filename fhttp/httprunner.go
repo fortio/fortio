@@ -77,6 +77,7 @@ type HTTPRunnerOptions struct {
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
+// nolint: funlen
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
@@ -117,14 +118,16 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].AbortOn = total.AbortOn
 		httpstate[i].aborter = total.aborter
 	}
-
+	// TODO avoid copy pasta with grpcrunner
 	if o.Profiler != "" {
 		fc, err := os.Create(o.Profiler + ".cpu")
 		if err != nil {
 			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
-		pprof.StartCPUProfile(fc)
+		if err = pprof.StartCPUProfile(fc); err != nil {
+			log.Critf("Unable to start cpu profile: %v", err)
+		}
 	}
 	total.RunnerResults = r.Run()
 	if o.Profiler != "" {
@@ -135,7 +138,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		runtime.GC() // get up-to-date statistics
-		pprof.WriteHeapProfile(fm)
+		if err = pprof.WriteHeapProfile(fm); err != nil {
+			log.Critf("Unable to write heap profile: %v", err)
+		}
 		fm.Close()
 		_, _ = fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}

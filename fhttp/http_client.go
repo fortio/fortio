@@ -266,6 +266,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
+	// nolint: noctx // TODO fixme?
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("Unable to make %s request for %s : %v", method, o.URL, err)
@@ -621,7 +622,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
 		return c.returnRes()
 	}
-	if !c.keepAlive && c.halfClose {
+	if !c.keepAlive && c.halfClose { // nolint: nestif
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {
@@ -644,7 +645,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 }
 
 // Response reading:
-// TODO: refactor - unwiedly/ugly atm.
+// nolint: nestif,funlen,gocognit,gocyclo // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
