@@ -208,6 +208,7 @@ func NewHistogram(offset float64, divider float64) *Histogram {
 
 // Val2Bucket values are kept in two different structure
 // val2Bucket allows you reach between 0 and 1000 in constant time.
+// nolint: gochecknoinits // we need to init these.
 func init() {
 	val2Bucket = make([]int, maxArrayValue)
 	maxArrayValueIndex = -1

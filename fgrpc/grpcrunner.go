@@ -67,7 +67,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 	return conn, err
 }
 
-// TODO: refactor common parts between http and grpc runners
+// TODO: refactor common parts between http and grpc runners.
 
 // GRPCRunnerResults is the aggregated result of an GRPCRunner.
 // Also is the internal type used per thread/goroutine.
@@ -127,6 +127,7 @@ type GRPCRunnerOptions struct {
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
+// nolint: funlen, gocognit
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Streams < 1 {
 		o.Streams = 1
@@ -176,7 +177,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 		grpcstate[i].Ping = o.UsePing
 		var err error
-		if o.UsePing {
+		if o.UsePing { // nolint: nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
@@ -209,7 +210,9 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
 		}
-		pprof.StartCPUProfile(fc)
+		if err = pprof.StartCPUProfile(fc); err != nil {
+			log.Critf("Unable to start cpu profile: %v", err)
+		}
 	}
 	total.RunnerResults = r.Run()
 	if o.Profiler != "" {
@@ -220,7 +223,9 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			return nil, err
 		}
 		runtime.GC() // get up-to-date statistics
-		pprof.WriteHeapProfile(fm)
+		if err = pprof.WriteHeapProfile(fm); err != nil {
+			log.Critf("Unable to write heap profile: %v", err)
+		}
 		fm.Close()
 		fmt.Printf("Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
@@ -256,7 +261,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 // prefix is removed from dest if one exists and the port number is set to
 // StandardHTTPPort for http, StandardHTTPSPort for https, or DefaultGRPCPort
 // if http, https, or :port is not specified in dest.
-// TODO: change/fix this (NormalizePort and more)
+// TODO: change/fix this (NormalizePort and more).
 func grpcDestination(dest string) (parsedDest string) {
 	var port string
 	// strip any unintentional http/https scheme prefixes from dest

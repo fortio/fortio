@@ -27,11 +27,11 @@ import (
 )
 
 var (
-	// Generated from "make cert"
+	// Generated from "make cert".
 	caCrt  = "../cert-tmp/ca.crt"
 	svrCrt = "../cert-tmp/server.crt"
 	svrKey = "../cert-tmp/server.key"
-	// used for failure test cases
+	// used for failure test cases.
 	failCrt = "../missing/cert.crt"
 	failKey = "../missing/cert.key"
 )

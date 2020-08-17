@@ -35,7 +35,7 @@ import (
 const (
 	// DefaultHealthServiceName is the default health service name used by fortio.
 	DefaultHealthServiceName = "ping"
-	// Error indicates that something went wrong with healthcheck in grpc
+	// Error indicates that something went wrong with healthcheck in grpc.
 	Error = "ERROR"
 )
 
