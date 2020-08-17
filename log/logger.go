@@ -51,6 +51,7 @@ var (
 	levelInternal  int32
 )
 
+// nolint: gochecknoinits // needed
 func init() {
 	setLevel(Info) // starting value
 	levelToStrA = []string{
