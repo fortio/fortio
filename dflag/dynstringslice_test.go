@@ -28,7 +28,8 @@ func TestDynStringSlice_IsMarkedDynamic(t *testing.T) {
 
 func TestDynStringSlice_FiresValidators(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynStringSlice(set, "some_stringslice_1", []string{"foo", "bar"}, "Use it or lose it").WithValidator(ValidateDynStringSliceMinElements(2))
+	DynStringSlice(set, "some_stringslice_1", []string{"foo", "bar"},
+		"Use it or lose it").WithValidator(ValidateDynStringSliceMinElements(2))
 
 	assert.NoError(t, set.Set("some_stringslice_1", "car,far"), "no error from validator when in range")
 	assert.Error(t, set.Set("some_stringslice_1", "car"), "error from validator when value out of range")

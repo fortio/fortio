@@ -31,10 +31,10 @@ import (
 	"fortio.org/fortio/stats"
 )
 
-// Used for the fast case insensitive search
+// Used for the fast case insensitive search.
 const toUpperMask = ^byte('a' - 'A')
 
-// Slow but correct version
+// Slow but correct version.
 func toUpper(b byte) byte {
 	if b >= 'a' && b <= 'z' {
 		b -= ('a' - 'A')
@@ -108,7 +108,7 @@ func FoldFind(haystack []byte, needle []byte) (bool, int) {
 
 // ParseDecimal extracts the first positive integer number from the input.
 // spaces are ignored.
-// any character that isn't a digit cause the parsing to stop
+// any character that isn't a digit cause the parsing to stop.
 func ParseDecimal(inp []byte) int {
 	res := -1
 	for _, b := range inp {
@@ -143,7 +143,7 @@ func ParseChunkSize(inp []byte) (int, int) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits {
+		if inDigits { // nolint: nestif
 			b := toUpper(inp[off])
 			var digit int
 			if b >= 'A' && b <= 'F' {
@@ -208,7 +208,7 @@ func removeTrailingPercent(s string) string {
 }
 
 // generateStatus from string, format: status="503" for 100% 503s
-// status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
+// status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s.
 func generateStatus(status string) int {
 	lst := strings.Split(status, ",")
 	log.Debugf("Parsing status %s -> %v", status, lst)
@@ -254,7 +254,7 @@ func generateStatus(status string) int {
 		codes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", status, res, i, codes[i])
@@ -270,7 +270,7 @@ func generateStatus(status string) int {
 // returns -1 for the default case, so one can specify 0 and force no payload
 // even if it's a post request with a payload (to test asymmetric large inbound
 // small outbound).
-// TODO: refactor similarities with status and delay
+// TODO: refactor similarities with status and delay.
 func generateSize(sizeInput string) (size int) {
 	size = -1 // default value/behavior
 	if len(sizeInput) == 0 {
@@ -323,7 +323,7 @@ func generateSize(sizeInput string) (size int) {
 		sizes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", sizeInput, res, i, sizes[i])
@@ -395,7 +395,7 @@ func generateDelay(delay string) time.Duration {
 		delays[i] = d
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", delay, res, i, delays[i])
@@ -406,12 +406,9 @@ func generateDelay(delay string) time.Duration {
 	return 0
 }
 
-// RoundDuration rounds to 10th of second. Only for positive durations.
-// TODO: switch to Duration.Round once switched to go 1.9
+// RoundDuration rounds to 10th of second.
 func RoundDuration(d time.Duration) time.Duration {
-	tenthSec := int64(100 * time.Millisecond)
-	r := int64(d+50*time.Millisecond) / tenthSec
-	return time.Duration(tenthSec * r)
+	return d.Round(100 * time.Millisecond)
 }
 
 // -- formerly in uihandler:

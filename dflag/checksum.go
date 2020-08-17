@@ -11,7 +11,7 @@ import (
 
 // @todo Temporary fix for race condition happening in the test:
 // spf13/pflag.FlagSet.VisitAll seems to be prone to a race condition
-// This fixes that but I'm not sure how much slower does it make the codebase
+// This fixes that but I'm not sure how much slower does it make the codebase.
 var visitAllMutex = &sync.Mutex{}
 
 // ChecksumFlagSet will generate a FNV of the *set* values in a FlagSet.
@@ -24,8 +24,8 @@ func ChecksumFlagSet(flagSet *flag.FlagSet, flagFilter func(flag *flag.Flag) boo
 		if flagFilter != nil && !flagFilter(flag) {
 			return
 		}
-		h.Write([]byte(flag.Name))
-		h.Write([]byte(flag.Value.String()))
+		_, _ = h.Write([]byte(flag.Name))
+		_, _ = h.Write([]byte(flag.Value.String()))
 	})
 	return h.Sum(nil)
 }

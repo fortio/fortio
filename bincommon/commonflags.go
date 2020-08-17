@@ -48,7 +48,6 @@ func (f *headersFlagList) Set(value string) error {
 
 // FlagsUsage prints end of the usage() (flags part + error message).
 func FlagsUsage(w io.Writer, msgs ...interface{}) {
-	// nolint: gas
 	_, _ = fmt.Fprintf(w, "flags are:\n")
 	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
@@ -57,7 +56,6 @@ func FlagsUsage(w io.Writer, msgs ...interface{}) {
 	}
 }
 
-// nolint: gochecknoglobals
 var (
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
@@ -74,22 +72,19 @@ var (
 	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
 		" should be `user:password`")
 	// QuietFlag is the value of -quiet.
-	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
-
+	QuietFlag       = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	contentTypeFlag = flag.String("content-type", "",
 		"Sets http content type. Setting this value switches the request method from GET to POST.")
-	// PayloadSizeFlag is the value of -payload-size
+	// PayloadSizeFlag is the value of -payload-size.
 	PayloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
 		" must be smaller than -maxpayloadsizekb. Setting this switches http to POST.")
-	// PayloadFlag is the value of -payload
+	// PayloadFlag is the value of -payload.
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
-	// PayloadFileFlag is the value of -paylaod-file
+	// PayloadFileFlag is the value of -paylaod-file.
 	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
-
-	// UnixDomainSocket to use instead of regular host:port
+	// UnixDomainSocket to use instead of regular host:port.
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
-
-	// ConfigDirectoryFlag is where to watch for dynamic flag updates
+	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
 	ConfigDirectoryFlag = flag.String("config", "",
 		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
 )
@@ -102,7 +97,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) < 2 { //nolint: gomnd
+	if len(os.Args) < 2 {
 		return
 	}
 	if strings.Contains(os.Args[1], "version") {

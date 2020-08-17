@@ -41,7 +41,7 @@ type DynJSONValue struct {
 	flagSet    *flag.FlagSet
 }
 
-// IsJSON always return true (method is present for the DynamicJSONFlagValue interface tagging)
+// IsJSON always return true (method is present for the DynamicJSONFlagValue interface tagging).
 func (d *DynJSONValue) IsJSON() bool {
 	return true
 }

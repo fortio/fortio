@@ -48,10 +48,10 @@ var (
 	LogPrefix = flag.String("logprefix", "> ", "Prefix to log lines before logged messages")
 	// LogFileAndLine determines if the log lines will contain caller file name and line number.
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
-	dynLevel       *dflag.DynStringValue
 	levelInternal  int32
 )
 
+// nolint: gochecknoinits // needed
 func init() {
 	setLevel(Info) // starting value
 	levelToStrA = []string{
@@ -69,7 +69,8 @@ func init() {
 		levelToStrM[name] = Level(l)
 		levelToStrM[strings.ToLower(name)] = Level(l)
 	}
-	dynLevel = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
+	// virtual dynLevel flag that maps back to actual level
+	_ = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
 		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
 		_, err := ValidateLevel(new)
 		return err
@@ -98,7 +99,7 @@ func ValidateLevel(str string) (Level, error) {
 	return lvl, nil
 }
 
-// Sets from string
+// Sets from string.
 func setLogLevelStr(str string) error {
 	var lvl Level
 	var err error
@@ -157,7 +158,7 @@ func LevelByName(str string) Level {
 }
 
 // Logf logs with format at the given level.
-// 2 level of calls so it's always same depth for extracting caller file/line
+// 2 level of calls so it's always same depth for extracting caller file/line.
 func Logf(lvl Level, format string, rest ...interface{}) {
 	logPrintf(lvl, format, rest...)
 }
@@ -225,12 +226,12 @@ func Fatalf(format string, rest ...interface{}) {
 	logPrintf(Fatal, format, rest...)
 }
 
-// LogDebug shortcut for fortio.Log(fortio.Debug)
+// LogDebug shortcut for fortio.Log(fortio.Debug).
 func LogDebug() bool { //nolint: golint
 	return Log(Debug)
 }
 
-// LogVerbose shortcut for fortio.Log(fortio.Verbose)
+// LogVerbose shortcut for fortio.Log(fortio.Verbose).
 func LogVerbose() bool { //nolint: golint
 	return Log(Verbose)
 }
@@ -247,7 +248,7 @@ func (l *loggerShm) Printf(format string, rest ...interface{}) {
 	logPrintf(Info, format, rest...)
 }
 
-// Logger returns a LoggerI (standard logger compatible) that can be used for simple logging
+// Logger returns a LoggerI (standard logger compatible) that can be used for simple logging.
 func Logger() LoggerI {
 	logger := loggerShm{}
 	return &logger

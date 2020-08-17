@@ -42,7 +42,7 @@ func (c *Counter) Record(v float64) {
 	c.RecordN(v, 1)
 }
 
-// RecordN efficiently records the same value N times
+// RecordN efficiently records the same value N times.
 func (c *Counter) RecordN(v float64, n int) {
 	isFirst := (c.Count == 0)
 	c.Count += int64(n)
@@ -78,7 +78,7 @@ func (c *Counter) StdDev() float64 {
 
 // Print prints stats.
 func (c *Counter) Print(out io.Writer, msg string) {
-	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", // nolint(errorcheck)
+	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n",
 		msg, c.Count, c.Avg(), c.StdDev(), c.Min, c.Max, c.Sum)
 }
 
@@ -121,7 +121,7 @@ func (c *Counter) Transfer(src *Counter) {
 // The intervals are ]prev,current] so for "90" (previous is 80) the values in that bucket are >80 and <=90
 // that way a cumulative % up to that bucket means X% of the data <= 90 (or 100-X% > 90), works well for max too
 // There are 2 special buckets - the first one is from min to and including 0,
-// one after the last for value > last and up to max
+// one after the last for value > last and up to max.
 var (
 	histogramBucketValues = []int32{
 		0, 1, 2, 3, 4, 5, 6,
@@ -174,14 +174,14 @@ type Bucket struct {
 	Count   int64   // How many in this bucket
 }
 
-// Percentile value for the percentile
+// Percentile value for the percentile.
 type Percentile struct {
 	Percentile float64 // For this Percentile
 	Value      float64 // value at that Percentile
 }
 
 // HistogramData is the exported Histogram data, a sorted list of intervals
-// covering [Min, Max]. Pure data, so Counter for instance is flattened
+// covering [Min, Max]. Pure data, so Counter for instance is flattened.
 type HistogramData struct {
 	Count       int64
 	Min         float64
@@ -194,20 +194,21 @@ type HistogramData struct {
 }
 
 // NewHistogram creates a new histogram (sets up the buckets).
-// Divider value can not be zero, otherwise returns zero
-func NewHistogram(Offset float64, Divider float64) *Histogram {
+// Divider value can not be zero, otherwise returns zero.
+func NewHistogram(offset float64, divider float64) *Histogram {
 	h := new(Histogram)
-	h.Offset = Offset
-	if Divider == 0 {
+	h.Offset = offset
+	if divider == 0 {
 		return nil
 	}
-	h.Divider = Divider
+	h.Divider = divider
 	h.Hdata = make([]int32, numBuckets)
 	return h
 }
 
 // Val2Bucket values are kept in two different structure
-// val2Bucket allows you reach between 0 and 1000 in constant time
+// val2Bucket allows you reach between 0 and 1000 in constant time.
+// nolint: gochecknoinits // we need to init these.
 func init() {
 	val2Bucket = make([]int, maxArrayValue)
 	maxArrayValueIndex = -1
@@ -234,7 +235,7 @@ func init() {
 }
 
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
-// TODO: change linear time to O(log(N)) with binary search
+// TODO: change linear time to O(log(N)) with binary search.
 func lookUpIdx(scaledValue int) int {
 	scaledValue32 := int32(scaledValue)
 	if scaledValue32 < maxArrayValue { // constant
@@ -260,7 +261,7 @@ func (h *Histogram) RecordN(v float64, n int) {
 	h.record(v, n)
 }
 
-// Records v value to count times
+// Records v value to count times.
 func (h *Histogram) record(v float64, count int) {
 	// Scaled value to bucketize - we subtract epsilon because the interval
 	// is open to the left ] start, end ] so when exactly on start it has
@@ -285,7 +286,7 @@ func (h *Histogram) record(v float64, count int) {
 // p33.333 - p66.666 = linear between 10 and 20; so p50 = 15
 // TODO: consider spreading the count of the bucket evenly from start to end
 // so the % grows by at least to 1/N on start of range, and for last range
-// when start == end we should get to that % faster
+// when start == end we should get to that % faster.
 func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 	if len(e.Data) == 0 {
 		log.Errf("Unexpected call to CalcPercentile(%g) with no data", percentile)
@@ -299,7 +300,8 @@ func (e *HistogramData) CalcPercentile(percentile float64) float64 {
 	if percentile <= pp {
 		return e.Min
 	}
-	for _, cur := range e.Data {
+	for i := range e.Data {
+		cur := &e.Data[i]
 		if percentile <= cur.Percent {
 			return cur.Start + (percentile-pp)/(cur.Percent-pp)*(cur.End-cur.Start)
 		}
@@ -387,7 +389,7 @@ func (e *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
 // Also calculates the percentile.
 func (e *HistogramData) Print(out io.Writer, msg string) {
 	if len(e.Data) == 0 {
-		_, _ = fmt.Fprintf(out, "%s : no data\n", msg) // nolint: gas
+		_, _ = fmt.Fprintf(out, "%s : no data\n", msg)
 		return
 	}
 	// the base counter part:
@@ -395,16 +397,16 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
 	_, _ = fmt.Fprintln(out, "# range, mid point, percentile, count")
 	sep := ">="
-	for i, b := range e.Data {
+	for i := range e.Data {
+		b := &e.Data[i]
 		if i > 0 {
 			sep = ">" // last interval is inclusive (of max value)
 		}
 		_, _ = fmt.Fprintf(out, "%s %.6g <= %.6g , %.6g , %.2f, %d\n", sep, b.Start, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
-
 	// print the information of target percentiles
 	for _, p := range e.Percentiles {
-		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 	}
 }
 
@@ -420,7 +422,7 @@ func (h *Histogram) Log(msg string, percentiles []float64) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h.Print(w, msg, percentiles)
-	w.Flush() // nolint: gas,errcheck
+	_ = w.Flush()
 	log.Infof("%s", b.Bytes())
 }
 
@@ -448,7 +450,7 @@ func (h *Histogram) CopyFrom(src *Histogram) {
 
 // copyHDataFrom appends histogram data values to this object from the src.
 // Src histogram data values will be appended according to this object's
-// offset and divider
+// offset and divider.
 func (h *Histogram) copyHDataFrom(src *Histogram) {
 	if h.Divider == src.Divider && h.Offset == src.Offset {
 		for i := 0; i < len(h.Hdata); i++ {
@@ -456,15 +458,15 @@ func (h *Histogram) copyHDataFrom(src *Histogram) {
 		}
 		return
 	}
-
 	hData := src.Export()
-	for _, data := range hData.Data {
+	for i := range hData.Data {
+		data := hData.Data[i]
 		h.record((data.Start+data.End)/2, int(data.Count))
 	}
 }
 
 // Merge two different histogram with different scale parameters
-// Lowest offset and highest divider value will be selected on new Histogram as scale parameters
+// Lowest offset and highest divider value will be selected on new Histogram as scale parameters.
 func Merge(h1 *Histogram, h2 *Histogram) *Histogram {
 	divider := h1.Divider
 	offset := h1.Offset

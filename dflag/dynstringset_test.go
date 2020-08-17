@@ -35,7 +35,8 @@ func TestDynStringSet_IsMarkedDynamic(t *testing.T) {
 
 func TestDynStringSet_FiresValidators(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynStringSet(set, "some_stringslice_1", []string{"foo", "bar"}, "Use it or lose it").WithValidator(ValidateDynStringSetMinElements(2))
+	DynStringSet(set, "some_stringslice_1", []string{"foo", "bar"},
+		"Use it or lose it").WithValidator(ValidateDynStringSetMinElements(2))
 
 	assert.NoError(t, set.Set("some_stringslice_1", "car,far"), "no error from validator when in range")
 	assert.Error(t, set.Set("some_stringslice_1", "car"), "error from validator when value out of range")

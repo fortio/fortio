@@ -6,6 +6,7 @@
 package configmap
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +29,7 @@ var (
 )
 
 // Updater is the encapsulation of the directory watcher.
-// TODO: hide details, just return opaque interface
+// TODO: hide details, just return opaque interface.
 type Updater struct {
 	started    bool
 	dirPath    string
@@ -38,7 +39,7 @@ type Updater struct {
 	done       chan bool
 }
 
-// Setup is a combination/shortcut for New+Initialize+Start
+// Setup is a combination/shortcut for New+Initialize+Start.
 func Setup(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
 	u, err := New(flagSet, dirPath)
 	if err != nil {
@@ -69,7 +70,7 @@ func New(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
 	}, nil
 }
 
-// Initialize reads the values from the directory for the first time
+// Initialize reads the values from the directory for the first time.
 func (u *Updater) Initialize() error {
 	if u.started {
 		return fmt.Errorf("dflag: already initialized updater")
@@ -119,7 +120,7 @@ func (u *Updater) readAll(dynamicOnly bool) error {
 		}
 		fullPath := path.Join(u.dirPath, f.Name())
 		if err := u.readFlagFile(fullPath, dynamicOnly); err != nil {
-			if err == errFlagNotDynamic && dynamicOnly {
+			if errors.Is(err, errFlagNotDynamic) && dynamicOnly {
 				// ignore
 			} else {
 				errorStrings = append(errorStrings, fmt.Sprintf("flag %v: %v", f.Name(), err.Error()))
@@ -158,7 +159,7 @@ func (u *Updater) watchForUpdates() {
 		select {
 		case event := <-u.watcher.Events:
 			log.LogVf("ConfigMap got fsnotify %v ", event)
-			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) {
+			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) { // nolint: nestif
 				// case of the whole directory being re-symlinked
 				switch event.Op {
 				case fsnotify.Create:
@@ -169,16 +170,17 @@ func (u *Updater) watchForUpdates() {
 					if err := u.readAll( /* dynamicOnly */ true); err != nil {
 						log.Errf("dflag: directory reload yielded errors: %v", err.Error())
 					}
-				case fsnotify.Remove:
+				case fsnotify.Remove, fsnotify.Chmod, fsnotify.Rename, fsnotify.Write:
 				}
 			} else if strings.HasPrefix(event.Name, u.dirPath) && !isK8sInternalDirectory(event.Name) {
 				log.LogVf("ConfigMap got prefix %v", event)
 				switch event.Op {
-				case fsnotify.Create, fsnotify.Write, fsnotify.Rename:
+				case fsnotify.Create, fsnotify.Write, fsnotify.Rename, fsnotify.Remove:
 					flagName := path.Base(event.Name)
 					if err := u.readFlagFile(event.Name, true); err != nil {
 						log.Errf("dflag: failed setting flag %s: %v", flagName, err.Error())
 					}
+				case fsnotify.Chmod:
 				}
 			}
 		case <-u.done:

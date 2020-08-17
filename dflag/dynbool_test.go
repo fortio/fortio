@@ -33,7 +33,7 @@ func TestDynBool_FiresValidators(t *testing.T) {
 		if b {
 			return nil
 		}
-		return fmt.Errorf("not true!")
+		return fmt.Errorf("not true")
 	})
 	assert.Error(t, set.Set("some_bool_1", "false"), "error from validator when value does not satisfy validator")
 }
@@ -62,7 +62,7 @@ func Benchmark_Bool_Dyn_Get(b *testing.B) {
 	set.Set("some_bool_1", "false")
 	for i := 0; i < b.N; i++ {
 		x := value.Get()
-		x = !x
+		x = !x // nolint
 	}
 }
 
@@ -72,6 +72,6 @@ func Benchmark_Bool_Normal_Get(b *testing.B) {
 	set.Set("some_bool_1", "false")
 	for i := 0; i < b.N; i++ {
 		x := *valPtr
-		x = !x
+		x = !x // nolint
 	}
 }

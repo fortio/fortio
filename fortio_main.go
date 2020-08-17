@@ -79,10 +79,9 @@ const (
 	disabled = "disabled"
 )
 
-// nolint: gochecknoglobals
 var (
 	defaults = &periodic.DefaultRunnerOptions
-	// Very small default so people just trying with random URLs don't affect the target
+	// Very small default so people just trying with random URLs don't affect the target.
 	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
@@ -135,7 +134,7 @@ var (
 
 	// GRPC related flags
 	// To get most debugging/tracing:
-	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug ...
 	doHealthFlag   = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
@@ -150,7 +149,7 @@ var (
 func main() {
 	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	bincommon.SharedMain(usage)
-	if len(os.Args) < 2 { //nolint: gomnd
+	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
 	}
 	command := os.Args[1]
@@ -209,7 +208,7 @@ func main() {
 		}
 		for _, proxy := range proxies {
 			s := strings.SplitN(proxy, " ", 2)
-			if len(s) != 2 { //nolint: gomnd
+			if len(s) != 2 {
 				log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
 			}
 			fnet.ProxyToDestination(s[0], s[1])
@@ -251,7 +250,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	url := httpOpts.URL
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
-	qps := *qpsFlag // TOmaybeDO possibly use translated <=0 to "max" from results/options normalization in periodic/
+	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
 		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {
@@ -330,7 +329,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	_, _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
 		rr.DurationHistogram.Count,
 		warmup,
-		1000.*rr.DurationHistogram.Avg, //nolint: gomnd
+		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint: nestif // but probably should breakup this function

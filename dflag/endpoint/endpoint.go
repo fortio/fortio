@@ -30,12 +30,12 @@ func NewFlagsEndpoint(flagSet *flag.FlagSet, setURL string) *FlagsEndpoint {
 	return &FlagsEndpoint{flagSet: flagSet, setURL: setURL}
 }
 
-// HTTPErrf logs and returns an error on the response
+// HTTPErrf logs and returns an error on the response.
 func HTTPErrf(resp http.ResponseWriter, statusCode int, message string, rest ...interface{}) {
 	resp.WriteHeader(statusCode)
 	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	log.Errf(message, rest...)
-	resp.Write([]byte(fmt.Sprintf(message, rest...)))
+	_, _ = resp.Write([]byte(fmt.Sprintf(message, rest...)))
 }
 
 // SetFlag updates a dynamic flag to a new value.
@@ -61,7 +61,7 @@ func (e *FlagsEndpoint) SetFlag(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	resp.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	resp.Write([]byte(fmt.Sprintf("Success %q -> %q", name, value)))
+	_, _ = resp.Write([]byte(fmt.Sprintf("Success %q -> %q", name, value)))
 }
 
 // ListFlags provides an HTML and JSON `http.HandlerFunc` that lists all Flags of a `FlagSet`.
@@ -87,7 +87,8 @@ func (e *FlagsEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) {
 		flagSetJSON.Flags = append(flagSetJSON.Flags, flagToJSON(f))
 	})
 	flagSetJSON.ChecksumDynamic = fmt.Sprintf("%x", dflag.ChecksumFlagSet(e.flagSet, dflag.IsFlagDynamic))
-	flagSetJSON.ChecksumStatic = fmt.Sprintf("%x", dflag.ChecksumFlagSet(e.flagSet, func(f *flag.Flag) bool { return !dflag.IsFlagDynamic(f) }))
+	flagSetJSON.ChecksumStatic = fmt.Sprintf("%x", dflag.ChecksumFlagSet(e.flagSet,
+		func(f *flag.Flag) bool { return !dflag.IsFlagDynamic(f) }))
 	flagSetJSON.FlagSetURL = e.setURL
 
 	if requestIsBrowser(req) && req.URL.Query().Get("format") != "json" {
@@ -104,7 +105,7 @@ func (e *FlagsEndpoint) ListFlags(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 		resp.WriteHeader(http.StatusOK)
-		resp.Write(out)
+		_, _ = resp.Write(out)
 	}
 }
 
@@ -112,6 +113,7 @@ func requestIsBrowser(req *http.Request) bool {
 	return strings.Contains(req.Header.Get("Accept"), "html")
 }
 
+// nolint: lll
 var dflagListTemplate = template.Must(template.New("dflag_list").Parse(
 	`
 <html><head>

@@ -20,7 +20,7 @@ type DynamicJSONFlagValue interface {
 // DynamicFlagValueTag is a struct all dynamic flag inherit for marking they are dynamic.
 type DynamicFlagValueTag struct{}
 
-// IsDynamicFlag returns true
+// IsDynamicFlag always returns true.
 func (*DynamicFlagValueTag) IsDynamicFlag() bool {
 	return true
 }

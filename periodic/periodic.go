@@ -54,8 +54,8 @@ type Runnable interface {
 	Run(tid int)
 }
 
-// MakeRunners creates an array of NumThreads identical Runnable instances.
-// (for the (rare/test) cases where there is no unique state needed)
+// MakeRunners creates an array of NumThreads identical Runnable instances
+// (for the (rare/test) cases where there is no unique state needed).
 func (r *RunnerOptions) MakeRunners(rr Runnable) {
 	log.Infof("Making %d clone of %+v", r.NumThreads, rr)
 	if len(r.Runners) < r.NumThreads {
@@ -216,51 +216,53 @@ func (r *RunnerOptions) Normalize() {
 	if r.Runners == nil {
 		r.Runners = make([]Runnable, r.NumThreads)
 	}
-	if r.Stop == nil {
-		r.Stop = NewAborter()
-		runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
-		go func() {
-			gAbortMutex.Lock()
-			gOutstandingRuns++
-			n := gOutstandingRuns
-			if gAbortChan == nil {
-				log.LogVf("WATCHER %d First outstanding run starting, catching signal", n)
-				gAbortChan = make(chan os.Signal, 1)
-				signal.Notify(gAbortChan, os.Interrupt)
-			}
-			abortChan := gAbortChan
-			gAbortMutex.Unlock()
-			log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, abortChan, runnerChan, runtime.NumGoroutine())
-			select {
-			case _, ok := <-abortChan:
-				log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
-				if ok {
-					gAbortMutex.Lock()
-					if gAbortChan != nil {
-						log.LogVf("WATCHER %d closing %v to notify all", n, gAbortChan)
-						close(gAbortChan)
-						gAbortChan = nil
-					}
-					gAbortMutex.Unlock()
-				}
-				r.Abort()
-			case <-runnerChan:
-				log.LogVf("WATCHER %d r.Stop readable", n)
-				// nothing to do, stop happened
-			}
-			log.LogVf("WATCHER %d End of go routine", n)
-			gAbortMutex.Lock()
-			gOutstandingRuns--
-			if gOutstandingRuns == 0 {
-				log.LogVf("WATCHER %d Last watcher: resetting signal handler", n)
-				gAbortChan = nil
-				signal.Reset(os.Interrupt)
-			} else {
-				log.LogVf("WATCHER %d isn't the last one, %d left", n, gOutstandingRuns)
-			}
-			gAbortMutex.Unlock()
-		}()
+	if r.Stop != nil {
+		return
 	}
+	// nil aborter (last normalization step:)
+	r.Stop = NewAborter()
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	go func() {
+		gAbortMutex.Lock()
+		gOutstandingRuns++
+		n := gOutstandingRuns
+		if gAbortChan == nil {
+			log.LogVf("WATCHER %d First outstanding run starting, catching signal", n)
+			gAbortChan = make(chan os.Signal, 1)
+			signal.Notify(gAbortChan, os.Interrupt)
+		}
+		abortChan := gAbortChan
+		gAbortMutex.Unlock()
+		log.LogVf("WATCHER %d starting new watcher for signal! chan  g %v r %v (%d)", n, abortChan, runnerChan, runtime.NumGoroutine())
+		select {
+		case _, ok := <-abortChan:
+			log.LogVf("WATCHER %d got interrupt signal! %v", n, ok)
+			if ok {
+				gAbortMutex.Lock()
+				if gAbortChan != nil {
+					log.LogVf("WATCHER %d closing %v to notify all", n, gAbortChan)
+					close(gAbortChan)
+					gAbortChan = nil
+				}
+				gAbortMutex.Unlock()
+			}
+			r.Abort()
+		case <-runnerChan:
+			log.LogVf("WATCHER %d r.Stop readable", n)
+			// nothing to do, stop happened
+		}
+		log.LogVf("WATCHER %d End of go routine", n)
+		gAbortMutex.Lock()
+		gOutstandingRuns--
+		if gOutstandingRuns == 0 {
+			log.LogVf("WATCHER %d Last watcher: resetting signal handler", n)
+			gAbortChan = nil
+			signal.Reset(os.Interrupt)
+		} else {
+			log.LogVf("WATCHER %d isn't the last one, %d left", n, gOutstandingRuns)
+		}
+		gAbortMutex.Unlock()
+	}()
 }
 
 // Abort safely aborts the run by closing the channel and resetting that channel
@@ -273,7 +275,7 @@ func (r *RunnerOptions) Abort() {
 	}
 }
 
-// internal version, returning the concrete implementation. logical std::move
+// internal version, returning the concrete implementation. logical std::move.
 func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	r := &periodicRunner{*opts} // by default just copy the input params
 	opts.ReleaseRunners()
@@ -295,90 +297,101 @@ func (r *periodicRunner) Options() *RunnerOptions {
 	return &r.RunnerOptions // sort of returning this here
 }
 
+func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS string, numCalls int64, leftOver int64) {
+	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
+	hasDuration := (r.Duration > 0)
+	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
+	useExactly := (r.Exactly > 0)
+	requestedDuration = "until stop"
+	requestedQPS = fmt.Sprintf("%.9g", r.QPS)
+	if !hasDuration && !useExactly {
+		// Always print that as we need ^C to interrupt, in that case the user need to notice
+		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
+			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
+		return
+	}
+	// else:
+	requestedDuration = fmt.Sprint(r.Duration)
+	numCalls = int64(r.QPS * r.Duration.Seconds())
+	if useExactly {
+		numCalls = r.Exactly
+		requestedDuration = fmt.Sprintf("exactly %d calls", numCalls)
+	}
+	if numCalls < 2 {
+		log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
+		numCalls = 2
+		r.NumThreads = 1
+	}
+	if int64(2*r.NumThreads) > numCalls {
+		newN := int(numCalls / 2)
+		log.Warnf("Lowering number of threads - total call %d -> lowering from %d to %d threads", numCalls, r.NumThreads, newN)
+		r.NumThreads = newN
+	}
+	numCalls /= int64(r.NumThreads)
+	totalCalls := numCalls * int64(r.NumThreads)
+	if useExactly {
+		leftOver = r.Exactly - totalCalls
+		if log.Log(log.Warning) {
+			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+		}
+	} else {
+		if log.Log(log.Warning) {
+			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+		}
+	}
+	return requestedDuration, requestedQPS, numCalls, leftOver
+}
+
+func (r *periodicRunner) runNoQPSSetup() (requestedDuration string, numCalls int64, leftOver int64) {
+	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
+	hasDuration := (r.Duration > 0)
+	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
+	useExactly := (r.Exactly > 0)
+	if !useExactly && !hasDuration {
+		// Always log something when waiting for ^C
+		_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted\n",
+			r.NumThreads, runtime.GOMAXPROCS(0))
+		return
+	}
+	// else:
+	if log.Log(log.Warning) {
+		_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
+			r.NumThreads, runtime.GOMAXPROCS(0))
+	}
+	if useExactly {
+		requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
+		numCalls = r.Exactly / int64(r.NumThreads)
+		leftOver = r.Exactly % int64(r.NumThreads)
+		if log.Log(log.Warning) {
+			_, _ = fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+		}
+	} else {
+		requestedDuration = fmt.Sprint(r.Duration)
+		if log.Log(log.Warning) {
+			_, _ = fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+		}
+	}
+	return
+}
+
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
 	r.Stop.Lock()
 	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
 	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
-	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
-	hasDuration := (r.Duration > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
 	useExactly := (r.Exactly > 0)
 	var numCalls int64
 	var leftOver int64 // left over from r.Exactly / numThreads
+	var requestedDuration string
 	requestedQPS := "max"
-	requestedDuration := "until stop"
 	if useQPS {
-		requestedQPS = fmt.Sprintf("%.9g", r.QPS)
-		if hasDuration || useExactly {
-			requestedDuration = fmt.Sprint(r.Duration)
-			numCalls = int64(r.QPS * r.Duration.Seconds())
-			if useExactly {
-				numCalls = r.Exactly
-				requestedDuration = fmt.Sprintf("exactly %d calls", numCalls)
-			}
-			if numCalls < 2 {
-				log.Warnf("Increasing the number of calls to the minimum of 2 with 1 thread. total duration will increase")
-				numCalls = 2
-				r.NumThreads = 1
-			}
-			if int64(2*r.NumThreads) > numCalls {
-				newN := int(numCalls / 2)
-				log.Warnf("Lowering number of threads - total call %d -> lowering from %d to %d threads", numCalls, r.NumThreads, newN)
-				r.NumThreads = newN
-			}
-			numCalls /= int64(r.NumThreads)
-			totalCalls := numCalls * int64(r.NumThreads)
-			if useExactly {
-				leftOver = r.Exactly - totalCalls
-				if log.Log(log.Warning) {
-					// nolint: gas
-					_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
-						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
-				}
-			} else {
-				if log.Log(log.Warning) {
-					// nolint: gas
-					_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-						r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
-				}
-			}
-		} else {
-			// Always print that as we need ^C to interrupt, in that case the user need to notice
-			// nolint: gas
-			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
-				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
-			numCalls = 0
-		}
+		requestedDuration, requestedQPS, numCalls, leftOver = r.runQPSSetup()
 	} else {
-		if !useExactly && !hasDuration {
-			// Always log something when waiting for ^C
-			// nolint: gas
-			_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted\n",
-				r.NumThreads, runtime.GOMAXPROCS(0))
-		} else {
-			if log.Log(log.Warning) {
-				// nolint: gas
-				_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] ",
-					r.NumThreads, runtime.GOMAXPROCS(0))
-			}
-			if useExactly {
-				requestedDuration = fmt.Sprintf("exactly %d calls", r.Exactly)
-				numCalls = r.Exactly / int64(r.NumThreads)
-				leftOver = r.Exactly % int64(r.NumThreads)
-				if log.Log(log.Warning) {
-					// nolint: gas
-					_, _ = fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
-				}
-			} else {
-				requestedDuration = fmt.Sprint(r.Duration)
-				if log.Log(log.Warning) {
-					// nolint: gas
-					_, _ = fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
-				}
-			}
-		}
+		requestedDuration, numCalls, leftOver = r.runNoQPSSetup()
 	}
 	runnersLen := len(r.Runners)
 	if runnersLen == 0 {
@@ -425,17 +438,16 @@ func (r *periodicRunner) Run() RunnerResults {
 	elapsed := time.Since(start)
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
 	if log.Log(log.Warning) {
-		// nolint: gas
 		_, _ = fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	}
-	if useQPS {
+	if useQPS { // nolint: nestif
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
 		// user.
 		if percentNegative > 5 {
 			sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
-			_, _ = fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative) // nolint: gas
+			_, _ = fmt.Fprintf(r.Out, "WARNING %.2f%% of sleep were falling behind\n", percentNegative)
 		} else {
 			if log.Log(log.Verbose) {
 				sleepTime.Print(r.Out, "Aggregated Sleep Time", []float64{50})
@@ -457,7 +469,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	} else {
 		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
 		for _, p := range result.DurationHistogram.Percentiles {
-			_, _ = fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value) // nolint: gas
+			_, _ = fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 		}
 	}
 	select {
@@ -470,7 +482,8 @@ func (r *periodicRunner) Run() RunnerResults {
 	return result
 }
 
-// runOne runs in 1 go routine.
+// runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
+// nolint: gocognit // we should try to simplify it though.
 func runOne(id int, runnerChan chan struct{},
 	funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
 	var i int64
@@ -501,7 +514,7 @@ MainLoop:
 		funcTimes.Record(time.Since(fStart).Seconds())
 		i++
 		// if using QPS / pre calc expected call # mode:
-		if useQPS {
+		if useQPS { // nolint: nestif
 			if (useExactly || hasDuration) && i >= numCalls {
 				break // expected exit for that mode
 			}
@@ -558,13 +571,13 @@ func formatDate(d *time.Time) string {
 		d.Hour(), d.Minute(), d.Second())
 }
 
-// getJitter returns a jitter time that is (+/-)10% of the duration t if t is >0
+// getJitter returns a jitter time that is (+/-)10% of the duration t if t is >0.
 func getJitter(t time.Duration) time.Duration {
-	i := int64(float64(t)/10. + 0.5) // nolint: gomnd // rounding to nearest instead of truncate
+	i := int64(float64(t)/10. + 0.5) // rounding to nearest instead of truncate
 	if i <= 0 {
 		return time.Duration(0)
 	}
-	j := rand.Int63n(2*i) - i
+	j := rand.Int63n(2*i+1) - i // nolint:gosec // trying to be fast not crypto secure here
 	return time.Duration(j)
 }
 

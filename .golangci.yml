@@ -194,11 +194,11 @@ linters-settings:
   golint:
     # minimal confidence for issues, default is 0.8
     min-confidence: 0.8
-  gomnd:
-    settings:
-      mnd:
-        # the list of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description.
-        checks: argument,case,condition,operation,return,assign
+#  gomnd:
+#    settings:
+#      mnd:
+#        # the list of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description.
+#        checks: argument,case,condition,operation,return,assign
   gomodguard:
     allowed:
       modules:                                                        # List of allowed modules
@@ -346,6 +346,11 @@ linters:
 #    - govet
   disable:
     - wsl
+    - nlreturn
+#    - gochecknoinits
+    - gochecknoglobals
+    - gomnd
+    - testpackage
 #    - maligned
 #    - prealloc
   enable-all: true
@@ -392,6 +397,13 @@ issues:
     - linters:
         - lll
       source: "^//go:generate "
+    - linters:
+        - goerr113
+      text: "do not define dynamic errors"
+    - linters:
+        - godox
+      text: "TODO"
+
 
   # Independently from option `exclude` we use default exclude patterns,
   # it can be disabled by this option. To list all
@@ -419,10 +431,10 @@ issues:
   # large codebase. It's not practical to fix all existing issues at the moment
   # of integration: much better don't allow issues in new code.
   # Default is false.
-  new: true
+  new: false
 
   # Show only new issues created after git revision `REV`
-  new-from-rev: v1.6.5
+  #new-from-rev: v1.6.5
 
   # Show only new issues created in git patch with set file path.
  # new-from-patch: path/to/patch/file

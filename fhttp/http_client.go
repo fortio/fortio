@@ -50,7 +50,7 @@ var (
 	BufferSizeKb = 128
 	// CheckConnectionClosedHeader indicates whether to check for server side connection closed headers.
 	CheckConnectionClosedHeader = false
-	// 'constants', case doesn't matter for those 3
+	// 'constants', case doesn't matter for those 3.
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
@@ -266,6 +266,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
+	// nolint: noctx // TODO fixme?
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("Unable to make %s request for %s : %v", method, o.URL, err)
@@ -288,7 +289,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 }
 
 // Client object for making repeated requests of the same URL using the same
-// http client (net/http)
+// http client (net/http).
 type Client struct {
 	url       string
 	req       *http.Request
@@ -296,7 +297,7 @@ type Client struct {
 	transport *http.Transport
 }
 
-// Close cleans up any resources used by NewStdClient
+// Close cleans up any resources used by NewStdClient.
 func (c *Client) Close() int {
 	log.Debugf("Close() on %+v", c)
 	if c.req != nil {
@@ -313,14 +314,14 @@ func (c *Client) Close() int {
 	return 0 // TODO: find a way to track std client socket usage.
 }
 
-// ChangeURL only for standard client, allows fetching a different URL
+// ChangeURL only for standard client, allows fetching a different URL.
 func (c *Client) ChangeURL(urlStr string) (err error) {
 	c.url = urlStr
 	c.req.URL, err = url.Parse(urlStr)
 	return err
 }
 
-// Fetch fetches the byte and code for pre created client
+// Fetch fetches the byte and code for pre created client.
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
 	resp, err := c.client.Do(c.req)
@@ -337,7 +338,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 		}
 	}
 	data, err = ioutil.ReadAll(resp.Body)
-	resp.Body.Close() //nolint(errcheck)
+	resp.Body.Close()
 	if err != nil {
 		log.Errf("Unable to read response for %s : %v", c.url, err)
 		code := resp.StatusCode
@@ -353,7 +354,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 // NewClient creates either a standard or fast client (depending on
-// the DisableFastClient flag)
+// the DisableFastClient flag).
 func NewClient(o *HTTPOptions) Fetcher {
 	o.Init(o.URL) // For completely new options
 	// For changes to options after init
@@ -390,7 +391,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 	}
 	if o.Insecure && o.https {
 		log.LogVf("using insecure https")
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gas
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // nolint: gosec // only in Insecure mode
 	}
 	client := Client{
 		url: o.URL,
@@ -452,7 +453,7 @@ type FastClient struct {
 	reqTimeout   time.Duration
 }
 
-// Close cleans up any resources used by FastClient
+// Close cleans up any resources used by FastClient.
 func (c *FastClient) Close() int {
 	log.Debugf("Closing %p %s socket count %d", c, c.url, c.socketCount)
 	if c.socket != nil {
@@ -535,8 +536,8 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	bc.reqTimeout = o.HTTPReqTimeOut
 	w := bufio.NewWriter(&buf)
 	// This writes multiple valued headers properly (unlike calling Get() to do it ourselves)
-	o.GenerateHeaders().Write(w) // nolint: errcheck,gas
-	w.Flush()                    // nolint: errcheck,gas
+	_ = o.GenerateHeaders().Write(w)
+	w.Flush()
 	buf.WriteString("\r\n")
 	// Add the payload to http body
 	if payloadLen > 0 {
@@ -610,7 +611,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("Closing dead socket %v (%v)", conn, err)
-			conn.Close() // nolint: errcheck,gas
+			conn.Close()
 			c.errorCount++
 			return c.Fetch() // recurse once
 		}
@@ -621,7 +622,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
 		return c.returnRes()
 	}
-	if !c.keepAlive && c.halfClose {
+	if !c.keepAlive && c.halfClose { // nolint: nestif
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {
@@ -644,7 +645,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 }
 
 // Response reading:
-// TODO: refactor - unwiedly/ugly atm
+// nolint: nestif,funlen,gocognit,gocyclo // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
