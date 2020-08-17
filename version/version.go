@@ -29,7 +29,6 @@ const (
 	debug = false // turn on to debug init()
 )
 
-// nolint:gochecknoglobals // we do need these
 var (
 	// The following are set by Dockerfile during link time.
 	tag       = "n/a"

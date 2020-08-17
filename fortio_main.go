@@ -81,7 +81,7 @@ const (
 
 var (
 	defaults = &periodic.DefaultRunnerOptions
-	// Very small default so people just trying with random URLs don't affect the target
+	// Very small default so people just trying with random URLs don't affect the target.
 	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
@@ -134,7 +134,7 @@ var (
 
 	// GRPC related flags
 	// To get most debugging/tracing:
-	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug ...
 	doHealthFlag   = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")

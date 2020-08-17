@@ -88,7 +88,6 @@ func (d *DynBoolValue) String() string {
 func boolToInt(b bool) uint32 {
 	if b {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
 }

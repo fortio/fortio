@@ -55,7 +55,7 @@ func (s *updaterTestSuite) SetupTest() {
 	require.NoError(s.T(), err, "creating a config map must not fail")
 }
 
-// Tear down the updater
+// Tear down the updater.
 func (s *updaterTestSuite) TearDownTest() {
 	require.NoError(s.T(), os.RemoveAll(s.tempDir), "clearing up the test dir must not fail")
 	_ = s.updater.Stop()

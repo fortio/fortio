@@ -23,7 +23,7 @@ func TestDynString_SetAndGet(t *testing.T) {
 
 func TestDynString_IsMarkedDynamic(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynString(set, "some_string_1", "somethign", "Use it or lose it")
+	DynString(set, "some_string_1", "something", "Use it or lose it")
 	assert.True(t, IsFlagDynamic(set.Lookup("some_string_1")))
 }
 
@@ -60,7 +60,7 @@ func Benchmark_String_Dyn_Get(b *testing.B) {
 	set.Set("some_string_1", "else")
 	for i := 0; i < b.N; i++ {
 		x := value.Get()
-		x = x + "foo"
+		x = x + "foo" // nolint
 	}
 }
 
@@ -70,6 +70,6 @@ func Benchmark_String_Normal_get(b *testing.B) {
 	set.Set("some_string_1", "else")
 	for i := 0; i < b.N; i++ {
 		x := *valPtr
-		x = x + "foo"
+		x = x + "foo" // nolint
 	}
 }

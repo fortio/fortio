@@ -196,7 +196,6 @@ func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {
 }
 
 // ErrNilDestination returned when trying to proxy to a nil address.
-// nolint: gochecknoglobals // required by err113: do not define dynamic errors, use wrapped static errors instead
 var ErrNilDestination = fmt.Errorf("nil destination")
 
 func handleProxyRequest(conn net.Conn, dest net.Addr) {

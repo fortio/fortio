@@ -58,7 +58,7 @@ func Benchmark_Float64_Dyn_Get(b *testing.B) {
 	set.Set("some_float_1", "14.00")
 	for i := 0; i < b.N; i++ {
 		x := value.Get()
-		x = x + 1
+		x = x + 1 // nolint
 	}
 }
 
@@ -68,6 +68,6 @@ func Benchmark_Float64_Normal_Get(b *testing.B) {
 	set.Set("some_float_1", "14.00")
 	for i := 0; i < b.N; i++ {
 		x := *valPtr
-		x = x + 0.01
+		x = x + 0.01 // nolint
 	}
 }
