@@ -227,9 +227,7 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	if log.LogVerbose() {
-		LogRequest(r, "Debug")
-	}
+	LogRequest(r, "Debug")
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
@@ -394,6 +392,8 @@ func LogRequest(r *http.Request, msg string) {
 	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
 		r.Header.Get("X-Forwarded-Proto"))
 	if log.LogVerbose() {
+		// Host is removed from headers map and put separately
+		log.LogVf("Header Host: %v", r.Host)
 		for name, headers := range r.Header {
 			for _, h := range headers {
 				log.LogVf("Header %v: %v\n", name, h)
