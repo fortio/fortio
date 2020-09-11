@@ -318,7 +318,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Aborting because %v\n", err)
+		_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
 		os.Exit(1)
 	}
 	rr := res.Result()

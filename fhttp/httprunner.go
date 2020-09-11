@@ -16,7 +16,6 @@ package fhttp
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -104,7 +103,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		}
 		if o.Exactly <= 0 {
 			code, data, headerSize := httpstate[i].client.Fetch()
-			if !o.AllowInitialErrors && code != http.StatusOK {
+			if !o.AllowInitialErrors && !codeIsOK(code) {
 				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
 			}
 			if i == 0 && log.LogVerbose() {

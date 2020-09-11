@@ -324,7 +324,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 
 			_, _ = w.Write([]byte(fmt.Sprintf(
-				"Aborting because %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
+				"Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
 			return
 		}

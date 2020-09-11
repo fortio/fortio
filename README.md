@@ -44,13 +44,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.6.8/fortio-linux_x64-1.6.8.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.7.0/fortio-linux_x64-1.7.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.6.8/fortio_1.6.8-1_amd64.deb
-dpkg -i fortio_1.6.8-1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.7.0/fortio_1.7.0-1_amd64.deb
+dpkg -i fortio_1.7.0-1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.6.8/fortio-1.6.8-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.7.0/fortio-1.7.0-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -95,7 +95,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.6.8 usage:
+Φορτίο 1.7.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts grpc ping and
 http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report
@@ -139,6 +139,9 @@ from GET to POST.
   -echo-debug-path string
         http echo server URI for debug, empty turns off that part (more secure)
 (default "/debug")
+  -echo-server-default-params value
+        Default parameters/querystring to use if there isn't one provided
+explicitly. E.g "status=404&delay=3s"
   -gomaxprocs int
         Setting for runtime.GOMAXPROCS, &lt;1 doesn't change the default
   -grpc
@@ -255,13 +258,13 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 
 ```Shell
 $ fortio server &
-Fortio 1.6.8 grpc 'ping' server listening on [::]:8079
-Fortio 1.6.8 https redirector server listening on [::]:8081
-Fortio 1.6.8 echo server listening on [::]:8080
+Fortio 1.7.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.7.0 https redirector server listening on [::]:8081
+Fortio 1.7.0 echo server listening on [::]:8080
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:57:12 I fortio_main.go:217> All fortio 1.6.8 release go1.10.3 servers started!
+14:57:12 I fortio_main.go:217> All fortio 1.7.0 release go1.15.2 servers started!
 ```
 
 ### Change the port / binding address
@@ -274,8 +277,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 1.6.8 grpc ping server listening on port :8079
-Fortio 1.6.8 echo server listening on port 10.10.10.10:8088
+Fortio 1.7.0 grpc ping server listening on port :8079
+Fortio 1.7.0 echo server listening on port 10.10.10.10:8088
 ```
 
 ### Unix domain sockets
@@ -284,12 +287,12 @@ You can use unix domain socket for any server/client:
 
 ```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
-Fortio 1.6.8 grpc 'ping' server listening on [::]:8079
-Fortio 1.6.8 https redirector server listening on [::]:8081
-Fortio 1.6.8 echo server listening on /tmp/fortio-uds-http
+Fortio 1.7.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.7.0 https redirector server listening on [::]:8081
+Fortio 1.7.0 echo server listening on /tmp/fortio-uds-http
 UI started - visit:
 fortio curl -unix-socket=/tmp/fortio-uds-http http://localhost/fortio/
-14:58:45 I fortio_main.go:217> All fortio 1.6.8 unknown go1.10.3 servers started!
+14:58:45 I fortio_main.go:217> All fortio 1.7.0 unknown go1.10.3 servers started!
 $ fortio curl -unix-socket=/tmp/fortio-uds-http http://foo.bar/debug
 15:00:48 I http_client.go:428> Using unix domain socket /tmp/fortio-uds-http instead of foo.bar http
 HTTP/1.1 200 OK
@@ -297,14 +300,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Wed, 08 Aug 2018 22:00:48 GMT
 Content-Length: 231
 
-Φορτίο version 1.6.8 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
+Φορτίο version 1.7.0 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: foo.bar
-User-Agent: fortio.org/fortio-1.6.8
+User-Agent: fortio.org/fortio-1.7.0
 
 body:
 ```
@@ -358,8 +361,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 1.6.8 grpc ping server listening on port :8079
-Fortio 1.6.8 echo server listening on port localhost:8080
+Fortio 1.7.0 grpc ping server listening on port :8079
+Fortio 1.7.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -404,7 +407,7 @@ Load (low default qps/threading) test:
 
 ```Shell
 $ fortio load http://www.google.com
-Fortio 1.6.8 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+Fortio 1.7.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
 19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
@@ -435,7 +438,7 @@ Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hi
 
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
-Fortio 1.6.8 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+Fortio 1.7.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
 16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
 16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
 16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
@@ -540,14 +543,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 1.6.8 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 1.7.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: fortio.org/fortio-1.6.8
+User-Agent: fortio.org/fortio-1.7.0
 Foo: Bar
 
 body:
@@ -571,15 +574,15 @@ Example: open 2 additional listening ports and forward all requests received on 
 
 ```Shell
 $ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080" 
-Fortio 1.6.8 grpc 'ping' server listening on [::]:8079
-Fortio 1.6.8 https redirector server listening on [::]:8081
-Fortio 1.6.8 echo server listening on [::]:8080
+Fortio 1.7.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.7.0 https redirector server listening on [::]:8081
+Fortio 1.7.0 echo server listening on [::]:8080
 Data directory is /home/dl
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-Fortio 1.6.8 proxy for [::1]:8080 server listening on [::]:8888
-Fortio 1.6.8 proxy for [::1]:8080 server listening on [::1]:8889
+Fortio 1.7.0 proxy for [::1]:8080 server listening on [::]:8888
+Fortio 1.7.0 proxy for [::1]:8080 server listening on [::1]:8889
 ```
 
 ## Server URLs and features
@@ -597,6 +600,9 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 | size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
 | close     | close the socket after answering e.g `close=true` |
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
+
+You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
+`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5 half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client.
 
 * `/debug` will echo back the request in plain text for human debugging.
 

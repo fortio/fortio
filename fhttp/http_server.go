@@ -17,11 +17,13 @@ package fhttp // import "fortio.org/fortio/fhttp"
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -29,6 +31,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
@@ -40,13 +43,31 @@ var (
 	// Start time of the server (used in debug handler for uptime).
 	startTime time.Time
 	// EchoRequests is the number of request received. Only updated in Debug mode.
-	EchoRequests int64
+	EchoRequests            int64
+	defaultEchoServerParams = dflag.DynString(flag.CommandLine, "echo-server-default-params", "",
+		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
 )
 
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, "Echo") // will also print headers
+	}
+	defaultParams := defaultEchoServerParams.Get()
+	hasQuestionMark := strings.Contains(r.RequestURI, "?")
+	if !hasQuestionMark && len(defaultParams) > 0 {
+		newQS := r.RequestURI + "?" + defaultParams
+		log.LogVf("Adding default base query string %q to %v trying %q", defaultParams, r.URL, newQS)
+		nr := http.Request{}
+		nr = *r
+		var err error
+		nr.URL, err = url.ParseRequestURI(newQS)
+		if err != nil {
+			log.Errf("Unexpected error parsing echo-server-default-params: %v", err)
+		} else {
+			nr.Form = nil
+			r = &nr
+		}
 	}
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {

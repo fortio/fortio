@@ -342,7 +342,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 	if err != nil {
 		log.Errf("Unable to read response for %s : %v", c.url, err)
 		code := resp.StatusCode
-		if code == http.StatusOK {
+		if codeIsOK(code) {
 			code = http.StatusNoContent
 			log.Warnf("Ok code despite read error, switching code to %d", code)
 		}
@@ -644,6 +644,11 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	return c.returnRes()
 }
 
+func codeIsOK(code int) bool {
+	// TODO: make this configurable
+	return (code >= 200 && code <= 299) || code == http.StatusTeapot
+}
+
 // Response reading:
 // nolint: nestif,funlen,gocognit,gocyclo // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
@@ -693,8 +698,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
 			// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
 			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) // TODO do that only once...
-			// TODO handle 100 Continue
-			if c.code != http.StatusOK {
+			// TODO handle 100 Continue, make the "ok" codes configurable
+			if !codeIsOK(c.code) {
 				log.Warnf("Parsed non ok code %d (%v)", c.code, string(c.buffer[:retcodeOffset+3]))
 				break
 			}
@@ -821,7 +826,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		}
 	} // end of big for loop
 	// Figure out whether to keep or close the socket:
-	if keepAlive && c.code == http.StatusOK {
+	if keepAlive && codeIsOK(c.code) {
 		c.socket = conn // keep the open socket
 	} else {
 		if err := conn.Close(); err != nil {
