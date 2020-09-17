@@ -4,7 +4,7 @@ FROM ubuntu:focal
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
   DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install ca-certificates curl make git gcc \
-  libc6-dev apt-transport-https ssh ruby-dev build-essential rpm gnupg
+  libc6-dev apt-transport-https ssh ruby-dev build-essential rpm gnupg zip
 # Install FPM
 RUN gem install --no-document fpm
 # From fortio 1.4 onward we dropped go 1.8 compatibility
