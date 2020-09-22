@@ -41,7 +41,7 @@ docker run -p 8080:8080 -p 8079:8079 fortio/fortio server & # For the server
 docker run fortio/fortio load http://www.google.com/ # For a test run
 ```
 
-Or download one the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
+Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
 curl -L https://github.com/fortio/fortio/releases/download/v1.7.1/fortio-linux_x64-1.7.1.tgz \
@@ -566,7 +566,7 @@ body:
 
 ### Report only UI
 
-If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google clould storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
+If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
 
 ```Shell
 $ fortio report -sync-interval 15m -sync http://storage.googleapis.com:443/fortio-data?prefix=fortio.istio.io/
@@ -602,14 +602,14 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 
 | Parameter | Usage, example |
 |-----------|----------------|
-| delay     | duration to delay the response by. Can be a single value or a coma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
-| status    | http status to return instead of 200. Can be a single value or a coma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+| delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
+| status    | http status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
 | size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
 | close     | close the socket after answering e.g `close=true` |
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
 
 You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
-`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5 half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
+`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
 
 * `/debug` will echo back the request in plain text for human debugging.
 
