@@ -146,6 +146,28 @@ func TestProxy(t *testing.T) {
 	}
 }
 
+func TestTcpEcho(t *testing.T) {
+	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	d, err := net.DialTCP("tcp", nil, &dAddr)
+	if err != nil {
+		t.Fatalf("can't connect to our echo server: %v", err)
+	}
+	defer d.Close()
+	data := "F\000oBar\000\001"
+	_, _ = d.Write([]byte(data))
+	_ = d.CloseWrite()
+	res := make([]byte, 4096)
+	n, err := d.Read(res)
+	if err != nil {
+		t.Errorf("read error with proxy: %v", err)
+	}
+	resStr := string(res[:n])
+	if resStr != data {
+		t.Errorf("Unexpected echo '%q', expected what we sent: '%q'", resStr, data)
+	}
+}
+
 func TestSmallReadUntil(t *testing.T) {
 	d, err := net.Dial("tcp", "www.google.com:80")
 	if err != nil {

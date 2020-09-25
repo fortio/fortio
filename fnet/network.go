@@ -116,6 +116,34 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	return listener, lAddr
 }
 
+func handleTCPEchoRequest(name string, conn net.Conn) {
+	wb, err := copy(conn, conn) // io.Copy(conn, conn)
+	log.LogVf("TCP echo server (%v) echoed %d bytes from %v to itself (err=%v)", name, wb, conn.RemoteAddr(), err)
+	_ = conn.Close()
+}
+
+// Starts a TCP Echo Server on given port, name is for logging.
+func TCPEchoServer(name string, port string) net.Addr {
+	listener, addr := Listen(name, port)
+	if listener == nil {
+		return nil // error already logged
+	}
+	go func() {
+		for {
+			// TODO limit number of go request, maximum duration/bytes sent, etc...
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Critf("TCP echo server (%v) error accepting: %v", name, err) // will this loop with error?
+			} else {
+				log.LogVf("TCP echo server (%v) accepted connection from %v -> %v",
+					name, conn.RemoteAddr(), conn.LocalAddr())
+				go handleTCPEchoRequest(name, conn)
+			}
+		}
+	}()
+	return addr
+}
+
 // GetPort extracts the port for TCP sockets and the path for unix domain sockets.
 func GetPort(lAddr net.Addr) string {
 	var lPort string
@@ -174,6 +202,39 @@ func Resolve(host string, port string) net.Addr {
 		return nil
 	}
 	return dest
+}
+
+// copy is a debug version of io.Copy without the zero copy optimizations.
+func copy(dst io.Writer, src io.Reader) (written int64, err error) {
+	buf := make([]byte, 32*KILOBYTE)
+	for {
+		nr, er := src.Read(buf)
+		log.Debugf("read %d from %+v: %v", nr, src, er)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			log.Debugf("wrote %d (expected %d) to %+v: %v", nw, nr, dst, ew)
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				log.Errf("copy: %+v -> %+v write error: %v", src, dst, ew)
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			if er != io.EOF {
+				err = er
+				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
+			}
+			break
+		}
+	}
+	return written, err
 }
 
 func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {

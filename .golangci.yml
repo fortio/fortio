@@ -106,11 +106,11 @@ linters-settings:
     # switch
     default-signifies-exhaustive: false
   funlen:
-    lines: 128
-    statements: 64
+    lines: 140
+    statements: 70
   gocognit:
     # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 40
+    min-complexity: 42
   nestif:
     # minimal complexity of if statements to report, 5 by default
     min-complexity: 4

@@ -17,6 +17,7 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
 COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
 COPY --from=build /go/src/fortio.org/fortio_go_latest.bin /usr/bin/fortio
+EXPOSE 8078
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081
