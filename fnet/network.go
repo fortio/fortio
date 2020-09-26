@@ -238,6 +238,7 @@ func copy(dst io.Writer, src io.Reader) (written int64, err error) {
 	return written, err
 }
 
+// SetSocketBuffers sets the read and write buffer size of the socket. Also sets tcp SetNoDelay().
 func SetSocketBuffers(socket net.Conn, readBufferSize, writeBufferSize int) {
 	tcpSock, ok := socket.(*net.TCPConn)
 	if !ok {
