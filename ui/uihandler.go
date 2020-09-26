@@ -164,6 +164,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	stdClient := (r.FormValue("stdclient") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
+	payload := r.FormValue("payload")
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
 		dur = -1
@@ -214,6 +215,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	if payload != "" {
+		log.Debugf("Using payload: %s", payload)
+		httpopts.Payload = []byte(payload)
+	}
 	firstHeader := true
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
