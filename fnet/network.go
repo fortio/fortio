@@ -117,12 +117,13 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 }
 
 func handleTCPEchoRequest(name string, conn net.Conn) {
+	SetSocketBuffers(conn, 32*KILOBYTE, 32*KILOBYTE)
 	wb, err := copy(conn, conn) // io.Copy(conn, conn)
 	log.LogVf("TCP echo server (%v) echoed %d bytes from %v to itself (err=%v)", name, wb, conn.RemoteAddr(), err)
 	_ = conn.Close()
 }
 
-// Starts a TCP Echo Server on given port, name is for logging.
+// TCPEchoServer starts a TCP Echo Server on given port, name is for logging.
 func TCPEchoServer(name string, port string) net.Addr {
 	listener, addr := Listen(name, port)
 	if listener == nil {
@@ -235,6 +236,24 @@ func copy(dst io.Writer, src io.Reader) (written int64, err error) {
 		}
 	}
 	return written, err
+}
+
+func SetSocketBuffers(socket net.Conn, readBufferSize, writeBufferSize int) {
+	tcpSock, ok := socket.(*net.TCPConn)
+	if !ok {
+		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
+		return
+	}
+	// For now those errors are not critical/breaking
+	if err := tcpSock.SetNoDelay(true); err != nil {
+		log.Warnf("Unable to connect to set tcp no delay %+v: %v", socket, err)
+	}
+	if err := tcpSock.SetWriteBuffer(writeBufferSize); err != nil {
+		log.Warnf("Unable to connect to set write buffer %d %+v: %v", writeBufferSize, socket, err)
+	}
+	if err := tcpSock.SetReadBuffer(readBufferSize); err != nil {
+		log.Warnf("Unable to connect to read buffer %d %+v: %v", readBufferSize, socket, err)
+	}
 }
 
 func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {

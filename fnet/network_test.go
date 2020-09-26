@@ -168,6 +168,52 @@ func TestTcpEcho(t *testing.T) {
 	}
 }
 
+func TestTCPEchoServerErrors(t *testing.T) {
+	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	d, err := net.DialTCP("tcp", nil, &dAddr)
+	if err != nil {
+		t.Fatalf("can't connect to our echo srv: %v", err)
+	}
+	// 2nd proxy on same port should fail
+	addr2 := fnet.TCPEchoServer("test-tcp-echo-error", fnet.GetPort(addr))
+	if addr2 != nil {
+		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
+	}
+	fnet.SetSocketBuffers(d, 256, 32*fnet.KILOBYTE)
+	d.Close()
+	/*
+		//d.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		sz := 100000
+		res := make([]byte, sz)
+		for i := 0; i < sz; i++ {
+			res[i] = byte(i % 256)
+		}
+		log.SetLogLevel(log.Debug)
+		total := 0
+		err = nil
+		loop := 10000
+		for i := 0; i < loop; i++ {
+			n, e := d.Write(res)
+			total = total + n
+			if e != nil {
+				err = e
+				break
+			}
+			if i == 0 {
+				n, e = d.Read(res)
+				if n != sz || e != nil {
+					t.Errorf("Unexpected initial read problem %d: %v", n, e)
+				}
+				d.Close() // should trigger write errors
+			}
+		}
+		if err == nil && total == loop*sz {
+			t.Errorf("didn't get expected error with echo %d", total)
+		}
+	*/
+}
+
 func TestSmallReadUntil(t *testing.T) {
 	d, err := net.Dial("tcp", "www.google.com:80")
 	if err != nil {

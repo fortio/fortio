@@ -561,21 +561,7 @@ func (c *FastClient) connect() net.Conn {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
 		return nil
 	}
-	tcpSock, ok := socket.(*net.TCPConn)
-	if !ok {
-		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
-		return socket
-	}
-	// For now those errors are not critical/breaking
-	if err = tcpSock.SetNoDelay(true); err != nil {
-		log.Warnf("Unable to connect to set tcp no delay %v %v : %v", socket, c.dest, err)
-	}
-	if err = tcpSock.SetWriteBuffer(len(c.req)); err != nil {
-		log.Warnf("Unable to connect to set write buffer %d %v %v : %v", len(c.req), socket, c.dest, err)
-	}
-	if err = tcpSock.SetReadBuffer(len(c.buffer)); err != nil {
-		log.Warnf("Unable to connect to read buffer %d %v %v : %v", len(c.buffer), socket, c.dest, err)
-	}
+	fnet.SetSocketBuffers(socket, len(c.buffer), len(c.req))
 	return socket
 }
 

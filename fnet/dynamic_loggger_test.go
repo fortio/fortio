@@ -51,4 +51,6 @@ func TestDynamicLogLevel(t *testing.T) {
 	if newLevel != log.Info {
 		t.Errorf("Loglevel didn't change as expected, still %v %v", newLevel, newLevel.String())
 	}
+	// put back debug
+	log.SetLogLevel(log.Debug)
 }
