@@ -214,6 +214,11 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	*/
 }
 
+func TestSetSocketBuffersError(t *testing.T) {
+	c := &net.UnixConn{}
+	fnet.SetSocketBuffers(c, 512, 256) // triggers 22:11:14 V network.go:245> Not setting socket options on non tcp socket <nil>
+}
+
 func TestSmallReadUntil(t *testing.T) {
 	d, err := net.Dial("tcp", "www.google.com:80")
 	if err != nil {
