@@ -214,6 +214,23 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	firstHeader := true
+	for _, header := range r.Form["H"] {
+		if len(header) == 0 {
+			continue
+		}
+		log.LogVf("adding header %v", header)
+		if firstHeader {
+			// If there is at least 1 non empty H passed, reset the header list
+			httpopts.ResetHeaders()
+			firstHeader = false
+		}
+		err := httpopts.AddAndValidateExtraHeader(header)
+		if err != nil {
+			log.Errf("Error adding custom headers: %v", err)
+		}
+	}
+
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
@@ -279,22 +296,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	case run:
 		// mode == run case:
-		firstHeader := true
-		for _, header := range r.Form["H"] {
-			if len(header) == 0 {
-				continue
-			}
-			log.LogVf("adding header %v", header)
-			if firstHeader {
-				// If there is at least 1 non empty H passed, reset the header list
-				httpopts.ResetHeaders()
-				firstHeader = false
-			}
-			err := httpopts.AddAndValidateExtraHeader(header)
-			if err != nil {
-				log.Errf("Error adding custom headers: %v", err)
-			}
-		}
 		fhttp.OnBehalfOf(httpopts, r)
 		if !JSONOnly {
 			flusher.Flush()
