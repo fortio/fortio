@@ -182,14 +182,29 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	}
 	// For some reason unable to trigger these 2 cases within go
 	// TODO: figure it out... this is now only triggering coverage but not really testing anything
-	err1 := "cat /dev/zero | nc -v localhost " + port + " 1>&-" // write error
-	cmd := exec.Command("/bin/bash", "-c", err1)
-	err := cmd.Run()
-	log.Infof("cmd1 %q ran, error: %v", err1, err)
-	err2 := "cat /dev/zero | nc -v localhost " + port + " | (sleep 1; echo end)" // read error
-	cmd = exec.Command("/bin/bash", "-c", err2)
-	err = cmd.Run()
-	log.Infof("cmd2 %q ran, error: %v", err2, err)
+	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
+	// with these timings (!)
+	for _, d := range []time.Duration{0, 10 * time.Millisecond, 500 * time.Millisecond} {
+		cmd := exec.Command("nc", "-v", "localhost", port)
+		sout, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatalf("stdout failure: %v", err)
+		}
+		sin, err := cmd.StdinPipe()
+		if err != nil {
+			t.Fatalf("stdin failure: %v", err)
+		}
+		sout.Close()
+		if err = cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		sin.Write([]byte(strings.Repeat("x", 50000)))
+		sin.Close()
+		time.Sleep(d)
+		if err = cmd.Wait(); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestSetSocketBuffersError(t *testing.T) {
