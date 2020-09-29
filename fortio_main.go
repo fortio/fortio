@@ -62,7 +62,7 @@ func usage(w io.Writer, msgs ...interface{}) {
 		"where command is one of: load (load testing), server (starts ui, http-echo,",
 		"redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
 		"server), report (report only UI server), redirect (only the redirect server),",
-		"grpcping (grpc client), or curl (single URL debug).",
+		"grpcping (grpc client), or curl (single URL debug), or nc (single tcp connection).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
@@ -148,6 +148,8 @@ var (
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
+	// nc mode flag(s):
+	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
 )
 
 func main() {
@@ -186,6 +188,8 @@ func main() {
 	switch command {
 	case "curl":
 		fortioLoad(true, nil)
+	case "nc":
+		fortioNC()
 	case "load":
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
@@ -242,6 +246,22 @@ func main() {
 		} else {
 			select {}
 		}
+	}
+}
+
+func fortioNC() {
+	l := len(flag.Args())
+	if l != 1 && l != 2 {
+		usageErr("Error: fortio nc needs a host:port or host port destination")
+	}
+	d := flag.Args()[0]
+	if l == 2 {
+		d = d + ":" + flag.Args()[1]
+	}
+	err := fnet.NetCat(d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
+	if err != nil {
+		// already logged but exit with error back to shell/caller
+		os.Exit(1)
 	}
 }
 

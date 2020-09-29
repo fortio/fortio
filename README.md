@@ -74,10 +74,11 @@ and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https:/
 ## Command line arguments
 
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand,
-or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector,
+or start simple http and grpc ping servers, as well as a basic web UI, result graphing, tcp echo, proxies, https redirector,
 with the `server` command or issue grpc ping messages using the `grpcping` command.
 It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command).
-You can run just the redirector with `redirect`.
+Likewise you can establish a single TCP (or unix domain) connection using the `nc` command (like the standalone netcat package).
+You can run just the redirector with `redirect` or just the tcp echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 The `version` command will print version and build information, `fortio version -s` just the version.
 Lastly, you can learn which flags are available using `help` command.

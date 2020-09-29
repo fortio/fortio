@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -172,7 +171,7 @@ func TestTcpEcho(t *testing.T) {
 func TestTCPEchoServerErrors(t *testing.T) {
 	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
-	port := dAddr.String()[1:]
+	port := dAddr.String()
 	log.Infof("Connecting to %q", port)
 	log.SetLogLevel(log.Debug)
 	// 2nd proxy on same port should fail
@@ -184,26 +183,22 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	// TODO: figure it out... this is now only triggering coverage but not really testing anything
 	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
 	// with these timings (!)
-	for _, d := range []time.Duration{0, 10 * time.Millisecond, 500 * time.Millisecond} {
-		cmd := exec.Command("nc", "-v", "localhost", port)
-		sout, err := cmd.StdoutPipe()
-		if err != nil {
-			t.Fatalf("stdout failure: %v", err)
-		}
-		sin, err := cmd.StdinPipe()
-		if err != nil {
-			t.Fatalf("stdin failure: %v", err)
-		}
-		sout.Close()
-		if err = cmd.Start(); err != nil {
-			t.Fatal(err)
-		}
-		sin.Write([]byte(strings.Repeat("x", 50000)))
-		sin.Close()
-		time.Sleep(d)
-		if err = cmd.Wait(); err != nil {
-			t.Fatal(err)
-		}
+	eofStopFlag := false
+	for i := 0; i < 2; i++ {
+		in := strings.NewReader(strings.Repeat("x", 50000))
+		var out bytes.Buffer // A Buffer needs no initialization.
+		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
+		eofStopFlag = true
+	}
+}
+
+func TestNetCatErrors(t *testing.T) {
+	listener, addr := fnet.Listen("test-closed-listener", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	listener.Close()
+	err := fnet.NetCat("localhost"+dAddr.String(), nil, nil, true)
+	if err == nil {
+		t.Errorf("Expected connect error on closed server, got success")
 	}
 }
 

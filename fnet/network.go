@@ -159,7 +159,7 @@ func GetPort(lAddr net.Addr) string {
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func ResolveDestination(dest string) net.Addr {
+func ResolveDestination(dest string) *net.TCPAddr {
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
@@ -172,7 +172,7 @@ func ResolveDestination(dest string) net.Addr {
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
-func Resolve(host string, port string) net.Addr {
+func Resolve(host string, port string) *net.TCPAddr {
 	log.Debugf("Resolve() called with host=%s port=%s", host, port)
 	dest := &net.TCPAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
@@ -426,4 +426,43 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 		i += n
 	}
 	return buf[0:i], false, nil
+}
+
+func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
+	log.Infof("NetCat to %s, stop on eof %v", dest, stopOnEOF)
+	a := ResolveDestination(dest)
+	d, err := net.DialTCP("tcp", nil, a)
+	if err != nil {
+		log.Errf("Connection error to %q: %v", dest, err)
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var wb int64
+	var we error
+	go func(w *sync.WaitGroup, src io.Reader, dst *net.TCPConn) {
+		wb, we = copy(dst, src)
+		_ = dst.CloseWrite()
+		w.Done()
+	}(&wg, in, d)
+	rb, re := copy(out, d)
+	log.Infof("Read %d from %s (err=%v)", rb, dest, re)
+	if !stopOnEOF {
+		wg.Wait()
+	}
+	log.Infof("Wrote %d to %s (err=%v)", wb, dest, we)
+	_ = d.Close()
+	if c, ok := in.(io.Closer); ok {
+		_ = c.Close()
+	}
+	if c, ok := out.(io.Closer); ok {
+		_ = c.Close()
+	}
+	if re != nil {
+		return re
+	}
+	if we != nil {
+		return we
+	}
+	return nil
 }
