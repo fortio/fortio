@@ -108,7 +108,8 @@ Full list of command line flags (`fortio help`):
 where command is one of: load (load testing), server (starts ui, http-echo,
 redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
 server), report (report only UI server), redirect (only the redirect server),
-grpcping (grpc client), or curl (single URL debug).
+grpcping (grpc client), or curl (single URL debug), or nc (single tcp
+connection).
 where target is a url (http load tests) or host:port (grpc health test).
 flags are:
   -H header
@@ -208,6 +209,8 @@ EchoHandler size= argument. In Kbytes. (default 256)
   -n int
         Run for exactly this number of calls instead of duration. Default (0)
 is to use duration (-t). Default is 1 when used as grpc ping count.
+  -nc-dont-stop-on-eof
+        in netcat (nc) mode, don't abort as soon as remote side closes
   -p string
         List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
