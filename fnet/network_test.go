@@ -17,6 +17,8 @@ package fnet_test
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -168,12 +170,24 @@ func TestTcpEcho(t *testing.T) {
 	}
 }
 
+type ErroringWriter struct {
+}
+
+func (cbb *ErroringWriter) Close() error {
+	return nil
+}
+
+func (cbb *ErroringWriter) Write(buf []byte) (int, error) {
+	return len(buf) / 2, io.ErrClosedPipe
+}
+
+// Also tests NetCat and copy.
 func TestTCPEchoServerErrors(t *testing.T) {
 	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	port := dAddr.String()
 	log.Infof("Connecting to %q", port)
-	log.SetLogLevel(log.Debug)
+	log.SetLogLevel(log.Verbose)
 	// 2nd proxy on same port should fail
 	addr2 := fnet.TCPEchoServer("test-tcp-echo-error", fnet.GetPort(addr))
 	if addr2 != nil {
@@ -185,8 +199,8 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	// with these timings (!)
 	eofStopFlag := false
 	for i := 0; i < 2; i++ {
-		in := strings.NewReader(strings.Repeat("x", 50000))
-		var out bytes.Buffer // A Buffer needs no initialization.
+		in := ioutil.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+		var out ErroringWriter
 		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
 		eofStopFlag = true
 	}

@@ -428,6 +428,7 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 	return buf[0:i], false, nil
 }
 
+// NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
 func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	log.Infof("NetCat to %s, stop on eof %v", dest, stopOnEOF)
 	a := ResolveDestination(dest)
