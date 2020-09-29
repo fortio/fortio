@@ -152,6 +152,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Those only exist/make sense on run mode but go variable declaration...
+	payload := r.FormValue("payload")
 	labels := r.FormValue("labels")
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
@@ -214,6 +215,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	if len(payload) > 0 {
+		httpopts.Payload = []byte(payload)
+	}
 	if !JSONOnly {
 		// Normal html mode
 		if mainTemplate == nil {
