@@ -148,7 +148,7 @@ var (
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
-	// nc mode flag(s):
+	// nc mode flag(s).
 	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
 )
 
