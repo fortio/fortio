@@ -116,6 +116,35 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	return listener, lAddr
 }
 
+func handleTCPEchoRequest(name string, conn net.Conn) {
+	SetSocketBuffers(conn, 32*KILOBYTE, 32*KILOBYTE)
+	wb, err := copy(conn, conn) // io.Copy(conn, conn)
+	log.LogVf("TCP echo server (%v) echoed %d bytes from %v to itself (err=%v)", name, wb, conn.RemoteAddr(), err)
+	_ = conn.Close()
+}
+
+// TCPEchoServer starts a TCP Echo Server on given port, name is for logging.
+func TCPEchoServer(name string, port string) net.Addr {
+	listener, addr := Listen(name, port)
+	if listener == nil {
+		return nil // error already logged
+	}
+	go func() {
+		for {
+			// TODO limit number of go request, maximum duration/bytes sent, etc...
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Critf("TCP echo server (%v) error accepting: %v", name, err) // will this loop with error?
+			} else {
+				log.LogVf("TCP echo server (%v) accepted connection from %v -> %v",
+					name, conn.RemoteAddr(), conn.LocalAddr())
+				go handleTCPEchoRequest(name, conn)
+			}
+		}
+	}()
+	return addr
+}
+
 // GetPort extracts the port for TCP sockets and the path for unix domain sockets.
 func GetPort(lAddr net.Addr) string {
 	var lPort string
@@ -130,7 +159,7 @@ func GetPort(lAddr net.Addr) string {
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func ResolveDestination(dest string) net.Addr {
+func ResolveDestination(dest string) *net.TCPAddr {
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
@@ -143,7 +172,7 @@ func ResolveDestination(dest string) net.Addr {
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
-func Resolve(host string, port string) net.Addr {
+func Resolve(host string, port string) *net.TCPAddr {
 	log.Debugf("Resolve() called with host=%s port=%s", host, port)
 	dest := &net.TCPAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
@@ -174,6 +203,58 @@ func Resolve(host string, port string) net.Addr {
 		return nil
 	}
 	return dest
+}
+
+// copy is a debug version of io.Copy without the zero copy optimizations.
+func copy(dst io.Writer, src io.Reader) (written int64, err error) {
+	buf := make([]byte, 32*KILOBYTE)
+	for {
+		nr, er := src.Read(buf)
+		log.Debugf("read %d from %+v: %v", nr, src, er)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			log.Debugf("wrote %d (expected %d) to %+v: %v", nw, nr, dst, ew)
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				log.Errf("copy: %+v -> %+v write error: %v", src, dst, ew)
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			if er != io.EOF {
+				err = er
+				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
+			}
+			break
+		}
+	}
+	return written, err
+}
+
+// SetSocketBuffers sets the read and write buffer size of the socket. Also sets tcp SetNoDelay().
+func SetSocketBuffers(socket net.Conn, readBufferSize, writeBufferSize int) {
+	tcpSock, ok := socket.(*net.TCPConn)
+	if !ok {
+		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
+		return
+	}
+	// For now those errors are not critical/breaking
+	if err := tcpSock.SetNoDelay(true); err != nil {
+		log.Warnf("Unable to connect to set tcp no delay %+v: %v", socket, err)
+	}
+	if err := tcpSock.SetWriteBuffer(writeBufferSize); err != nil {
+		log.Warnf("Unable to connect to set write buffer %d %+v: %v", writeBufferSize, socket, err)
+	}
+	if err := tcpSock.SetReadBuffer(readBufferSize); err != nil {
+		log.Warnf("Unable to connect to read buffer %d %+v: %v", readBufferSize, socket, err)
+	}
 }
 
 func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {
@@ -345,4 +426,44 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 		i += n
 	}
 	return buf[0:i], false, nil
+}
+
+// NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
+func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
+	log.Infof("NetCat to %s, stop on eof %v", dest, stopOnEOF)
+	a := ResolveDestination(dest)
+	d, err := net.DialTCP("tcp", nil, a)
+	if err != nil {
+		log.Errf("Connection error to %q: %v", dest, err)
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var wb int64
+	var we error
+	go func(w *sync.WaitGroup, src io.Reader, dst *net.TCPConn) {
+		wb, we = copy(dst, src)
+		_ = dst.CloseWrite()
+		w.Done()
+	}(&wg, in, d)
+	rb, re := copy(out, d)
+	log.Infof("Read %d from %s (err=%v)", rb, dest, re)
+	if !stopOnEOF {
+		wg.Wait()
+	}
+	log.Infof("Wrote %d to %s (err=%v)", wb, dest, we)
+	_ = d.Close()
+	if c, ok := in.(io.Closer); ok {
+		_ = c.Close()
+	}
+	if c, ok := out.(io.Closer); ok {
+		_ = c.Close()
+	}
+	if re != nil {
+		return re
+	}
+	if we != nil {
+		return we
+	}
+	return nil
 }

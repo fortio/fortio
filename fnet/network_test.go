@@ -17,6 +17,8 @@ package fnet_test
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -144,6 +146,79 @@ func TestProxy(t *testing.T) {
 	if !strings.HasPrefix(resStr, expectedStart) {
 		t.Errorf("Unexpected reply '%q', expected starting with '%q'", resStr, expectedStart)
 	}
+}
+
+func TestTcpEcho(t *testing.T) {
+	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	d, err := net.DialTCP("tcp", nil, &dAddr)
+	if err != nil {
+		t.Fatalf("can't connect to our echo server: %v", err)
+	}
+	defer d.Close()
+	data := "F\000oBar\000\001"
+	_, _ = d.Write([]byte(data))
+	_ = d.CloseWrite()
+	res := make([]byte, 4096)
+	n, err := d.Read(res)
+	if err != nil {
+		t.Errorf("read error with proxy: %v", err)
+	}
+	resStr := string(res[:n])
+	if resStr != data {
+		t.Errorf("Unexpected echo '%q', expected what we sent: '%q'", resStr, data)
+	}
+}
+
+type ErroringWriter struct {
+}
+
+func (cbb *ErroringWriter) Close() error {
+	return nil
+}
+
+func (cbb *ErroringWriter) Write(buf []byte) (int, error) {
+	return len(buf) / 2, io.ErrClosedPipe
+}
+
+// Also tests NetCat and copy.
+func TestTCPEchoServerErrors(t *testing.T) {
+	addr := fnet.TCPEchoServer("test-tcp-echo", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	port := dAddr.String()
+	log.Infof("Connecting to %q", port)
+	log.SetLogLevel(log.Verbose)
+	// 2nd proxy on same port should fail
+	addr2 := fnet.TCPEchoServer("test-tcp-echo-error", fnet.GetPort(addr))
+	if addr2 != nil {
+		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
+	}
+	// For some reason unable to trigger these 2 cases within go
+	// TODO: figure it out... this is now only triggering coverage but not really testing anything
+	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
+	// with these timings (!)
+	eofStopFlag := false
+	for i := 0; i < 2; i++ {
+		in := ioutil.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+		var out ErroringWriter
+		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
+		eofStopFlag = true
+	}
+}
+
+func TestNetCatErrors(t *testing.T) {
+	listener, addr := fnet.Listen("test-closed-listener", ":0")
+	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	listener.Close()
+	err := fnet.NetCat("localhost"+dAddr.String(), nil, nil, true)
+	if err == nil {
+		t.Errorf("Expected connect error on closed server, got success")
+	}
+}
+
+func TestSetSocketBuffersError(t *testing.T) {
+	c := &net.UnixConn{}
+	fnet.SetSocketBuffers(c, 512, 256) // triggers 22:11:14 V network.go:245> Not setting socket options on non tcp socket <nil>
 }
 
 func TestSmallReadUntil(t *testing.T) {

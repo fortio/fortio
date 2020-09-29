@@ -112,7 +112,7 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v25 /bin/true # cleaned up by name
+docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v26 /bin/true # cleaned up by name
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f $DOCKERSECVOLNAME:$TEST_CERT_VOL/$f; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.

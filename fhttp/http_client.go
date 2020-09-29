@@ -497,20 +497,22 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		log.LogVf("No port specified, using %s", bc.port)
 	}
 	var addr net.Addr
-	if o.UnixDomainSocket != "" {
+	if o.UnixDomainSocket != "" { // nolint: nestif
 		log.Infof("Using unix domain socket %v instead of %v %v", o.UnixDomainSocket, bc.hostname, bc.port)
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
+		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		if o.Resolve != "" {
-			addr = fnet.Resolve(o.Resolve, bc.port)
+			tAddr = fnet.Resolve(o.Resolve, bc.port)
 		} else {
-			addr = fnet.Resolve(bc.hostname, bc.port)
+			tAddr = fnet.Resolve(bc.hostname, bc.port)
 		}
-	}
-	if addr == nil {
-		// Error already logged
-		return nil
+		if tAddr == nil {
+			// Error already logged
+			return nil
+		}
+		addr = tAddr
 	}
 	bc.dest = addr
 	// Create the bytes for the request:
@@ -561,21 +563,7 @@ func (c *FastClient) connect() net.Conn {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
 		return nil
 	}
-	tcpSock, ok := socket.(*net.TCPConn)
-	if !ok {
-		log.LogVf("Not setting socket options on non tcp socket %v", socket.RemoteAddr())
-		return socket
-	}
-	// For now those errors are not critical/breaking
-	if err = tcpSock.SetNoDelay(true); err != nil {
-		log.Warnf("Unable to connect to set tcp no delay %v %v : %v", socket, c.dest, err)
-	}
-	if err = tcpSock.SetWriteBuffer(len(c.req)); err != nil {
-		log.Warnf("Unable to connect to set write buffer %d %v %v : %v", len(c.req), socket, c.dest, err)
-	}
-	if err = tcpSock.SetReadBuffer(len(c.buffer)); err != nil {
-		log.Warnf("Unable to connect to read buffer %d %v %v : %v", len(c.buffer), socket, c.dest, err)
-	}
+	fnet.SetSocketBuffers(socket, len(c.buffer), len(c.req))
 	return socket
 }
 

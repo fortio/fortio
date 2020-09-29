@@ -20,7 +20,7 @@ The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) w
 Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
-Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp proxying, GRPC echo/health in addition to http, etc...
+Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp echoing, tcp proxying, GRPC echo/health in addition to http, etc...
 
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
@@ -44,13 +44,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.7.1/fortio-linux_x64-1.7.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.8.0/fortio-linux_x64-1.8.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.7.1/fortio_1.7.1-1_amd64.deb
-dpkg -i fortio_1.7.1-1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.8.0/fortio_1.8.0-1_amd64.deb
+dpkg -i fortio_1.8.0-1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.7.1/fortio-1.7.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.8.0/fortio-1.8.0-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -59,7 +59,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.7.1/fortio_win_1.7.1.zip and extract all to some location then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.8.0/fortio_win_1.8.0.zip and extract all to some location then using the Windows Command Prompt:
 ```
 cd fortio
 fortio.exe server
@@ -74,10 +74,11 @@ and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https:/
 ## Command line arguments
 
 Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand,
-or start simple http and grpc ping servers, as well as a basic web UI, result graphing and https redirector,
+or start simple http and grpc ping servers, as well as a basic web UI, result graphing, tcp echo, proxies, https redirector,
 with the `server` command or issue grpc ping messages using the `grpcping` command.
 It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command).
-You can run just the redirector with `redirect`.
+Likewise you can establish a single TCP (or unix domain) connection using the `nc` command (like the standalone netcat package).
+You can run just the redirector with `redirect` or just the tcp echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 The `version` command will print version and build information, `fortio version -s` just the version.
 Lastly, you can learn which flags are available using `help` command.
@@ -102,11 +103,13 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.7.1 usage:
+Φορτίο 1.8.0 usage:
         fortio command [flags] target
-where command is one of: load (load testing), server (starts grpc ping and
-http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report
-only UI server), redirect (redirect only server), or curl (single URL debug).
+where command is one of: load (load testing), server (starts ui, http-echo,
+redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
+server), report (report only UI server), redirect (only the redirect server),
+grpcping (grpc client), or curl (single URL debug), or nc (single tcp
+connection).
 where target is a url (http load tests) or host:port (grpc health test).
 flags are:
   -H header
@@ -116,12 +119,12 @@ flags are:
         Proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
 www.google.com:443" ...
   -a    Automatically save JSON result with filename based on labels & timestamp
-  -abort-on int
+  -abort-on code
         Http code that if encountered aborts the run. e.g. 503 or -1 for socket
 errors.
   -allow-initial-errors
         Allow and don't abort on initial warmup errors
-  -base-url string
+  -base-url URL
         base URL used as prefix for data/index.tsv generation. (when empty, the
 url from the first request is used)
   -c int
@@ -143,7 +146,7 @@ from GET to POST.
         Just fetch the content once
   -data-dir Directory
         Directory where JSON results are stored/read (default ".")
-  -echo-debug-path string
+  -echo-debug-path URI
         http echo server URI for debug, empty turns off that part (more secure)
 (default "/debug")
   -echo-server-default-params value
@@ -158,7 +161,7 @@ explicitly. E.g "status=404&delay=3s"
 option unset.
   -grpc-ping-delay duration
         grpc ping delay in response
-  -grpc-port string
+  -grpc-port port
         grpc server port. Can be in the form of host:port, ip:port or port or
 /unix/domain/path or "disabled" to not start the grpc server. (default "8079")
   -halfclose
@@ -168,7 +171,7 @@ http)
         grpc ping client mode: use health instead of ping
   -healthservice string
         which service string to pass to health check
-  -http-port string
+  -http-port port
         http echo server port. Can be in the form of host:port, ip:port, port
 or /unix/domain/path. (default "8080")
   -http1.0
@@ -200,12 +203,14 @@ target URL and hostname
 (default Info)
   -logprefix string
         Prefix to log lines before logged messages (default "> ")
-  -maxpayloadsizekb int
+  -maxpayloadsizekb Kbytes
         MaxPayloadSize is the maximum size of payload to be generated by the
 EchoHandler size= argument. In Kbytes. (default 256)
   -n int
         Run for exactly this number of calls instead of duration. Default (0)
 is to use duration (-t). Default is 1 when used as grpc ping count.
+  -nc-dont-stop-on-eof
+        in netcat (nc) mode, don't abort as soon as remote side closes
   -p string
         List of pXX to calculate (default "50,75,90,99,99.9")
   -payload string
@@ -226,7 +231,7 @@ smaller than -maxpayloadsizekb. Setting this switches http to POST.
         Quiet mode: sets the loglevel to Error and reduces the output.
   -r float
         Resolution of the histogram lowest buckets in seconds (default 0.001)
-  -redirect-port string
+  -redirect-port port
         Redirect all incoming traffic to https URL (need ingress to work
 properly). Can be in the form of host:port, ip:port, port or "disabled" to
 disable the feature. (default "8081")
@@ -238,15 +243,18 @@ disable the feature. (default "8081")
         Absolute path to the dir containing the static files dir
   -stdclient
         Use the slower net/http standard client (works for TLS)
-  -sync string
+  -sync URL
         index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -sync-interval duration
         Refresh the url every given interval (default, no refresh)
   -t duration
         How long to run the test or 0 to run until ^C (default 5s)
+  -tcp-port port
+        tcp echo server port. Can be in the form of host:port, ip:port, port or
+/unix/domain/path or "disabled". (default "8078")
   -timeout duration
         Connection and read timeout value (for http) (default 15s)
-  -ui-path string
+  -ui-path URI
         http server URI for UI, empty turns off that part (more secure)
 (default "/fortio/")
   -unix-socket path
@@ -265,13 +273,16 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 
 ```Shell
 $ fortio server &
-Fortio 1.7.1 grpc 'ping' server listening on [::]:8079
-Fortio 1.7.1 https redirector server listening on [::]:8081
-Fortio 1.7.1 echo server listening on [::]:8080
+14:11:05 I fortio_main.go:171> Not using dynamic flag watching (use -config to set watch directory)
+Fortio 1.8.0 tcp-echo server listening on [::]:8078
+Fortio 1.8.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.8.0 https redirector server listening on [::]:8081
+Fortio 1.8.0 echo server listening on [::]:8080
+Data directory is /Users/ldemailly/go/src/fortio.org/fortio
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:57:12 I fortio_main.go:217> All fortio 1.7.1 release go1.15.2 servers started!
+14:11:05 I fortio_main.go:233> All fortio 1.8.0 release go1.15.2 servers started!
 ```
 
 ### Change the port / binding address
@@ -284,8 +295,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 1.7.1 grpc ping server listening on port :8079
-Fortio 1.7.1 echo server listening on port 10.10.10.10:8088
+Fortio 1.8.0 grpc ping server listening on port :8079
+Fortio 1.8.0 echo server listening on port 10.10.10.10:8088
 ```
 
 ### Unix domain sockets
@@ -294,12 +305,12 @@ You can use unix domain socket for any server/client:
 
 ```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
-Fortio 1.7.1 grpc 'ping' server listening on [::]:8079
-Fortio 1.7.1 https redirector server listening on [::]:8081
-Fortio 1.7.1 echo server listening on /tmp/fortio-uds-http
+Fortio 1.8.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.8.0 https redirector server listening on [::]:8081
+Fortio 1.8.0 echo server listening on /tmp/fortio-uds-http
 UI started - visit:
 fortio curl -unix-socket=/tmp/fortio-uds-http http://localhost/fortio/
-14:58:45 I fortio_main.go:217> All fortio 1.7.1 unknown go1.10.3 servers started!
+14:58:45 I fortio_main.go:217> All fortio 1.8.0 unknown go1.10.3 servers started!
 $ fortio curl -unix-socket=/tmp/fortio-uds-http http://foo.bar/debug
 15:00:48 I http_client.go:428> Using unix domain socket /tmp/fortio-uds-http instead of foo.bar http
 HTTP/1.1 200 OK
@@ -307,14 +318,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Wed, 08 Aug 2018 22:00:48 GMT
 Content-Length: 231
 
-Φορτίο version 1.7.1 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
+Φορτίο version 1.8.0 unknown go1.10.3 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: foo.bar
-User-Agent: fortio.org/fortio-1.7.1
+User-Agent: fortio.org/fortio-1.8.0
 
 body:
 ```
@@ -368,8 +379,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 1.7.1 grpc ping server listening on port :8079
-Fortio 1.7.1 echo server listening on port localhost:8080
+Fortio 1.8.0 grpc ping server listening on port :8079
+Fortio 1.8.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -414,7 +425,7 @@ Load (low default qps/threading) test:
 
 ```Shell
 $ fortio load http://www.google.com
-Fortio 1.7.1 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+Fortio 1.8.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
 19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
@@ -445,7 +456,7 @@ Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hi
 
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
-Fortio 1.7.1 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+Fortio 1.8.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
 16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
 16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
 16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
@@ -550,14 +561,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 1.7.1 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 1.8.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: fortio.org/fortio-1.7.1
+User-Agent: fortio.org/fortio-1.8.0
 Foo: Bar
 
 body:
@@ -581,15 +592,15 @@ Example: open 2 additional listening ports and forward all requests received on 
 
 ```Shell
 $ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080" 
-Fortio 1.7.1 grpc 'ping' server listening on [::]:8079
-Fortio 1.7.1 https redirector server listening on [::]:8081
-Fortio 1.7.1 echo server listening on [::]:8080
+Fortio 1.8.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.8.0 https redirector server listening on [::]:8081
+Fortio 1.8.0 echo server listening on [::]:8080
 Data directory is /home/dl
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-Fortio 1.7.1 proxy for [::1]:8080 server listening on [::]:8888
-Fortio 1.7.1 proxy for [::1]:8080 server listening on [::1]:8889
+Fortio 1.8.0 proxy for [::1]:8080 server listening on [::]:8888
+Fortio 1.8.0 proxy for [::1]:8080 server listening on [::1]:8889
 ```
 
 ## Server URLs and features

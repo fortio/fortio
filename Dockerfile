@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v25 as build
+FROM docker.io/fortio/fortio.build:v26 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
 # We moved a lot of the logic into the Makefile so it can be reused in brew
@@ -17,6 +17,7 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
 COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
 COPY --from=build /go/src/fortio.org/fortio_go_latest.bin /usr/bin/fortio
+EXPOSE 8078
 EXPOSE 8079
 EXPOSE 8080
 EXPOSE 8081
