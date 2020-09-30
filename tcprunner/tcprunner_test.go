@@ -26,7 +26,7 @@ import (
 
 func TestTCPRunnerBadDestination(t *testing.T) {
 	destination := "doesnotexist.fortio.org:1111"
-	opts := TCPRunnerOptions{}
+	opts := RunnerOptions{}
 	opts.QPS = 100
 	opts.Destination = destination
 	res, err := RunTCPTest(&opts)
@@ -40,7 +40,7 @@ func TestTCPRunner(t *testing.T) {
 	addr := fnet.TCPEchoServer("test-echo-runner", ":0")
 	destination := fmt.Sprintf("tcp://localhost:%d/", addr.(*net.TCPAddr).Port)
 
-	opts := TCPRunnerOptions{}
+	opts := RunnerOptions{}
 	opts.QPS = 100
 	opts.Destination = destination
 	res, err := RunTCPTest(&opts)
@@ -59,7 +59,7 @@ func TestTCPRunner(t *testing.T) {
 }
 
 func TestTCPNotLeaking(t *testing.T) {
-	opts := &TCPRunnerOptions{}
+	opts := &RunnerOptions{}
 	ngBefore1 := runtime.NumGoroutine()
 	t.Logf("Number go routine before test %d", ngBefore1)
 	addr := fnet.TCPEchoServer("test-echo-runner", ":0")

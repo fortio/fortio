@@ -319,7 +319,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
 			// TODO: copy pasta from fortio_main
-			o := tcprunner.TCPRunnerOptions{
+			o := tcprunner.RunnerOptions{
 				RunnerOptions: ro,
 			}
 			o.ReqTimeout = httpopts.HTTPReqTimeOut

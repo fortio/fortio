@@ -31,11 +31,9 @@ import (
 
 type TCPResultMap map[string]int64
 
-var TCPStatusOK = "OK"
-
-// TCPRunnerResults is the aggregated result of an TCPRunner.
+// RunnerResults is the aggregated result of an TCPRunner.
 // Also is the internal type used per thread/goroutine.
-type TCPRunnerResults struct {
+type RunnerResults struct {
 	periodic.RunnerResults
 	TCPOptions
 	RetCodes      TCPResultMap
@@ -48,7 +46,7 @@ type TCPRunnerResults struct {
 
 // Run tests tcp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (tcpstate *TCPRunnerResults) Run(t int) {
+func (tcpstate *RunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
 	_, err := tcpstate.client.Fetch()
 	if err != nil {
@@ -65,9 +63,9 @@ type TCPOptions struct {
 	ReqTimeout       time.Duration
 }
 
-// TCPRunnerOptions includes the base RunnerOptions plus tcp specific
+// RunnerOptions includes the base RunnerOptions plus tcp specific
 // options.
-type TCPRunnerOptions struct {
+type RunnerOptions struct {
 	periodic.RunnerOptions
 	TCPOptions // Need to call Init() to initialize
 }
@@ -88,10 +86,13 @@ type TCPClient struct {
 }
 
 var (
+	// TCPURLPrefix is the URL prefix for triggering tcp load.
 	TCPURLPrefix = "tcp://"
-	ErrShortRead = fmt.Errorf("short read")
-	ErrLongRead  = fmt.Errorf("bug: long read")
-	ErrMismatch  = fmt.Errorf("read not echoing writes")
+	// TCPStatusOK is the map key on success.
+	TCPStatusOK  = "OK"
+	errShortRead = fmt.Errorf("short read")
+	errLongRead  = fmt.Errorf("bug: long read")
+	errMismatch  = fmt.Errorf("read not echoing writes")
 )
 
 func GeneratePayload(t int, i int64) []byte {
@@ -186,15 +187,15 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
 	}
 	if n < len(c.req) {
-		return c.buffer[:n], ErrShortRead
+		return c.buffer[:n], errShortRead
 	}
 	if n > len(c.req) {
 		log.Errf("BUG: read more than possible %d vs %d", n, len(c.req))
-		return c.buffer[:n], ErrLongRead
+		return c.buffer[:n], errLongRead
 	}
 	if !bytes.Equal(c.buffer, c.req) {
 		log.Infof("Mismatch between sent %q and received %q", string(c.req), string(c.buffer))
-		return c.buffer, ErrMismatch
+		return c.buffer, errMismatch
 	}
 	c.socket = conn // reuse on success
 	return c.buffer[:n], nil
@@ -213,7 +214,7 @@ func (c *TCPClient) Close() int {
 
 // RunTCPTest runs an tcp test and returns the aggregated stats.
 // Some refactoring to avoid copy-pasta between the now 3 runners would be good.
-func RunTCPTest(o *TCPRunnerOptions) (*TCPRunnerResults, error) {
+func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	o.RunType = "TCP"
 	log.Infof("Starting tcp test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
@@ -221,12 +222,12 @@ func RunTCPTest(o *TCPRunnerOptions) (*TCPRunnerResults, error) {
 	numThreads := r.Options().NumThreads
 	o.TCPOptions.Destination = o.Destination
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
-	total := TCPRunnerResults{
+	total := RunnerResults{
 		aborter:  r.Options().Stop,
 		RetCodes: make(TCPResultMap),
 	}
 	total.Destination = o.Destination
-	tcpstate := make([]TCPRunnerResults, numThreads)
+	tcpstate := make([]RunnerResults, numThreads)
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &tcpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
