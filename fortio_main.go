@@ -35,6 +35,7 @@ import (
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
+	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 )
@@ -337,6 +338,11 @@ func fortioLoad(justCurl bool, percList []float64) {
 			UnixDomainSocket:   httpOpts.UnixDomainSocket,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
+	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
+		o := tcprunner.TCPRunnerOptions{}
+		o.Destination = url
+		o.Payload = httpOpts.Payload
+		res, err = tcprunner.RunTCPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpOpts,
