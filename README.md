@@ -330,6 +330,35 @@ User-Agent: fortio.org/fortio-1.8.0
 body:
 ```
 
+### TCP
+Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
+```Shell
+$ fortio echo-server &
+Fortio 1.8.0 tcp-echo server listening on [::]:8078
+19:45:30 I fortio_main.go:238> All fortio 1.8.0 release go1.15.2 servers started!
+$ load  -qps -1 -n 100000 tcp://localhost:8078
+Fortio 1.8.0 running at -1 queries per second, 16->16 procs, for 100000 calls: tcp://localhost:8078
+20:01:31 I tcprunner.go:218> Starting tcp test for tcp://localhost:8078 with 4 threads at -1.0 qps
+Starting at max qps with 4 thread(s) [gomax 16] for exactly 100000 calls (25000 per thread + 0)
+20:01:32 I periodic.go:558> T003 ended after 1.240585427s : 25000 calls. qps=20151.77629520873
+20:01:32 I periodic.go:558> T002 ended after 1.241141084s : 25000 calls. qps=20142.75437521493
+20:01:32 I periodic.go:558> T001 ended after 1.242066385s : 25000 calls. qps=20127.7486468648
+20:01:32 I periodic.go:558> T000 ended after 1.24227731s : 25000 calls. qps=20124.331176909283
+Ended after 1.242312567s : 100000 calls. qps=80495
+Aggregated Function Time : count 100000 avg 4.9404876e-05 +/- 1.145e-05 min 2.7697e-05 max 0.000887051 sum 4.94048763
+# range, mid point, percentile, count
+>= 2.7697e-05 <= 0.000887051 , 0.000457374 , 100.00, 100000
+# target 50% 0.00045737
+# target 75% 0.00067221
+# target 90% 0.000801115
+# target 99% 0.000878457
+# target 99.9% 0.000886192
+Sockets used: 4 (for perfect no error run, would be 4)
+Total Bytes sent: 2400000, received: 2400000
+tcp OK : 100000 (100.0 %)
+All done 100000 calls (plus 0 warmup) 0.049 ms avg, 80495.0 qps
+```
+
 ### GRPC
 
 #### Simple grpc ping

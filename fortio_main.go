@@ -339,7 +339,10 @@ func fortioLoad(justCurl bool, percList []float64) {
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
-		o := tcprunner.TCPRunnerOptions{}
+		o := tcprunner.TCPRunnerOptions{
+			RunnerOptions: ro,
+		}
+		o.ReqTimeout = httpOpts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = tcprunner.RunTCPTest(&o)

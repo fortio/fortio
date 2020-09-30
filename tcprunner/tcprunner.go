@@ -15,6 +15,7 @@
 package tcprunner
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
@@ -36,10 +38,12 @@ var TCPStatusOK = "OK"
 type TCPRunnerResults struct {
 	periodic.RunnerResults
 	TCPOptions
-	RetCodes    TCPResultMap
-	SocketCount int
-	client      *TCPClient
-	aborter     *periodic.Aborter
+	RetCodes      TCPResultMap
+	SocketCount   int
+	BytesSent     int64
+	BytesReceived int64
+	client        *TCPClient
+	aborter       *periodic.Aborter
 }
 
 // Run tests tcp request fetching. Main call being run at the target QPS.
@@ -58,6 +62,7 @@ type TCPOptions struct {
 	Destination      string
 	Payload          []byte // what to send (and check)
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
+	ReqTimeout       time.Duration
 }
 
 // TCPRunnerOptions includes the base RunnerOptions plus tcp specific
@@ -68,16 +73,32 @@ type TCPRunnerOptions struct {
 }
 
 type TCPClient struct {
-	buffer      []byte
-	req         []byte
-	dest        net.Addr
-	socket      net.Conn
-	socketCount int
-	destination string
-	reqTimeout  time.Duration
+	buffer        []byte
+	req           []byte
+	dest          net.Addr
+	socket        net.Conn
+	connID        int // 0-9999
+	messageCount  int64
+	bytesSent     int64
+	bytesReceived int64
+	socketCount   int
+	destination   string
+	doGenerate    bool
+	reqTimeout    time.Duration
 }
 
-var TCPURLPrefix = "tcp://"
+var (
+	TCPURLPrefix = "tcp://"
+	ErrShortRead = fmt.Errorf("short read")
+	ErrLongRead  = fmt.Errorf("bug: long read")
+	ErrMismatch  = fmt.Errorf("read not echoing writes")
+)
+
+func GeneratePayload(t int, i int64) []byte {
+	// up to 9999 connections and 999 999 999 999 (999B) request
+	s := fmt.Sprintf("Fortio\n%04d\n%012d", t, i) // 6+2+4+12 = 24 bytes
+	return []byte(s)
+}
 
 func NewTCPClient(o *TCPOptions) *TCPClient {
 	c := TCPClient{}
@@ -91,10 +112,20 @@ func NewTCPClient(o *TCPOptions) *TCPClient {
 	}
 	c.dest = tAddr
 	c.req = o.Payload
-	if c.req == nil {
-		c.req = []byte("Fortio!\n") // 8 bytes
+	if len(c.req) == 0 { // len(nil) array is also valid and 0
+		c.doGenerate = true
+		c.req = GeneratePayload(0, 0)
 	}
 	c.buffer = make([]byte, len(c.req))
+	c.reqTimeout = o.ReqTimeout
+	if o.ReqTimeout == 0 {
+		log.Debugf("Request timeout not set, using default %v", fhttp.HTTPReqTimeOutDefaultValue)
+		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+	}
+	if c.reqTimeout < 0 {
+		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, fhttp.HTTPReqTimeOutDefaultValue)
+		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+	}
 	return &c
 }
 
@@ -112,6 +143,7 @@ func (c *TCPClient) connect() (net.Conn, error) {
 func (c *TCPClient) Fetch() ([]byte, error) {
 	// Connect or reuse existing socket:
 	conn := c.socket
+	c.messageCount++
 	reuse := (conn != nil)
 	if !reuse {
 		var err error
@@ -125,8 +157,14 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
+	if c.doGenerate {
+		c.req = GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
+	}
 	n, err := conn.Write(c.req)
-	log.Debugf("wrote %d on %v: %v", n, c.req, err)
+	c.bytesSent = c.bytesSent + int64(n)
+	if log.LogDebug() {
+		log.Debugf("wrote %d (%q): %v", n, string(c.req), err)
+	}
 	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
@@ -141,7 +179,25 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
 		return nil, io.ErrShortWrite
 	}
-	return nil, nil
+	// assert that len(c.buffer) == len(c.req)
+	n, err = conn.Read(c.buffer)
+	c.bytesReceived = c.bytesReceived + int64(n)
+	if log.LogDebug() {
+		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
+	}
+	if n < len(c.req) {
+		return c.buffer[:n], ErrShortRead
+	}
+	if n > len(c.req) {
+		log.Errf("BUG: read more than possible %d vs %d", n, len(c.req))
+		return c.buffer[:n], ErrLongRead
+	}
+	if !bytes.Equal(c.buffer, c.req) {
+		log.Infof("Mismatch between sent %q and received %q", string(c.req), string(c.buffer))
+		return c.buffer, ErrMismatch
+	}
+	c.socket = conn // reuse on success
+	return c.buffer[:n], nil
 }
 
 func (c *TCPClient) Close() int {
@@ -178,6 +234,7 @@ func RunTCPTest(o *TCPRunnerOptions) (*TCPRunnerResults, error) {
 		if tcpstate[i].client == nil {
 			return nil, fmt.Errorf("unable to create client %d for %s", i, o.Destination)
 		}
+		tcpstate[i].client.connID = i
 		if o.Exactly <= 0 {
 			data, err := tcpstate[i].client.Fetch()
 			if i == 0 && log.LogVerbose() {
@@ -194,6 +251,8 @@ func RunTCPTest(o *TCPRunnerOptions) (*TCPRunnerResults, error) {
 	keys := []string{}
 	for i := 0; i < numThreads; i++ {
 		total.SocketCount += tcpstate[i].client.Close()
+		total.BytesReceived += tcpstate[i].client.bytesReceived
+		total.BytesSent += tcpstate[i].client.bytesSent
 		for k := range tcpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {
 				keys = append(keys, k)
@@ -204,7 +263,8 @@ func RunTCPTest(o *TCPRunnerOptions) (*TCPRunnerResults, error) {
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	totalCount := float64(total.DurationHistogram.Count)
-	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
+	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect no error run, would be %d)\n", total.SocketCount, r.Options().NumThreads)
+	_, _ = fmt.Fprintf(out, "Total Bytes sent: %d, received: %d\n", total.BytesSent, total.BytesReceived)
 	sort.Strings(keys)
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "tcp %s : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
