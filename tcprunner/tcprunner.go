@@ -56,6 +56,7 @@ func (tcpstate *RunnerResults) Run(t int) {
 	}
 }
 
+// TCPOptions are options to the TCPClient.
 type TCPOptions struct {
 	Destination      string
 	Payload          []byte // what to send (and check)
@@ -70,6 +71,7 @@ type RunnerOptions struct {
 	TCPOptions // Need to call Init() to initialize
 }
 
+// TCPClient is the client used for tcp echo testing.
 type TCPClient struct {
 	buffer        []byte
 	req           []byte
@@ -95,12 +97,14 @@ var (
 	errMismatch  = fmt.Errorf("read not echoing writes")
 )
 
+// Generates a 24 bytes unique payload for each runner thread and message sent.
 func GeneratePayload(t int, i int64) []byte {
 	// up to 9999 connections and 999 999 999 999 (999B) request
 	s := fmt.Sprintf("Fortio\n%04d\n%012d", t, i) // 6+2+4+12 = 24 bytes
 	return []byte(s)
 }
 
+// NewTCPClient creates and initialize and returns a client based on the TCPOptions.
 func NewTCPClient(o *TCPOptions) *TCPClient {
 	c := TCPClient{}
 	d := o.Destination
@@ -201,6 +205,7 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	return c.buffer[:n], nil
 }
 
+// Close closes the last connection and returns the total number of sockets used for the run.
 func (c *TCPClient) Close() int {
 	log.Debugf("Closing %p: %s socket count %d", c, c.destination, c.socketCount)
 	if c.socket != nil {
