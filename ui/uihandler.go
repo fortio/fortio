@@ -47,6 +47,7 @@ import (
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
+	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/version"
 )
 
@@ -316,6 +317,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				o.Destination = fhttp.AddHTTPS(url)
 			}
 			res, err = fgrpc.RunGRPCTest(&o)
+		} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
+			// TODO: copy pasta from fortio_main
+			o := tcprunner.RunnerOptions{
+				RunnerOptions: ro,
+			}
+			o.ReqTimeout = httpopts.HTTPReqTimeOut
+			o.Destination = url
+			o.Payload = httpopts.Payload
+			res, err = tcprunner.RunTCPTest(&o)
 		} else {
 			o := fhttp.HTTPRunnerOptions{
 				HTTPOptions:        *httpopts,
