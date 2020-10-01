@@ -213,6 +213,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Infof("New run id %d", runid)
 	}
 	httpopts := fhttp.NewHTTPOptions(url)
+	defaultHeaders := httpopts.AllHeaders()
+	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
@@ -253,7 +255,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, httpopts.AllHeaders(), version.Short(), logoPath, debugPath, chartJSPath,
+			r, defaultHeaders, version.Short(), logoPath, debugPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})
@@ -284,17 +286,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	case run:
 		// mode == run case:
-		firstHeader := true
 		for _, header := range r.Form["H"] {
 			if len(header) == 0 {
 				continue
 			}
 			log.LogVf("adding header %v", header)
-			if firstHeader {
-				// If there is at least 1 non empty H passed, reset the header list
-				httpopts.ResetHeaders()
-				firstHeader = false
-			}
 			err := httpopts.AddAndValidateExtraHeader(header)
 			if err != nil {
 				log.Errf("Error adding custom headers: %v", err)
