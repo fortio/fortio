@@ -27,12 +27,14 @@ import (
 	"fortio.org/fortio/log"
 ) // Tee off traffic
 
+// TargetConf is the structure to configure one of the multiple targets for MultiServer.
 type TargetConf struct {
 	Destination  string // Destination URL or base
 	MirrorOrigin bool   // wether to use the incoming request as URI and data params to outgoing one (proxy like)
 	//	Return       bool   // Will return the result of this target
 }
 
+// MultiServerConfig configures the MultiServer and holds the http client it uses for proxying.
 type MultiServerConfig struct {
 	Targets []TargetConf
 	//	Serial     bool // Serialize or parallel queries
@@ -41,6 +43,7 @@ type MultiServerConfig struct {
 	client *http.Client
 }
 
+// TeeHandler handles teeing off traffic.
 func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, mcfg.Name)
 	first := true
@@ -130,9 +133,9 @@ func createClient() *http.Client {
 	return client
 }
 
-// Serve starts a debug / echo http server on the given port.
+// MultiServer starts fan out http server on the given port.
 // Returns the mux and addr where the listening socket is bound.
-// The .Port can be retrieved from it when requesting the 0 port as
+// The port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
 func MultiServer(port string, cfg *MultiServerConfig) (*http.ServeMux, net.Addr) {
 	hName := cfg.Name

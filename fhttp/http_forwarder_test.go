@@ -35,7 +35,9 @@ func TestMultiProxy(t *testing.T) {
 	_, multiAddr := MultiServer("0", &mcfg)
 	url := fmt.Sprintf("http://%s/debug", multiAddr)
 	payload := "A test payload"
-	code, data := Fetch(&HTTPOptions{URL: url, Payload: []byte(payload)})
+	opts := HTTPOptions{URL: url, Payload: []byte(payload)}
+	opts.AddAndValidateExtraHeader("b3: traceid...")
+	code, data := Fetch(&opts)
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
 	}
@@ -48,6 +50,18 @@ func TestMultiProxy(t *testing.T) {
 	// Second request errors 100% so shouldn't be found
 	if bytes.Contains(data, []byte("X-Fortio-Multi-Id: 2")) {
 		t.Errorf("Result %s contains unexpected X-Fortio-Multi-Id: 2", DebugSummary(data, 1024))
+	}
+}
+
+func TestMultiProxyErrors(t *testing.T) {
+	mcfg := MultiServerConfig{}
+	mcfg.Targets = []TargetConf{{Destination: "proto://doesntexist/"}, {Destination: "proto://doesntexist/", MirrorOrigin: true}}
+	_, multiAddr := MultiServer("0", &mcfg)
+	url := fmt.Sprintf("http://%s/debug", multiAddr)
+	opts := HTTPOptions{URL: url}
+	code, data := Fetch(&opts)
+	if code != http.StatusServiceUnavailable {
+		t.Errorf("Got %d %s instead of StatusServiceUnavailable for %s", code, DebugSummary(data, 256), url)
 	}
 }
 
