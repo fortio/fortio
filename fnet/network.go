@@ -118,7 +118,7 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 
 func handleTCPEchoRequest(name string, conn net.Conn) {
 	SetSocketBuffers(conn, 32*KILOBYTE, 32*KILOBYTE)
-	wb, err := copy(conn, conn) // io.Copy(conn, conn)
+	wb, err := Copy(conn, conn) // io.Copy(conn, conn)
 	log.LogVf("TCP echo server (%v) echoed %d bytes from %v to itself (err=%v)", name, wb, conn.RemoteAddr(), err)
 	_ = conn.Close()
 }
@@ -205,8 +205,8 @@ func Resolve(host string, port string) *net.TCPAddr {
 	return dest
 }
 
-// copy is a debug version of io.Copy without the zero copy optimizations.
-func copy(dst io.Writer, src io.Reader) (written int64, err error) {
+// Copy is a debug version of io.Copy without the zero Copy optimizations.
+func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 	buf := make([]byte, 32*KILOBYTE)
 	for {
 		nr, er := src.Read(buf)
@@ -442,11 +442,11 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	var wb int64
 	var we error
 	go func(w *sync.WaitGroup, src io.Reader, dst *net.TCPConn) {
-		wb, we = copy(dst, src)
+		wb, we = Copy(dst, src)
 		_ = dst.CloseWrite()
 		w.Done()
 	}(&wg, in, d)
-	rb, re := copy(out, d)
+	rb, re := Copy(out, d)
 	log.Infof("Read %d from %s (err=%v)", rb, dest, re)
 	if !stopOnEOF {
 		wg.Wait()

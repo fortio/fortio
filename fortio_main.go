@@ -47,7 +47,6 @@ type proxiesFlagList struct {
 func (f *proxiesFlagList) String() string {
 	return ""
 }
-
 func (f *proxiesFlagList) Set(value string) error {
 	proxies = append(proxies, value)
 	return nil
@@ -55,15 +54,30 @@ func (f *proxiesFlagList) Set(value string) error {
 
 // -- End of functions for -P support.
 
+// -- Same for -M
+type httpMultiFlagList struct {
+}
+
+func (f *httpMultiFlagList) String() string {
+	return ""
+}
+func (f *httpMultiFlagList) Set(value string) error {
+	httpMulties = append(httpMulties, value)
+	return nil
+}
+
+// -- End of -M support
+
 // Usage to a writer.
 func usage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n",
+	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts ui, http-echo,",
 		"redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
 		"server), report (report only UI server), redirect (only the redirect server),",
-		"grpcping (grpc client), or curl (single URL debug), or nc (single tcp connection).",
+		"proxies (only the -M and -P configured proxies), grpcping (grpc client),",
+		"or curl (single URL debug), or nc (single tcp connection).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
@@ -117,6 +131,9 @@ var (
 	dataDirFlag   = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags  proxiesFlagList
 	proxies       = make([]string, 0)
+	// -M flag
+	httpMultiFlags httpMultiFlagList
+	httpMulties    = make([]string, 0)
 
 	defaultDataDir = "."
 
@@ -151,10 +168,13 @@ var (
 	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
 	// nc mode flag(s).
 	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
+	// Mirror origin global setting (should be per destination eventually)
+	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
 )
 
 func main() {
-	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	flag.Var(&proxiesFlags, "P", "Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
 	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
@@ -170,8 +190,6 @@ func main() {
 		if _, err := configmap.Setup(flag.CommandLine, confDir); err != nil {
 			log.Critf("Unable to watch config/flag changes in %v: %v", confDir, err)
 		}
-	} else {
-		log.Infof("Not using dynamic flag watching (use -config to set watch directory)")
 	}
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
@@ -207,6 +225,10 @@ func main() {
 	case "tcp-echo":
 		isServer = true
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
+		startProxies()
+	case "proxies":
+		isServer = true
+		startProxies()
 	case "server":
 		isServer = true
 		if *tcpPortFlag != disabled {
@@ -221,19 +243,16 @@ func main() {
 		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList) {
 			os.Exit(1) // error already logged
 		}
-		for _, proxy := range proxies {
-			s := strings.SplitN(proxy, " ", 2)
-			if len(s) != 2 {
-				log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
-			}
-			fnet.ProxyToDestination(s[0], s[1])
-		}
+		startProxies()
 	case "grpcping":
 		grpcClient()
 	default:
 		usageErr("Error: unknown command ", command)
 	}
 	if isServer {
+		if confDir == "" {
+			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
+		}
 		// To get a start time log/timestamp in the logs
 		log.Infof("All fortio %s servers started!", version.Long())
 		d := *syncIntervalFlag
@@ -247,6 +266,30 @@ func main() {
 		} else {
 			select {}
 		}
+	}
+}
+
+func startProxies() {
+	for _, proxy := range proxies {
+		s := strings.SplitN(proxy, " ", 2)
+		if len(s) != 2 {
+			log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
+		}
+		fnet.ProxyToDestination(s[0], s[1])
+	}
+	for _, hmulti := range httpMulties {
+		s := strings.Split(hmulti, " ")
+		if len(s) < 2 {
+			log.Errf("Invalid syntax for http multi \"%s\", should be \"localAddr destURL1 destURL2...\"", hmulti)
+		}
+		mcfg := fhttp.MultiServerConfig{}
+		n := len(s) - 1
+		mcfg.Targets = make([]fhttp.TargetConf, n)
+		for i := 0; i < n; i++ {
+			mcfg.Targets[i].Destination = s[i+1]
+			mcfg.Targets[i].MirrorOrigin = *mirrorOriginFlag
+		}
+		fhttp.MultiServer(s[0], &mcfg)
 	}
 }
 
