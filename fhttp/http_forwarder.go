@@ -45,7 +45,9 @@ type MultiServerConfig struct {
 
 // TeeHandler handles teeing off traffic.
 func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, mcfg.Name)
+	if log.LogVerbose() {
+		LogRequest(r, mcfg.Name)
+	}
 	first := true
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -124,12 +126,11 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 // createClient http client for connection reuse
 func createClient() *http.Client {
 	client := &http.Client{
-		/*
-			Transport: &http.Transport{
-				MaxIdleConnsPerHost: MaxIdleConnections,
-			},
-			Timeout: time.Duration(RequestTimeout) * time.Second,
-		*/
+		Transport: &http.Transport{
+			// TODO make configurable, should be fine for now for most but extreme -c values
+			MaxIdleConnsPerHost: 128, // must be more than incoming parallelization; divided by number of fan out if using parallel mode
+			MaxIdleConns:        256,
+		},
 	}
 	return client
 }
