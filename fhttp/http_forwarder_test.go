@@ -55,7 +55,8 @@ func TestMultiProxy(t *testing.T) {
 
 func TestMultiProxyErrors(t *testing.T) {
 	mcfg := MultiServerConfig{}
-	mcfg.Targets = []TargetConf{{Destination: "proto://doesntexist/"}, {Destination: "proto://doesntexist/", MirrorOrigin: true}}
+	// No scheme in url to cause error
+	mcfg.Targets = []TargetConf{{Destination: "\001doesntexist.fortio.org:2435/foo"}, {Destination: "\001doesntexist.fortio.org:2435/foo", MirrorOrigin: true},  {Destination: "doesntexist.fortio.org:2435/foo"}}
 	_, multiAddr := MultiServer("0", &mcfg)
 	url := fmt.Sprintf("http://%s/debug", multiAddr)
 	opts := HTTPOptions{URL: url}

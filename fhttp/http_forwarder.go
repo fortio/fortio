@@ -81,7 +81,8 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 			}
 			// Copy only trace headers
 			for k, v := range r.Header {
-				if k == "x-request-id" || k == "b3" || strings.HasPrefix(k, "x-b3-") {
+				lk := strings.ToLower(k)
+				if lk == "x-request-id" || lk == "b3" || strings.HasPrefix(lk, "x-b3-") {
 					for _, vv := range v {
 						req.Header.Add(k, vv)
 					}
