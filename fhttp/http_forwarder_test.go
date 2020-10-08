@@ -30,43 +30,49 @@ func init() {
 func TestMultiProxy(t *testing.T) {
 	_, debugAddr := ServeTCP("0", "/debug")
 	urlBase := fmt.Sprintf("localhost:%d/", debugAddr.Port)
-	mcfg := MultiServerConfig{}
-	mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true}, {Destination: urlBase + "echo?status=555"}}
-	_, multiAddr := MultiServer("0", &mcfg)
-	url := fmt.Sprintf("http://%s/debug", multiAddr)
-	payload := "A test payload"
-	opts := HTTPOptions{URL: url, Payload: []byte(payload)}
-	opts.AddAndValidateExtraHeader("b3: traceid...")
-	code, data := Fetch(&opts)
-	if code != http.StatusOK {
-		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
-	}
-	if !bytes.Contains(data, []byte(payload)) {
-		t.Errorf("Result %s doesn't contain expected payload echo back %q", DebugSummary(data, 1024), payload)
-	}
-	if !bytes.Contains(data, []byte("X-Fortio-Multi-Id: 1")) {
-		t.Errorf("Result %s doesn't contain expected X-Fortio-Multi-Id: 1", DebugSummary(data, 1024))
-	}
-	// Second request errors 100% so shouldn't be found
-	if bytes.Contains(data, []byte("X-Fortio-Multi-Id: 2")) {
-		t.Errorf("Result %s contains unexpected X-Fortio-Multi-Id: 2", DebugSummary(data, 1024))
+	for i := 0; i < 2; i++ {
+		serial := (i == 0)
+		mcfg := MultiServerConfig{Serial: serial}
+		mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true}, {Destination: urlBase + "echo?status=555"}}
+		_, multiAddr := MultiServer("0", &mcfg)
+		url := fmt.Sprintf("http://%s/debug", multiAddr)
+		payload := "A test payload"
+		opts := HTTPOptions{URL: url, Payload: []byte(payload)}
+		opts.AddAndValidateExtraHeader("b3: traceid...")
+		code, data := Fetch(&opts)
+		if code != http.StatusOK {
+			t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+		}
+		if !bytes.Contains(data, []byte(payload)) {
+			t.Errorf("Result %s doesn't contain expected payload echo back %q", DebugSummary(data, 1024), payload)
+		}
+		if !bytes.Contains(data, []byte("X-Fortio-Multi-Id: 1")) {
+			t.Errorf("Result %s doesn't contain expected X-Fortio-Multi-Id: 1", DebugSummary(data, 1024))
+		}
+		// Second request errors 100% so shouldn't be found
+		if bytes.Contains(data, []byte("X-Fortio-Multi-Id: 2")) {
+			t.Errorf("Result %s contains unexpected X-Fortio-Multi-Id: 2", DebugSummary(data, 1024))
+		}
 	}
 }
 
 func TestMultiProxyErrors(t *testing.T) {
-	mcfg := MultiServerConfig{}
-	// No scheme in url to cause error
-	mcfg.Targets = []TargetConf{
-		{Destination: "\001doesntexist.fortio.org:2435/foo"},
-		{Destination: "\001doesntexist.fortio.org:2435/foo", MirrorOrigin: true},
-		{Destination: "doesntexist.fortio.org:2435/foo"},
-	}
-	_, multiAddr := MultiServer("0", &mcfg)
-	url := fmt.Sprintf("http://%s/debug", multiAddr)
-	opts := HTTPOptions{URL: url}
-	code, data := Fetch(&opts)
-	if code != http.StatusServiceUnavailable {
-		t.Errorf("Got %d %s instead of StatusServiceUnavailable for %s", code, DebugSummary(data, 256), url)
+	for i := 0; i < 2; i++ {
+		serial := (i == 0)
+		mcfg := MultiServerConfig{Serial: serial}
+		// No scheme in url to cause error
+		mcfg.Targets = []TargetConf{
+			{Destination: "\001doesntexist.fortio.org:2435/foo"},
+			{Destination: "\001doesntexist.fortio.org:2435/foo", MirrorOrigin: true},
+			{Destination: "doesntexist.fortio.org:2435/foo"},
+		}
+		_, multiAddr := MultiServer("0", &mcfg)
+		url := fmt.Sprintf("http://%s/debug", multiAddr)
+		opts := HTTPOptions{URL: url}
+		code, data := Fetch(&opts)
+		if code != http.StatusServiceUnavailable {
+			t.Errorf("Got %d %s instead of StatusServiceUnavailable for %s", code, DebugSummary(data, 256), url)
+		}
 	}
 }
 

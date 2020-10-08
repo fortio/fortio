@@ -172,6 +172,7 @@ var (
 	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
 	// Mirror origin global setting (should be per destination eventually).
 	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
+	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
 )
 
 func main() {
@@ -289,7 +290,7 @@ func startProxies() {
 		if len(s) < 2 {
 			log.Errf("Invalid syntax for http multi \"%s\", should be \"localAddr destURL1 destURL2...\"", hmulti)
 		}
-		mcfg := fhttp.MultiServerConfig{}
+		mcfg := fhttp.MultiServerConfig{Serial: *multiSerialFlag}
 		n := len(s) - 1
 		mcfg.Targets = make([]fhttp.TargetConf, n)
 		for i := 0; i < n; i++ {

@@ -17,14 +17,17 @@
 package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/textproto"
 	"strconv"
 	"strings"
+	"sync"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -49,7 +52,7 @@ type TargetConf struct {
 // MultiServerConfig configures the MultiServer and holds the http client it uses for proxying.
 type MultiServerConfig struct {
 	Targets []TargetConf
-	//	Serial     bool // Serialize or parallel queries
+	Serial  bool // Serialize or parallel queries
 	//	Javascript bool // return data as UI suitable
 	Name   string
 	client *http.Client
@@ -95,33 +98,51 @@ func makeSimpleRequest(url string, r *http.Request) *http.Request {
 	return req
 }
 
-// TeeHandler handles teeing off traffic.
+// TeeHandler common part between TeeSerialHandler and TeeParallelHandler.
 func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, mcfg.Name)
 	}
-	first := true
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Errf("Error reading on %v: %v", r, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	r.Body.Close()
+	if mcfg.Serial {
+		mcfg.TeeSerialHandler(w, r, data)
+	} else {
+		mcfg.TeeParallelHandler(w, r, data)
+	}
+}
+
+func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Request {
+	var req *http.Request
+	if t.MirrorOrigin {
+		req = makeMirrorRequest(t.Destination, r, data)
+	} else {
+		req = makeSimpleRequest(t.Destination, r)
+	}
+	if req == nil {
+		// error already logged
+		return nil
+	}
+	req.Header.Add("X-On-Behalf-Of", r.RemoteAddr)
+	req.Header.Add("X-Fortio-Multi-ID", strconv.Itoa(i+1))
+	log.LogVf("Going to %s", req.URL.String())
+	return req
+}
+
+// TeeSerialHandler handles teeing off traffic in serial (one at a time) mode.
+func (mcfg *MultiServerConfig) TeeSerialHandler(w http.ResponseWriter, r *http.Request, data []byte) {
+	first := true
 	for i, t := range mcfg.Targets {
-		var req *http.Request
-		if t.MirrorOrigin {
-			req = makeMirrorRequest(t.Destination, r, data)
-		} else {
-			req = makeSimpleRequest(t.Destination, r)
-		}
+		req := setupRequest(r, i, t, data)
 		if req == nil {
-			// error already logged
 			continue
 		}
 		url := req.URL.String()
-		req.Header.Add("X-On-Behalf-Of", r.RemoteAddr)
-		req.Header.Add("X-Fortio-Multi-ID", strconv.Itoa(i+1))
-		log.LogVf("Going to %s", url)
 		resp, err := mcfg.client.Do(req)
 		if err != nil {
 			msg := fmt.Sprintf("Error for %s: %v", url, err)
@@ -145,7 +166,69 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 		log.LogVf("copied %d from %s - code %d", w, url, resp.StatusCode)
 		_ = resp.Body.Close()
 	}
-	r.Body.Close()
+}
+
+func singleRequest(client *http.Client, w io.Writer, req *http.Request, statusPtr *int) {
+	url := req.URL.String()
+	resp, err := client.Do(req)
+	if err != nil {
+		msg := fmt.Sprintf("Error for %s: %v", url, err)
+		log.Warnf(msg)
+		_, _ = w.Write([]byte(msg))
+		_, _ = w.Write([]byte{'\n'})
+		*statusPtr = -1
+		return
+	}
+	*statusPtr = resp.StatusCode
+	bw, err := fnet.Copy(w, resp.Body)
+	if err != nil {
+		log.Warnf("Error copying response for %s: %v", url, err)
+	}
+	log.LogVf("sr copied %d from %s - code %d", bw, url, resp.StatusCode)
+	_ = resp.Body.Close()
+}
+
+// Tee ParallelHandler handles teeing off traffic in parallel (one goroutine each) mode.
+func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http.Request, data []byte) {
+	var wg sync.WaitGroup
+	numTargets := len(mcfg.Targets)
+	ba := make([]bytes.Buffer, numTargets)
+	sa := make([]int, numTargets)
+	for i := 0; i < numTargets; i++ {
+		req := setupRequest(r, i, mcfg.Targets[i], data)
+		if req == nil {
+			continue
+		}
+		wg.Add(1)
+		go func(client *http.Client, buffer *bytes.Buffer, request *http.Request, statusPtr *int) {
+			writer := bufio.NewWriter(buffer)
+			singleRequest(client, writer, request, statusPtr)
+			writer.Flush()
+			wg.Done()
+		}(mcfg.client, &ba[i], req, &sa[i])
+	}
+	wg.Wait()
+	// Get overall status only ok if all OK, first non ok sets status
+	status := http.StatusOK
+	for i := 0; i < numTargets; i++ {
+		if sa[i] != http.StatusOK {
+			status = sa[i]
+			break
+		}
+	}
+	if status <= 0 {
+		status = http.StatusServiceUnavailable
+	}
+	w.WriteHeader(status)
+	// Send all the data back to back
+	for i := 0; i < numTargets; i++ {
+		bw, err := w.Write(ba[i].Bytes())
+		log.Debugf("For %d, wrote %d bytes - status %d", i, bw, sa[i])
+		if err != nil {
+			log.Warnf("Error writing back to %s: %v", r.RemoteAddr, err)
+			break
+		}
+	}
 }
 
 // createClient http client for connection reuse.
