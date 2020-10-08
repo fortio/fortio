@@ -188,7 +188,7 @@ func singleRequest(client *http.Client, w io.Writer, req *http.Request, statusPt
 	_ = resp.Body.Close()
 }
 
-// Tee ParallelHandler handles teeing off traffic in parallel (one goroutine each) mode.
+// TeeParallelHandler handles teeing off traffic in parallel (one goroutine each) mode.
 func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http.Request, data []byte) {
 	var wg sync.WaitGroup
 	numTargets := len(mcfg.Targets)

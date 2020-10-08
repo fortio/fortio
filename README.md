@@ -212,6 +212,8 @@ EchoHandler size= argument. In Kbytes. (default 256)
   -multi-mirror-origin
         Mirror the request url to the target for multi proxies (-M) (default
 true)
+  -multi-serial-mode
+        Multi server (-M) requests one at a time instead of parallel mode
   -n int
         Run for exactly this number of calls instead of duration. Default (0)
 is to use duration (-t). Default is 1 when used as grpc ping count.

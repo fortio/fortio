@@ -40,8 +40,11 @@ func TestMultiProxy(t *testing.T) {
 		opts := HTTPOptions{URL: url, Payload: []byte(payload)}
 		opts.AddAndValidateExtraHeader("b3: traceid...")
 		code, data := Fetch(&opts)
-		if code != http.StatusOK {
-			t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+		if serial && code != http.StatusOK {
+			t.Errorf("Got %d %s instead of ok in serial mode (first response sets code) for %s", code, DebugSummary(data, 256), url)
+		}
+		if !serial && code != 555 {
+			t.Errorf("Got %d %s instead of 555 in parallel mode (non ok response sets code) for %s", code, DebugSummary(data, 256), url)
 		}
 		if !bytes.Contains(data, []byte(payload)) {
 			t.Errorf("Result %s doesn't contain expected payload echo back %q", DebugSummary(data, 1024), payload)
