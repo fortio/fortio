@@ -29,9 +29,9 @@ func init() {
 
 func TestMultiProxy(t *testing.T) {
 	_, debugAddr := ServeTCP("0", "/debug")
-	urlBase := fmt.Sprintf("http://localhost:%d", debugAddr.Port)
+	urlBase := fmt.Sprintf("localhost:%d/", debugAddr.Port)
 	mcfg := MultiServerConfig{}
-	mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true}, {Destination: urlBase + "/echo?status=555"}}
+	mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true}, {Destination: urlBase + "echo?status=555"}}
 	_, multiAddr := MultiServer("0", &mcfg)
 	url := fmt.Sprintf("http://%s/debug", multiAddr)
 	payload := "A test payload"
@@ -56,7 +56,11 @@ func TestMultiProxy(t *testing.T) {
 func TestMultiProxyErrors(t *testing.T) {
 	mcfg := MultiServerConfig{}
 	// No scheme in url to cause error
-	mcfg.Targets = []TargetConf{{Destination: "\001doesntexist.fortio.org:2435/foo"}, {Destination: "\001doesntexist.fortio.org:2435/foo", MirrorOrigin: true},  {Destination: "doesntexist.fortio.org:2435/foo"}}
+	mcfg.Targets = []TargetConf{
+		{Destination: "\001doesntexist.fortio.org:2435/foo"},
+		{Destination: "\001doesntexist.fortio.org:2435/foo", MirrorOrigin: true},
+		{Destination: "doesntexist.fortio.org:2435/foo"},
+	}
 	_, multiAddr := MultiServer("0", &mcfg)
 	url := fmt.Sprintf("http://%s/debug", multiAddr)
 	opts := HTTPOptions{URL: url}

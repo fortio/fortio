@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Tee off traffic
+
 package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
@@ -20,12 +22,22 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/textproto"
 	"strconv"
 	"strings"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
-) // Tee off traffic
+)
+
+var (
+	// EnvoyRequestID is the header set by envoy and we need to propagate for distributed tracing.
+	EnvoyRequestID = textproto.CanonicalMIMEHeaderKey("x-request-id")
+	// TraceHeader is the single aggregated open tracing header to propagate when present.
+	TraceHeader = textproto.CanonicalMIMEHeaderKey("b3")
+	// TraceHeadersPrefix is the prefix for the multi header version of open zipkin.
+	TraceHeadersPrefix = textproto.CanonicalMIMEHeaderKey("x-b3-")
+)
 
 // TargetConf is the structure to configure one of the multiple targets for MultiServer.
 type TargetConf struct {
@@ -43,6 +55,46 @@ type MultiServerConfig struct {
 	client *http.Client
 }
 
+func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Request {
+	url := baseURL + r.RequestURI
+	bodyReader := ioutil.NopCloser(bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, url, bodyReader)
+	if err != nil {
+		log.Warnf("new mirror request error for %q: %v", url, err)
+		return nil
+	}
+	// Copy all headers
+	// Host header is not in Header so safe to copy
+	copyHeaders(req, r, true)
+	return req
+}
+
+func copyHeaders(req, r *http.Request, all bool) {
+	// Copy only trace headers unless all is true.
+	for k, v := range r.Header {
+		if all || k == EnvoyRequestID || k == TraceHeader || strings.HasPrefix(k, TraceHeadersPrefix) {
+			for _, vv := range v {
+				req.Header.Add(k, vv)
+			}
+			log.Debugf("Adding header %q = %q", k, v)
+		} else {
+			log.Debugf("Skipping header %q", k)
+		}
+	}
+}
+
+func makeSimpleRequest(url string, r *http.Request) *http.Request {
+	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
+	if err != nil {
+		log.Warnf("new request error for %q: %v", url, err)
+		return nil
+	}
+	// Copy only trace headers
+	copyHeaders(req, r, false)
+	req.Header.Add("User-Agent", userAgent)
+	return req
+}
+
 // TeeHandler handles teeing off traffic.
 func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
@@ -56,44 +108,17 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	for i, t := range mcfg.Targets {
-		url := t.Destination
 		var req *http.Request
-		var err error
 		if t.MirrorOrigin {
-			url = url + r.RequestURI
-			bodyReader := ioutil.NopCloser(bytes.NewReader(data))
-			req, err = http.NewRequest(r.Method, url, bodyReader)
-			if err != nil {
-				log.Warnf("new mirror request error for %q: %v", url, err)
-				continue
-			}
-			// Copy all headers
-			// Host header is not in Header so safe to copy
-			for k, v := range r.Header {
-				log.Debugf("Adding (all) headers - %q = %q", k, v)
-				for _, vv := range v {
-					req.Header.Add(k, vv)
-				}
-			}
+			req = makeMirrorRequest(t.Destination, r, data)
 		} else {
-			req, err = http.NewRequest("GET", url, nil)
-			if err != nil {
-				log.Warnf("new request error for %q: %v", url, err)
-				continue
-			}
-			// Copy only trace headers
-			for k, v := range r.Header {
-				lk := strings.ToLower(k)
-				if lk == "x-request-id" || lk == "b3" || strings.HasPrefix(lk, "x-b3-") {
-					for _, vv := range v {
-						req.Header.Add(k, vv)
-					}
-					log.Debugf("Adding header %q = %q", k, v)
-				} else {
-					log.Debugf("Skipping header %q", k)
-				}
-			}
+			req = makeSimpleRequest(t.Destination, r)
 		}
+		if req == nil {
+			// error already logged
+			continue
+		}
+		url := req.URL.String()
 		req.Header.Add("X-On-Behalf-Of", r.RemoteAddr)
 		req.Header.Add("X-Fortio-Multi-ID", strconv.Itoa(i+1))
 		log.LogVf("Going to %s", url)
@@ -105,8 +130,8 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 				w.WriteHeader(http.StatusServiceUnavailable)
 				first = false
 			}
-			w.Write([]byte(msg))
-			w.Write([]byte("\n"))
+			_, _ = w.Write([]byte(msg))
+			_, _ = w.Write([]byte("\n"))
 			continue
 		}
 		if first {
@@ -123,7 +148,7 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 	r.Body.Close()
 }
 
-// createClient http client for connection reuse
+// createClient http client for connection reuse.
 func createClient() *http.Client {
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -154,6 +179,16 @@ func MultiServer(port string, cfg *MultiServerConfig) (*http.ServeMux, net.Addr)
 		cfg.Name = "Multi on " + aStr
 	}
 	cfg.client = createClient()
+	for i := range cfg.Targets {
+		t := &cfg.Targets[i]
+		if t.MirrorOrigin {
+			t.Destination = strings.TrimSuffix(t.Destination, "/") // remove trailing / because we will concatenate the request URI
+		}
+		if !strings.HasPrefix(t.Destination, "https://") && !strings.HasPrefix(t.Destination, "http://") {
+			log.Infof("Assuming http:// on missing scheme for '%s'", t.Destination)
+			t.Destination = "http://" + t.Destination
+		}
+	}
 	log.Infof("Multi-server on %s running with %+v", aStr, cfg)
 	mux.HandleFunc("/", cfg.TeeHandler)
 	return mux, addr

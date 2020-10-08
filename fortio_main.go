@@ -47,6 +47,7 @@ type proxiesFlagList struct {
 func (f *proxiesFlagList) String() string {
 	return ""
 }
+
 func (f *proxiesFlagList) Set(value string) error {
 	proxies = append(proxies, value)
 	return nil
@@ -54,19 +55,20 @@ func (f *proxiesFlagList) Set(value string) error {
 
 // -- End of functions for -P support.
 
-// -- Same for -M
+// -- Same for -M.
 type httpMultiFlagList struct {
 }
 
 func (f *httpMultiFlagList) String() string {
 	return ""
 }
+
 func (f *httpMultiFlagList) Set(value string) error {
 	httpMulties = append(httpMulties, value)
 	return nil
 }
 
-// -- End of -M support
+// -- End of -M support.
 
 // Usage to a writer.
 func usage(w io.Writer, msgs ...interface{}) {
@@ -131,7 +133,7 @@ var (
 	dataDirFlag   = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags  proxiesFlagList
 	proxies       = make([]string, 0)
-	// -M flag
+	// -M flag.
 	httpMultiFlags httpMultiFlagList
 	httpMulties    = make([]string, 0)
 
@@ -168,12 +170,13 @@ var (
 	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
 	// nc mode flag(s).
 	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
-	// Mirror origin global setting (should be per destination eventually)
+	// Mirror origin global setting (should be per destination eventually).
 	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
 )
 
 func main() {
-	flag.Var(&proxiesFlags, "P", "Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	flag.Var(&proxiesFlags, "P",
+		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
 	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
@@ -253,19 +256,23 @@ func main() {
 		if confDir == "" {
 			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
 		}
-		// To get a start time log/timestamp in the logs
-		log.Infof("All fortio %s servers started!", version.Long())
-		d := *syncIntervalFlag
-		if sync != "" && d > 0 {
-			log.Infof("Will re-sync data dir every %s", d)
-			ticker := time.NewTicker(d)
-			defer ticker.Stop()
-			for range ticker.C {
-				ui.Sync(os.Stdout, sync, *dataDirFlag)
-			}
-		} else {
-			select {}
+		serverLoop(sync)
+	}
+}
+
+func serverLoop(sync string) {
+	// To get a start time log/timestamp in the logs
+	log.Infof("All fortio %s servers started!", version.Long())
+	d := *syncIntervalFlag
+	if sync != "" && d > 0 {
+		log.Infof("Will re-sync data dir every %s", d)
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
+		for range ticker.C {
+			ui.Sync(os.Stdout, sync, *dataDirFlag)
 		}
+	} else {
+		select {}
 	}
 }
 
