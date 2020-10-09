@@ -353,8 +353,8 @@ func TestParseDelay(t *testing.T) {
 		{"20ms:101", -1},
 		{"20ms:101%", -1},
 		{"10ms:45,100ms:56", -1},
-		// Max delay case:
-		{"10s:45,10s:55", MaxDelay},
+		// Max delay case: (for 1.5s default)
+		{"10s:45,10s:55", MaxDelay.Get()},
 		// Good cases
 		{"100ms", 100 * time.Millisecond},
 		{"100ms:100", 100 * time.Millisecond},

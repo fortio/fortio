@@ -16,6 +16,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"encoding/base64"
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -26,6 +27,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -335,8 +337,9 @@ func generateSize(sizeInput string) (size int) {
 }
 
 // MaxDelay is the maximum delay allowed for the echoserver responses.
-// 1.5s so we can test the default 1s timeout in envoy.
-const MaxDelay = 1500 * time.Millisecond
+// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
+var MaxDelay = dflag.DynDuration(flag.CommandLine, "max-echo-delay", 1500*time.Millisecond,
+	"Maximum sleep time for delay= echo server parameter. dynamic flag.")
 
 // generateDelay from string, format: delay="100ms" for 100% 100ms delay
 // delay="10ms:20,20ms:10,1s:0.5" for 20% 10ms, 10% 20ms, 0.5% 1s and 69.5% 0
@@ -355,8 +358,8 @@ func generateDelay(delay string) time.Duration {
 			return -1
 		}
 		log.Debugf("Parsed delay %s -> %d", delay, d)
-		if d > MaxDelay {
-			d = MaxDelay
+		if d > MaxDelay.Get() {
+			d = MaxDelay.Get()
 		}
 		return d
 	}
@@ -375,8 +378,8 @@ func generateDelay(delay string) time.Duration {
 			log.Warnf("Bad input delay %v -> %v, not a number before colon", delay, l2[0])
 			return -1
 		}
-		if d > MaxDelay {
-			d = MaxDelay
+		if d > MaxDelay.Get() {
+			d = MaxDelay.Get()
 		}
 		percStr := removeTrailingPercent(l2[1])
 		p, err := strconv.ParseFloat(percStr, 32)
