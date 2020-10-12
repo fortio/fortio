@@ -260,7 +260,7 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 }
 
 // newHttpRequest makes a new http GET request for url with User-Agent.
-func newHTTPRequest(o *HTTPOptions) *http.Request {
+func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	method := o.Method()
 	var body io.Reader
 	if method == fnet.POST {
@@ -270,14 +270,14 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("Unable to make %s request for %s : %v", method, o.URL, err)
-		return nil
+		return nil, err
 	}
 	req.Header = o.GenerateHeaders()
 	if o.hostOverride != "" {
 		req.Host = o.hostOverride
 	}
 	if !log.LogDebug() {
-		return req
+		return req, nil
 	}
 	bytes, err := httputil.DumpRequestOut(req, false)
 	if err != nil {
@@ -285,7 +285,7 @@ func newHTTPRequest(o *HTTPOptions) *http.Request {
 	} else {
 		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
 	}
-	return req
+	return req, nil
 }
 
 // Client object for making repeated requests of the same URL using the same
@@ -355,7 +355,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag).
-func NewClient(o *HTTPOptions) Fetcher {
+func NewClient(o *HTTPOptions) (Fetcher, error) {
 	o.Init(o.URL) // For completely new options
 	// For changes to options after init
 	o.URLSchemeCheck()
@@ -366,11 +366,11 @@ func NewClient(o *HTTPOptions) Fetcher {
 }
 
 // NewStdClient creates a client object that wraps the net/http standard client.
-func NewStdClient(o *HTTPOptions) *Client {
+func NewStdClient(o *HTTPOptions) (*Client, error) {
 	o.Init(o.URL) // also normalizes NumConnections etc to be valid.
-	req := newHTTPRequest(o)
+	req, err := newHTTPRequest(o)
 	if req == nil {
-		return nil
+		return nil, err
 	}
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
@@ -408,7 +408,7 @@ func NewStdClient(o *HTTPOptions) *Client {
 			return http.ErrUseLastResponse
 		}
 	}
-	return &client
+	return &client, nil
 }
 
 // FetchURL fetches the data at the given url using the standard client and default options.
@@ -425,7 +425,7 @@ func FetchURL(url string) (int, []byte) {
 // Fetch creates a client an performs a fetch according to the http options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
-	cli := NewClient(httpOptions)
+	cli, _ := NewClient(httpOptions)
 	code, data, _ := cli.Fetch()
 	cli.Close()
 	return code, data
@@ -468,7 +468,7 @@ func (c *FastClient) Close() int {
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) Fetcher {
+func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	method := o.Method()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
@@ -480,11 +480,11 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	url, err := url.Parse(o.URL)
 	if err != nil {
 		log.Errf("Bad url '%s' : %v", o.URL, err)
-		return nil
+		return nil, err
 	}
 	if url.Scheme != "http" {
 		log.Errf("Only http is supported with the optimized client, use -stdclient for url %s", o.URL)
-		return nil
+		return nil, fmt.Errorf("only http for fast client")
 	}
 	// note: Host includes the port
 	bc := FastClient{
@@ -503,14 +503,15 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 		addr = uds
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
+		var err error
 		if o.Resolve != "" {
-			tAddr = fnet.Resolve(o.Resolve, bc.port)
+			tAddr, err = fnet.Resolve(o.Resolve, bc.port)
 		} else {
-			tAddr = fnet.Resolve(bc.hostname, bc.port)
+			tAddr, err = fnet.Resolve(bc.hostname, bc.port)
 		}
 		if tAddr == nil {
 			// Error already logged
-			return nil
+			return nil, err
 		}
 		addr = tAddr
 	}
@@ -547,7 +548,7 @@ func NewFastClient(o *HTTPOptions) Fetcher {
 	}
 	bc.req = buf.Bytes()
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
-	return &bc
+	return &bc, nil
 }
 
 // return the result from the state.

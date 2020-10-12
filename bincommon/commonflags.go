@@ -120,7 +120,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
-	client := fhttp.NewClient(o)
+	client, _ := fhttp.NewClient(o)
 	if client == nil {
 		return // error logged already
 	}
