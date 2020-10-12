@@ -60,12 +60,13 @@ func TestHTTPRunner(t *testing.T) {
 		URL: opts.URL,
 	}
 	o1 := rawOpts
-	if r, _, _ := NewFastClient(&o1).Fetch(); r != http.StatusOK {
+	fc, _ := NewFastClient(&o1)
+	if r, _, _ := fc.Fetch(); r != http.StatusOK {
 		t.Errorf("Fast Client with raw option should still work with warning in logs")
 	}
 	o1 = rawOpts
 	o1.URL = "http://www.doesnotexist.badtld/"
-	c := NewStdClient(&o1)
+	c, _ := NewStdClient(&o1)
 	c.ChangeURL(rawOpts.URL)
 	if r, _, _ := c.Fetch(); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")
@@ -210,7 +211,8 @@ func TestServe(t *testing.T) {
 	o := NewHTTPOptions(url)
 	o.AddAndValidateExtraHeader("X-Header: value1")
 	o.AddAndValidateExtraHeader("X-Header: value2")
-	code, data, _ := NewClient(o).Fetch()
+	c, _ := NewClient(o)
+	code, data, _ := c.Fetch()
 	if code != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
 	}

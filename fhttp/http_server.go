@@ -376,7 +376,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	opts := NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
 	OnBehalfOf(opts, r)
-	client := NewClient(opts)
+	client, _ := NewClient(opts)
 	if client == nil {
 		return // error logged already
 	}

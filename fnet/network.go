@@ -159,11 +159,11 @@ func GetPort(lAddr net.Addr) string {
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func ResolveDestination(dest string) *net.TCPAddr {
+func ResolveDestination(dest string) (*net.TCPAddr, error) {
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
-		return nil
+		return nil, fmt.Errorf("destination '%s' is not host:port format", dest)
 	}
 	host := dest[0:i]
 	port := dest[i+1:]
@@ -172,7 +172,7 @@ func ResolveDestination(dest string) *net.TCPAddr {
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
-func Resolve(host string, port string) *net.TCPAddr {
+func Resolve(host string, port string) (*net.TCPAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s", host, port)
 	dest := &net.TCPAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
@@ -189,7 +189,7 @@ func Resolve(host string, port string) *net.TCPAddr {
 		addrs, err = net.LookupIP(host)
 		if err != nil {
 			log.Errf("Unable to lookup '%s' : %v", host, err)
-			return nil
+			return nil, err
 		}
 		if len(addrs) > 1 && log.LogDebug() {
 			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
@@ -200,9 +200,9 @@ func Resolve(host string, port string) *net.TCPAddr {
 	dest.Port, err = net.LookupPort("tcp", port)
 	if err != nil {
 		log.Errf("Unable to resolve port '%s' : %v", port, err)
-		return nil
+		return nil, err
 	}
-	return dest
+	return dest, nil
 }
 
 // Copy is a debug version of io.Copy without the zero Copy optimizations.
@@ -327,7 +327,8 @@ func Proxy(port string, dest net.Addr) net.Addr {
 // ProxyToDestination opens a proxy from the listenPort (or addr:port or unix domain socket path) and forwards
 // all traffic to destination (host:port).
 func ProxyToDestination(listenPort string, destination string) net.Addr {
-	return Proxy(listenPort, ResolveDestination(destination))
+	addr, _ := ResolveDestination(destination)
+	return Proxy(listenPort, addr)
 }
 
 // NormalizeHostPort generates host:port string for the address or uses localhost instead of [::]
@@ -431,7 +432,10 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 // NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
 func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	log.Infof("NetCat to %s, stop on eof %v", dest, stopOnEOF)
-	a := ResolveDestination(dest)
+	a, err := ResolveDestination(dest)
+	if a == nil {
+		return err // already logged
+	}
 	d, err := net.DialTCP("tcp", nil, a)
 	if err != nil {
 		log.Errf("Connection error to %q: %v", dest, err)

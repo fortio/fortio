@@ -82,7 +82,7 @@ func TestNewHTTPRequest(t *testing.T) {
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.url)
 		o.AddAndValidateExtraHeader("Host: www.google.com")
-		r := newHTTPRequest(o)
+		r, _ := newHTTPRequest(o)
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
 		}
@@ -509,7 +509,7 @@ func TestPayloadWithEchoBack(t *testing.T) {
 		opts := NewHTTPOptions(url)
 		opts.DisableFastClient = test.disableFastClient
 		opts.Payload = test.payload
-		cli := NewClient(opts)
+		cli, _ := NewClient(opts)
 		code, body, header := cli.Fetch()
 		if code != 200 {
 			t.Errorf("Unexpected error %d", code)
@@ -532,7 +532,7 @@ func TestUnixDomainHttp(t *testing.T) {
 		t.Fatalf("Error for Serve for %s", uds)
 	}
 	o := HTTPOptions{UnixDomainSocket: uds, URL: "http://foo.bar:123/debug1"}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
 		t.Errorf("Got error %d fetching uds %s", code, uds)
@@ -570,7 +570,7 @@ func TestH10Cli(t *testing.T) {
 	opts := NewHTTPOptions(url)
 	opts.HTTP10 = true
 	opts.AddAndValidateExtraHeader("Host: mhostname")
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	code, _, _ := cli.Fetch()
 	if code != 200 {
 		t.Errorf("http 1.0 unexpected error %d", code)
@@ -589,7 +589,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	sz := BufferSizeKb * 1024
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	_, data, _ := cli.Fetch()
 	recSz := len(data)
 	if recSz > sz {
@@ -598,7 +598,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	cli.Close()
 	// Same test without keepalive (exercises a different path)
 	opts.DisableKeepAlive = true
-	cli = NewFastClient(opts)
+	cli, _ = NewFastClient(opts)
 	_, data, _ = cli.Fetch()
 	recSz = len(data)
 	if recSz > sz {
@@ -609,14 +609,14 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 
 func TestBadUrl(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
-	cli := NewFastClient(opts)
-	if cli != nil {
+	cli, err := NewFastClient(opts)
+	if cli != nil || err == nil {
 		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
 	}
 	opts.URL = "http://doesnotexist.fortio.org"
-	cli = NewFastClient(opts)
-	if cli != nil {
+	cli, err = NewFastClient(opts)
+	if cli != nil || err == nil {
 		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
 	}
@@ -626,7 +626,7 @@ func TestDefaultPort(t *testing.T) {
 	// TODO: change back to fortio demo server once setup
 	url := "http://istio.io/" // shall imply port 80
 	opts := NewHTTPOptions(url)
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	code, _, _ := cli.Fetch()
 	if code != 301 {
 		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
@@ -644,14 +644,14 @@ func TestDefaultPort(t *testing.T) {
 	cli.Close()
 	opts.URL = "https://fortio.org" // will be https port 443
 	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
-	cli = NewFastClient(opts)
-	if cli != nil {
+	cli, err := NewFastClient(opts)
+	if cli != nil || err == nil {
 		// If https support was added, remove this whitebox/for coverage purpose assertion
 		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
 	}
-	cli = NewClient(opts)
+	cli, err = NewClient(opts)
 	if cli == nil {
-		t.Fatalf("Couldn't get a client using NewClient on modified opts.")
+		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}
 	// currently fast client fails with https:
 	code, _, _ = cli.Fetch()
@@ -679,7 +679,7 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	m.HandleFunc("/", delayedChunkedSize)
 	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", a.Port)
 	o := HTTPOptions{URL: url}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
@@ -697,7 +697,7 @@ func TestInvalidRequest(t *testing.T) {
 		NumConnections: -3,                       // bogus NumConnections will get fixed
 		HTTPReqTimeOut: -1,
 	}
-	client := NewStdClient(&o)
+	client, _ := NewStdClient(&o)
 	if o.NumConnections <= 0 {
 		t.Errorf("Got %d NumConnections, was expecting normalization to 1", o.NumConnections)
 	}
@@ -708,8 +708,8 @@ func TestInvalidRequest(t *testing.T) {
 		t.Errorf("Got %d code while expecting bad request (%d)", code, http.StatusBadRequest)
 	}
 	o.URL = client.url
-	c2 := NewStdClient(&o)
-	if c2 != nil {
+	c2, err := NewStdClient(&o)
+	if c2 != nil || err == nil {
 		t.Errorf("Got non nil client %+v code while expecting nil for bad request", c2)
 	}
 }
@@ -720,7 +720,7 @@ func TestPayloadSizeSmall(t *testing.T) {
 	for _, size := range []int{768, 0, 1} {
 		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", a.Port, size)
 		o := HTTPOptions{URL: url}
-		client := NewClient(&o)
+		client, _ := NewClient(&o)
 		code, data, header := client.Fetch() // used to panic/bug #127
 		t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 		if code != http.StatusOK {
@@ -761,7 +761,7 @@ func TestPayloadForClient(t *testing.T) {
 		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		client := NewStdClient(&hOptions)
+		client, _ := NewStdClient(&hOptions)
 		contentType := client.req.Header.Get("Content-Type")
 		if contentType != test.contentType {
 			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
@@ -815,7 +815,7 @@ func TestPayloadForFastClient(t *testing.T) {
 		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		client := NewFastClient(&hOptions)
+		client, _ := NewFastClient(&hOptions)
 		body := string(client.(*FastClient).req)
 		if body != test.expectedReqBody {
 			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)
@@ -830,7 +830,7 @@ func TestPayloadSizeLarge(t *testing.T) {
 	size := 200000
 	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", a.Port, size)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 888 {
@@ -850,7 +850,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
 	o.AddAndValidateExtraHeader("AAA: aaa")
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
@@ -1063,7 +1063,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	// Un initialized http options:
 	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
 	o1 := o
-	cli1 := NewStdClient(&o1)
+	cli1, _ := NewStdClient(&o1)
 	code, data, _ := cli1.Fetch()
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch1", code)
@@ -1073,7 +1073,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 		t.Errorf("Didn't find default header echoed back in std client1 %s (expecting %s)", DebugSummary(data, 512), expected)
 	}
 	o2 := o
-	cli2 := NewFastClient(&o2)
+	cli2, _ := NewFastClient(&o2)
 	code, data, _ = cli2.Fetch()
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch2", code)

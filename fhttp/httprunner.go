@@ -97,9 +97,10 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
-		httpstate[i].client = NewClient(&o.HTTPOptions)
+		var err error
+		httpstate[i].client, err = NewClient(&o.HTTPOptions)
 		if httpstate[i].client == nil {
-			return nil, fmt.Errorf("unable to create client %d for %s", i, o.URL)
+			return nil, err
 		}
 		if o.Exactly <= 0 {
 			code, data, headerSize := httpstate[i].client.Fetch()

@@ -105,15 +105,15 @@ func GeneratePayload(t int, i int64) []byte {
 }
 
 // NewTCPClient creates and initialize and returns a client based on the TCPOptions.
-func NewTCPClient(o *TCPOptions) *TCPClient {
+func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 	c := TCPClient{}
 	d := o.Destination
 	d = strings.TrimPrefix(d, TCPURLPrefix)
 	d = strings.TrimSuffix(d, "/")
 	c.destination = d
-	tAddr := fnet.ResolveDestination(d)
+	tAddr, err := fnet.ResolveDestination(d)
 	if tAddr == nil {
-		return nil
+		return nil, err
 	}
 	c.dest = tAddr
 	c.req = o.Payload
@@ -131,7 +131,7 @@ func NewTCPClient(o *TCPOptions) *TCPClient {
 		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, fhttp.HTTPReqTimeOutDefaultValue)
 		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
 	}
-	return &c
+	return &c, nil
 }
 
 func (c *TCPClient) connect() (net.Conn, error) {
@@ -233,12 +233,13 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	}
 	total.Destination = o.Destination
 	tcpstate := make([]RunnerResults, numThreads)
+	var err error
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &tcpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
-		tcpstate[i].client = NewTCPClient(&o.TCPOptions)
+		tcpstate[i].client, err = NewTCPClient(&o.TCPOptions)
 		if tcpstate[i].client == nil {
-			return nil, fmt.Errorf("unable to create client %d for %s", i, o.Destination)
+			return nil, fmt.Errorf("unable to create client %d for %s: %v", i, o.Destination, err)
 		}
 		tcpstate[i].client.connID = i
 		if o.Exactly <= 0 {
