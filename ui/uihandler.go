@@ -334,7 +334,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 
 			_, _ = w.Write([]byte(fmt.Sprintf(
-				"Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
+				"❌ Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
 			return
 		}
@@ -773,7 +773,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	if err != nil {
 		log.Errf("xml unmarshal error %v", err)
 		// don't show the error / would need html escape to avoid CSS attacks
-		_, _ = w.Write([]byte("xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n"))
+		_, _ = w.Write([]byte("❌ xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return false
 	}
@@ -825,7 +825,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
-		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
+		_, _ = w.Write([]byte(fmt.Sprintf("❌ http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return false
 	}
@@ -848,21 +848,21 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	if !os.IsNotExist(err) {
 		log.Warnf("check %s : %v", localPath, err)
 		// don't return the details of the error to not leak local data dir etc
-		_, _ = w.Write([]byte("<td>skipped (access error)"))
+		_, _ = w.Write([]byte("<td>❌ skipped (access error)"))
 		return
 	}
 	// url already validated
 	_ = client.ChangeURL(u)
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
-		_, _ = w.Write([]byte(fmt.Sprintf("<td>Http error, code %d", code1)))
+		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
 		w.WriteHeader(424 /*Failed Dependency*/)
 		return
 	}
 	err = ioutil.WriteFile(localPath, data1, 0o644) // nolint: gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
-		_, _ = w.Write([]byte("<td>skipped (write error)"))
+		_, _ = w.Write([]byte("<td>❌ skipped (write error)"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
