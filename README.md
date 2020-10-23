@@ -5,6 +5,8 @@
 [![GoDoc](https://godoc.org/fortio.org/fortio?status.svg)](https://godoc.org/fortio.org/fortio)
 [![codecov](https://codecov.io/gh/fortio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/fortio/fortio)
 [![CircleCI](https://circleci.com/gh/fortio/fortio.svg?style=shield)](https://circleci.com/gh/fortio/fortio)
+[![Docker Build](https://img.shields.io/docker/cloud/build/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
+[![Docker Pulls](https://img.shields.io/docker/pulls/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
 <img src="https://fortio.org/fortio-logo-color.png" height=141 width=141 align=right>
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
