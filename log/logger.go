@@ -51,6 +51,18 @@ var (
 	levelInternal  int32
 )
 
+// SetFlagDefaultsForClientTools changes the default value of -logprefix and -logcaller
+// to make output without caller and prefix, a default more suitable for command line tools (like dnsping).
+// Needs to be called before flag.Parse().
+func SetFlagDefaultsForClientTools() {
+	lcf := flag.Lookup("logcaller")
+	lcf.DefValue = "false"
+	_ = lcf.Value.Set("false")
+	lpf := flag.Lookup("logprefix")
+	lpf.DefValue = ""
+	_ = lpf.Value.Set("")
+}
+
 // nolint: gochecknoinits // needed
 func init() {
 	setLevel(Info) // starting value

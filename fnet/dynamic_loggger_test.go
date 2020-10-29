@@ -26,6 +26,10 @@ import (
 	"fortio.org/fortio/log"
 )
 
+func init() {
+	log.SetFlagDefaultsForClientTools()
+}
+
 func TestDynamicLogLevel(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "fortio-logger-test")
 	if err != nil {
