@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -667,7 +668,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					c.code = RetryOnce // special "retry once" code
 					return
 				}
-				if err == io.EOF && c.size != 0 {
+				if errors.Is(err, io.EOF) && c.size != 0 {
 					// handled below as possibly normal end of stream after we read something
 					break
 				}

@@ -56,18 +56,21 @@ func Benchmark_Float64_Dyn_Get(b *testing.B) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	value := DynFloat64(set, "some_float_1", 13.37, "Use it or lose it")
 	set.Set("some_float_1", "14.00")
+	var x float64
 	for i := 0; i < b.N; i++ {
-		x := value.Get()
-		x = x + 1 // nolint
+		x = value.Get()
 	}
+	b.Logf("last x %v", x) // to please linters/goreport card
 }
 
 func Benchmark_Float64_Normal_Get(b *testing.B) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	valPtr := set.Float64("some_float_1", 13.37, "Use it or lose it")
 	set.Set("some_float_1", "14.00")
+	var x float64
 	for i := 0; i < b.N; i++ {
-		x := *valPtr
-		x = x + 0.01 // nolint
+		x = *valPtr
+		x = x + 0.01
 	}
+	b.Logf("last x %v", x) // to please linters/goreport card
 }

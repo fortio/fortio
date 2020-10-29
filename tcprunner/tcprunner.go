@@ -239,7 +239,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 		// Create a client (and transport) and connect once for each 'thread'
 		tcpstate[i].client, err = NewTCPClient(&o.TCPOptions)
 		if tcpstate[i].client == nil {
-			return nil, fmt.Errorf("unable to create client %d for %s: %v", i, o.Destination, err)
+			return nil, fmt.Errorf("unable to create client %d for %s: %w", i, o.Destination, err)
 		}
 		tcpstate[i].client.connID = i
 		if o.Exactly <= 0 {

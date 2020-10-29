@@ -15,6 +15,7 @@
 package fnet // import "fortio.org/fortio/fnet"
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -228,7 +229,7 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			if er != io.EOF {
+			if errors.Is(er, io.EOF) {
 				err = er
 				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
 			}
