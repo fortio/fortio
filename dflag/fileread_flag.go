@@ -17,7 +17,7 @@ func ReadFileFlags(flagSet *flag.FlagSet) error {
 	flagSet.VisitAll(func(f *flag.Flag) {
 		if frv, ok := f.Value.(*FileReadValue); ok {
 			if err := frv.readFile(); err != nil {
-				outerErr = fmt.Errorf("reading file flag '%v' failed: %v", f.Name, err)
+				outerErr = fmt.Errorf("reading file flag '%v' failed: %w", f.Name, err)
 			}
 		}
 	})

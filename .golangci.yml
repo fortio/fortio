@@ -351,6 +351,8 @@ linters:
     - gochecknoglobals
     - gomnd
     - testpackage
+    - wrapcheck
+    - exhaustivestruct
 #    - maligned
 #    - prealloc
   enable-all: true

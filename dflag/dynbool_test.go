@@ -60,18 +60,20 @@ func Benchmark_Bool_Dyn_Get(b *testing.B) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	value := DynBool(set, "some_bool_1", true, "Use it or lose it")
 	set.Set("some_bool_1", "false")
+	var x bool
 	for i := 0; i < b.N; i++ {
-		x := value.Get()
-		x = !x // nolint
+		x = value.Get()
 	}
+	b.Logf("last x %v", x) // to please linters/goreport card
 }
 
 func Benchmark_Bool_Normal_Get(b *testing.B) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	valPtr := set.Bool("some_bool_1", true, "Use it or lose it")
 	set.Set("some_bool_1", "false")
+	var x bool
 	for i := 0; i < b.N; i++ {
-		x := *valPtr
-		x = !x // nolint
+		x = *valPtr
 	}
+	b.Logf("last x %v", x) // to please linters/goreport card
 }

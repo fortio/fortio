@@ -84,10 +84,10 @@ func (u *Updater) Start() error {
 		return fmt.Errorf("dflag: updater already started")
 	}
 	if err := u.watcher.Add(u.parentPath); err != nil {
-		return fmt.Errorf("unable to add parent dir %v to watch: %v", u.parentPath, err)
+		return fmt.Errorf("unable to add parent dir %v to watch: %w", u.parentPath, err)
 	}
 	if err := u.watcher.Add(u.dirPath); err != nil { // add the dir itself.
-		return fmt.Errorf("unable to add config dir %v to watch: %v", u.dirPath, err)
+		return fmt.Errorf("unable to add config dir %v to watch: %w", u.dirPath, err)
 	}
 	log.Infof("Now watching %v and %v", u.parentPath, u.dirPath)
 	u.started = true
@@ -110,7 +110,7 @@ func (u *Updater) Stop() error {
 func (u *Updater) readAll(dynamicOnly bool) error {
 	files, err := ioutil.ReadDir(u.dirPath)
 	if err != nil {
-		return fmt.Errorf("dflag: updater initialization: %v", err)
+		return fmt.Errorf("dflag: updater initialization: %w", err)
 	}
 	errorStrings := []string{}
 	for _, f := range files {
