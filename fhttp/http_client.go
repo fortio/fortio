@@ -34,6 +34,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"github.com/google/uuid"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -45,6 +46,10 @@ type Fetcher interface {
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
 }
+
+const (
+	urlUUIDToken = "{uuid}"
+)
 
 var (
 	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 128k.
@@ -295,10 +300,12 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
 type Client struct {
-	url       string
-	req       *http.Request
-	client    *http.Client
-	transport *http.Transport
+	url          string
+	path         string // original path of the request's url
+	containsUUID bool   // if url contains the "{uuid}" pattern (lowercase).
+	req          *http.Request
+	client       *http.Client
+	transport    *http.Transport
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -328,6 +335,9 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 // Fetch fetches the byte and code for pre created client.
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
+	if c.containsUUID {
+		c.req.URL.Path = strings.ReplaceAll(c.path, urlUUIDToken, uuid.New().String())
+	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("Unable to send %s request for %s : %v", c.req.Method, c.url, err)
@@ -409,8 +419,10 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		}
 	}
 	client := Client{
-		url: o.URL,
-		req: req,
+		url:          o.URL,
+		path:         req.URL.Path,
+		containsUUID: strings.Contains(req.URL.Path, urlUUIDToken),
+		req:          req,
 		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
