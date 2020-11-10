@@ -336,7 +336,7 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
 	if c.containsUUID {
-		c.req.URL.Path = strings.ReplaceAll(c.path, urlUUIDToken, uuid.New().String())
+		c.req.URL.Path = strings.Replace(c.path, urlUUIDToken, uuid.New().String(), 1)
 	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
@@ -478,6 +478,7 @@ type FastClient struct {
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
 	reqTimeout   time.Duration
+	uuidMarker   []byte
 }
 
 // Close cleans up any resources used by FastClient.
@@ -503,10 +504,18 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	if o.HTTP10 {
 		proto = "1.0"
 	}
+
+	uuidString := ""
+	urlString := o.URL
 	// Parse the url, extract components.
-	url, err := url.Parse(o.URL)
+	if strings.Contains(o.URL, urlUUIDToken) {
+		uuidString = uuid.New().String()
+		urlString = strings.Replace(urlString, urlUUIDToken, uuidString, 1)
+	}
+
+	url, err := url.Parse(urlString)
 	if err != nil {
-		log.Errf("Bad url '%s' : %v", o.URL, err)
+		log.Errf("Bad url '%s' : %v", urlString, err)
 		return nil, err
 	}
 	if url.Scheme != "http" {
@@ -574,6 +583,9 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		buf.Write(o.Payload)
 	}
 	bc.req = buf.Bytes()
+	if uuidString != "" {
+		bc.uuidMarker = []byte(uuidString)
+	}
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
 	return &bc, nil
 }
@@ -622,7 +634,11 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
-	n, err := conn.Write(c.req)
+	req := c.req
+	if len(c.uuidMarker) > 0 {
+		req = bytes.Replace(c.req, c.uuidMarker, []byte(uuid.New().String()), 1)
+	}
+	n, err := conn.Write(req)
 	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
