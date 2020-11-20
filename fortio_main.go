@@ -235,7 +235,9 @@ func main() {
 			usageErr("Error: fortio proxies command only takes -P / -M flags")
 		}
 		isServer = true
-		startProxies()
+		if startProxies() == 0 {
+			usageErr("Error: fortio proxies command needs at least one -P / -M flag")
+		}
 	case "server":
 		isServer = true
 		if *tcpPortFlag != disabled {
@@ -280,7 +282,7 @@ func serverLoop(sync string) {
 	}
 }
 
-func startProxies() {
+func startProxies() int {
 	n := 0
 	for _, proxy := range proxies {
 		s := strings.SplitN(proxy, " ", 2)
@@ -305,9 +307,7 @@ func startProxies() {
 		fhttp.MultiServer(s[0], &mcfg)
 		n++
 	}
-	if n == 0 {
-		usageErr("Error: fortio proxies command needs at least one -P / -M flag")
-	}
+	return n
 }
 
 func fortioNC() {
