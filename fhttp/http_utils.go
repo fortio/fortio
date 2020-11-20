@@ -17,7 +17,6 @@ package fhttp // import "fortio.org/fortio/fhttp"
 import (
 	"encoding/base64"
 	"flag"
-	"fmt"
 	"html/template"
 	"io"
 	"math/rand"
@@ -182,22 +181,11 @@ func ParseChunkSize(inp []byte) (int, int) {
 	}
 }
 
-// EscapeBytes returns printable string. Same as %q format without the
-// surrounding/extra "".
-func EscapeBytes(buf []byte) string {
-	e := fmt.Sprintf("%q", buf)
-	return e[1 : len(e)-1]
-}
-
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
-	l := len(buf)
-	if l <= max+3 { // no point in shortening to add ... if we could return those 3
-		return EscapeBytes(buf)
-	}
-	max /= 2
-	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
+	// moved to fnet package
+	return fnet.DebugSummary(buf, max)
 }
 
 // -- server utils
