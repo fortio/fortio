@@ -283,14 +283,14 @@ func serverLoop(sync string) {
 }
 
 func startProxies() int {
-	n := 0
+	numProxies := 0
 	for _, proxy := range proxies {
 		s := strings.SplitN(proxy, " ", 2)
 		if len(s) != 2 {
 			log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
 		}
 		fnet.ProxyToDestination(s[0], s[1])
-		n++
+		numProxies++
 	}
 	for _, hmulti := range httpMulties {
 		s := strings.Split(hmulti, " ")
@@ -305,9 +305,9 @@ func startProxies() int {
 			mcfg.Targets[i].MirrorOrigin = *mirrorOriginFlag
 		}
 		fhttp.MultiServer(s[0], &mcfg)
-		n++
+		numProxies++
 	}
-	return n
+	return numProxies
 }
 
 func fortioNC() {
