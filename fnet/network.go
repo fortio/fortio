@@ -229,7 +229,7 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			if errors.Is(er, io.EOF) {
+			if !errors.Is(er, io.EOF) {
 				err = er
 				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
 			}
@@ -471,4 +471,22 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		return we
 	}
 	return nil
+}
+
+// EscapeBytes returns printable string. Same as %q format without the
+// surrounding/extra "".
+func EscapeBytes(buf []byte) string {
+	e := fmt.Sprintf("%q", buf)
+	return e[1 : len(e)-1]
+}
+
+// DebugSummary returns a string with the size and escaped first max/2 and
+// last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
+func DebugSummary(buf []byte, max int) string {
+	l := len(buf)
+	if l <= max+3 { // no point in shortening to add ... if we could return those 3
+		return EscapeBytes(buf)
+	}
+	max /= 2
+	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
 }
