@@ -393,11 +393,11 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-	if o.https {
-		tr.TLSClientConfig = &tls.Config{}
+	if o.https { // nolint: nestif // fine for now
+		tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS10}
 		if o.Insecure {
-			log.LogVf("using insecure https")
-			tr.TLSClientConfig.InsecureSkipVerify = true // nolint: gosec // only in Insecure mode
+			log.LogVf("Using insecure https")
+			tr.TLSClientConfig.InsecureSkipVerify = true
 		}
 		if len(o.Cert) > 0 && len(o.Key) > 0 {
 			cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
