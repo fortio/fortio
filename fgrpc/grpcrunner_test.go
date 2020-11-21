@@ -23,16 +23,15 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
-
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 var (
-	// Generated from "make cert"
+	// Generated from "make cert".
 	caCrt  = "../cert-tmp/ca.crt"
 	svrCrt = "../cert-tmp/server.crt"
 	svrKey = "../cert-tmp/server.key"
-	// used for failure test cases
+	// used for failure test cases.
 	failCrt = "../missing/cert.crt"
 	failKey = "../missing/cert.key"
 )

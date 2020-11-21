@@ -21,10 +21,13 @@ import (
 	"log"
 	"runtime"
 	"strings"
+	"sync/atomic"
+
+	"fortio.org/fortio/dflag"
 )
 
 // Level is the level of logging (0 Debug -> 6 Fatal).
-type Level int
+type Level int32
 
 // Log levels. Go can't have variable and function of the same name so we keep
 // medium length (Dbg,Info,Warn,Err,Crit,Fatal) names for the functions.
@@ -39,16 +42,30 @@ const (
 )
 
 var (
-	level       = Info // default is Info and up
 	levelToStrA []string
 	levelToStrM map[string]Level
 	// LogPrefix is a prefix to include in each log line.
 	LogPrefix = flag.String("logprefix", "> ", "Prefix to log lines before logged messages")
 	// LogFileAndLine determines if the log lines will contain caller file name and line number.
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
+	levelInternal  int32
 )
 
+// SetFlagDefaultsForClientTools changes the default value of -logprefix and -logcaller
+// to make output without caller and prefix, a default more suitable for command line tools (like dnsping).
+// Needs to be called before flag.Parse().
+func SetFlagDefaultsForClientTools() {
+	lcf := flag.Lookup("logcaller")
+	lcf.DefValue = "false"
+	_ = lcf.Value.Set("false")
+	lpf := flag.Lookup("logprefix")
+	lpf.DefValue = ""
+	_ = lpf.Value.Set("")
+}
+
+// nolint: gochecknoinits // needed
 func init() {
+	setLevel(Info) // starting value
 	levelToStrA = []string{
 		"Debug",
 		"Verbose",
@@ -64,32 +81,45 @@ func init() {
 		levelToStrM[name] = Level(l)
 		levelToStrM[strings.ToLower(name)] = Level(l)
 	}
-	flag.Var(&level, "loglevel", fmt.Sprintf("loglevel, one of %v", levelToStrA))
+	// virtual dynLevel flag that maps back to actual level
+	_ = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
+		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
+		_, err := ValidateLevel(new)
+		return err
+	}).WithSyncNotifier(func(old, new string) {
+		_ = setLogLevelStr(new) // will succeed as we just validated it first
+	})
 	log.SetFlags(log.Ltime)
 }
 
-// String returns the string representation of the level.
-// Needed for flag Var interface.
-func (l *Level) String() string {
-	return (*l).ToString()
+func setLevel(lvl Level) {
+	atomic.StoreInt32(&levelInternal, int32(lvl))
 }
 
-// ToString returns the string representation of the level.
-// (this can't be the same name as the pointer receiver version)
-func (l Level) ToString() string {
+// String returns the string representation of the level.
+func (l Level) String() string {
 	return levelToStrA[l]
 }
 
-// Set is called by the flags.
-func (l *Level) Set(str string) error {
+// ValidateLevel returns error if the level string is not valid.
+func ValidateLevel(str string) (Level, error) {
 	var lvl Level
 	var ok bool
-	if lvl, ok = levelToStrM[str]; !ok {
-		// flag processing already logs the value
-		return fmt.Errorf("should be one of %v", levelToStrA)
+	if lvl, ok = levelToStrM[strings.TrimSpace(str)]; !ok {
+		return -1, fmt.Errorf("should be one of %v", levelToStrA)
+	}
+	return lvl, nil
+}
+
+// Sets from string.
+func setLogLevelStr(str string) error {
+	var lvl Level
+	var err error
+	if lvl, err = ValidateLevel(str); err != nil {
+		return err
 	}
 	SetLogLevel(lvl)
-	return nil
+	return err // nil
 }
 
 // SetLogLevel sets the log level and returns the previous one.
@@ -106,7 +136,7 @@ func SetLogLevelQuiet(lvl Level) Level {
 // setLogLevel sets the log level and returns the previous one.
 // if logChange is true the level change is logged.
 func setLogLevel(lvl Level, logChange bool) Level {
-	prev := level
+	prev := GetLogLevel()
 	if lvl < Debug {
 		log.Printf("SetLogLevel called with level %d lower than Debug!", lvl)
 		return -1
@@ -117,21 +147,21 @@ func setLogLevel(lvl Level, logChange bool) Level {
 	}
 	if lvl != prev {
 		if logChange {
-			logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.ToString(), prev, prev.ToString())
+			logPrintf(Info, "Log level is now %d %s (was %d %s)\n", lvl, lvl.String(), prev, prev.String())
 		}
-		level = lvl
+		setLevel(lvl)
 	}
 	return prev
 }
 
 // GetLogLevel returns the currently configured LogLevel.
 func GetLogLevel() Level {
-	return level
+	return Level(atomic.LoadInt32(&levelInternal))
 }
 
 // Log returns true if a given level is currently logged.
 func Log(lvl Level) bool {
-	return lvl >= level
+	return int32(lvl) >= atomic.LoadInt32(&levelInternal)
 }
 
 // LevelByName returns the LogLevel by its name.
@@ -140,7 +170,7 @@ func LevelByName(str string) Level {
 }
 
 // Logf logs with format at the given level.
-// 2 level of calls so it's always same depth for extracting caller file/line
+// 2 level of calls so it's always same depth for extracting caller file/line.
 func Logf(lvl Level, format string, rest ...interface{}) {
 	logPrintf(lvl, format, rest...)
 }
@@ -208,12 +238,30 @@ func Fatalf(format string, rest ...interface{}) {
 	logPrintf(Fatal, format, rest...)
 }
 
-// LogDebug shortcut for fortio.Log(fortio.Debug)
+// LogDebug shortcut for fortio.Log(fortio.Debug).
 func LogDebug() bool { //nolint: golint
 	return Log(Debug)
 }
 
-// LogVerbose shortcut for fortio.Log(fortio.Verbose)
+// LogVerbose shortcut for fortio.Log(fortio.Verbose).
 func LogVerbose() bool { //nolint: golint
 	return Log(Verbose)
+}
+
+// LoggerI defines a log.Logger like interface for simple logging.
+type LoggerI interface {
+	Printf(format string, rest ...interface{})
+}
+
+type loggerShm struct {
+}
+
+func (l *loggerShm) Printf(format string, rest ...interface{}) {
+	logPrintf(Info, format, rest...)
+}
+
+// Logger returns a LoggerI (standard logger compatible) that can be used for simple logging.
+func Logger() LoggerI {
+	logger := loggerShm{}
+	return &logger
 }

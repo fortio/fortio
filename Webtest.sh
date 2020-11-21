@@ -45,6 +45,14 @@ CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://www.google.com/robots.txt > /dev/null
 
+# Check that quiet is quiet. Issue #385.
+QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet www.google.com"
+if [ `$QUIETCURLTEST 2>&1 1> /dev/null | wc -l` -ne 0 ]; then
+  echo "Error, -quiet still outputs logs"
+  $QUIETCURLTEST 2>&1 1> /dev/null
+  exit 1
+fi
+
 # Check we can connect, and run a http QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:8080/debug&load=Start&qps=-1&json=on" | grep ActualQPS
 # Check we can do it twice despite ulimit - check we get all 200s (exactly 80 of them (default is 8 connections->16 fds + a few))
@@ -104,7 +112,7 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v20 /bin/true # cleaned up by name
+docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v29 /bin/true # cleaned up by name
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f $DOCKERSECVOLNAME:$TEST_CERT_VOL/$f; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.

@@ -55,6 +55,7 @@
     <input type="text" name="H" size=40 value="" /> <br />
     <button type="button" onclick="addCustomHeader()">+</button>
     <br />
+    Payload:<br /><textarea name="payload" rows="5" cols="75"></textarea><br />
     Load using:<br />
     http: <input type="radio" name="runner" value="http" checked/>
     (https insecure:<input type="checkbox" name="https-insecure" />,
@@ -81,7 +82,8 @@
   </div>
 </form>
 <p><i>Or</i></p>
-<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a> and <a href="../debug/pprof/">Internal PPROF</a>
+<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a> and <a href="{{.DebugPath}}/pprof/">Internal PPROF</a>
+and <a href="flags">Command line flags</a>
 <p><i>Or</i></p>
 <form action="sync">
   <div>

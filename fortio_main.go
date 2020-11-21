@@ -28,44 +28,63 @@ import (
 	"time"
 
 	"fortio.org/fortio/bincommon"
-	"fortio.org/fortio/fnet"
-
+	"fortio.org/fortio/dflag/configmap"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
+	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 )
 
-// -- Support for multiple proxies (-P) flags on cmd line:
+// -- Start of support for multiple proxies (-P) flags on cmd line.
 type proxiesFlagList struct {
 }
 
 func (f *proxiesFlagList) String() string {
 	return ""
 }
+
 func (f *proxiesFlagList) Set(value string) error {
 	proxies = append(proxies, value)
 	return nil
 }
 
-// -- end of functions for -P support
+// -- End of functions for -P support.
 
-// Usage to a writer
+// -- Same for -M.
+type httpMultiFlagList struct {
+}
+
+func (f *httpMultiFlagList) String() string {
+	return ""
+}
+
+func (f *httpMultiFlagList) Set(value string) error {
+	httpMulties = append(httpMulties, value)
+	return nil
+}
+
+// -- End of -M support.
+
+// Usage to a writer.
 func usage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n",
+	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts grpc ping and",
-		"http echo/ui/redirect/proxy servers), grpcping (grpc client), report (report",
-		"only UI server), redirect (redirect only server), or curl (single URL debug).",
+		"where command is one of: load (load testing), server (starts ui, http-echo,",
+		"redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
+		"server), report (report only UI server), redirect (only the redirect server),",
+		"proxies (only the -M and -P configured proxies), grpcping (grpc client),",
+		"or curl (single URL debug), or nc (single tcp connection).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
 
-// Prints usage and error messages with StdErr writer
+// Prints usage and error messages with StdErr writer.
 func usageErr(msgs ...interface{}) {
 	usage(os.Stderr, msgs...)
 	os.Exit(1)
@@ -80,7 +99,7 @@ const (
 
 var (
 	defaults = &periodic.DefaultRunnerOptions
-	// Very small default so people just trying with random URLs don't affect the target
+	// Very small default so people just trying with random URLs don't affect the target.
 	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
@@ -96,15 +115,17 @@ var (
 		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
 			"if empty, use https:// prefix for standard internet CAs TLS")
 	echoPortFlag = flag.String("http-port", "8080",
-		"http echo server port. Can be in the form of host:port, ip:port, port or /unix/domain/path.")
+		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
+	tcpPortFlag = flag.String("tcp-port", "8078",
+		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	grpcPortFlag = flag.String("grpc-port", fnet.DefaultGRPCPort,
-		"grpc server port. Can be in the form of host:port, ip:port or port or /unix/domain/path or \""+disabled+
+		"grpc server port. Can be in the form of host:port, ip:port or `port` or /unix/domain/path or \""+disabled+
 			"\" to not start the grpc server.")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
-		"http echo server URI for debug, empty turns off that part (more secure)")
+		"http echo server `URI` for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
 		"Json output to provided file `path` or '-' for stdout (empty = no json output, unless -a is used)")
-	uiPathFlag = flag.String("ui-path", "/fortio/", "http server URI for UI, empty turns off that part (more secure)")
+	uiPathFlag = flag.String("ui-path", "/fortio/", "http server `URI` for UI, empty turns off that part (more secure)")
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
@@ -112,28 +133,32 @@ var (
 	dataDirFlag   = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags  proxiesFlagList
 	proxies       = make([]string, 0)
+	// -M flag.
+	httpMultiFlags httpMultiFlagList
+	httpMulties    = make([]string, 0)
 
 	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
-	abortOnFlag            = flag.Int("abort-on", 0, "Http code that if encountered aborts the run. e.g. 503 or -1 for socket errors.")
-	autoSaveFlag           = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
-	redirectFlag           = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
-		" (need ingress to work properly). Can be in the form of host:port, ip:port, port or \""+disabled+"\" to disable the feature.")
+	abortOnFlag            = flag.Int("abort-on", 0,
+		"Http `code` that if encountered aborts the run. e.g. 503 or -1 for socket errors.")
+	autoSaveFlag = flag.Bool("a", false, "Automatically save JSON result with filename based on labels & timestamp")
+	redirectFlag = flag.String("redirect-port", "8081", "Redirect all incoming traffic to https URL"+
+		" (need ingress to work properly). Can be in the form of host:port, ip:port, `port` or \""+disabled+"\" to disable the feature.")
 	exactlyFlag = flag.Int64("n", 0,
 		"Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). "+
 			"Default is 1 when used as grpc ping count.")
-	syncFlag         = flag.String("sync", "", "index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.")
+	syncFlag         = flag.String("sync", "", "index.tsv or s3/gcs bucket xml `URL` to fetch at startup for server modes.")
 	syncIntervalFlag = flag.Duration("sync-interval", 0, "Refresh the url every given interval (default, no refresh)")
 
 	baseURLFlag = flag.String("base-url", "",
-		"base URL used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
-	newMaxPayloadSizeKb = flag.Int("maxpayloadsizekb", fnet.MaxPayloadSize/1024,
-		"MaxPayloadSize is the maximum size of payload to be generated by the EchoHandler size= argument. In Kbytes.")
+		"base `URL` used as prefix for data/index.tsv generation. (when empty, the url from the first request is used)")
+	newMaxPayloadSizeKb = flag.Int("maxpayloadsizekb", fnet.MaxPayloadSize/fnet.KILOBYTE,
+		"MaxPayloadSize is the maximum size of payload to be generated by the EchoHandler size= argument. In `Kbytes`.")
 
 	// GRPC related flags
 	// To get most debugging/tracing:
-	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug
+	// GODEBUG="http2debug=2" GRPC_GO_LOG_VERBOSITY_LEVEL=99 GRPC_GO_LOG_SEVERITY_LEVEL=info fortio grpcping -loglevel debug ...
 	doHealthFlag   = flag.Bool("health", false, "grpc ping client mode: use health instead of ping")
 	doPingLoadFlag = flag.Bool("ping", false, "grpc load test: use ping instead of health")
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
@@ -143,10 +168,17 @@ var (
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
 	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
+	// nc mode flag(s).
+	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
+	// Mirror origin global setting (should be per destination eventually).
+	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
+	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
 )
 
 func main() {
-	flag.Var(&proxiesFlags, "P", "Proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	flag.Var(&proxiesFlags, "P",
+		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
+	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
 	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
@@ -154,10 +186,16 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
-	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * 1024)
 	if *bincommon.QuietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}
+	confDir := *bincommon.ConfigDirectoryFlag
+	if confDir != "" {
+		if _, err := configmap.Setup(flag.CommandLine, confDir); err != nil {
+			log.Critf("Unable to watch config/flag changes in %v: %v", confDir, err)
+		}
+	}
+	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
 		usageErr("Unable to extract percentiles from -p: ", err)
@@ -173,6 +211,8 @@ func main() {
 	switch command {
 	case "curl":
 		fortioLoad(true, nil)
+	case "nc":
+		fortioNC()
 	case "load":
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
@@ -186,8 +226,23 @@ func main() {
 		if !ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag) {
 			os.Exit(1) // error already logged
 		}
+	case "tcp-echo":
+		isServer = true
+		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
+		startProxies()
+	case "proxies":
+		if len(flag.Args()) != 0 {
+			usageErr("Error: fortio proxies command only takes -P / -M flags")
+		}
+		isServer = true
+		if startProxies() == 0 {
+			usageErr("Error: fortio proxies command needs at least one -P / -M flag")
+		}
 	case "server":
 		isServer = true
+		if *tcpPortFlag != disabled {
+			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
+		}
 		if *grpcPortFlag != disabled {
 			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
 		}
@@ -197,32 +252,77 @@ func main() {
 		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList) {
 			os.Exit(1) // error already logged
 		}
-		for _, proxy := range proxies {
-			s := strings.SplitN(proxy, " ", 2)
-			if len(s) != 2 {
-				log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
-			}
-			fnet.ProxyToDestination(s[0], s[1])
-		}
+		startProxies()
 	case "grpcping":
 		grpcClient()
 	default:
 		usageErr("Error: unknown command ", command)
 	}
 	if isServer {
-		// To get a start time log/timestamp in the logs
-		log.Infof("All fortio %s servers started!", version.Long())
-		d := *syncIntervalFlag
-		if sync != "" && d > 0 {
-			log.Infof("Will re-sync data dir every %s", d)
-			ticker := time.NewTicker(d)
-			defer ticker.Stop()
-			for range ticker.C {
-				ui.Sync(os.Stdout, sync, *dataDirFlag)
-			}
-		} else {
-			select {}
+		if confDir == "" {
+			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
 		}
+		serverLoop(sync)
+	}
+}
+
+func serverLoop(sync string) {
+	// To get a start time log/timestamp in the logs
+	log.Infof("All fortio %s servers started!", version.Long())
+	d := *syncIntervalFlag
+	if sync != "" && d > 0 {
+		log.Infof("Will re-sync data dir every %s", d)
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
+		for range ticker.C {
+			ui.Sync(os.Stdout, sync, *dataDirFlag)
+		}
+	} else {
+		select {}
+	}
+}
+
+func startProxies() int {
+	numProxies := 0
+	for _, proxy := range proxies {
+		s := strings.SplitN(proxy, " ", 2)
+		if len(s) != 2 {
+			log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
+		}
+		fnet.ProxyToDestination(s[0], s[1])
+		numProxies++
+	}
+	for _, hmulti := range httpMulties {
+		s := strings.Split(hmulti, " ")
+		if len(s) < 2 {
+			log.Errf("Invalid syntax for http multi \"%s\", should be \"localAddr destURL1 destURL2...\"", hmulti)
+		}
+		mcfg := fhttp.MultiServerConfig{Serial: *multiSerialFlag}
+		n := len(s) - 1
+		mcfg.Targets = make([]fhttp.TargetConf, n)
+		for i := 0; i < n; i++ {
+			mcfg.Targets[i].Destination = s[i+1]
+			mcfg.Targets[i].MirrorOrigin = *mirrorOriginFlag
+		}
+		fhttp.MultiServer(s[0], &mcfg)
+		numProxies++
+	}
+	return numProxies
+}
+
+func fortioNC() {
+	l := len(flag.Args())
+	if l != 1 && l != 2 {
+		usageErr("Error: fortio nc needs a host:port or host port destination")
+	}
+	d := flag.Args()[0]
+	if l == 2 {
+		d = d + ":" + flag.Args()[1]
+	}
+	err := fnet.NetCat(d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
+	if err != nil {
+		// already logged but exit with error back to shell/caller
+		os.Exit(1)
 	}
 }
 
@@ -301,6 +401,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 			UnixDomainSocket:   httpOpts.UnixDomainSocket,
 		}
 		res, err = fgrpc.RunGRPCTest(&o)
+	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
+		o := tcprunner.RunnerOptions{
+			RunnerOptions: ro,
+		}
+		o.ReqTimeout = httpOpts.HTTPReqTimeOut
+		o.Destination = url
+		o.Payload = httpOpts.Payload
+		res, err = tcprunner.RunTCPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpOpts,
@@ -312,7 +420,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Aborting because %v\n", err)
+		_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
 		os.Exit(1)
 	}
 	rr := res.Result()
@@ -326,7 +434,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
-	if *autoSaveFlag || len(jsonFileName) > 0 {
+	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint: nestif // but probably should breakup this function
 		var j []byte
 		j, err = json.MarshalIndent(res, "", "  ")
 		if err != nil {

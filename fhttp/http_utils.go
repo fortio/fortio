@@ -16,7 +16,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"encoding/base64"
-	"fmt"
+	"flag"
 	"html/template"
 	"io"
 	"math/rand"
@@ -26,15 +26,16 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
 )
 
-// Used for the fast case insensitive search
+// Used for the fast case insensitive search.
 const toUpperMask = ^byte('a' - 'A')
 
-// Slow but correct version
+// Slow but correct version.
 func toUpper(b byte) byte {
 	if b >= 'a' && b <= 'z' {
 		b -= ('a' - 'A')
@@ -108,7 +109,7 @@ func FoldFind(haystack []byte, needle []byte) (bool, int) {
 
 // ParseDecimal extracts the first positive integer number from the input.
 // spaces are ignored.
-// any character that isn't a digit cause the parsing to stop
+// any character that isn't a digit cause the parsing to stop.
 func ParseDecimal(inp []byte) int {
 	res := -1
 	for _, b := range inp {
@@ -143,7 +144,7 @@ func ParseChunkSize(inp []byte) (int, int) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits {
+		if inDigits { // nolint: nestif
 			b := toUpper(inp[off])
 			var digit int
 			if b >= 'A' && b <= 'F' {
@@ -180,22 +181,11 @@ func ParseChunkSize(inp []byte) (int, int) {
 	}
 }
 
-// EscapeBytes returns printable string. Same as %q format without the
-// surrounding/extra "".
-func EscapeBytes(buf []byte) string {
-	e := fmt.Sprintf("%q", buf)
-	return e[1 : len(e)-1]
-}
-
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
-	l := len(buf)
-	if l <= max+3 { //no point in shortening to add ... if we could return those 3
-		return EscapeBytes(buf)
-	}
-	max /= 2
-	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
+	// moved to fnet package
+	return fnet.DebugSummary(buf, max)
 }
 
 // -- server utils
@@ -208,7 +198,7 @@ func removeTrailingPercent(s string) string {
 }
 
 // generateStatus from string, format: status="503" for 100% 503s
-// status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s
+// status="503:20,404:10,403:0.5" for 20% 503s, 10% 404s, 0.5% 403s 69.5% 200s.
 func generateStatus(status string) int {
 	lst := strings.Split(status, ",")
 	log.Debugf("Parsing status %s -> %v", status, lst)
@@ -254,7 +244,7 @@ func generateStatus(status string) int {
 		codes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", status, res, i, codes[i])
@@ -270,7 +260,7 @@ func generateStatus(status string) int {
 // returns -1 for the default case, so one can specify 0 and force no payload
 // even if it's a post request with a payload (to test asymmetric large inbound
 // small outbound).
-// TODO: refactor similarities with status and delay
+// TODO: refactor similarities with status and delay.
 func generateSize(sizeInput string) (size int) {
 	size = -1 // default value/behavior
 	if len(sizeInput) == 0 {
@@ -323,7 +313,7 @@ func generateSize(sizeInput string) (size int) {
 		sizes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", sizeInput, res, i, sizes[i])
@@ -335,8 +325,9 @@ func generateSize(sizeInput string) (size int) {
 }
 
 // MaxDelay is the maximum delay allowed for the echoserver responses.
-// 1.5s so we can test the default 1s timeout in envoy.
-const MaxDelay = 1500 * time.Millisecond
+// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
+var MaxDelay = dflag.DynDuration(flag.CommandLine, "max-echo-delay", 1500*time.Millisecond,
+	"Maximum sleep time for delay= echo server parameter. dynamic flag.")
 
 // generateDelay from string, format: delay="100ms" for 100% 100ms delay
 // delay="10ms:20,20ms:10,1s:0.5" for 20% 10ms, 10% 20ms, 0.5% 1s and 69.5% 0
@@ -355,8 +346,8 @@ func generateDelay(delay string) time.Duration {
 			return -1
 		}
 		log.Debugf("Parsed delay %s -> %d", delay, d)
-		if d > MaxDelay {
-			d = MaxDelay
+		if d > MaxDelay.Get() {
+			d = MaxDelay.Get()
 		}
 		return d
 	}
@@ -375,8 +366,8 @@ func generateDelay(delay string) time.Duration {
 			log.Warnf("Bad input delay %v -> %v, not a number before colon", delay, l2[0])
 			return -1
 		}
-		if d > MaxDelay {
-			d = MaxDelay
+		if d > MaxDelay.Get() {
+			d = MaxDelay.Get()
 		}
 		percStr := removeTrailingPercent(l2[1])
 		p, err := strconv.ParseFloat(percStr, 32)
@@ -395,7 +386,7 @@ func generateDelay(delay string) time.Duration {
 		delays[i] = d
 		i++
 	}
-	res := 100. * rand.Float32()
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", delay, res, i, delays[i])
@@ -406,12 +397,9 @@ func generateDelay(delay string) time.Duration {
 	return 0
 }
 
-// RoundDuration rounds to 10th of second. Only for positive durations.
-// TODO: switch to Duration.Round once switched to go 1.9
+// RoundDuration rounds to 10th of second.
 func RoundDuration(d time.Duration) time.Duration {
-	tenthSec := int64(100 * time.Millisecond)
-	r := int64(d+50*time.Millisecond) / tenthSec
-	return time.Duration(tenthSec * r)
+	return d.Round(100 * time.Millisecond)
 }
 
 // -- formerly in uihandler:

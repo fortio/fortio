@@ -72,7 +72,7 @@ func TestGetHeaders(t *testing.T) {
 }
 
 func TestNewHTTPRequest(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		url string // input
 		ok  bool   // ok/error
 	}{
@@ -82,7 +82,7 @@ func TestNewHTTPRequest(t *testing.T) {
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.url)
 		o.AddAndValidateExtraHeader("Host: www.google.com")
-		r := newHTTPRequest(o)
+		r, _ := newHTTPRequest(o)
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
 		}
@@ -106,7 +106,7 @@ func TestMultiInitAndEscape(t *testing.T) {
 }
 
 func TestSchemeCheck(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input  string
 		output string
 		stdcli bool
@@ -116,11 +116,11 @@ func TestSchemeCheck(t *testing.T) {
 		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
 		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
 		{"", "", false},                      // and error in the logs
-		{"x", "http://x", false},             //should not crash because url is shorter than prefix
-		{"http:/", "http://http:/", false},   //boundary
-		{"http://", "http://", false},        //boundary
-		{"https://", "https://", true},       //boundary
-		{"https:/", "http://https:/", false}, //boundary
+		{"x", "http://x", false},             // should not crash because url is shorter than prefix
+		{"http:/", "http://http:/", false},   // boundary
+		{"http://", "http://", false},        // boundary
+		{"https://", "https://", true},       // boundary
+		{"https:/", "http://https:/", false}, // boundary
 	}
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.input)
@@ -134,7 +134,7 @@ func TestSchemeCheck(t *testing.T) {
 }
 
 func TestFoldFind1(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		haystack string // input
 		needle   string // input
 		found    bool   // expected result
@@ -209,7 +209,7 @@ var utf8Str = "世界aBcdefGHiJklmnopqrstuvwxyZ"
 
 func TestASCIIToUpper(t *testing.T) {
 	log.SetLogLevel(log.Debug)
-	var tests = []struct {
+	tests := []struct {
 		input    string // input
 		expected string // output
 	}{
@@ -236,7 +236,7 @@ func TestASCIIToUpper(t *testing.T) {
 }
 
 func TestParseDecimal(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string // input
 		expected int    // output
 	}{
@@ -257,7 +257,7 @@ func TestParseDecimal(t *testing.T) {
 }
 
 func TestParseChunkSize(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input     string // input
 		expOffset int    // expected offset
 		expValue  int    // expected value
@@ -290,7 +290,7 @@ func TestParseChunkSize(t *testing.T) {
 }
 
 func TestDebugSummary(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected string
 	}{
@@ -312,7 +312,7 @@ func TestDebugSummary(t *testing.T) {
 }
 
 func TestParseStatus(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -340,7 +340,7 @@ func TestParseStatus(t *testing.T) {
 }
 
 func TestParseDelay(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected time.Duration
 	}{
@@ -353,8 +353,8 @@ func TestParseDelay(t *testing.T) {
 		{"20ms:101", -1},
 		{"20ms:101%", -1},
 		{"10ms:45,100ms:56", -1},
-		// Max delay case:
-		{"10s:45,10s:55", MaxDelay},
+		// Max delay case: (for 1.5s default)
+		{"10s:45,10s:55", MaxDelay.Get()},
 		// Good cases
 		{"100ms", 100 * time.Millisecond},
 		{"100ms:100", 100 * time.Millisecond},
@@ -372,7 +372,7 @@ func TestParseDelay(t *testing.T) {
 }
 
 func TestGenerateStatusBasic(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -410,7 +410,7 @@ func TestGenerateStatusEdgeSum(t *testing.T) {
 	}
 }
 
-// Round down to the nearest thousand
+// Round down to the nearest thousand.
 func roundthousand(x int) int {
 	return int(float64(x)+500.) / 1000
 }
@@ -443,7 +443,7 @@ func TestGenerateStatusDistribution(t *testing.T) {
 }
 
 func TestRoundDuration(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    time.Duration
 		expected time.Duration
 	}{
@@ -462,7 +462,7 @@ func TestRoundDuration(t *testing.T) {
 }
 
 func TestGenerateSize(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected int
 	}{
@@ -493,12 +493,12 @@ func TestGenerateSize(t *testing.T) {
 }
 
 func TestPayloadWithEchoBack(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		payload           []byte
 		disableFastClient bool
 	}{
-		{[]byte{44, 45, 00, 46, 47}, false},
-		{[]byte{44, 45, 00, 46, 47}, true},
+		{[]byte{44, 45, 0o0, 46, 47}, false},
+		{[]byte{44, 45, 0o0, 46, 47}, true},
 		{[]byte("groß"), false},
 		{[]byte("groß"), true},
 	}
@@ -509,7 +509,7 @@ func TestPayloadWithEchoBack(t *testing.T) {
 		opts := NewHTTPOptions(url)
 		opts.DisableFastClient = test.disableFastClient
 		opts.Payload = test.payload
-		cli := NewClient(opts)
+		cli, _ := NewClient(opts)
 		code, body, header := cli.Fetch()
 		if code != 200 {
 			t.Errorf("Unexpected error %d", code)
@@ -532,7 +532,7 @@ func TestUnixDomainHttp(t *testing.T) {
 		t.Fatalf("Error for Serve for %s", uds)
 	}
 	o := HTTPOptions{UnixDomainSocket: uds, URL: "http://foo.bar:123/debug1"}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
 		t.Errorf("Got error %d fetching uds %s", code, uds)
@@ -548,7 +548,7 @@ func TestEchoBack(t *testing.T) {
 	v := url.Values{}
 	v.Add("foo", "bar")
 	url := fmt.Sprintf("http://localhost:%d/?delay=2s", a.Port) // trigger max delay
-	resp, err := http.PostForm(url, v)
+	resp, err := http.PostForm(url, v)                          // nolint: noctx // it's just a test!
 	if err != nil {
 		t.Fatalf("post form err %v", err)
 	}
@@ -570,7 +570,7 @@ func TestH10Cli(t *testing.T) {
 	opts := NewHTTPOptions(url)
 	opts.HTTP10 = true
 	opts.AddAndValidateExtraHeader("Host: mhostname")
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	code, _, _ := cli.Fetch()
 	if code != 200 {
 		t.Errorf("http 1.0 unexpected error %d", code)
@@ -589,7 +589,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	sz := BufferSizeKb * 1024
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	_, data, _ := cli.Fetch()
 	recSz := len(data)
 	if recSz > sz {
@@ -598,7 +598,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	cli.Close()
 	// Same test without keepalive (exercises a different path)
 	opts.DisableKeepAlive = true
-	cli = NewFastClient(opts)
+	cli, _ = NewFastClient(opts)
 	_, data, _ = cli.Fetch()
 	recSz = len(data)
 	if recSz > sz {
@@ -609,14 +609,14 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 
 func TestBadUrl(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
-	cli := NewFastClient(opts)
-	if cli != nil {
+	cli, err := NewFastClient(opts)
+	if cli != nil || err == nil {
 		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
 	}
 	opts.URL = "http://doesnotexist.fortio.org"
-	cli = NewFastClient(opts)
-	if cli != nil {
+	cli, err = NewFastClient(opts)
+	if cli != nil || err == nil {
 		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
 	}
@@ -626,7 +626,7 @@ func TestDefaultPort(t *testing.T) {
 	// TODO: change back to fortio demo server once setup
 	url := "http://istio.io/" // shall imply port 80
 	opts := NewHTTPOptions(url)
-	cli := NewFastClient(opts)
+	cli, _ := NewFastClient(opts)
 	code, _, _ := cli.Fetch()
 	if code != 301 {
 		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
@@ -644,14 +644,14 @@ func TestDefaultPort(t *testing.T) {
 	cli.Close()
 	opts.URL = "https://fortio.org" // will be https port 443
 	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
-	cli = NewFastClient(opts)
-	if cli != nil {
+	cli, err := NewFastClient(opts)
+	if cli != nil || err == nil {
 		// If https support was added, remove this whitebox/for coverage purpose assertion
 		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
 	}
-	cli = NewClient(opts)
+	cli, err = NewClient(opts)
 	if cli == nil {
-		t.Fatalf("Couldn't get a client using NewClient on modified opts.")
+		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}
 	// currently fast client fails with https:
 	code, _, _ = cli.Fetch()
@@ -679,7 +679,7 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	m.HandleFunc("/", delayedChunkedSize)
 	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", a.Port)
 	o := HTTPOptions{URL: url}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
@@ -697,7 +697,7 @@ func TestInvalidRequest(t *testing.T) {
 		NumConnections: -3,                       // bogus NumConnections will get fixed
 		HTTPReqTimeOut: -1,
 	}
-	client := NewStdClient(&o)
+	client, _ := NewStdClient(&o)
 	if o.NumConnections <= 0 {
 		t.Errorf("Got %d NumConnections, was expecting normalization to 1", o.NumConnections)
 	}
@@ -708,8 +708,8 @@ func TestInvalidRequest(t *testing.T) {
 		t.Errorf("Got %d code while expecting bad request (%d)", code, http.StatusBadRequest)
 	}
 	o.URL = client.url
-	c2 := NewStdClient(&o)
-	if c2 != nil {
+	c2, err := NewStdClient(&o)
+	if c2 != nil || err == nil {
 		t.Errorf("Got non nil client %+v code while expecting nil for bad request", c2)
 	}
 }
@@ -720,7 +720,7 @@ func TestPayloadSizeSmall(t *testing.T) {
 	for _, size := range []int{768, 0, 1} {
 		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", a.Port, size)
 		o := HTTPOptions{URL: url}
-		client := NewClient(&o)
+		client, _ := NewClient(&o)
 		code, data, header := client.Fetch() // used to panic/bug #127
 		t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 		if code != http.StatusOK {
@@ -735,27 +735,33 @@ func TestPayloadSizeSmall(t *testing.T) {
 // TODO: improve/unify/simplify those payload/POST tests: just go to /debug handler for both clients and check what is echoed back
 
 func TestPayloadForClient(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		contentType    string
 		payload        []byte
 		expectedMethod string
 	}{
-		{"application/json",
+		{
+			"application/json",
 			[]byte("{\"test\" : \"test\"}"),
-			"POST"},
-		{"application/xml",
+			"POST",
+		},
+		{
+			"application/xml",
 			[]byte("<test test=\"test\">"),
-			"POST"},
-		{"",
+			"POST",
+		},
+		{
+			"",
 			nil,
-			"GET"},
+			"GET",
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
 		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		client := NewStdClient(&hOptions)
+		client, _ := NewStdClient(&hOptions)
 		contentType := client.req.Header.Get("Content-Type")
 		if contentType != test.contentType {
 			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
@@ -781,29 +787,35 @@ func TestPayloadForClient(t *testing.T) {
 }
 
 func TestPayloadForFastClient(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		contentType     string
 		payload         []byte
 		expectedReqBody string
 	}{
-		{"application/json",
+		{
+			"application/json",
 			[]byte("{\"test\" : \"test\"}"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 17\r\nContent-Type: "+
-				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent)},
-		{"application/xml",
+				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent),
+		},
+		{
+			"application/xml",
 			[]byte("<test test=\"test\">"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 18\r\nContent-Type: "+
-				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent)},
-		{"",
+				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent),
+		},
+		{
+			"",
 			nil,
-			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent)},
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent),
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
 		hOptions.URL = "www.google.com"
 		hOptions.ContentType = test.contentType
 		hOptions.Payload = test.payload
-		client := NewFastClient(&hOptions)
+		client, _ := NewFastClient(&hOptions)
 		body := string(client.(*FastClient).req)
 		if body != test.expectedReqBody {
 			t.Errorf("Got\n%s\nexpecting\n%s", body, test.expectedReqBody)
@@ -814,11 +826,11 @@ func TestPayloadForFastClient(t *testing.T) {
 func TestPayloadSizeLarge(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
-	//basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
+	// basic client 128k buffer can't do 200k, also errors out on non 200 codes so doing this other bg
 	size := 200000
 	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", a.Port, size)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 888 {
@@ -838,13 +850,13 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
 	o.AddAndValidateExtraHeader("AAA: aaa")
-	client := NewClient(&o)
+	client, _ := NewClient(&o)
 	code, data, header := client.Fetch() // used to panic/bug #127
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
 		t.Errorf("Got %d instead of 200", code)
 	}
-	//remove the first line ('Φορτίο version...') from the body
+	// remove the first line ('Φορτίο version...') from the body
 	body := string(data)
 	i := strings.Index(body, "\n")
 	body = body[i+1:]
@@ -864,7 +876,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 
 func TestEchoHeaders(t *testing.T) {
 	_, a := ServeTCP("0", "")
-	var headers = []struct {
+	headers := []struct {
 		key   string
 		value string
 	}{
@@ -885,10 +897,11 @@ func TestEchoHeaders(t *testing.T) {
 	// proper encoding
 	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
 	for _, url := range urls {
-		resp, err := http.Get(url)
+		resp, err := http.Get(url) // nolint: noctx // it's just a test!
 		if err != nil {
 			t.Fatalf("Failed get for %s : %v", url, err)
 		}
+		defer resp.Body.Close()
 		t.Logf("TestEchoHeaders url = %s : status %s", url, resp.Status)
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Got %d instead of 200", resp.StatusCode)
@@ -993,6 +1006,7 @@ func TestLogAndCallNoArg(t *testing.T) {
 		t.Errorf("handler side effect not detected")
 	}
 }
+
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"
@@ -1011,7 +1025,6 @@ func TestRedirector(t *testing.T) {
 	addr2 := RedirectToHTTPS(port)
 	if addr2 != nil {
 		t.Errorf("2nd RedirectToHTTPS() on same port %s should have failed: %v", port, addr2)
-
 	}
 }
 
@@ -1050,7 +1063,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	// Un initialized http options:
 	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
 	o1 := o
-	cli1 := NewStdClient(&o1)
+	cli1, _ := NewStdClient(&o1)
 	code, data, _ := cli1.Fetch()
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch1", code)
@@ -1060,7 +1073,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 		t.Errorf("Didn't find default header echoed back in std client1 %s (expecting %s)", DebugSummary(data, 512), expected)
 	}
 	o2 := o
-	cli2 := NewFastClient(&o2)
+	cli2, _ := NewFastClient(&o2)
 	code, data, _ = cli2.Fetch()
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch2", code)
@@ -1071,7 +1084,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 }
 
 func TestAddHTTPS(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected string
 	}{
@@ -1098,7 +1111,7 @@ func TestAddHTTPS(t *testing.T) {
 }
 
 func TestValidateAndAddBasicAuthentication(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		o                  HTTPOptions
 		isCredentialsValid bool
 		isAuthHeaderAdded  bool
@@ -1117,13 +1130,12 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 		if test.isAuthHeaderAdded && len(h.Get("Authorization")) <= 0 {
 			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
 		}
-
 	}
 }
 
 func TestInsecureRequest(t *testing.T) {
 	expiredURL := "https://expired.badssl.com/"
-	var tests = []struct {
+	tests := []struct {
 		fastClient bool // use FastClient
 		insecure   bool // insecure option
 		code       int  // expected code
@@ -1154,7 +1166,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 	defer srv.Close()
 
 	url := strings.Replace(srv.URL, "127.0.0.1", "example.com", 1)
-	var tests = []struct {
+	tests := []struct {
 		fastClient bool // use FastClient
 		insecure   bool // insecure option
 		code       int  // expected code
@@ -1201,13 +1213,14 @@ func BenchmarkASCIIFoldNormalToLower(b *testing.B) {
 		lw = asciiFold0(utf8Str)
 	}
 }
+
 func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		lw = asciiFold1(utf8Str)
 	}
 }
 
-// Package's version (3x fastest)
+// Package's version (3x fastest).
 func BenchmarkASCIIToUpper(b *testing.B) {
 	log.SetLogLevel(log.Warning)
 	for n := 0; n < b.N; n++ {
@@ -1215,7 +1228,7 @@ func BenchmarkASCIIToUpper(b *testing.B) {
 	}
 }
 
-// Note: newline inserted in set-cookie line because of linter (line too long)
+// Note: newline inserted in set-cookie line because of linter (line too long).
 var testHaystack = []byte(`HTTP/1.1 200 OK
 Date: Sun, 16 Jul 2017 21:00:29 GMT
 Expires: -1

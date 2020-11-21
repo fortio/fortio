@@ -21,11 +21,10 @@ package bincommon
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
-
-	"io"
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
@@ -33,13 +32,14 @@ import (
 	"fortio.org/fortio/version"
 )
 
-// -- Support for multiple instances of -H flag on cmd line:
+// -- Support for multiple instances of -H flag on cmd line.
 type headersFlagList struct {
 }
 
 func (f *headersFlagList) String() string {
 	return ""
 }
+
 func (f *headersFlagList) Set(value string) error {
 	return httpOpts.AddAndValidateExtraHeader(value)
 }
@@ -48,7 +48,6 @@ func (f *headersFlagList) Set(value string) error {
 
 // FlagsUsage prints end of the usage() (flags part + error message).
 func FlagsUsage(w io.Writer, msgs ...interface{}) {
-	// nolint: gas
 	_, _ = fmt.Fprintf(w, "flags are:\n")
 	flag.CommandLine.SetOutput(w)
 	flag.PrintDefaults()
@@ -73,20 +72,21 @@ var (
 	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
 		" should be `user:password`")
 	// QuietFlag is the value of -quiet.
-	QuietFlag = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
-
+	QuietFlag       = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	contentTypeFlag = flag.String("content-type", "",
 		"Sets http content type. Setting this value switches the request method from GET to POST.")
-	// PayloadSizeFlag is the value of -payload-size
+	// PayloadSizeFlag is the value of -payload-size.
 	PayloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
 		" must be smaller than -maxpayloadsizekb. Setting this switches http to POST.")
-	// PayloadFlag is the value of -payload
+	// PayloadFlag is the value of -payload.
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
-	// PayloadFileFlag is the value of -paylaod-file
+	// PayloadFileFlag is the value of -paylaod-file.
 	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
-
-	// UnixDomainSocket to use instead of regular host:port
+	// UnixDomainSocket to use instead of regular host:port.
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
+	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
+	ConfigDirectoryFlag = flag.String("config", "",
+		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -120,13 +120,13 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
-	client := fhttp.NewClient(o)
+	client, _ := fhttp.NewClient(o)
 	if client == nil {
 		return // error logged already
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	os.Stdout.Write(data) //nolint: errcheck
+	os.Stdout.Write(data)
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 		os.Exit(1)

@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// leave this test first as it relies on line number not changing
+// leave this test first/where it is as it relies on line number not changing.
 func TestLoggerFilenameLine(t *testing.T) {
 	SetLogLevel(Debug) // make sure it's already debug when we capture
 	on := true
@@ -44,16 +44,16 @@ func TestLoggerFilenameLine(t *testing.T) {
 }
 
 func TestSetLevel(t *testing.T) {
-	prev := SetLogLevel(Info)
-	err := prev.Set("debug")
+	_ = SetLogLevel(Info)
+	err := setLogLevelStr("debug")
 	if err != nil {
 		t.Errorf("unexpected error for valid level %v", err)
 	}
-	prev = SetLogLevel(Info)
+	prev := SetLogLevel(Info)
 	if prev != Debug {
 		t.Errorf("unexpected level after setting debug %v", prev)
 	}
-	err = prev.Set("bogus")
+	err = setLogLevelStr("bogus")
 	if err == nil {
 		t.Errorf("Didn't get an error setting bogus level")
 	}
@@ -80,6 +80,9 @@ func TestLogger1(t *testing.T) {
 	Warnf("test Wa %d", i) // Should show
 	i++
 	expected += "W test Wa 1\n"
+	Logger().Printf("test Logger().Printf %d", i)
+	i++
+	expected += "I test Logger().Printf 2\n"
 	SetLogLevelQuiet(Debug)                        // no additional logging about level change
 	prevLevel := SetLogLevel(LevelByName("error")) // works with lowercase too
 	expected += "I Log level is now 4 Error (was 0 Debug)\n"
@@ -90,10 +93,10 @@ func TestLogger1(t *testing.T) {
 	i++
 	Errf("test E %d", i) // Should show
 	i++
-	expected += "E test E 4\n"
+	expected += "E test E 5\n"
 	// test the rest of the api
-	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().ToString())
-	expected += "C test 5 level str Debug, cur Error\n"
+	Logf(LevelByName("Critical"), "test %d level str %s, cur %s", i, prevLevel.String(), GetLogLevel().String())
+	expected += "C test 6 level str Debug, cur Error\n"
 	i++
 	SetLogLevel(Debug) // should be fine and invisible change
 	SetLogLevel(Debug - 1)
@@ -103,8 +106,8 @@ func TestLogger1(t *testing.T) {
 	SetLogLevel(Critical) // should be fine
 	expected += "I Log level is now 5 Critical (was 0 Debug)\n"
 	Critf("testing crit %d", i) // should show
-	expected += "C testing crit 6\n"
-	w.Flush() // nolint: errcheck
+	expected += "C testing crit 7\n"
+	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
@@ -121,14 +124,14 @@ func TestLogFatal(t *testing.T) {
 }
 
 func BenchmarkLogDirect1(b *testing.B) {
-	level = Error
+	setLevel(Error)
 	for n := 0; n < b.N; n++ {
 		Debugf("foo bar %d", n)
 	}
 }
 
 func BenchmarkLogDirect2(b *testing.B) {
-	level = Error
+	setLevel(Error)
 	for n := 0; n < b.N; n++ {
 		Logf(Debug, "foo bar %d", n)
 	}

@@ -14,12 +14,16 @@
 
 package fhttp // import "fortio.org/fortio/fhttp"
 
+// pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/pprof"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -27,9 +31,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	// get /debug/pprof endpoints on a mux through SetupPPROF
-	"net/http/pprof"
-
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
@@ -41,13 +43,31 @@ var (
 	// Start time of the server (used in debug handler for uptime).
 	startTime time.Time
 	// EchoRequests is the number of request received. Only updated in Debug mode.
-	EchoRequests int64
+	EchoRequests            int64
+	defaultEchoServerParams = dflag.DynString(flag.CommandLine, "echo-server-default-params", "",
+		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
 )
 
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, "Echo") // will also print headers
+	}
+	defaultParams := defaultEchoServerParams.Get()
+	hasQuestionMark := strings.Contains(r.RequestURI, "?")
+	if !hasQuestionMark && len(defaultParams) > 0 {
+		newQS := r.RequestURI + "?" + defaultParams
+		log.LogVf("Adding default base query string %q to %v trying %q", defaultParams, r.URL, newQS)
+		nr := http.Request{}
+		nr = *r
+		var err error
+		nr.URL, err = url.ParseRequestURI(newQS)
+		if err != nil {
+			log.Errf("Unexpected error parsing echo-server-default-params: %v", err)
+		} else {
+			nr.Form = nil
+			r = &nr
+		}
 	}
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
@@ -171,7 +191,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
 	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
 	listener, addr := fnet.Listen("closing server", "0")
-	//err = http.ServeTLS(listener, nil, "", "") // go 1.9
+	// err = http.ServeTLS(listener, nil, "", "") // go 1.9
 	go func() {
 		err := closingServer(listener)
 		if err != nil {
@@ -228,16 +248,14 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	if log.LogVerbose() {
-		LogRequest(r, "Debug")
-	}
+	LogRequest(r, "Debug")
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
 	buf.WriteString(" echo debug server up for ")
 	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
 	buf.WriteString(" on ")
-	hostname, _ := os.Hostname() // nolint: gas
+	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
@@ -252,7 +270,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string
+	var keys []string // nolint: prealloc // header is multi valued map,...
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
@@ -316,7 +334,7 @@ func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 }
 
 // ServeTCP is Serve() but restricted to TCP (return address is assumed
-// to be TCP - will panic for unix domain)
+// to be TCP - will panic for unix domain).
 func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	mux, addr := Serve(port, debugPath)
 	if addr == nil {
@@ -352,13 +370,13 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Don't forget to close the connection:
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
 	opts := NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
 	OnBehalfOf(opts, r)
-	client := NewClient(opts)
+	client, _ := NewClient(opts)
 	if client == nil {
 		return // error logged already
 	}
@@ -380,7 +398,7 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
-// (Do not create a loop, make sure this is addressed from an ingress)
+// (Do not create a loop, make sure this is addressed from an ingress).
 func RedirectToHTTPS(port string) net.Addr {
 	m, a := HTTPServer("https redirector", port)
 	if m == nil {
@@ -390,11 +408,13 @@ func RedirectToHTTPS(port string) net.Addr {
 	return a
 }
 
-// LogRequest logs the incoming request, including headers when loglevel is verbose
+// LogRequest logs the incoming request, including headers when loglevel is verbose.
 func LogRequest(r *http.Request, msg string) {
 	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
 		r.Header.Get("X-Forwarded-Proto"))
 	if log.LogVerbose() {
+		// Host is removed from headers map and put separately
+		log.LogVf("Header Host: %v", r.Host)
 		for name, headers := range r.Header {
 			for _, h := range headers {
 				log.LogVf("Header %v: %v\n", name, h)
@@ -411,7 +431,7 @@ func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-// LogAndCallNoArg is LogAndCall for functions not needing the response/request args
+// LogAndCallNoArg is LogAndCall for functions not needing the response/request args.
 func LogAndCallNoArg(msg string, f func()) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, msg)

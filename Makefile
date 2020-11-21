@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v20
+BUILD_IMAGE_TAG := v29
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -21,7 +21,7 @@ CERT_TEMP_DIR := ./cert-tmp/
 # note that only go1.8 needs the grep -v vendor but we are compatible with 1.8
 # ps: can't use go list (and get packages as canonical fortio.org/fortio/x)
 # as somehow that makes gometaliner silently not find/report errors...
-PACKAGES ?= $(shell find . -type d -print | egrep -v "/(\.|vendor|tmp|static|templates|release|docs|json|cert-tmp|debian)")
+PACKAGES ?= $(shell go list ./...)
 # from fortio 1.4 we use go 1.14 (from go 1.8 up to fortio 1.3) and switched to go modules (from vendor)
 
 # Local targets:
@@ -51,22 +51,15 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint: dependencies
-	gometalinter $(DEBUG_LINTERS) \
-	--deadline=180s --enable-all --aggregate --exclude=.pb.go \
-	--disable=gocyclo --disable=gas --disable=gosec \
-	--disable=gochecknoglobals --disable=gochecknoinits \
-	--line-length=132 $(LINT_PACKAGES)
+local-lint:
+	golangci-lint $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
-LINT_PACKAGES:=$(PACKAGES)
-# TODO: do something about cyclomatic complexity; maybe reenable gas and gosec
-# Note CGO_ENABLED=0 is needed to avoid errors as gcc isn't part of the
-# build image
-lint: dependencies
+LINT_PACKAGES:=./...
+lint:
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd /go/src/fortio.org/fortio && time go install $(LINT_PACKAGES) \
-		&& time make local-lint LINT_PACKAGES=\"$(LINT_PACKAGES)\""
+		"cd /go/src/fortio.org/fortio \
+		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.
@@ -98,6 +91,7 @@ FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
+	docker pull ubuntu:focal
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
 update-build-image-tag:

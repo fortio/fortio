@@ -65,14 +65,14 @@ func TestCounter(t *testing.T) {
 	*log.LogPrefix = ""
 	c.Counter.Log("testLogC")
 	expected += "I testLogC" + finalExpected
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
 		t.Errorf("unexpected1:\n%s\nvs:\n%s\n", actual, expected)
 	}
 	b.Reset()
 	c.Log("testLogH", nil)
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual = b.String()
 	expected = "I testLogH" + finalExpected + `# range, mid point, percentile, count
 >= -977 <= 22 , -477.5 , 16.67, 1
@@ -113,7 +113,7 @@ func TestTransferCounter(t *testing.T) {
 	// test empty transfer - shouldn't reset min/no-op
 	c3.Transfer(&c2)
 	c3.Print(w, "c3 after merge - 2")
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	expected := `c1 before merge : count 2 avg 15 +/- 5 min 10 max 20 sum 30
 c2 before merge : count 2 avg 85 +/- 5 min 80 max 90 sum 170
@@ -148,7 +148,7 @@ func TestHistogram(t *testing.T) {
 	for i := 25; i <= 100; i += 25 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
-	var tests = []struct {
+	tests := []struct {
 		actual   float64
 		expected float64
 		msg      string
@@ -187,7 +187,7 @@ func TestPercentiles1(t *testing.T) {
 	for i := 0; i <= 100; i += 10 {
 		fmt.Printf("%d%% at %g\n", i, e.CalcPercentile(float64(i)))
 	}
-	var tests = []struct {
+	tests := []struct {
 		actual   float64
 		expected float64
 		msg      string
@@ -268,11 +268,12 @@ func Assert(t *testing.T, cond bool, msg interface{}) {
 	}
 }
 
-// Checks properties that should be true for all non empty histograms
+// Checks properties that should be true for all non empty histograms.
 func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 	n := len(e.Data)
 	if n <= 0 {
 		t.Error("Unexpected empty histogram")
+
 		return
 	}
 	CheckEquals(t, e.Data[0].Start, e.Min, "first bucket starts at min")
@@ -383,7 +384,7 @@ func TestHistogramExportRandom(t *testing.T) {
 		offset := (rand.Float64() - 0.5) * 1000
 		div := 100 * (1 - rand.Float64())
 		numEntries := 1 + rand.Int31n(10000)
-		//fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
+		// fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
 		h := NewHistogram(offset, div)
 		var n int32
 		var min float64
@@ -426,7 +427,7 @@ func TestHistogramLastBucket(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h.Print(w, "testLastBucket", []float64{90})
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	// stdev part is not verified/could be brittle
 	expected := `testLastBucket : count 8 avg 50001.5 +/- 7.071e+04 min -1 max 200000 sum 400012
@@ -452,7 +453,7 @@ func TestHistogramNegativeNumbers(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	h.Print(w, "testHistogramWithNegativeNumbers", []float64{1, 50, 75})
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	// stdev part is not verified/could be brittle
 	expected := `testHistogramWithNegativeNumbers : count 2 avg 0 +/- 10 min -10 max 10 sum 0
@@ -606,7 +607,7 @@ func TestTransferHistogram(t *testing.T) {
 	// test empty transfer - shouldn't reset min/no-op
 	h3.Transfer(h2)
 	h3.Print(w, "h3 after merge - 2", tP)
-	w.Flush() // nolint: errcheck
+	_ = w.Flush()
 	actual := b.String()
 	expected := `h1 before merge : count 2 avg 15 +/- 5 min 10 max 20 sum 30
 # range, mid point, percentile, count
@@ -656,7 +657,7 @@ h3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 }
 
 func TestParsePercentiles(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		str  string    // input
 		list []float64 // expected
 		err  bool
@@ -684,7 +685,7 @@ func TestParsePercentiles(t *testing.T) {
 }
 
 func TestRound(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input    float64
 		expected float64
 	}{
@@ -721,7 +722,7 @@ func TestNaN(t *testing.T) {
 }
 
 func TestBucketLookUp(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input float64 // input
 		start float64 // start
 		end   float64 // end

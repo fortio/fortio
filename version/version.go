@@ -23,19 +23,19 @@ import (
 
 const (
 	major = 1
-	minor = 4
-	patch = 2
+	minor = 11
+	patch = 3
 
 	debug = false // turn on to debug init()
 )
 
 var (
-	// The following are set by Dockerfile during link time:
+	// The following are set by Dockerfile during link time.
 	tag       = "n/a"
 	buildInfo = "unknown"
-	// Number of lines in git status --porcelain; 0 means clean
+	// Number of lines in git status --porcelain; 0 means clean.
 	gitstatus = "0" // buildInfo default is unknown so no need to add -dirty
-	// computed in init()
+	// computed in init().
 	version     = ""
 	longVersion = ""
 )
@@ -72,8 +72,9 @@ func Long() string {
 	return longVersion
 }
 
-// Carefully manually tested all the combinations in pair with Dockerfile
-func init() {
+// Carefully manually tested all the combinations in pair with Dockerfile.
+
+func init() { // nolint:gochecknoinits //we do need an init for this
 	if debug {
 		log.SetLogLevel(log.Debug)
 	}

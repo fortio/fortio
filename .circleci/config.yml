@@ -7,7 +7,7 @@ version: 2
 defaultEnv: &defaultEnv
     docker:
       # specify the version
-      - image: docker.io/fortio/fortio.build:v20
+      - image: docker.io/fortio/fortio.build:v29
     working_directory: /go/src/fortio.org/fortio
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
     steps:
       - checkout
       # If ran with default we get random errors because OOM killer kills some linters
-      - run: make install local-lint  DEBUG_LINTERS="--concurrency=2"
+      - run: make local-lint DEBUG_LINTERS="--concurrency=2"
   codecov:
     <<: *defaultEnv
     steps:
