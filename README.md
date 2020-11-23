@@ -346,7 +346,7 @@ Start the echo-server alone and run a load (use `tcp://` prefix for the load tes
 $ fortio echo-server &
 Fortio 1.11.3 tcp-echo server listening on [::]:8078
 19:45:30 I fortio_main.go:238> All fortio 1.11.3 release go1.15.2 servers started!
-$ load  -qps -1 -n 100000 tcp://localhost:8078
+$ fortio load -qps -1 -n 100000 tcp://localhost:8078
 Fortio 1.11.3 running at -1 queries per second, 16->16 procs, for 100000 calls: tcp://localhost:8078
 20:01:31 I tcprunner.go:218> Starting tcp test for tcp://localhost:8078 with 4 threads at -1.0 qps
 Starting at max qps with 4 thread(s) [gomax 16] for exactly 100000 calls (25000 per thread + 0)
