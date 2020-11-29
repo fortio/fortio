@@ -29,6 +29,7 @@ import (
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -841,6 +842,58 @@ func TestPayloadSizeLarge(t *testing.T) {
 	}
 }
 
+func TestUUIDFastClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateUUIDPath)
+	url := fmt.Sprintf("http://localhost:%d/{uuid}", a.Port)
+	o := HTTPOptions{URL: url, DisableFastClient: false}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
+func TestUUIDClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateUUIDPath)
+	url := fmt.Sprintf("http://localhost:%d/{uuid}", a.Port)
+	o := HTTPOptions{URL: url, DisableFastClient: true}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
+func TestBadUUIDFastClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateUUIDPath)
+	url := fmt.Sprintf("http://localhost:%d/{not_uuid}", a.Port)
+	o := HTTPOptions{URL: url, DisableFastClient: false}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 400 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
+func TestBadUUIDClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateUUIDPath)
+	url := fmt.Sprintf("http://localhost:%d/{not_uuid}", a.Port)
+	o := HTTPOptions{URL: url, DisableFastClient: true}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 400 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
 func TestDebugHandlerSortedHeaders(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/debug", DebugHandler)
@@ -1188,6 +1241,23 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 			t.Errorf("Got %d code while expecting status (%d)", code, tst.code)
 		}
 	}
+}
+
+// ValidateUUIDPath is an http server handler validating /{uuid}.
+func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
+	if log.LogVerbose() {
+		LogRequest(r, "ValidateUUIDPath")
+	}
+
+	uuidParam := strings.TrimPrefix(r.RequestURI, "/")
+	_, err := uuid.Parse(uuidParam)
+	if err != nil {
+		log.Errf("Error parsing uuid %v: %v", uuidParam, err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // --- for bench mark/comparison
