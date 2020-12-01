@@ -410,8 +410,8 @@ func RedirectToHTTPS(port string) net.Addr {
 
 // LogRequest logs the incoming request, including headers when loglevel is verbose.
 func LogRequest(r *http.Request, msg string) {
-	log.Infof("%s: %v %v %v %v (%s)", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
-		r.Header.Get("X-Forwarded-Proto"))
+	log.Infof("%s: %v %v %v %v (%s) %s", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+		r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"))
 	if log.LogVerbose() {
 		// Host is removed from headers map and put separately
 		log.LogVf("Header Host: %v", r.Host)
