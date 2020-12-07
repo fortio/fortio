@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -48,7 +49,7 @@ type Fetcher interface {
 }
 
 const (
-	urlUUIDToken = "{uuid}"
+	uuidToken = "{uuid}"
 )
 
 var (
@@ -60,6 +61,8 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
+	//nolint // G404 is expected because we are using weak random number generator due to performance.
+	rander = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -300,12 +303,14 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
 type Client struct {
-	url          string
-	path         string // original path of the request's url
-	containsUUID bool   // if url contains the "{uuid}" pattern (lowercase).
-	req          *http.Request
-	client       *http.Client
-	transport    *http.Transport
+	url                  string
+	path                 string // original path of the request's url
+	rawQuery             string // original query params
+	req                  *http.Request
+	client               *http.Client
+	transport            *http.Transport
+	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
+	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -335,8 +340,16 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 // Fetch fetches the byte and code for pre created client.
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
-	if c.containsUUID {
-		c.req.URL.Path = strings.Replace(c.path, urlUUIDToken, uuid.New().String(), 1)
+	if c.pathContainsUUID {
+		c.req.URL.Path = strings.Replace(c.path, uuidToken, generateUUID(), 1)
+	}
+	if c.rawQueryContainsUUID {
+		rawQuery := c.rawQuery
+		for strings.Contains(rawQuery, uuidToken) {
+			rawQuery = strings.Replace(rawQuery, uuidToken, generateUUID(), 1)
+		}
+
+		c.req.URL.RawQuery = rawQuery
 	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
@@ -418,11 +431,14 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			}
 		}
 	}
+
 	client := Client{
-		url:          o.URL,
-		path:         req.URL.Path,
-		containsUUID: strings.Contains(req.URL.Path, urlUUIDToken),
-		req:          req,
+		url:                  o.URL,
+		path:                 req.URL.Path,
+		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
+		rawQuery:             req.URL.RawQuery,
+		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
+		req:                  req,
 		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
@@ -478,7 +494,7 @@ type FastClient struct {
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
 	reqTimeout   time.Duration
-	uuidMarker   []byte
+	uuidMarkers  [][]byte
 }
 
 // Close cleans up any resources used by FastClient.
@@ -505,14 +521,15 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		proto = "1.0"
 	}
 
-	uuidString := ""
+	uuidStrings := []string{}
 	urlString := o.URL
-	// Parse the url, extract components.
-	if strings.Contains(o.URL, urlUUIDToken) {
-		uuidString = uuid.New().String()
-		urlString = strings.Replace(urlString, urlUUIDToken, uuidString, 1)
+	for strings.Contains(urlString, uuidToken) {
+		uuidString := generateUUID()
+		uuidStrings = append(uuidStrings, uuidString)
+		urlString = strings.Replace(urlString, uuidToken, uuidString, 1)
 	}
 
+	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {
 		log.Errf("Bad url '%s' : %v", urlString, err)
@@ -583,8 +600,11 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		buf.Write(o.Payload)
 	}
 	bc.req = buf.Bytes()
-	if uuidString != "" {
-		bc.uuidMarker = []byte(uuidString)
+	bc.uuidMarkers = [][]byte{}
+	if len(uuidStrings) > 0 {
+		for _, uuidString := range uuidStrings {
+			bc.uuidMarkers = append(bc.uuidMarkers, []byte(uuidString))
+		}
 	}
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
 	return &bc, nil
@@ -635,8 +655,10 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	req := c.req
-	if len(c.uuidMarker) > 0 {
-		req = bytes.Replace(c.req, c.uuidMarker, []byte(uuid.New().String()), 1)
+	if len(c.uuidMarkers) > 0 {
+		for _, uuidMarker := range c.uuidMarkers {
+			req = bytes.Replace(req, uuidMarker, []byte(generateUUID()), 1)
+		}
 	}
 	n, err := conn.Write(req)
 	if err != nil || conErr != nil {
@@ -868,4 +890,9 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		}
 		// we cleared c.socket in caller already
 	}
+}
+
+func generateUUID() string {
+	// We use math random instead of crypto random generator due to performance.
+	return uuid.Must(uuid.NewRandomFromReader(rander)).String()
 }
