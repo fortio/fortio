@@ -19,6 +19,9 @@ func TestDynBool_SetAndGet(t *testing.T) {
 	err := set.Set("some_bool_1", "false")
 	assert.NoError(t, err, "setting value must succeed")
 	assert.Equal(t, false, dynFlag.Get(), "value must be set after update")
+	err = set.Set("some_bool_1", "true\n")
+	assert.NoError(t, err, "setting value with extra whitespace should work")
+	assert.Equal(t, true, dynFlag.Get(), "value must be set after update")
 }
 
 func TestDynBool_IsMarkedDynamic(t *testing.T) {

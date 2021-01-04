@@ -76,7 +76,6 @@ type HTTPRunnerOptions struct {
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
-// nolint: funlen
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)

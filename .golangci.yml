@@ -353,6 +353,10 @@ linters:
     - testpackage
     - wrapcheck
     - exhaustivestruct
+# TODO consider putting these back
+    - paralleltest
+    - thelper
+    - forbidigo
 #    - maligned
 #    - prealloc
   enable-all: true

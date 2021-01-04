@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync/atomic"
 )
 
@@ -45,7 +46,7 @@ func (d *DynBoolValue) Get() bool {
 // optional validator.
 // If a notifier is set on the value, it will be invoked in a separate go-routine.
 func (d *DynBoolValue) Set(input string) error {
-	val, err := strconv.ParseBool(input)
+	val, err := strconv.ParseBool(strings.TrimSpace(input))
 	if err != nil {
 		return err
 	}
