@@ -874,7 +874,7 @@ func TestQueryUUIDFastClient(t *testing.T) {
 func TestManyUUIDsFastClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateManyUUID)
-	url := fmt.Sprintf("http://localhost:%d/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
+	url := fmt.Sprintf("http://localhost:%d/{uuid}/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
 	for i := 0; i < 10; i++ {
 		o := HTTPOptions{URL: url, DisableFastClient: false}
 		client, _ := NewClient(&o)
@@ -943,7 +943,7 @@ func TestQueryUUIDClient(t *testing.T) {
 func TestManyUUIDsClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateManyUUID)
-	url := fmt.Sprintf("http://localhost:%d/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
+	url := fmt.Sprintf("http://localhost:%d/{uuid}/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
 	for i := 0; i < 10; i++ {
 		o := HTTPOptions{URL: url, DisableFastClient: true}
 		client, _ := NewClient(&o)
@@ -1372,16 +1372,21 @@ func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, "ValidateUUIDQueryParam")
 	}
 
-	uuidParam := strings.TrimPrefix(r.URL.Path, "/")
-	_, err := uuid.Parse(uuidParam)
-	if err != nil {
-		log.Errf("Error parsing uuid %v: %v", uuidParam, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	uuidParams := strings.Split(r.URL.Path, "/")
+	for _, uuidParam := range uuidParams {
+		if uuidParam == "" {
+			continue
+		}
+		_, err := uuid.Parse(uuidParam)
+		if err != nil {
+			log.Errf("Error parsing uuid %v: %v", uuidParam, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	uuidParam1 := r.URL.Query().Get("uuid")
-	_, err = uuid.Parse(uuidParam1)
+	_, err := uuid.Parse(uuidParam1)
 	if err != nil {
 		log.Errf("Error parsing uuid %v: %v", uuidParam1, err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -1396,7 +1401,12 @@ func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, uuid := range []string{uuidParam, uuidParam1, uuidParam2} {
+	uuidParams = append(uuidParams, uuidParam1)
+	uuidParams = append(uuidParams, uuidParam2)
+	for _, uuid := range uuidParams {
+		if uuid == "" {
+			continue
+		}
 		if dedupUUID(uuid) != nil {
 			log.Errf("duplicate uuid: %v", uuid)
 			w.WriteHeader(http.StatusBadRequest)

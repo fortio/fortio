@@ -341,7 +341,11 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
 	if c.pathContainsUUID {
-		c.req.URL.Path = strings.Replace(c.path, uuidToken, generateUUID(), 1)
+		path := c.path
+		for strings.Contains(path, uuidToken) {
+			path = strings.Replace(path, uuidToken, generateUUID(), 1)
+		}
+		c.req.URL.Path = path
 	}
 	if c.rawQueryContainsUUID {
 		rawQuery := c.rawQuery
