@@ -31,13 +31,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 // -- Echo Server --
