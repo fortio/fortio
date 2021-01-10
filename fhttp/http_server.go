@@ -17,8 +17,10 @@ package fhttp // import "fortio.org/fortio/fhttp"
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -30,6 +32,9 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
@@ -161,8 +166,9 @@ func closingServer(listener net.Listener) error {
 // Port can include binding address and/or be port 0.
 func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 	m := http.NewServeMux()
+	h2s := &http2.Server{}
 	s := &http.Server{
-		Handler: m,
+		Handler: h2c.NewHandler(m, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
@@ -289,8 +295,15 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			first = false
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
+	expected := r.ContentLength
+	if expected < 0 {
+		expected = 0 // GET have -1 content length
+	}
+	dataBuffer := make([]byte, expected)
+	numRead, err := r.Body.Read(dataBuffer)
+	log.LogVf("read %d/%d: %v", numRead, expected, err)
+	data := dataBuffer[0:numRead]
+	if err != nil && !errors.Is(err, io.EOF) {
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -308,6 +321,9 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
+	}
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
 	}
 }
 
