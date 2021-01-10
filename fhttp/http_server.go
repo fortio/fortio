@@ -17,10 +17,8 @@ package fhttp // import "fortio.org/fortio/fhttp"
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -295,15 +293,19 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			first = false
 		}
 	}
-	expected := r.ContentLength
-	if expected < 0 {
-		expected = 0 // GET have -1 content length
-	}
-	dataBuffer := make([]byte, expected)
-	numRead, err := r.Body.Read(dataBuffer)
-	log.LogVf("read %d/%d: %v", numRead, expected, err)
-	data := dataBuffer[0:numRead]
-	if err != nil && !errors.Is(err, io.EOF) {
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		/*
+			expected := r.ContentLength
+			if expected < 0 {
+				expected = 0 // GET have -1 content length
+			}
+			dataBuffer := make([]byte, expected)
+			numRead, err := r.Body.Read(dataBuffer)
+			log.LogVf("read %d/%d: %v", numRead, expected, err)
+			data := dataBuffer[0:numRead]
+			if err != nil && !errors.Is(err, io.EOF) {
+		*/
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -322,9 +324,11 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
 	}
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
+	/*
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+	*/
 }
 
 // CacheOn sets the header for indefinite caching.
