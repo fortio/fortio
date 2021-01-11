@@ -16,6 +16,7 @@ package fhttp
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -858,6 +859,23 @@ func TestUUIDFastClient(t *testing.T) {
 	}
 }
 
+func TestUUIDPayloadFastClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateManyUUID)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: false,
+		Payload:           []byte("[\"{uuid}\", \"{uuid}\"]"),
+	}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
 func TestQueryUUIDFastClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateUUIDQueryParam)
@@ -919,6 +937,23 @@ func TestUUIDClient(t *testing.T) {
 	m.HandleFunc("/", ValidateUUIDPath)
 	url := fmt.Sprintf("http://localhost:%d/{uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch()
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
+func TestUUIDPayloadClient(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", ValidateManyUUID)
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: true,
+		Payload:           []byte("[\"{uuid}\", \"{uuid}\"]"),
+	}
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch()
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
@@ -1366,10 +1401,11 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ValidateManyUUID is an http server handler validating /{uuid}?uuid={uuid}.
+// ValidateManyUUID is an http server handler validating /{uuid}?uuid={uuid},
+//   including payload in JSON following the format: ["{uuid}","{uuid}"]
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateUUIDQueryParam")
+		LogRequest(r, "ValidateManyUUID")
 	}
 
 	uuidParams := strings.Split(r.URL.Path, "/")
@@ -1386,23 +1422,46 @@ func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uuidParam1 := r.URL.Query().Get("uuid")
-	_, err := uuid.Parse(uuidParam1)
-	if err != nil {
-		log.Errf("Error parsing uuid %v: %v", uuidParam1, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	if uuidParam1 != "" {
+		_, err := uuid.Parse(uuidParam1)
+		if err != nil {
+			log.Errf("Error parsing uuid %v: %v", uuidParam1, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		uuidParams = append(uuidParams, uuidParam1)
 	}
 
 	uuidParam2 := r.URL.Query().Get("uuid2")
-	_, err = uuid.Parse(uuidParam2)
-	if err != nil {
-		log.Errf("Error parsing uuid %v: %v", uuidParam2, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	if uuidParam2 != "" {
+		_, err := uuid.Parse(uuidParam2)
+		if err != nil {
+			log.Errf("Error parsing uuid %v: %v", uuidParam2, err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		uuidParams = append(uuidParams, uuidParam2)
 	}
 
-	uuidParams = append(uuidParams, uuidParam1)
-	uuidParams = append(uuidParams, uuidParam2)
+	uuidPayloadList := []string{}
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&uuidPayloadList)
+	if err == nil {
+		for _, uuidPayload := range uuidPayloadList {
+			if uuidPayload == "" {
+				continue
+			}
+			_, err := uuid.Parse(uuidPayload)
+			if err != nil {
+				log.Errf("Error parsing uuid from payload %v: %v", uuidPayload, err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			uuidParams = append(uuidParams, uuidPayload)
+		}
+	}
+
 	for _, uuid := range uuidParams {
 		if uuid == "" {
 			continue

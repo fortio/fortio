@@ -306,11 +306,13 @@ type Client struct {
 	url                  string
 	path                 string // original path of the request's url
 	rawQuery             string // original query params
+	body                 string // original body of the request
 	req                  *http.Request
 	client               *http.Client
 	transport            *http.Transport
 	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
 	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
+	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -354,6 +356,15 @@ func (c *Client) Fetch() (int, []byte, int) {
 		}
 
 		c.req.URL.RawQuery = rawQuery
+	}
+	if c.bodyContainsUUID {
+		body := c.body
+		for strings.Contains(body, uuidToken) {
+			body = strings.Replace(body, uuidToken, generateUUID(), 1)
+		}
+		bodyBytes := []byte(body)
+		c.req.ContentLength = int64(len(bodyBytes))
+		c.req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
@@ -442,6 +453,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
 		rawQuery:             req.URL.RawQuery,
 		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
+		body:                 o.PayloadString(),
+		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
 		req:                  req,
 		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
@@ -532,6 +545,13 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		uuidStrings = append(uuidStrings, uuidString)
 		urlString = strings.Replace(urlString, uuidToken, uuidString, 1)
 	}
+	payload := o.PayloadString()
+	for strings.Contains(payload, uuidToken) {
+		uuidString := generateUUID()
+		uuidStrings = append(uuidStrings, uuidString)
+		payload = strings.Replace(payload, uuidToken, uuidString, 1)
+	}
+	o.Payload = []byte(payload)
 
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
