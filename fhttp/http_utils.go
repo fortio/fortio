@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -455,4 +456,24 @@ func AddHTTPS(url string) string {
 // generateBase64UserCredentials encodes the user credential to base64 and adds a Basic as prefix.
 func generateBase64UserCredentials(userCredentials string) string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userCredentials))
+}
+
+// SyncReader is a thread-safe wrapper for a reader.
+type SyncReader struct {
+	lk     sync.Mutex
+	reader io.Reader
+}
+
+// NewSyncReader returns a new thread-safe reader.
+func NewSyncReader(reader io.Reader) *SyncReader {
+	return &SyncReader{
+		reader: reader,
+	}
+}
+
+func (r *SyncReader) Read(p []byte) (n int, err error) {
+	r.lk.Lock()
+	defer r.lk.Unlock()
+
+	return r.reader.Read(p)
 }
