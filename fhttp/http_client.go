@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -34,6 +35,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"github.com/google/uuid"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -46,6 +48,10 @@ type Fetcher interface {
 	Close() int
 }
 
+const (
+	uuidToken = "{uuid}"
+)
+
 var (
 	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 128k.
 	BufferSizeKb = 128
@@ -55,6 +61,8 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
+	//nolint // G404 is expected because we are using weak random number generator due to performance.
+	rander = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -295,10 +303,16 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
 type Client struct {
-	url       string
-	req       *http.Request
-	client    *http.Client
-	transport *http.Transport
+	url                  string
+	path                 string // original path of the request's url
+	rawQuery             string // original query params
+	body                 string // original body of the request
+	req                  *http.Request
+	client               *http.Client
+	transport            *http.Transport
+	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
+	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
+	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -328,6 +342,30 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 // Fetch fetches the byte and code for pre created client.
 func (c *Client) Fetch() (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
+	if c.pathContainsUUID {
+		path := c.path
+		for strings.Contains(path, uuidToken) {
+			path = strings.Replace(path, uuidToken, generateUUID(), 1)
+		}
+		c.req.URL.Path = path
+	}
+	if c.rawQueryContainsUUID {
+		rawQuery := c.rawQuery
+		for strings.Contains(rawQuery, uuidToken) {
+			rawQuery = strings.Replace(rawQuery, uuidToken, generateUUID(), 1)
+		}
+
+		c.req.URL.RawQuery = rawQuery
+	}
+	if c.bodyContainsUUID {
+		body := c.body
+		for strings.Contains(body, uuidToken) {
+			body = strings.Replace(body, uuidToken, generateUUID(), 1)
+		}
+		bodyBytes := []byte(body)
+		c.req.ContentLength = int64(len(bodyBytes))
+		c.req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("Unable to send %s request for %s : %v", c.req.Method, c.url, err)
@@ -408,9 +446,16 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			}
 		}
 	}
+
 	client := Client{
-		url: o.URL,
-		req: req,
+		url:                  o.URL,
+		path:                 req.URL.Path,
+		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
+		rawQuery:             req.URL.RawQuery,
+		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
+		body:                 o.PayloadString(),
+		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
+		req:                  req,
 		client: &http.Client{
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
@@ -466,6 +511,7 @@ type FastClient struct {
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
 	reqTimeout   time.Duration
+	uuidMarkers  [][]byte
 }
 
 // Close cleans up any resources used by FastClient.
@@ -491,10 +537,26 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	if o.HTTP10 {
 		proto = "1.0"
 	}
+
+	uuidStrings := []string{}
+	urlString := o.URL
+	for strings.Contains(urlString, uuidToken) {
+		uuidString := generateUUID()
+		uuidStrings = append(uuidStrings, uuidString)
+		urlString = strings.Replace(urlString, uuidToken, uuidString, 1)
+	}
+	payload := o.PayloadString()
+	for strings.Contains(payload, uuidToken) {
+		uuidString := generateUUID()
+		uuidStrings = append(uuidStrings, uuidString)
+		payload = strings.Replace(payload, uuidToken, uuidString, 1)
+	}
+	o.Payload = []byte(payload)
+
 	// Parse the url, extract components.
-	url, err := url.Parse(o.URL)
+	url, err := url.Parse(urlString)
 	if err != nil {
-		log.Errf("Bad url '%s' : %v", o.URL, err)
+		log.Errf("Bad url '%s' : %v", urlString, err)
 		return nil, err
 	}
 	if url.Scheme != "http" {
@@ -562,6 +624,12 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		buf.Write(o.Payload)
 	}
 	bc.req = buf.Bytes()
+	bc.uuidMarkers = [][]byte{}
+	if len(uuidStrings) > 0 {
+		for _, uuidString := range uuidStrings {
+			bc.uuidMarkers = append(bc.uuidMarkers, []byte(uuidString))
+		}
+	}
 	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
 	return &bc, nil
 }
@@ -610,7 +678,13 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
-	n, err := conn.Write(c.req)
+	req := c.req
+	if len(c.uuidMarkers) > 0 {
+		for _, uuidMarker := range c.uuidMarkers {
+			req = bytes.Replace(req, uuidMarker, []byte(generateUUID()), 1)
+		}
+	}
+	n, err := conn.Write(req)
 	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
@@ -840,4 +914,9 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		}
 		// we cleared c.socket in caller already
 	}
+}
+
+func generateUUID() string {
+	// We use math random instead of crypto random generator due to performance.
+	return uuid.Must(uuid.NewRandomFromReader(rander)).String()
 }
