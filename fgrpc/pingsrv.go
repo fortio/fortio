@@ -102,6 +102,8 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 	return addr.(*net.TCPAddr).Port
 }
 
+// TODO: too many arguments, unify HTTPOptions and make a base for GRPCOptions
+
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
 func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration, insecure bool) (float64, error) {

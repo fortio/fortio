@@ -49,7 +49,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 		log.Infof("Using CA certificate %v to construct TLS credentials", o.CACert)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	case strings.HasPrefix(o.Destination, fnet.PrefixHTTPS):
-		creds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: o.Insecure})
+		creds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: o.Insecure}) // nolint: gosec // explicit flag
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
 		opts = append(opts, grpc.WithInsecure())
