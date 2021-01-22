@@ -175,7 +175,7 @@ type HTTPOptions struct {
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
-	Cacert            string // `Path` to a custom CA certificate file to be used
+	CACert            string // `Path` to a custom CA certificate file to be used
 	Cert              string // `Path` to the certificate file to be used
 	Key               string // `Path` to the key file used
 	Resolve           string // resolve Common Name to this ip when use CN as target url

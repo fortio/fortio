@@ -308,6 +308,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				Destination:   url,
 				UsePing:       grpcPing,
 				Delay:         grpcPingDelay,
+				Insecure:      httpsInsecure,
 			}
 			if grpcSecure {
 				o.Destination = fhttp.AddHTTPS(url)

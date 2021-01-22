@@ -100,18 +100,17 @@ const (
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target.
-	qpsFlag           = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
-	numThreadsFlag    = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag      = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
-	percentilesFlag   = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
-	resolutionFlag    = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
-	goMaxProcsFlag    = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
-	profileFlag       = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
-	grpcFlag          = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
-	httpsInsecureFlag = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	certFlag          = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
-	keyFlag           = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
-	caCertFlag        = flag.String("cacert", "",
+	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
+	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
+	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
+	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
+	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
+	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
+	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
+	certFlag        = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
+	keyFlag         = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
+	caCertFlag      = flag.String("cacert", "",
 		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
 			"if empty, use https:// prefix for standard internet CAs TLS")
 	echoPortFlag = flag.String("http-port", "8080",
@@ -331,10 +330,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		usageErr("Error: fortio load/curl needs a url or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
-	if *httpsInsecureFlag {
-		httpOpts.Insecure = true
-	}
-	httpOpts.Cacert = *caCertFlag
+	httpOpts.CACert = *caCertFlag
 	httpOpts.Cert = *certFlag
 	httpOpts.Key = *keyFlag
 	if justCurl {
@@ -392,6 +388,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			RunnerOptions:      ro,
 			Destination:        url,
 			CACert:             *caCertFlag,
+			Insecure:           bincommon.TLSInsecure(),
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
@@ -479,10 +476,10 @@ func grpcClient() {
 	cert := *caCertFlag
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count)
+		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count, bincommon.TLSInsecure())
 	} else {
 		httpOpts := bincommon.SharedHTTPOptions()
-		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.PayloadString(), *pingDelayFlag)
+		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.PayloadString(), *pingDelayFlag, bincommon.TLSInsecure())
 	}
 	if err != nil {
 		// already logged

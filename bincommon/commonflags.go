@@ -65,6 +65,7 @@ var (
 	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (works for TLS)")
 	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https connections")
+	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	resolve             = flag.String("resolve", "", "Resolve CN of cert to this IP, so that we can call https://cn directly")
 	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
@@ -133,6 +134,13 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	}
 }
 
+// TLSInsecure returns true if -k or -https-insecure was passed.
+func TLSInsecure() bool {
+	TLSInsecure := *httpsInsecureFlag || *httpsInsecureFlagL
+	log.Infof("TLSInsecure flag is %v", TLSInsecure)
+	return TLSInsecure
+}
+
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between
 // fortio_main and fcurl.
 func SharedHTTPOptions() *fhttp.HTTPOptions {
@@ -144,7 +152,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.AllowHalfClose = *halfCloseFlag
 	httpOpts.Compression = *compressionFlag
 	httpOpts.HTTPReqTimeOut = *httpReqTimeoutFlag
-	httpOpts.Insecure = *httpsInsecureFlag
+	httpOpts.Insecure = TLSInsecure()
 	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
 	httpOpts.ContentType = *contentTypeFlag

@@ -104,8 +104,8 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
-func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration) (float64, error) {
-	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert}
+func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration, insecure bool) (float64, error) {
+	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert, Insecure: insecure}
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
@@ -162,9 +162,9 @@ type HealthResultMap map[string]int64
 
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
-func GrpcHealthCheck(serverAddr, cacert string, svcname string, n int) (*HealthResultMap, error) {
+func GrpcHealthCheck(serverAddr, cacert string, svcname string, n int, insecure bool) (*HealthResultMap, error) {
 	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
-	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert}
+	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert, Insecure: insecure}
 	conn, err := Dial(&o)
 	if err != nil {
 		return nil, err

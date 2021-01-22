@@ -16,6 +16,7 @@ package fgrpc // import "fortio.org/fortio/fgrpc"
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -48,7 +49,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 		log.Infof("Using CA certificate %v to construct TLS credentials", o.CACert)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	case strings.HasPrefix(o.Destination, fnet.PrefixHTTPS):
-		creds := credentials.NewTLS(nil)
+		creds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: o.Insecure})
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
 		opts = append(opts, grpc.WithInsecure())
@@ -121,6 +122,7 @@ type GRPCRunnerOptions struct {
 	Delay              time.Duration // Delay to be sent when using grpc ping service
 	CACert             string        // Path to CA certificate for grpc TLS
 	CertOverride       string        // Override the cert virtual host of authority for testing
+	Insecure           bool          // Allow unknown CA / self signed
 	AllowInitialErrors bool          // whether initial errors don't cause an abort
 	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
 	UnixDomainSocket   string        // unix domain socket path to use for physical connection instead of Destination
