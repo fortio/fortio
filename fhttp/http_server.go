@@ -375,8 +375,48 @@ func SetupPPROF(mux *http.ServeMux) {
 
 // -- Fetch er (simple http proxy) --
 
+var proxyClient = CreateProxyClient()
+
 func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not yet implemented", http.StatusNotImplemented)
+	LogRequest(r, "Fetch proxy2")
+	vals, ok := r.URL.Query()["url"]
+	if !ok {
+		http.Error(w, "missing url query argument", http.StatusBadRequest)
+		return
+	}
+	url := strings.TrimSpace(vals[0])
+	if url == "" {
+		http.Error(w, "missing url value", http.StatusBadRequest)
+		return
+	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+	req := MakeSimpleRequest(url, r)
+	if req == nil {
+		http.Error(w, "parsing url failed, invalid url", http.StatusBadRequest)
+		return
+	}
+	OnBehalfOfRequest(req, r)
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		log.Errf("Error for %q: %v", url, err)
+		http.Error(w, "query failed, invalid url", http.StatusBadRequest)
+		return
+	}
+	log.LogVf("Success for %+v", req)
+	for k, v := range resp.Header {
+		for _, vv := range v {
+			w.Header().Add(k, vv)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	bw, err := fnet.Copy(w, resp.Body)
+	if err != nil {
+		log.Warnf("Error copying response for %s: %v", url, err)
+	}
+	log.LogVf("fh2 copied %d from %s - code %d", bw, url, resp.StatusCode)
+	_ = resp.Body.Close()
 }
 
 // FetcherHandler is the handler for the fetcher/proxy.
@@ -397,10 +437,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = "http://" + url
-	}
-	opts := NewHTTPOptions(url)
+	opts := NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
 	OnBehalfOf(opts, r)
 	client, _ := NewClient(opts)
