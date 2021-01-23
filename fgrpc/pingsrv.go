@@ -39,8 +39,7 @@ const (
 	Error = "ERROR"
 )
 
-type pingSrv struct {
-}
+type pingSrv struct{}
 
 func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)

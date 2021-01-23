@@ -435,6 +435,11 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
+// OnBehalfOfRequest same as OnBehalfOf but places the header directly on the dst request object.
+func OnBehalfOfRequest(to *http.Request, from *http.Request) {
+	to.Header.Add("X-On-Behalf-Of", from.RemoteAddr)
+}
+
 // AddHTTPS replaces "http://" in url with "https://" or prepends "https://"
 // if url does not contain prefix "http://".
 func AddHTTPS(url string) string {

@@ -170,8 +170,7 @@ func TestTcpEcho(t *testing.T) {
 	}
 }
 
-type ErroringWriter struct {
-}
+type ErroringWriter struct{}
 
 func (cbb *ErroringWriter) Close() error {
 	return nil

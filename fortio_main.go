@@ -41,8 +41,7 @@ import (
 )
 
 // -- Start of support for multiple proxies (-P) flags on cmd line.
-type proxiesFlagList struct {
-}
+type proxiesFlagList struct{}
 
 func (f *proxiesFlagList) String() string {
 	return ""
@@ -56,8 +55,7 @@ func (f *proxiesFlagList) Set(value string) error {
 // -- End of functions for -P support.
 
 // -- Same for -M.
-type httpMultiFlagList struct {
-}
+type httpMultiFlagList struct{}
 
 func (f *httpMultiFlagList) String() string {
 	return ""

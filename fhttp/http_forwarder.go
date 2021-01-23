@@ -68,11 +68,12 @@ func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Reque
 	}
 	// Copy all headers
 	// Host header is not in Header so safe to copy
-	copyHeaders(req, r, true)
+	CopyHeaders(req, r, true)
 	return req
 }
 
-func copyHeaders(req, r *http.Request, all bool) {
+// CopyHeaders copies all or trace headers.
+func CopyHeaders(req, r *http.Request, all bool) {
 	// Copy only trace headers unless all is true.
 	for k, v := range r.Header {
 		if all || k == EnvoyRequestID || k == TraceHeader || strings.HasPrefix(k, TraceHeadersPrefix) {
@@ -86,14 +87,15 @@ func copyHeaders(req, r *http.Request, all bool) {
 	}
 }
 
-func makeSimpleRequest(url string, r *http.Request) *http.Request {
+// MakeSimpleRequest makes a new request for url but copies trace headers from input request r.
+func MakeSimpleRequest(url string, r *http.Request) *http.Request {
 	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
 		return nil
 	}
 	// Copy only trace headers
-	copyHeaders(req, r, false)
+	CopyHeaders(req, r, false)
 	req.Header.Add("User-Agent", userAgent)
 	return req
 }
@@ -122,13 +124,13 @@ func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Reque
 	if t.MirrorOrigin {
 		req = makeMirrorRequest(t.Destination, r, data)
 	} else {
-		req = makeSimpleRequest(t.Destination, r)
+		req = MakeSimpleRequest(t.Destination, r)
 	}
 	if req == nil {
 		// error already logged
 		return nil
 	}
-	req.Header.Add("X-On-Behalf-Of", r.RemoteAddr)
+	OnBehalfOfRequest(req, r)
 	req.Header.Add("X-Fortio-Multi-ID", strconv.Itoa(i+1))
 	log.LogVf("Going to %s", req.URL.String())
 	return req
@@ -231,8 +233,8 @@ func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http
 	}
 }
 
-// createClient http client for connection reuse.
-func createClient() *http.Client {
+// CreateProxyClient http client for connection reuse.
+func CreateProxyClient() *http.Client {
 	client := &http.Client{
 		Transport: &http.Transport{
 			// TODO make configurable, should be fine for now for most but extreme -c values
@@ -261,7 +263,7 @@ func MultiServer(port string, cfg *MultiServerConfig) (*http.ServeMux, net.Addr)
 		// get actual bound port in case of :0
 		cfg.Name = "Multi on " + aStr
 	}
-	cfg.client = createClient()
+	cfg.client = CreateProxyClient()
 	for i := range cfg.Targets {
 		t := &cfg.Targets[i]
 		if t.MirrorOrigin {

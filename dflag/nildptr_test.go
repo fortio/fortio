@@ -13,8 +13,7 @@ import (
 	"time"
 )
 
-type foo struct {
-}
+type foo struct{}
 
 func TestDynFlagPrintDefaultsNotCrashing(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.PanicOnError)
