@@ -136,7 +136,11 @@ func FetchURL(o *fhttp.HTTPOptions) {
 // TLSInsecure returns true if -k or -https-insecure was passed.
 func TLSInsecure() bool {
 	TLSInsecure := *httpsInsecureFlag || *httpsInsecureFlagL
-	log.LogVf("TLSInsecure flag is %v", TLSInsecure)
+	if TLSInsecure {
+		log.Infof("TLS certificates will not be verified, per flag request")
+	} else {
+		log.LogVf("Will verify TLS certificates, use -k / -https-insecure to disable")
+	}
 	return TLSInsecure
 }
 

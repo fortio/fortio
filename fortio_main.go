@@ -477,7 +477,7 @@ func grpcClient() {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count, bincommon.TLSInsecure())
 	} else {
 		httpOpts := bincommon.SharedHTTPOptions()
-		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.PayloadString(), *pingDelayFlag, bincommon.TLSInsecure())
+		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.PayloadString(), *pingDelayFlag, httpOpts.Insecure)
 	}
 	if err != nil {
 		// already logged
