@@ -1165,17 +1165,17 @@ func TestFetch2Errors(t *testing.T) {
 	if code != http.StatusBadRequest {
 		t.Errorf("Got %d %s instead of bad request for missing url for %s", code, DebugSummary(data, 256), url)
 	}
-	url = fmt.Sprintf("localhost:%d/fetch2/url=%%20", addr.Port)
+	url = fmt.Sprintf("localhost:%d/fetch2/?url=%%20", addr.Port)
 	code, data = Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusBadRequest {
 		t.Errorf("Got %d %s instead of bad request for empty url for %s", code, DebugSummary(data, 256), url)
 	}
-	url = fmt.Sprintf("localhost:%d/fetch2/url=%%00", addr.Port)
+	url = fmt.Sprintf("localhost:%d/fetch2/?url=%%00", addr.Port)
 	code, data = Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusBadRequest {
 		t.Errorf("Got %d %s instead of bad request for illegal char in url for %s", code, DebugSummary(data, 256), url)
 	}
-	url = fmt.Sprintf("localhost:%d/fetch2/url=doesnotexist.fortio.org", addr.Port)
+	url = fmt.Sprintf("localhost:%d/fetch2/?url=doesnotexist.fortio.org", addr.Port)
 	code, data = Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusBadRequest {
 		t.Errorf("Got %d %s instead of bad request for no such host url for %s", code, DebugSummary(data, 256), url)
