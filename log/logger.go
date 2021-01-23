@@ -83,11 +83,11 @@ func init() {
 	}
 	// virtual dynLevel flag that maps back to actual level
 	_ = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
-		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(new string) error {
-		_, err := ValidateLevel(new)
+		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(newStr string) error {
+		_, err := ValidateLevel(newStr)
 		return err
-	}).WithSyncNotifier(func(old, new string) {
-		_ = setLogLevelStr(new) // will succeed as we just validated it first
+	}).WithSyncNotifier(func(old, newStr string) {
+		_ = setLogLevelStr(newStr) // will succeed as we just validated it first
 	})
 	log.SetFlags(log.Ltime)
 }
@@ -253,8 +253,7 @@ type LoggerI interface {
 	Printf(format string, rest ...interface{})
 }
 
-type loggerShm struct {
-}
+type loggerShm struct{}
 
 func (l *loggerShm) Printf(format string, rest ...interface{}) {
 	logPrintf(Info, format, rest...)

@@ -33,8 +33,7 @@ import (
 )
 
 // -- Support for multiple instances of -H flag on cmd line.
-type headersFlagList struct {
-}
+type headersFlagList struct{}
 
 func (f *headersFlagList) String() string {
 	return ""

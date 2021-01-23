@@ -437,9 +437,9 @@ func (h *Histogram) Reset() {
 
 // Clone returns a copy of the histogram.
 func (h *Histogram) Clone() *Histogram {
-	copy := NewHistogram(h.Offset, h.Divider)
-	copy.CopyFrom(h)
-	return copy
+	hCopy := NewHistogram(h.Offset, h.Divider)
+	hCopy.CopyFrom(h)
+	return hCopy
 }
 
 // CopyFrom sets the content of this object to a copy of the src.
