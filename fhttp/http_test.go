@@ -1134,7 +1134,7 @@ func TestFetchAndOnBehalfOf(t *testing.T) {
 func TestFetch2(t *testing.T) {
 	mux, addr := ServeTCP("0", "/debug")
 	mux.HandleFunc("/fetch2/", FetcherHandler2)
-	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug", addr.Port, addr.Port)
+	url := fmt.Sprintf("localhost:%d/fetch2/?url=localhost:%d/debug", addr.Port, addr.Port)
 	code, data := Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
@@ -1154,6 +1154,31 @@ func TestFetch2Header(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("Foo: Bar")) {
 		t.Errorf("Result %s doesn't contain expected Foo: Bar header", DebugSummary(data, 1024))
+	}
+}
+
+func TestFetch2Errors(t *testing.T) {
+	mux, addr := ServeTCP("0", "")
+	mux.HandleFunc("/fetch2/", FetcherHandler2)
+	url := fmt.Sprintf("localhost:%d/fetch2/", addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d %s instead of bad request for missing url for %s", code, DebugSummary(data, 256), url)
+	}
+	url = fmt.Sprintf("localhost:%d/fetch2/url=%%20", addr.Port)
+	code, data = Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d %s instead of bad request for empty url for %s", code, DebugSummary(data, 256), url)
+	}
+	url = fmt.Sprintf("localhost:%d/fetch2/url=%%00", addr.Port)
+	code, data = Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d %s instead of bad request for illegal char in url for %s", code, DebugSummary(data, 256), url)
+	}
+	url = fmt.Sprintf("localhost:%d/fetch2/url=doesnotexist.fortio.org", addr.Port)
+	code, data = Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusBadRequest {
+		t.Errorf("Got %d %s instead of bad request for no such host url for %s", code, DebugSummary(data, 256), url)
 	}
 }
 
