@@ -377,6 +377,8 @@ func SetupPPROF(mux *http.ServeMux) {
 
 var proxyClient = CreateProxyClient()
 
+// FetcherHandler2 is the handler for the fetcher/proxy that supports h2 input and makes a
+// new request with only tracing headers copied.
 func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Fetch proxy2")
 	vals, ok := r.URL.Query()["url"]

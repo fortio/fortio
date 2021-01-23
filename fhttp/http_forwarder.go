@@ -72,7 +72,7 @@ func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Reque
 	return req
 }
 
-// CopyHeaders copies all or trace headers
+// CopyHeaders copies all or trace headers.
 func CopyHeaders(req, r *http.Request, all bool) {
 	// Copy only trace headers unless all is true.
 	for k, v := range r.Header {
@@ -117,10 +117,6 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 	} else {
 		mcfg.TeeParallelHandler(w, r, data)
 	}
-}
-
-func OnBehalfOfRequest(to *http.Request, from *http.Request) {
-	to.Header.Add("X-On-Behalf-Of", from.RemoteAddr)
 }
 
 func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Request {
