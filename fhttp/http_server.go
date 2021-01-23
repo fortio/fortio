@@ -375,12 +375,17 @@ func SetupPPROF(mux *http.ServeMux) {
 
 // -- Fetch er (simple http proxy) --
 
+func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Not yet implemented", http.StatusNotImplemented)
+}
+
 // FetcherHandler is the handler for the fetcher/proxy.
 func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Fetch (prefix stripped)")
 	hj, ok := w.(http.Hijacker)
 	if !ok {
-		log.Critf("hijacking not supported")
+		log.Errf("hijacking not supported: %v", r.Proto)
+		http.Error(w, "User fetch2 when using http/2.0", http.StatusHTTPVersionNotSupported)
 		return
 	}
 	conn, _, err := hj.Hijack()
@@ -392,7 +397,10 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
-	opts := NewHTTPOptions("http://" + url)
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+	opts := NewHTTPOptions(url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
 	OnBehalfOf(opts, r)
 	client, _ := NewClient(opts)

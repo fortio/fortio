@@ -76,8 +76,15 @@
   Browse <a href='browse'>saved results</a> (or <a href="data/">raw JSON</a>)
 </div>
 <p><i>Or</i></p>
+<form action="fetch2/">
+<div>
+    Debug fetch any single URL: <input type="text" id="url" name="url" value="" size=50/>
+  </div>
+</form>
+<p><i>Or</i></p>
 <form action="javascript:document.location += 'fetch/' + document.getElementById('uri').value">
   <div>
+    HTTP/1.1 only semi proxy
     Debug fetch http://<input type="text" id="uri" name="uri" value="" size=50/>
   </div>
 </form>

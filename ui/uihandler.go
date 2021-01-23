@@ -87,6 +87,7 @@ var (
 
 const (
 	fetchURI    = "fetch/"
+	fetch2URI   = "fetch2/"
 	faviconPath = "/favicon.ico"
 	modegrpc    = "grpc"
 )
@@ -896,7 +897,10 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
+	// For backward compatibility with http:// only fetcher
 	mux.Handle(fetchPath, http.StripPrefix(fetchPath, http.HandlerFunc(fhttp.FetcherHandler)))
+	// h2 incoming and https outgoing ok fetcher
+	mux.HandleFunc(uiPath+fetch2URI, fhttp.FetcherHandler2)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	logoPath = version.Short() + "/static/img/logo.svg"
