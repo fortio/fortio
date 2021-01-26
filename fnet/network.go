@@ -241,7 +241,7 @@ func ResolveDestination(dest string) (*net.TCPAddr, error) {
 	return TCPResolveDestination(dest)
 }
 
-// ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
+// TCPResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
 func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
 	addr, err := ResolveDestinationInternal(dest, "tcp://", "udp://")
