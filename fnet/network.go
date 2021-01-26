@@ -214,12 +214,12 @@ func GetPort(lAddr net.Addr) string {
 	return lPort
 }
 
-const UDP_PREFIX = "udp://"
+const UDPPrefix = "udp://"
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
 func ResolveDestination(dest string) (*net.TCPAddr, error) {
-	if strings.HasPrefix(dest, UDP_PREFIX) {
+	if strings.HasPrefix(dest, UDPPrefix) {
 		err := fmt.Errorf("can't return a TCPAddr for UDP destination %q", dest)
 		log.Errf("ResolveDestination %s", err)
 		return nil, err
@@ -281,8 +281,8 @@ func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
 		log.Errf("UDPResolveDestination %s", err)
 		return nil, err
 	}
-	if strings.HasPrefix(dest, UDP_PREFIX) {
-		dest = dest[len(UDP_PREFIX):]
+	if strings.HasPrefix(dest, UDPPrefix) {
+		dest = dest[len(UDPPrefix):]
 		log.Debugf("Removed udp:// prefix dest now %q", dest)
 	}
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
@@ -559,8 +559,8 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 // NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
 // if the destination starts with udp:// UDP is used otherwise TCP.
 func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
-	if strings.HasPrefix(dest, UDP_PREFIX) {
-		return UDPNetCat(dest[len(UDP_PREFIX):], in, out, stopOnEOF)
+	if strings.HasPrefix(dest, UDPPrefix) {
+		return UDPNetCat(dest[len(UDPPrefix):], in, out, stopOnEOF)
 	}
 	log.Infof("TCP NetCat to %s, stop on eof %v", dest, stopOnEOF)
 	a, err := ResolveDestination(dest)
@@ -614,7 +614,7 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		log.Errf("Connection error to %q: %v", dest, err)
 		return err
 	}
-	go Copy(out, d)
+	go Copy(out, d) // nolint: errcheck // errors logged inside Copy()
 	log.LogVf("Will write to UDP %v from input (until eof)", a)
 	wb, err := Copy(d, in)
 	log.Infof("Wrote %d bytes to UDP %v", wb, a)

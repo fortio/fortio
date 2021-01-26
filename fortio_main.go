@@ -175,6 +175,7 @@ var (
 	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
 )
 
+// nolint: funlen // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
