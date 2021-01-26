@@ -117,6 +117,7 @@ func TestResolveDestination(t *testing.T) {
 		{"using udp://ip:portname", "udp://8.8.8.8:http", ""},
 		// Good cases:
 		{"using tcp://ip:portname", "tcp://8.8.8.8:http", "8.8.8.8:80"},
+		{"using tcp://ip:portname/", "tcp://8.8.8.8:http/", "8.8.8.8:80"},
 		{"using ip:portname", "8.8.8.8:http", "8.8.8.8:80"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
@@ -149,6 +150,7 @@ func TestUDPResolveDestination(t *testing.T) {
 		{"using tcp://ip:portname", "tcp://8.8.8.8:domain", ""},
 		// Good cases:
 		{"using udp://ip:portname", "udp://8.8.8.8:domain", "8.8.8.8:53"},
+		{"using udp://ip:portname/", "udp://8.8.8.8:domain/", "8.8.8.8:53"},
 		{"using ip:portname", "8.8.8.8:domain", "8.8.8.8:53"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},

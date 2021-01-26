@@ -230,6 +230,7 @@ func ResolveDestination(dest string) (*net.TCPAddr, error) {
 	}
 	if strings.HasPrefix(dest, "tcp://") {
 		dest = dest[6:]
+		dest = strings.TrimSuffix(dest, "/")
 		log.Debugf("Removed tcp:// prefix dest now %q", dest)
 	}
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
@@ -266,7 +267,7 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 		if len(addrs) > 1 && log.LogDebug() {
 			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
 		}
-		log.Debugf("Will go to %s", addrs[0])
+		log.Debugf("TCP will go to %s", addrs[0])
 		dest.IP = addrs[0]
 	}
 	dest.Port, err = net.LookupPort("tcp", port)
@@ -287,6 +288,7 @@ func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
 	}
 	if strings.HasPrefix(dest, UDPPrefix) {
 		dest = dest[len(UDPPrefix):]
+		dest = strings.TrimSuffix(dest, "/")
 		log.Debugf("Removed udp:// prefix dest now %q", dest)
 	}
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
@@ -324,7 +326,7 @@ func UDPResolve(host string, port string) (*net.UDPAddr, error) {
 		if len(addrs) > 1 && log.LogDebug() {
 			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
 		}
-		log.Debugf("Will go to %s", addrs[0])
+		log.Debugf("UDP will go to %s", addrs[0])
 		dest.IP = addrs[0]
 	}
 	dest.Port, err = net.LookupPort("udp", port)
@@ -332,7 +334,7 @@ func UDPResolve(host string, port string) (*net.UDPAddr, error) {
 		log.Errf("Unable to resolve udp port '%s' : %v", port, err)
 		return nil, err
 	}
-	log.Debugf("Resolved %s:%s to udp addr %+v", host, port, dest)
+	log.LogVf("Resolved %s:%s to udp addr %+v", host, port, dest)
 	return dest, nil
 }
 
@@ -568,7 +570,7 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 // if the destination starts with udp:// UDP is used otherwise TCP.
 func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	if strings.HasPrefix(dest, UDPPrefix) {
-		return UDPNetCat(dest[len(UDPPrefix):], in, out, stopOnEOF)
+		return UDPNetCat(dest, in, out, stopOnEOF)
 	}
 	log.Infof("TCP NetCat to %s, stop on eof %v", dest, stopOnEOF)
 	a, err := ResolveDestination(dest)
