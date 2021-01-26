@@ -15,6 +15,7 @@
 package fnet_test
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -167,6 +168,27 @@ func TestTcpEcho(t *testing.T) {
 	resStr := string(res[:n])
 	if resStr != data {
 		t.Errorf("Unexpected echo '%q', expected what we sent: '%q'", resStr, data)
+	}
+}
+
+func TestUdpEcho(t *testing.T) {
+	for i := 0; i <= 1; i++ {
+		async := (i == 0)
+		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
+		port := addr.(*net.UDPAddr).Port
+		in := ioutil.NopCloser(strings.NewReader("ABCDEF"))
+		var buf bytes.Buffer
+		dest := fmt.Sprintf("udp://localhost:%d", port)
+		out := bufio.NewWriter(&buf)
+		err := fnet.NetCat(dest, in, out, true)
+		if err != nil {
+			t.Errorf("Unexpected NetCat err: %v", err)
+		}
+		out.Flush()
+		res := buf.String()
+		if res != "ABCDEF" {
+			t.Errorf("Got unexpected %q", res)
+		}
 	}
 }
 
