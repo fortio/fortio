@@ -209,6 +209,8 @@ func GetPort(lAddr net.Addr) string {
 	// Note: might panic if called with something else than unix or tcp socket addr, it's ok.
 	if lAddr.Network() == UnixDomainSocket {
 		lPort = lAddr.(*net.UnixAddr).Name
+	} else if lAddr.Network() == "udp" {
+		lPort = strconv.Itoa(lAddr.(*net.UDPAddr).Port)
 	} else {
 		lPort = strconv.Itoa(lAddr.(*net.TCPAddr).Port)
 	}

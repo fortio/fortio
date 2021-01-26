@@ -489,7 +489,7 @@ func LogRequest(r *http.Request, msg string) {
 	}
 }
 
-// LogAndCall wrapps an HTTP handler to log the request first.
+// LogAndCall wraps an HTTP handler to log the request first.
 func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		LogRequest(r, msg)
