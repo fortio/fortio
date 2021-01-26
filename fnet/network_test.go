@@ -15,6 +15,7 @@
 package fnet_test
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -88,6 +89,21 @@ func TestListenFailure(t *testing.T) {
 	}
 }
 
+func TestUDPListenFailure(t *testing.T) {
+	_, a1 := fnet.UDPListen("test listen2", "0")
+	if a1.(*net.UDPAddr).Port == 0 {
+		t.Errorf("Unexpected 0 port after listen %+v", a1)
+	}
+	l, a := fnet.UDPListen("this should fail", fnet.GetPort(a1))
+	if l != nil || a != nil {
+		t.Errorf("udp listen that should error got %v %v instead of nil", l, a)
+	}
+	l, a = fnet.UDPListen("this should fail", ":doesnotexisthopefully")
+	if l != nil || a != nil {
+		t.Errorf("udp listen with bogus port should error got %v %v instead of nil", l, a)
+	}
+}
+
 func TestResolveDestination(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -98,14 +114,49 @@ func TestResolveDestination(t *testing.T) {
 		{"missing :", "foo", ""},
 		{"using ip:bogussvc", "8.8.8.8:doesnotexisthopefully", ""},
 		{"using bogus hostname", "doesnotexist.fortio.org:443", ""},
+		{"using udp://ip:portname", "udp://8.8.8.8:http", ""},
 		// Good cases:
+		{"using tcp://ip:portname", "tcp://8.8.8.8:http", "8.8.8.8:80"},
 		{"using ip:portname", "8.8.8.8:http", "8.8.8.8:80"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
+		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
 	}
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
 			got, _ := fnet.ResolveDestination(tt.destination)
+			gotStr := ""
+			if got != nil {
+				gotStr = got.String()
+			}
+			if gotStr != tt.want {
+				t.Errorf("ResolveDestination(%s) = %v, want %s", tt.destination, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUDPResolveDestination(t *testing.T) {
+	tests := []struct {
+		name        string
+		destination string
+		want        string
+	}{
+		// Error cases:
+		{"missing :", "foo", ""},
+		{"using ip:bogussvc", "8.8.8.8:doesnotexisthopefully", ""},
+		{"using bogus hostname", "doesnotexist.fortio.org:443", ""},
+		{"using tcp://ip:portname", "tcp://8.8.8.8:domain", ""},
+		// Good cases:
+		{"using udp://ip:portname", "udp://8.8.8.8:domain", "8.8.8.8:53"},
+		{"using ip:portname", "8.8.8.8:domain", "8.8.8.8:53"},
+		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
+		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
+	}
+	for _, tt := range tests {
+		tt := tt // pin
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := fnet.UDPResolveDestination(tt.destination)
 			gotStr := ""
 			if got != nil {
 				gotStr = got.String()
@@ -167,6 +218,27 @@ func TestTcpEcho(t *testing.T) {
 	resStr := string(res[:n])
 	if resStr != data {
 		t.Errorf("Unexpected echo '%q', expected what we sent: '%q'", resStr, data)
+	}
+}
+
+func TestUdpEcho(t *testing.T) {
+	for i := 0; i <= 1; i++ {
+		async := (i == 0)
+		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
+		port := addr.(*net.UDPAddr).Port
+		in := ioutil.NopCloser(strings.NewReader("ABCDEF"))
+		var buf bytes.Buffer
+		dest := fmt.Sprintf("udp://localhost:%d", port)
+		out := bufio.NewWriter(&buf)
+		err := fnet.NetCat(dest, in, out, true)
+		if err != nil {
+			t.Errorf("Unexpected NetCat err: %v", err)
+		}
+		out.Flush()
+		res := buf.String()
+		if res != "ABCDEF" {
+			t.Errorf("Got unexpected %q", res)
+		}
 	}
 }
 

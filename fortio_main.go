@@ -77,7 +77,7 @@ func usage(w io.Writer, msgs ...interface{}) {
 		"redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
 		"server), report (report only UI server), redirect (only the redirect server),",
 		"proxies (only the -M and -P configured proxies), grpcping (grpc client),",
-		"or curl (single URL debug), or nc (single tcp connection).",
+		"or curl (single URL debug), or nc (single tcp or udp:// connection).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
@@ -115,6 +115,9 @@ var (
 		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
 	tcpPortFlag = flag.String("tcp-port", "8078",
 		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
+	udpPortFlag = flag.String("udp-port", "8078",
+		"udp echo server port. Can be in the form of host:port, ip:port, `port` or \""+disabled+"\".")
+	udpAsyncFlag = flag.Bool("udp-async", false, "if true, udp echo server will use separate go routine to reply")
 	grpcPortFlag = flag.String("grpc-port", fnet.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or `port` or /unix/domain/path or \""+disabled+
 			"\" to not start the grpc server.")
@@ -172,6 +175,7 @@ var (
 	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
 )
 
+// nolint: funlen // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
@@ -227,6 +231,10 @@ func main() {
 		isServer = true
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		startProxies()
+	case "udp-echo":
+		isServer = true
+		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
+		startProxies()
 	case "proxies":
 		if len(flag.Args()) != 0 {
 			usageErr("Error: fortio proxies command only takes -P / -M flags")
@@ -239,6 +247,9 @@ func main() {
 		isServer = true
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
+		}
+		if *udpPortFlag != disabled {
+			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
 			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))

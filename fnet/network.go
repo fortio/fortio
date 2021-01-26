@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
@@ -112,9 +113,28 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	}
 	lAddr := listener.Addr()
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, lAddr)
+		fmt.Printf("Fortio %s %s TCP server listening on %s\n", version.Short(), name, lAddr)
 	}
 	return listener, lAddr
+}
+
+// UDPListen starts server on given port. (0 for dynamic port).
+func UDPListen(name string, port string) (*net.UDPConn, net.Addr) {
+	nPort := NormalizePort(port)
+	udpAddr, err := net.ResolveUDPAddr("udp", nPort)
+	if err != nil {
+		log.Critf("[%v] Can't resolve UDP address %v: %v", name, nPort, err)
+		return nil, nil
+	}
+	udpconn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		log.Critf("[%v] Can't ListenUDP to %+v: %v", name, udpAddr, err)
+		return nil, nil
+	}
+	if len(name) > 0 {
+		fmt.Printf("Fortio %s %s UDP server listening on %s\n", version.Short(), name, udpconn.LocalAddr())
+	}
+	return udpconn, udpconn.LocalAddr()
 }
 
 func handleTCPEchoRequest(name string, conn net.Conn) {
@@ -146,21 +166,72 @@ func TCPEchoServer(name string, port string) net.Addr {
 	return addr
 }
 
+func handleUDPEchoRequest(name string, conn *net.UDPConn, addr *net.UDPAddr, buf []byte) {
+	wb, err := conn.WriteToUDP(buf, addr)
+	log.LogVf("UDP echo server (%v) echoed %d bytes back to %v (err=%v)", name, wb, addr, err)
+}
+
+// UDPEchoServer starts a UDP Echo Server on given port, name is for logging.
+// if async flag is true will spawn go routines to reply otherwise single go routine.
+func UDPEchoServer(name string, port string, async bool) net.Addr {
+	if async {
+		name += "-async"
+	}
+	listener, addr := UDPListen(name, port)
+	if listener == nil {
+		return nil // error already logged
+	}
+	go func() {
+		for {
+			// TODO limit number of go request, maximum duration/bytes sent, etc...
+			buf := make([]byte, 2048) // bigger than even IPv6 minimum MTU (~1500); 1 per thread/input
+			size, conn, err := listener.ReadFromUDP(buf)
+			if err != nil {
+				log.Critf("UDP echo server (%v) error reading: %v", name, err)
+			} else {
+				log.LogVf("UDP echo server (%v) read %d from %v -> %v",
+					name, size, addr, conn)
+				// Synchronous or go routines
+				if async {
+					go handleUDPEchoRequest(name, listener, conn, buf[:size])
+				} else {
+					handleUDPEchoRequest(name, listener, conn, buf[:size])
+				}
+			}
+		}
+	}()
+	return addr
+}
+
 // GetPort extracts the port for TCP sockets and the path for unix domain sockets.
 func GetPort(lAddr net.Addr) string {
 	var lPort string
 	// Note: might panic if called with something else than unix or tcp socket addr, it's ok.
 	if lAddr.Network() == UnixDomainSocket {
 		lPort = lAddr.(*net.UnixAddr).Name
+	} else if lAddr.Network() == "udp" {
+		lPort = strconv.Itoa(lAddr.(*net.UDPAddr).Port)
 	} else {
 		lPort = strconv.Itoa(lAddr.(*net.TCPAddr).Port)
 	}
 	return lPort
 }
 
+// UDPPrefix is the prefix that given to NetCat switches to UDP from TCP(/unix domain) socket type.
+const UDPPrefix = "udp://"
+
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
 func ResolveDestination(dest string) (*net.TCPAddr, error) {
+	if strings.HasPrefix(dest, UDPPrefix) {
+		err := fmt.Errorf("can't return a TCPAddr for UDP destination %q", dest)
+		log.Errf("ResolveDestination %s", err)
+		return nil, err
+	}
+	if strings.HasPrefix(dest, "tcp://") {
+		dest = dest[6:]
+		log.Debugf("Removed tcp:// prefix dest now %q", dest)
+	}
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
 		log.Errf("Destination '%s' is not host:port format", dest)
@@ -206,6 +277,65 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 	return dest, nil
 }
 
+// UDPResolveDestination returns the UDP address of the "host:port" suitable for net.Dial.
+// nil and the error in case of errors.
+func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
+	if strings.HasPrefix(dest, "tcp://") {
+		err := fmt.Errorf("can't return a UDPAddre for TCP destination %q", dest)
+		log.Errf("UDPResolveDestination %s", err)
+		return nil, err
+	}
+	if strings.HasPrefix(dest, UDPPrefix) {
+		dest = dest[len(UDPPrefix):]
+		log.Debugf("Removed udp:// prefix dest now %q", dest)
+	}
+	i := strings.LastIndex(dest, ":") // important so [::1]:port works
+	if i < 0 {
+		log.Errf("Destination '%s' is not host:port format", dest)
+		return nil, fmt.Errorf("destination '%s' is not host:port format", dest)
+	}
+	host := dest[0:i]
+	port := dest[i+1:]
+	return UDPResolve(host, port)
+}
+
+// UDPResolve returns the UDP address of the host,port suitable for net.Dial.
+// nil in case of errors.
+// TODO: this same as Resolve except for the address type and service resolution.
+func UDPResolve(host string, port string) (*net.UDPAddr, error) {
+	log.Debugf("UDPResolve() called with host=%s port=%s", host, port)
+	dest := &net.UDPAddr{}
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		log.Debugf("host %s looks like an IPv6, stripping []", host)
+		host = host[1 : len(host)-1]
+	}
+	isAddr := net.ParseIP(host)
+	var err error
+	if isAddr != nil {
+		log.Debugf("Host already an IP, will go to %s", isAddr)
+		dest.IP = isAddr
+	} else {
+		var addrs []net.IP
+		addrs, err = net.LookupIP(host)
+		if err != nil {
+			log.Errf("Unable to lookup '%s' : %v", host, err)
+			return nil, err
+		}
+		if len(addrs) > 1 && log.LogDebug() {
+			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
+		}
+		log.Debugf("Will go to %s", addrs[0])
+		dest.IP = addrs[0]
+	}
+	dest.Port, err = net.LookupPort("udp", port)
+	if err != nil {
+		log.Errf("Unable to resolve udp port '%s' : %v", port, err)
+		return nil, err
+	}
+	log.Debugf("Resolved %s:%s to udp addr %+v", host, port, dest)
+	return dest, nil
+}
+
 // Copy is a debug version of io.Copy without the zero Copy optimizations.
 func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 	buf := make([]byte, 32*KILOBYTE)
@@ -229,7 +359,11 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			if !errors.Is(er, io.EOF) {
+			if os.IsTimeout(er) {
+				// return but not log as error (for UDPNetCat use case)
+				err = er
+				log.LogVf("copy: %+v -> %+v timeout/read error: %v", src, dst, er)
+			} else if !errors.Is(er, io.EOF) {
 				err = er
 				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
 			}
@@ -431,8 +565,12 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 }
 
 // NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
+// if the destination starts with udp:// UDP is used otherwise TCP.
 func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
-	log.Infof("NetCat to %s, stop on eof %v", dest, stopOnEOF)
+	if strings.HasPrefix(dest, UDPPrefix) {
+		return UDPNetCat(dest[len(UDPPrefix):], in, out, stopOnEOF)
+	}
+	log.Infof("TCP NetCat to %s, stop on eof %v", dest, stopOnEOF)
 	a, err := ResolveDestination(dest)
 	if a == nil {
 		return err // already logged
@@ -471,6 +609,33 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		return we
 	}
 	return nil
+}
+
+// UDPNetCat handles UDP part of NetCat.
+func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
+	log.Infof("UDP NetCat to %s, stop on eof %v", dest, stopOnEOF)
+	a, err := UDPResolveDestination(dest)
+	if a == nil {
+		return err // already logged
+	}
+	d, err := net.DialUDP("udp", nil, a)
+	if err != nil {
+		log.Errf("Connection error to %q: %v", dest, err)
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var rb int64
+	var re error
+	go func(w *sync.WaitGroup, dst io.Writer, src io.Reader) {
+		rb, re = Copy(dst, src)
+		w.Done()
+	}(&wg, out, d)
+	wb, we := Copy(d, in)
+	_ = d.SetReadDeadline(time.Now().Add(400 * time.Millisecond))
+	wg.Wait()
+	log.Infof("Read %d, Wrote %d bytes to UDP %v (re %v we %v)", rb, wb, a, re, we)
+	return err
 }
 
 // EscapeBytes returns printable string. Same as %q format without the
