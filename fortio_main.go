@@ -115,6 +115,9 @@ var (
 		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
 	tcpPortFlag = flag.String("tcp-port", "8078",
 		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
+	udpPortFlag = flag.String("udp-port", "8078",
+		"udp echo server port. Can be in the form of host:port, ip:port, `port` or \""+disabled+"\".")
+	udpAsyncFlag = flag.Bool("udp-async", false, "if true, udp echo server will use separate go routine to reply")
 	grpcPortFlag = flag.String("grpc-port", fnet.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or `port` or /unix/domain/path or \""+disabled+
 			"\" to not start the grpc server.")
@@ -227,6 +230,10 @@ func main() {
 		isServer = true
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		startProxies()
+	case "udp-echo":
+		isServer = true
+		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
+		startProxies()
 	case "proxies":
 		if len(flag.Args()) != 0 {
 			usageErr("Error: fortio proxies command only takes -P / -M flags")
@@ -239,6 +246,9 @@ func main() {
 		isServer = true
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
+		}
+		if *udpPortFlag != disabled {
+			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
 			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))

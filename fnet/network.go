@@ -112,9 +112,27 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	}
 	lAddr := listener.Addr()
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s\n", version.Short(), name, lAddr)
+		fmt.Printf("Fortio %s %s TCP server listening on %s\n", version.Short(), name, lAddr)
 	}
 	return listener, lAddr
+}
+
+func UDPListen(name string, port string) (*net.UDPConn, *net.UDPAddr) {
+	nPort := NormalizePort(port)
+	udpAddr, err := net.ResolveUDPAddr("udp", nPort)
+	if err != nil {
+		log.Critf("[%v] Can't resolve UDP address %v: %v", name, nPort, err)
+		return nil, nil
+	}
+	udpconn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		log.Critf("[%v] Can't ListenUDP to %+v: %v", name, udpAddr, err)
+		return nil, nil
+	}
+	if len(name) > 0 {
+		fmt.Printf("Fortio %s %s UDP server listening on %s\n", version.Short(), name, udpAddr)
+	}
+	return udpconn, udpAddr
 }
 
 func handleTCPEchoRequest(name string, conn net.Conn) {
@@ -140,6 +158,43 @@ func TCPEchoServer(name string, port string) net.Addr {
 				log.LogVf("TCP echo server (%v) accepted connection from %v -> %v",
 					name, conn.RemoteAddr(), conn.LocalAddr())
 				go handleTCPEchoRequest(name, conn)
+			}
+		}
+	}()
+	return addr
+}
+
+func handleUDPEchoRequest(name string, conn *net.UDPConn, addr *net.UDPAddr, buf []byte) {
+	wb, err := conn.WriteToUDP(buf, addr)
+	log.LogVf("UDP echo server (%v) echoed %d bytes back to %v (err=%v)", name, wb, addr, err)
+}
+
+// UDPEchoServer starts a UDP Echo Server on given port, name is for logging.
+// if async flag is true will spawn go routines to reply otherwise single go routine.
+func UDPEchoServer(name string, port string, async bool) net.Addr {
+	if async {
+		name += "-async"
+	}
+	listener, addr := UDPListen(name, port)
+	if listener == nil {
+		return nil // error already logged
+	}
+	go func() {
+		for {
+			// TODO limit number of go request, maximum duration/bytes sent, etc...
+			buf := make([]byte, 2048) // bigger than even IPv6 minimum MTU (~1500); 1 per thread/input
+			size, conn, err := listener.ReadFromUDP(buf)
+			if err != nil {
+				log.Critf("UDP echo server (%v) error reading: %v", name, err)
+			} else {
+				log.LogVf("UDP echo server (%v) read %d from %v -> %v",
+					name, size, addr, conn)
+				// Synchronous or go routines
+				if async {
+					go handleUDPEchoRequest(name, listener, conn, buf[:size])
+				} else {
+					handleUDPEchoRequest(name, listener, conn, buf[:size])
+				}
 			}
 		}
 	}()
