@@ -217,6 +217,7 @@ func GetPort(lAddr net.Addr) string {
 	return lPort
 }
 
+// HostPortAddr is the missing base.
 // IPAddr and UDPAddr are actually the same but don't share a base (!)
 type HostPortAddr struct {
 	IP   net.IP
@@ -234,17 +235,26 @@ func (hpa *HostPortAddr) String() string {
 // UDPPrefix is the prefix that given to NetCat switches to UDP from TCP(/unix domain) socket type.
 const UDPPrefix = "udp://"
 
+// ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
+// nil in case of errors. Backward compatible name (1.12 and prior) for TCPResolveDestination.
+func ResolveDestination(dest string) (*net.TCPAddr, error) {
+	return TCPResolveDestination(dest)
+}
+
+// ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
+// nil in case of errors.
 func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
-	addr, err := ResolveDestination(dest, "tcp://", "udp://")
+	addr, err := ResolveDestinationInternal(dest, "tcp://", "udp://")
 	if err != nil {
 		return nil, err
 	}
 	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
 }
 
-// ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
-// nil in case of errors.
-func ResolveDestination(dest string, expected string, unexpected string) (*HostPortAddr, error) {
+// ResolveDestinationInternal returns the address of the "host:port" suitable for net.Dial.
+// nil in case of errors. Works for both TCP and UDP but proto must be passed as expected == tcp:// or udp://
+// and the other as unexpected.
+func ResolveDestinationInternal(dest string, expected string, unexpected string) (*HostPortAddr, error) {
 	if strings.HasPrefix(dest, unexpected) {
 		err := fmt.Errorf("Expecting %s but got %s destination %q", expected, unexpected, dest)
 		log.Errf("ResolveDestination %s", err)
@@ -262,12 +272,21 @@ func ResolveDestination(dest string, expected string, unexpected string) (*HostP
 	}
 	host := dest[0:i]
 	port := dest[i+1:]
-	return Resolve(host, port, expected[:3]) // this could crash if not getting tcp:// -> tcp etc...
+	return ResolveByProto(host, port, expected[:3]) // this could crash if not getting tcp:// -> tcp etc...
 }
 
-// Resolve returns the TCP address of the host,port suitable for net.Dial.
-// nil in case of errors.
-func Resolve(host string, port string, proto string) (*HostPortAddr, error) {
+// Resolve backward compatible TCP only version of ResolveByProto.
+func Resolve(host string, port string) (*net.TCPAddr, error) {
+	addr, err := ResolveByProto(host, port, "tcp")
+	if err != nil {
+		return nil, err
+	}
+	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
+}
+
+// ResolveByProto returns the address of the host,port suitable for net.Dial.
+// nil in case of errors. works for both "tcp" and "udp" proto.
+func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
@@ -304,7 +323,7 @@ func Resolve(host string, port string, proto string) (*HostPortAddr, error) {
 // UDPResolveDestination returns the UDP address of the "host:port" suitable for net.Dial.
 // nil and the error in case of errors.
 func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
-	addr, err := ResolveDestination(dest, "udp://", "tcp://")
+	addr, err := ResolveDestinationInternal(dest, "udp://", "tcp://")
 	if err != nil {
 		return nil, err
 	}

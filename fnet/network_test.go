@@ -420,7 +420,7 @@ func TestProxyErrors(t *testing.T) {
 }
 
 func TestResolveIpV6(t *testing.T) {
-	addr, err := fnet.Resolve("[::1]", "http", "tcp")
+	addr, err := fnet.ResolveByProto("[::1]", "http", "tcp")
 	addrStr := addr.String()
 	expected := "[::1]:80"
 	if addrStr != expected {
