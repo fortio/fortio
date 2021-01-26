@@ -217,21 +217,43 @@ func GetPort(lAddr net.Addr) string {
 	return lPort
 }
 
+// IPAddr and UDPAddr are actually the same but don't share a base (!)
+type HostPortAddr struct {
+	IP   net.IP
+	Port int
+}
+
+func (hpa *HostPortAddr) String() string {
+	ipstr := hpa.IP.String()
+	if strings.Contains(ipstr, ":") {
+		ipstr = "[" + ipstr + "]"
+	}
+	return ipstr + ":" + strconv.Itoa(hpa.Port)
+}
+
 // UDPPrefix is the prefix that given to NetCat switches to UDP from TCP(/unix domain) socket type.
 const UDPPrefix = "udp://"
 
+func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
+	addr, err := ResolveDestination(dest, "tcp://", "udp://")
+	if err != nil {
+		return nil, err
+	}
+	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
+}
+
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func ResolveDestination(dest string) (*net.TCPAddr, error) {
-	if strings.HasPrefix(dest, UDPPrefix) {
-		err := fmt.Errorf("can't return a TCPAddr for UDP destination %q", dest)
+func ResolveDestination(dest string, expected string, unexpected string) (*HostPortAddr, error) {
+	if strings.HasPrefix(dest, unexpected) {
+		err := fmt.Errorf("Expecting %s but got %s destination %q", expected, unexpected, dest)
 		log.Errf("ResolveDestination %s", err)
 		return nil, err
 	}
-	if strings.HasPrefix(dest, "tcp://") {
-		dest = dest[6:]
+	if strings.HasPrefix(dest, expected) {
+		dest = dest[len(expected):]
 		dest = strings.TrimSuffix(dest, "/")
-		log.Debugf("Removed tcp:// prefix dest now %q", dest)
+		log.Debugf("Removed %s prefix dest now %q", expected, dest)
 	}
 	i := strings.LastIndex(dest, ":") // important so [::1]:port works
 	if i < 0 {
@@ -240,14 +262,14 @@ func ResolveDestination(dest string) (*net.TCPAddr, error) {
 	}
 	host := dest[0:i]
 	port := dest[i+1:]
-	return Resolve(host, port)
+	return Resolve(host, port, expected[:3]) // this could crash if not getting tcp:// -> tcp etc...
 }
 
 // Resolve returns the TCP address of the host,port suitable for net.Dial.
 // nil in case of errors.
-func Resolve(host string, port string) (*net.TCPAddr, error) {
-	log.Debugf("Resolve() called with host=%s port=%s", host, port)
-	dest := &net.TCPAddr{}
+func Resolve(host string, port string, proto string) (*HostPortAddr, error) {
+	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
+	dest := &HostPortAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
 		log.Debugf("host %s looks like an IPv6, stripping []", host)
 		host = host[1 : len(host)-1]
@@ -267,75 +289,26 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 		if len(addrs) > 1 && log.LogDebug() {
 			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
 		}
-		log.Debugf("TCP will go to %s", addrs[0])
+		log.Debugf("%s will go to %s", proto, addrs[0])
 		dest.IP = addrs[0]
 	}
-	dest.Port, err = net.LookupPort("tcp", port)
+	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve port '%s' : %v", port, err)
 		return nil, err
 	}
+	log.LogVf("Resolved %s:%s to %s addr %+v", host, port, proto, dest)
 	return dest, nil
 }
 
 // UDPResolveDestination returns the UDP address of the "host:port" suitable for net.Dial.
 // nil and the error in case of errors.
 func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
-	if strings.HasPrefix(dest, "tcp://") {
-		err := fmt.Errorf("can't return a UDPAddre for TCP destination %q", dest)
-		log.Errf("UDPResolveDestination %s", err)
-		return nil, err
-	}
-	if strings.HasPrefix(dest, UDPPrefix) {
-		dest = dest[len(UDPPrefix):]
-		dest = strings.TrimSuffix(dest, "/")
-		log.Debugf("Removed udp:// prefix dest now %q", dest)
-	}
-	i := strings.LastIndex(dest, ":") // important so [::1]:port works
-	if i < 0 {
-		log.Errf("Destination '%s' is not host:port format", dest)
-		return nil, fmt.Errorf("destination '%s' is not host:port format", dest)
-	}
-	host := dest[0:i]
-	port := dest[i+1:]
-	return UDPResolve(host, port)
-}
-
-// UDPResolve returns the UDP address of the host,port suitable for net.Dial.
-// nil in case of errors.
-// TODO: this same as Resolve except for the address type and service resolution.
-func UDPResolve(host string, port string) (*net.UDPAddr, error) {
-	log.Debugf("UDPResolve() called with host=%s port=%s", host, port)
-	dest := &net.UDPAddr{}
-	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
-		log.Debugf("host %s looks like an IPv6, stripping []", host)
-		host = host[1 : len(host)-1]
-	}
-	isAddr := net.ParseIP(host)
-	var err error
-	if isAddr != nil {
-		log.Debugf("Host already an IP, will go to %s", isAddr)
-		dest.IP = isAddr
-	} else {
-		var addrs []net.IP
-		addrs, err = net.LookupIP(host)
-		if err != nil {
-			log.Errf("Unable to lookup '%s' : %v", host, err)
-			return nil, err
-		}
-		if len(addrs) > 1 && log.LogDebug() {
-			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
-		}
-		log.Debugf("UDP will go to %s", addrs[0])
-		dest.IP = addrs[0]
-	}
-	dest.Port, err = net.LookupPort("udp", port)
+	addr, err := ResolveDestination(dest, "udp://", "tcp://")
 	if err != nil {
-		log.Errf("Unable to resolve udp port '%s' : %v", port, err)
 		return nil, err
 	}
-	log.LogVf("Resolved %s:%s to udp addr %+v", host, port, dest)
-	return dest, nil
+	return &net.UDPAddr{IP: addr.IP, Port: addr.Port}, nil
 }
 
 // Copy is a debug version of io.Copy without the zero Copy optimizations.
@@ -464,7 +437,7 @@ func Proxy(port string, dest net.Addr) net.Addr {
 // ProxyToDestination opens a proxy from the listenPort (or addr:port or unix domain socket path) and forwards
 // all traffic to destination (host:port).
 func ProxyToDestination(listenPort string, destination string) net.Addr {
-	addr, _ := ResolveDestination(destination)
+	addr, _ := TCPResolveDestination(destination)
 	return Proxy(listenPort, addr)
 }
 
@@ -573,7 +546,7 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		return UDPNetCat(dest, in, out, stopOnEOF)
 	}
 	log.Infof("TCP NetCat to %s, stop on eof %v", dest, stopOnEOF)
-	a, err := ResolveDestination(dest)
+	a, err := TCPResolveDestination(dest)
 	if a == nil {
 		return err // already logged
 	}

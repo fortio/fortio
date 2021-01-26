@@ -125,7 +125,7 @@ func TestResolveDestination(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := fnet.ResolveDestination(tt.destination)
+			got, _ := fnet.TCPResolveDestination(tt.destination)
 			gotStr := ""
 			if got != nil {
 				gotStr = got.String()
@@ -171,7 +171,7 @@ func TestUDPResolveDestination(t *testing.T) {
 }
 
 func TestResolveDestinationMultipleIps(t *testing.T) {
-	addr, err := fnet.ResolveDestination("www.google.com:443")
+	addr, err := fnet.TCPResolveDestination("www.google.com:443")
 	t.Logf("Found google addr %+v err=%v", addr, err)
 	if addr == nil || err != nil {
 		t.Errorf("got nil address for google: %v", err)
@@ -420,7 +420,7 @@ func TestProxyErrors(t *testing.T) {
 }
 
 func TestResolveIpV6(t *testing.T) {
-	addr, err := fnet.Resolve("[::1]", "http")
+	addr, err := fnet.Resolve("[::1]", "http", "tcp")
 	addrStr := addr.String()
 	expected := "[::1]:80"
 	if addrStr != expected {
