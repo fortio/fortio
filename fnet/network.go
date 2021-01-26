@@ -256,7 +256,7 @@ func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
 // and the other as unexpected.
 func ResolveDestinationInternal(dest string, expected string, unexpected string) (*HostPortAddr, error) {
 	if strings.HasPrefix(dest, unexpected) {
-		err := fmt.Errorf("Expecting %s but got %s destination %q", expected, unexpected, dest)
+		err := fmt.Errorf("expecting %s but got %s destination %q", expected, unexpected, dest)
 		log.Errf("ResolveDestination %s", err)
 		return nil, err
 	}
