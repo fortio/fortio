@@ -630,7 +630,7 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		w.Done()
 	}(&wg, out, d)
 	wb, we := Copy(d, in)
-	d.SetReadDeadline(time.Now().Add(400 * time.Millisecond))
+	_ = d.SetReadDeadline(time.Now().Add(400 * time.Millisecond))
 	wg.Wait()
 	log.Infof("Read %d, Wrote %d bytes to UDP %v (re %v we %v)", rb, wb, a, re, we)
 	return err
