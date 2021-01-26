@@ -118,6 +118,7 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	return listener, lAddr
 }
 
+// UDPListen starts server on given port. (0 for dynamic port).
 func UDPListen(name string, port string) (*net.UDPConn, net.Addr) {
 	nPort := NormalizePort(port)
 	udpAddr, err := net.ResolveUDPAddr("udp", nPort)
@@ -214,6 +215,7 @@ func GetPort(lAddr net.Addr) string {
 	return lPort
 }
 
+// UDPPrefix is the prefix that given to NetCat switches to UDP from TCP(/unix domain) socket type.
 const UDPPrefix = "udp://"
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
@@ -355,7 +357,11 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			if !errors.Is(er, io.EOF) {
+			if os.IsTimeout(er) {
+				// return but not log as error (for UDPNetCat use case)
+				err = er
+				log.LogVf("copy: %+v -> %+v timeout/read error: %v", src, dst, er)
+			} else if !errors.Is(er, io.EOF) {
 				err = er
 				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
 			}
@@ -603,6 +609,7 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	return nil
 }
 
+// UDPNetCat handles UDP part of NetCat.
 func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	log.Infof("UDP NetCat to %s, stop on eof %v", dest, stopOnEOF)
 	a, err := UDPResolveDestination(dest)
@@ -614,12 +621,18 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 		log.Errf("Connection error to %q: %v", dest, err)
 		return err
 	}
-	go Copy(out, d) // nolint: errcheck // errors logged inside Copy()
-	log.LogVf("Will write to UDP %v from input (until eof)", a)
-	wb, err := Copy(d, in)
-	log.Infof("Wrote %d bytes to UDP %v", wb, a)
-	// give a chance for last packet to come back
-	time.Sleep(400 * time.Millisecond)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var rb int64
+	var re error
+	go func(w *sync.WaitGroup, dst io.Writer, src io.Reader) {
+		rb, re = Copy(dst, src)
+		w.Done()
+	}(&wg, out, d)
+	wb, we := Copy(d, in)
+	d.SetReadDeadline(time.Now().Add(400 * time.Millisecond))
+	wg.Wait()
+	log.Infof("Read %d, Wrote %d bytes to UDP %v (re %v we %v)", rb, wb, a, re, we)
 	return err
 }
 
