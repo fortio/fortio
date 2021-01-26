@@ -77,7 +77,7 @@ func usage(w io.Writer, msgs ...interface{}) {
 		"redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
 		"server), report (report only UI server), redirect (only the redirect server),",
 		"proxies (only the -M and -P configured proxies), grpcping (grpc client),",
-		"or curl (single URL debug), or nc (single tcp connection).",
+		"or curl (single URL debug), or nc (single tcp or udp:// connection).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
