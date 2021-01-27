@@ -117,6 +117,7 @@ func TestResolveDestination(t *testing.T) {
 		{"using udp://ip:portname", "udp://8.8.8.8:http", ""},
 		// Good cases:
 		{"using tcp://ip:portname", "tcp://8.8.8.8:http", "8.8.8.8:80"},
+		{"using tcp://ip:portname/", "tcp://8.8.8.8:http/", "8.8.8.8:80"},
 		{"using ip:portname", "8.8.8.8:http", "8.8.8.8:80"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
@@ -124,7 +125,7 @@ func TestResolveDestination(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := fnet.ResolveDestination(tt.destination)
+			got, _ := fnet.TCPResolveDestination(tt.destination)
 			gotStr := ""
 			if got != nil {
 				gotStr = got.String()
@@ -149,6 +150,7 @@ func TestUDPResolveDestination(t *testing.T) {
 		{"using tcp://ip:portname", "tcp://8.8.8.8:domain", ""},
 		// Good cases:
 		{"using udp://ip:portname", "udp://8.8.8.8:domain", "8.8.8.8:53"},
+		{"using udp://ip:portname/", "udp://8.8.8.8:domain/", "8.8.8.8:53"},
 		{"using ip:portname", "8.8.8.8:domain", "8.8.8.8:53"},
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
@@ -169,7 +171,7 @@ func TestUDPResolveDestination(t *testing.T) {
 }
 
 func TestResolveDestinationMultipleIps(t *testing.T) {
-	addr, err := fnet.ResolveDestination("www.google.com:443")
+	addr, err := fnet.TCPResolveDestination("www.google.com:443")
 	t.Logf("Found google addr %+v err=%v", addr, err)
 	if addr == nil || err != nil {
 		t.Errorf("got nil address for google: %v", err)
@@ -418,11 +420,33 @@ func TestProxyErrors(t *testing.T) {
 }
 
 func TestResolveIpV6(t *testing.T) {
-	addr, err := fnet.Resolve("[::1]", "http")
+	addr, err := fnet.ResolveByProto("[::1]", "http", "tcp")
 	addrStr := addr.String()
 	expected := "[::1]:80"
 	if addrStr != expected {
 		t.Errorf("Got '%s' instead of '%s': %v", addrStr, expected, err)
+	}
+}
+
+func TestResolveBW(t *testing.T) {
+	addr, err := fnet.Resolve("8.8.8.8", "zzzzzz")
+	if err == nil {
+		t.Errorf("should have errored out but got %v", addr)
+	}
+	addr, err = fnet.Resolve("8.8.4.4", "domain")
+	if err != nil {
+		t.Errorf("should have not errored out but got %v", err)
+	}
+	expecting := "8.8.4.4:53"
+	if addr.String() != expecting {
+		t.Errorf("expecting %q got %q", expecting, addr.String())
+	}
+	addr, err = fnet.ResolveDestination("8.8.4.4:domain")
+	if err != nil {
+		t.Errorf("should hav enot  errored out but got %v", err)
+	}
+	if addr.String() != expecting {
+		t.Errorf("expecting %q got %q", expecting, addr.String())
 	}
 }
 

@@ -20,7 +20,6 @@ import (
 	"io"
 	"net"
 	"sort"
-	"strings"
 	"time"
 
 	"fortio.org/fortio/fhttp"
@@ -108,8 +107,6 @@ func GeneratePayload(t int, i int64) []byte {
 func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 	c := TCPClient{}
 	d := o.Destination
-	d = strings.TrimPrefix(d, TCPURLPrefix)
-	d = strings.TrimSuffix(d, "/")
 	c.destination = d
 	tAddr, err := fnet.ResolveDestination(d)
 	if tAddr == nil {
