@@ -428,6 +428,30 @@ func TestResolveIpV6(t *testing.T) {
 	}
 }
 
+func TestResolveBW(t *testing.T) {
+	addr, err := fnet.Resolve("8.8.8.8", "zzzzzz")
+	if err == nil {
+		t.Errorf("should have errored out but got %v", addr)
+	}
+	addr, err = fnet.Resolve("8.8.4.4", "domain")
+	if err != nil {
+		t.Errorf("should have not errored out but got %v", err)
+	}
+	expecting := "8.8.4.4:53"
+	if addr.String() != expecting {
+		t.Errorf("expecting %q got %q", expecting, addr.String())
+
+	}
+	addr, err = fnet.ResolveDestination("8.8.4.4:domain")
+	if err != nil {
+		t.Errorf("should hav enot  errored out but got %v", err)
+	}
+	if addr.String() != expecting {
+		t.Errorf("expecting %q got %q", expecting, addr.String())
+
+	}
+}
+
 func TestJoinHostAndPort(t *testing.T) {
 	tests := []struct {
 		inputPort string
