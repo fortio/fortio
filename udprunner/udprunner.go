@@ -26,6 +26,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/tcprunner"
 )
 
 // TODO: this quite the search and replace udp->udp from tcprunner/ - refactor?
@@ -97,13 +98,6 @@ var (
 	errMismatch  = fmt.Errorf("read not echoing writes")
 )
 
-// Generates a 24 bytes unique payload for each runner thread and message sent.
-func GeneratePayload(t int, i int64) []byte {
-	// up to 9999 connections and 999 999 999 999 (999B) request
-	s := fmt.Sprintf("Fortio\n%04d\n%012d", t, i) // 6+2+4+12 = 24 bytes
-	return []byte(s)
-}
-
 // NewUDPClient creates and initialize and returns a client based on the UDPOptions.
 func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
 	c := UDPClient{}
@@ -117,7 +111,7 @@ func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
 	c.req = o.Payload
 	if len(c.req) == 0 { // len(nil) array is also valid and 0
 		c.doGenerate = true
-		c.req = GeneratePayload(0, 0)
+		c.req = tcprunner.GeneratePayload(0, 0)
 	}
 	c.buffer = make([]byte, len(c.req))
 	c.reqTimeout = o.ReqTimeout
@@ -161,7 +155,7 @@ func (c *UDPClient) Fetch() ([]byte, error) {
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	if c.doGenerate {
-		c.req = GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
+		c.req = tcprunner.GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
 	}
 	n, err := conn.Write(c.req)
 	c.bytesSent = c.bytesSent + int64(n)
