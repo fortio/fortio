@@ -28,7 +28,7 @@ import (
 	"fortio.org/fortio/periodic"
 )
 
-// TODO: this quite the search and replace tcp->udp from tcprunner/ - refactor?
+// TODO: this quite the search and replace udp->udp from tcprunner/ - refactor?
 
 type UDPResultMap map[string]int64
 
@@ -45,7 +45,7 @@ type RunnerResults struct {
 	aborter       *periodic.Aborter
 }
 
-// Run tests tcp request fetching. Main call being run at the target QPS.
+// Run tests udp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (udpstate *RunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
@@ -64,14 +64,14 @@ type UDPOptions struct {
 	ReqTimeout  time.Duration
 }
 
-// RunnerOptions includes the base RunnerOptions plus tcp specific
+// RunnerOptions includes the base RunnerOptions plus udp specific
 // options.
 type RunnerOptions struct {
 	periodic.RunnerOptions
 	UDPOptions // Need to call Init() to initialize
 }
 
-// UDPClient is the client used for tcp echo testing.
+// UDPClient is the client used for udp echo testing.
 type UDPClient struct {
 	buffer        []byte
 	req           []byte
@@ -88,7 +88,7 @@ type UDPClient struct {
 }
 
 var (
-	// UDPURLPrefix is the URL prefix for triggering tcp load.
+	// UDPURLPrefix is the URL prefix for triggering udp load.
 	UDPURLPrefix = "udp://"
 	// UDPStatusOK is the map key on success.
 	UDPStatusOK  = "OK"
@@ -208,18 +208,18 @@ func (c *UDPClient) Close() int {
 	log.Debugf("Closing %p: %s socket count %d", c, c.destination, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
-			log.Warnf("Error closing tcp client's socket: %v", err)
+			log.Warnf("Error closing udp client's socket: %v", err)
 		}
 		c.socket = nil
 	}
 	return c.socketCount
 }
 
-// RunUDPTest runs an tcp test and returns the aggregated stats.
+// RunUDPTest runs an udp test and returns the aggregated stats.
 // Some refactoring to avoid copy-pasta between the now 3 runners would be good.
 func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	o.RunType = "UDP"
-	log.Infof("Starting tcp test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
+	log.Infof("Starting udp test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
@@ -272,7 +272,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	_, _ = fmt.Fprintf(out, "Total Bytes sent: %d, received: %d\n", total.BytesSent, total.BytesReceived)
 	sort.Strings(keys)
 	for _, k := range keys {
-		_, _ = fmt.Fprintf(out, "tcp %s : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
+		_, _ = fmt.Fprintf(out, "udp %s : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
 	return &total, nil
 }
