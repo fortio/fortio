@@ -440,7 +440,6 @@ func TestResolveBW(t *testing.T) {
 	expecting := "8.8.4.4:53"
 	if addr.String() != expecting {
 		t.Errorf("expecting %q got %q", expecting, addr.String())
-
 	}
 	addr, err = fnet.ResolveDestination("8.8.4.4:domain")
 	if err != nil {
@@ -448,7 +447,6 @@ func TestResolveBW(t *testing.T) {
 	}
 	if addr.String() != expecting {
 		t.Errorf("expecting %q got %q", expecting, addr.String())
-
 	}
 }
 
