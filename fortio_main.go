@@ -36,6 +36,7 @@ import (
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
+	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 )
@@ -334,6 +335,7 @@ func fortioNC() {
 	}
 }
 
+// nolint: funlen // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
@@ -415,6 +417,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = tcprunner.RunTCPTest(&o)
+	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
+		o := udprunner.RunnerOptions{
+			RunnerOptions: ro,
+		}
+		o.ReqTimeout = httpOpts.HTTPReqTimeOut
+		o.Destination = url
+		o.Payload = httpOpts.Payload
+		res, err = udprunner.RunUDPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpOpts,

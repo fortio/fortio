@@ -48,6 +48,7 @@ import (
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
+	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/version"
 )
 
@@ -324,6 +325,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			o.Destination = url
 			o.Payload = httpopts.Payload
 			res, err = tcprunner.RunTCPTest(&o)
+		} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
+			// TODO: copy pasta from fortio_main
+			o := udprunner.RunnerOptions{
+				RunnerOptions: ro,
+			}
+			o.ReqTimeout = httpopts.HTTPReqTimeOut
+			o.Destination = url
+			o.Payload = httpopts.Payload
+			res, err = udprunner.RunUDPTest(&o)
 		} else {
 			o := fhttp.HTTPRunnerOptions{
 				HTTPOptions:        *httpopts,
