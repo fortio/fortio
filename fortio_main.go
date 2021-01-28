@@ -174,6 +174,7 @@ var (
 	// Mirror origin global setting (should be per destination eventually).
 	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
 	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
+	udpTimeoutFlag   = flag.Duration("udp-timeout", udprunner.UDPTimeOutDefaultValue, "Udp timeout")
 )
 
 // nolint: funlen // well yes it's fairly big and lotsa ifs.
@@ -421,7 +422,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := udprunner.RunnerOptions{
 			RunnerOptions: ro,
 		}
-		o.ReqTimeout = httpOpts.HTTPReqTimeOut
+		o.ReqTimeout = *udpTimeoutFlag
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = udprunner.RunUDPTest(&o)

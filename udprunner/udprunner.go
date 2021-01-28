@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"time"
 
-	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
@@ -30,6 +30,8 @@ import (
 )
 
 // TODO: this quite the search and replace udp->udp from tcprunner/ - refactor?
+
+var UDPTimeOutDefaultValue = 750 * time.Millisecond
 
 type UDPResultMap map[string]int64
 
@@ -93,6 +95,7 @@ var (
 	UDPURLPrefix = "udp://"
 	// UDPStatusOK is the map key on success.
 	UDPStatusOK  = "OK"
+	errTimeout   = fmt.Errorf("timeout")
 	errShortRead = fmt.Errorf("short read")
 	errLongRead  = fmt.Errorf("bug: long read")
 	errMismatch  = fmt.Errorf("read not echoing writes")
@@ -116,12 +119,12 @@ func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
 	c.buffer = make([]byte, len(c.req))
 	c.reqTimeout = o.ReqTimeout
 	if o.ReqTimeout == 0 {
-		log.Debugf("Request timeout not set, using default %v", fhttp.HTTPReqTimeOutDefaultValue)
-		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+		log.Debugf("Request timeout not set, using default %v", UDPTimeOutDefaultValue)
+		c.reqTimeout = UDPTimeOutDefaultValue
 	}
 	if c.reqTimeout < 0 {
-		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, fhttp.HTTPReqTimeOutDefaultValue)
-		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, UDPTimeOutDefaultValue)
+		c.reqTimeout = UDPTimeOutDefaultValue
 	}
 	return &c, nil
 }
@@ -181,6 +184,9 @@ func (c *UDPClient) Fetch() ([]byte, error) {
 	c.bytesReceived = c.bytesReceived + int64(n)
 	if log.LogDebug() {
 		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
+	}
+	if os.IsTimeout(err) {
+		return c.buffer[:n], errTimeout
 	}
 	if n < len(c.req) {
 		return c.buffer[:n], errShortRead

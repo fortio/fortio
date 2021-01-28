@@ -57,7 +57,7 @@
     <br />
     Payload:<br /><textarea name="payload" rows="5" cols="75"></textarea><br />
     Load using:<br />
-    http: <input type="radio" name="runner" value="http" checked/>
+    tcp/udp/http: <input type="radio" name="runner" value="http" checked/>
     (https insecure:<input type="checkbox" name="https-insecure" />,
     standard go client instead of fastclient:<input type="checkbox" name="stdclient"/>,
     resolve: <input type="text" name="resolve" size="12" value="" />)
@@ -68,6 +68,7 @@
     ping delay: <input type="text" name="grpc-ping-delay" size="6" value="0" />) <br />
     JSON output:<input type="checkbox" name="json" />,
     Save output:<input type="checkbox" name="save" checked /> <br />
+    Timeout: <input type="text" name="timeout" size="12" value="750ms" />) <br />
     <input type="submit" name="load" value="Start"/>
   </div>
 </form>

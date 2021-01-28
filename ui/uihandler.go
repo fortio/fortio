@@ -168,6 +168,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	stdClient := (r.FormValue("stdclient") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
+	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
+	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
 		dur = -1
@@ -220,6 +222,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	httpopts.HTTPReqTimeOut = timeout
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
@@ -315,13 +318,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if grpcSecure {
 				o.Destination = fhttp.AddHTTPS(url)
 			}
+			// TODO: ReqTimeout: timeout
 			res, err = fgrpc.RunGRPCTest(&o)
 		} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
 			// TODO: copy pasta from fortio_main
 			o := tcprunner.RunnerOptions{
 				RunnerOptions: ro,
 			}
-			o.ReqTimeout = httpopts.HTTPReqTimeOut
+			o.ReqTimeout = timeout
 			o.Destination = url
 			o.Payload = httpopts.Payload
 			res, err = tcprunner.RunTCPTest(&o)
@@ -330,7 +334,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			o := udprunner.RunnerOptions{
 				RunnerOptions: ro,
 			}
-			o.ReqTimeout = httpopts.HTTPReqTimeOut
+			o.ReqTimeout = timeout
 			o.Destination = url
 			o.Payload = httpopts.Payload
 			res, err = udprunner.RunUDPTest(&o)
