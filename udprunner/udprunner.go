@@ -158,7 +158,8 @@ func (c *UDPClient) Fetch() ([]byte, error) {
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	if c.doGenerate {
-		c.req = tcprunner.GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
+		// TODO write directly in buffer to avoid generating garbage for GC to clean
+		c.req = tcprunner.GeneratePayload(c.connID, c.messageCount)
 	}
 	n, err := conn.Write(c.req)
 	c.bytesSent = c.bytesSent + int64(n)
