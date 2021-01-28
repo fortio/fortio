@@ -1,4 +1,4 @@
-// Copyright 2020 Fortio Authors
+// Copyright 2021 Fortio Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,66 +12,70 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tcprunner
+package udprunner
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"time"
 
-	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/tcprunner"
 )
 
-type TCPResultMap map[string]int64
+// TODO: this quite the search and replace udp->udp from tcprunner/ - refactor?
 
-// RunnerResults is the aggregated result of an TCPRunner.
+var UDPTimeOutDefaultValue = 750 * time.Millisecond
+
+type UDPResultMap map[string]int64
+
+// RunnerResults is the aggregated result of an UDPRunner.
 // Also is the internal type used per thread/goroutine.
 type RunnerResults struct {
 	periodic.RunnerResults
-	TCPOptions
-	RetCodes      TCPResultMap
+	UDPOptions
+	RetCodes      UDPResultMap
 	SocketCount   int
 	BytesSent     int64
 	BytesReceived int64
-	client        *TCPClient
+	client        *UDPClient
 	aborter       *periodic.Aborter
 }
 
-// Run tests tcp request fetching. Main call being run at the target QPS.
+// Run tests udp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (tcpstate *RunnerResults) Run(t int) {
+func (udpstate *RunnerResults) Run(t int) {
 	log.Debugf("Calling in %d", t)
-	_, err := tcpstate.client.Fetch()
+	_, err := udpstate.client.Fetch()
 	if err != nil {
-		tcpstate.RetCodes[err.Error()]++
+		udpstate.RetCodes[err.Error()]++
 	} else {
-		tcpstate.RetCodes[TCPStatusOK]++
+		udpstate.RetCodes[UDPStatusOK]++
 	}
 }
 
-// TCPOptions are options to the TCPClient.
-type TCPOptions struct {
-	Destination      string
-	Payload          []byte // what to send (and check)
-	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
-	ReqTimeout       time.Duration
+// UDPOptions are options to the UDPClient.
+type UDPOptions struct {
+	Destination string
+	Payload     []byte // what to send (and check)
+	ReqTimeout  time.Duration
 }
 
-// RunnerOptions includes the base RunnerOptions plus tcp specific
+// RunnerOptions includes the base RunnerOptions plus udp specific
 // options.
 type RunnerOptions struct {
 	periodic.RunnerOptions
-	TCPOptions // Need to call Init() to initialize
+	UDPOptions // Need to call Init() to initialize
 }
 
-// TCPClient is the client used for tcp echo testing.
-type TCPClient struct {
+// UDPClient is the client used for udp echo testing.
+type UDPClient struct {
 	buffer        []byte
 	req           []byte
 	dest          net.Addr
@@ -87,29 +91,22 @@ type TCPClient struct {
 }
 
 var (
-	// TCPURLPrefix is the URL prefix for triggering tcp load.
-	TCPURLPrefix = "tcp://"
-	// TCPStatusOK is the map key on success.
-	TCPStatusOK  = "OK"
+	// UDPURLPrefix is the URL prefix for triggering udp load.
+	UDPURLPrefix = "udp://"
+	// UDPStatusOK is the map key on success.
+	UDPStatusOK  = "OK"
+	errTimeout   = fmt.Errorf("timeout")
 	errShortRead = fmt.Errorf("short read")
 	errLongRead  = fmt.Errorf("bug: long read")
 	errMismatch  = fmt.Errorf("read not echoing writes")
 )
 
-// GeneratePayload generates a default 24 bytes unique payload for each runner thread and message sent
-// when no other payload is set.
-func GeneratePayload(t int, i int64) []byte {
-	// up to 9999 connections and 999 999 999 999 (999B) request
-	s := fmt.Sprintf("Fortio\n%04d\n%012d", t, i) // 6+2+4+12 = 24 bytes
-	return []byte(s)
-}
-
-// NewTCPClient creates and initialize and returns a client based on the TCPOptions.
-func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
-	c := TCPClient{}
+// NewUDPClient creates and initialize and returns a client based on the UDPOptions.
+func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
+	c := UDPClient{}
 	d := o.Destination
 	c.destination = d
-	tAddr, err := fnet.ResolveDestination(d)
+	tAddr, err := fnet.UDPResolveDestination(d)
 	if tAddr == nil {
 		return nil, err
 	}
@@ -117,22 +114,22 @@ func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 	c.req = o.Payload
 	if len(c.req) == 0 { // len(nil) array is also valid and 0
 		c.doGenerate = true
-		c.req = GeneratePayload(0, 0)
+		c.req = tcprunner.GeneratePayload(0, 0)
 	}
 	c.buffer = make([]byte, len(c.req))
 	c.reqTimeout = o.ReqTimeout
 	if o.ReqTimeout == 0 {
-		log.Debugf("Request timeout not set, using default %v", fhttp.HTTPReqTimeOutDefaultValue)
-		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+		log.Debugf("Request timeout not set, using default %v", UDPTimeOutDefaultValue)
+		c.reqTimeout = UDPTimeOutDefaultValue
 	}
 	if c.reqTimeout < 0 {
-		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, fhttp.HTTPReqTimeOutDefaultValue)
-		c.reqTimeout = fhttp.HTTPReqTimeOutDefaultValue
+		log.Warnf("Invalid timeout %v, setting to %v", c.reqTimeout, UDPTimeOutDefaultValue)
+		c.reqTimeout = UDPTimeOutDefaultValue
 	}
 	return &c, nil
 }
 
-func (c *TCPClient) connect() (net.Conn, error) {
+func (c *UDPClient) connect() (net.Conn, error) {
 	c.socketCount++
 	socket, err := net.Dial(c.dest.Network(), c.dest.String())
 	if err != nil {
@@ -143,7 +140,7 @@ func (c *TCPClient) connect() (net.Conn, error) {
 	return socket, nil
 }
 
-func (c *TCPClient) Fetch() ([]byte, error) {
+func (c *UDPClient) Fetch() ([]byte, error) {
 	// Connect or reuse existing socket:
 	conn := c.socket
 	c.messageCount++
@@ -161,7 +158,8 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	if c.doGenerate {
-		c.req = GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
+		// TODO write directly in buffer to avoid generating garbage for GC to clean
+		c.req = tcprunner.GeneratePayload(c.connID, c.messageCount)
 	}
 	n, err := conn.Write(c.req)
 	c.bytesSent = c.bytesSent + int64(n)
@@ -188,6 +186,9 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	if log.LogDebug() {
 		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
 	}
+	if os.IsTimeout(err) {
+		return c.buffer[:n], errTimeout
+	}
 	if n < len(c.req) {
 		return c.buffer[:n], errShortRead
 	}
@@ -204,65 +205,65 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 }
 
 // Close closes the last connection and returns the total number of sockets used for the run.
-func (c *TCPClient) Close() int {
+func (c *UDPClient) Close() int {
 	log.Debugf("Closing %p: %s socket count %d", c, c.destination, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
-			log.Warnf("Error closing tcp client's socket: %v", err)
+			log.Warnf("Error closing udp client's socket: %v", err)
 		}
 		c.socket = nil
 	}
 	return c.socketCount
 }
 
-// RunTCPTest runs an tcp test and returns the aggregated stats.
+// RunUDPTest runs an udp test and returns the aggregated stats.
 // Some refactoring to avoid copy-pasta between the now 3 runners would be good.
-func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
-	o.RunType = "TCP"
-	log.Infof("Starting tcp test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
+func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
+	o.RunType = "UDP"
+	log.Infof("Starting udp test for %s with %d threads at %.1f qps", o.Destination, o.NumThreads, o.QPS)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
-	o.TCPOptions.Destination = o.Destination
+	o.UDPOptions.Destination = o.Destination
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := RunnerResults{
 		aborter:  r.Options().Stop,
-		RetCodes: make(TCPResultMap),
+		RetCodes: make(UDPResultMap),
 	}
 	total.Destination = o.Destination
-	tcpstate := make([]RunnerResults, numThreads)
+	udpstate := make([]RunnerResults, numThreads)
 	var err error
 	for i := 0; i < numThreads; i++ {
-		r.Options().Runners[i] = &tcpstate[i]
+		r.Options().Runners[i] = &udpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
-		tcpstate[i].client, err = NewTCPClient(&o.TCPOptions)
-		if tcpstate[i].client == nil {
+		udpstate[i].client, err = NewUDPClient(&o.UDPOptions)
+		if udpstate[i].client == nil {
 			return nil, fmt.Errorf("unable to create client %d for %s: %w", i, o.Destination, err)
 		}
-		tcpstate[i].client.connID = i
+		udpstate[i].client.connID = i
 		if o.Exactly <= 0 {
-			data, err := tcpstate[i].client.Fetch()
+			data, err := udpstate[i].client.Fetch()
 			if i == 0 && log.LogVerbose() {
 				log.LogVf("first hit of %s: err %v, received %d: %q", o.Destination, err, len(data), data)
 			}
 		}
 		// Setup the stats for each 'thread'
-		tcpstate[i].aborter = total.aborter
-		tcpstate[i].RetCodes = make(TCPResultMap)
+		udpstate[i].aborter = total.aborter
+		udpstate[i].RetCodes = make(UDPResultMap)
 	}
 	total.RunnerResults = r.Run()
 	// Numthreads may have reduced but it should be ok to accumulate 0s from
 	// unused ones. We also must cleanup all the created clients.
 	keys := []string{}
 	for i := 0; i < numThreads; i++ {
-		total.SocketCount += tcpstate[i].client.Close()
-		total.BytesReceived += tcpstate[i].client.bytesReceived
-		total.BytesSent += tcpstate[i].client.bytesSent
-		for k := range tcpstate[i].RetCodes {
+		total.SocketCount += udpstate[i].client.Close()
+		total.BytesReceived += udpstate[i].client.bytesReceived
+		total.BytesSent += udpstate[i].client.bytesSent
+		for k := range udpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {
 				keys = append(keys, k)
 			}
-			total.RetCodes[k] += tcpstate[i].RetCodes[k]
+			total.RetCodes[k] += udpstate[i].RetCodes[k]
 		}
 	}
 	// Cleanup state:
@@ -272,7 +273,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	_, _ = fmt.Fprintf(out, "Total Bytes sent: %d, received: %d\n", total.BytesSent, total.BytesReceived)
 	sort.Strings(keys)
 	for _, k := range keys {
-		_, _ = fmt.Fprintf(out, "tcp %s : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
+		_, _ = fmt.Fprintf(out, "udp %s : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
 	return &total, nil
 }

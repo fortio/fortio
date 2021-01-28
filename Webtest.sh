@@ -19,13 +19,14 @@ FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1.8 (!)
 LOGLEVEL=info # change to debug to debug
 MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
+TIMEOUT=10s # need to be higher than test duration done through fetch
 CERT=/etc/ssl/certs/ca-certificates.crt
 TEST_CERT_VOL=/etc/ssl/certs/fortio
 DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
 DOCKERSECVOLNAME=fortio_certs
 FORTIO_BIN_PATH=fortio # /usr/bin/fortio is the full path but isn't needed
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
 function cleanup {
   set +e # errors are ok during cleanup
 #  docker logs $DOCKERID # uncomment to debug

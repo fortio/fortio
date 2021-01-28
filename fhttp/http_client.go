@@ -158,8 +158,8 @@ var userAgent = "fortio.org/fortio-" + version.Short()
 
 const (
 	retcodeOffset = len("HTTP/1.X ")
-	// HTTPReqTimeOutDefaultValue is the default timeout value. 15s.
-	HTTPReqTimeOutDefaultValue = 15 * time.Second
+	// HTTPReqTimeOutDefaultValue is the default timeout value. 3s.
+	HTTPReqTimeOutDefaultValue = 3 * time.Second
 )
 
 // HTTPOptions holds the common options of both http clients and the headers.

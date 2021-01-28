@@ -36,6 +36,7 @@ import (
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
+	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 )
@@ -173,6 +174,7 @@ var (
 	// Mirror origin global setting (should be per destination eventually).
 	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
 	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
+	udpTimeoutFlag   = flag.Duration("udp-timeout", udprunner.UDPTimeOutDefaultValue, "Udp timeout")
 )
 
 // nolint: funlen // well yes it's fairly big and lotsa ifs.
@@ -334,6 +336,7 @@ func fortioNC() {
 	}
 }
 
+// nolint: funlen // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
@@ -415,6 +418,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = tcprunner.RunTCPTest(&o)
+	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
+		o := udprunner.RunnerOptions{
+			RunnerOptions: ro,
+		}
+		o.ReqTimeout = *udpTimeoutFlag
+		o.Destination = url
+		o.Payload = httpOpts.Payload
+		res, err = udprunner.RunUDPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpOpts,
