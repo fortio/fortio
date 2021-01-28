@@ -126,8 +126,7 @@ DATA_DIR := .
 OFFICIAL_BIN := ../fortio.bin
 GOOS := 
 GO_BIN := go
-GIT_STATUS ?= $(strip $(shell git status --porcelain | wc -l))
-GIT_TAG ?= $(shell git describe --tags --match 'v*')
+GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
 GIT_SHA ?= $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
@@ -144,8 +143,7 @@ $(BUILD_DIR)/build-info.txt:
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
   -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
-  -X fortio.org/fortio/version.tag=$(GIT_TAG) \
-  -X fortio.org/fortio/version.gitstatus=$(GIT_STATUS)" | tee $@
+  -X fortio.org/fortio/version.version=$(GIT_TAG)" | tee $@
 
 .PHONY: official-build official-build-version official-build-clean
 

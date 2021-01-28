@@ -15,45 +15,22 @@
 // Package version for fortio holds version information and build information.
 package version // import "fortio.org/fortio/version"
 import (
-	"fmt"
 	"runtime"
 
 	"fortio.org/fortio/log"
 )
 
 const (
-	major = 1
-	minor = 14
-	patch = 0
-
 	debug = false // turn on to debug init()
 )
 
 var (
 	// The following are set by Dockerfile during link time.
-	tag       = "n/a"
 	buildInfo = "unknown"
-	// Number of lines in git status --porcelain; 0 means clean.
-	gitstatus = "0" // buildInfo default is unknown so no need to add -dirty
+	version   = "dev"
 	// computed in init().
-	version     = ""
 	longVersion = ""
 )
-
-// Major returns the numerical major version number (first digit of version.Short()).
-func Major() int {
-	return major
-}
-
-// Minor returns the numerical minor version number (second digit of version.Short()).
-func Minor() int {
-	return minor
-}
-
-// Patch returns the numerical patch level (third digit of version.Short()).
-func Patch() int {
-	return patch
-}
 
 // Short returns the 3 digit short version string Major.Minor.Patch[-pre]
 // version.Short() is the overall project version (used to version json
@@ -77,18 +54,6 @@ func Long() string {
 func init() { // nolint:gochecknoinits //we do need an init for this
 	if debug {
 		log.SetLogLevel(log.Debug)
-	}
-	version = fmt.Sprintf("%d.%d.%d", major, minor, patch)
-	clean := (gitstatus == "0")
-	// The docker build will pass the git tag to the build, if it is clean
-	// from a tag it will look like v0.7.0
-	if tag != "v"+version || !clean {
-		log.Debugf("tag is %v, clean is %v marking as pre release", tag, clean)
-		version += "-pre"
-	}
-	if !clean {
-		buildInfo += "-dirty"
-		log.Debugf("gitstatus is %q, marking buildinfo as dirty: %v", gitstatus, buildInfo)
 	}
 	longVersion = version + " " + buildInfo + " " + runtime.Version()
 }
