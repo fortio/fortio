@@ -127,9 +127,14 @@ OFFICIAL_BIN := ../fortio.bin
 GOOS := 
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
+DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 GIT_SHA ?= $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
+
+debug-tags:
+	@echo "GIT_TAG=$(GIT_TAG)"
+	@echo "DIST_VERSION=$(DIST_VERSION)"
 
 # Putting spaces in linker replaced variables is hard but does work.
 # This sets up the static directory outside of the go source tree and
@@ -143,7 +148,7 @@ $(BUILD_DIR)/build-info.txt:
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
   -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
-  -X fortio.org/fortio/version.version=$(GIT_TAG)" | tee $@
+  -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
 
 .PHONY: official-build official-build-version official-build-clean
 
@@ -159,14 +164,12 @@ official-build-clean:
 
 # Create a complete source tree with naming matching debian package conventions
 TAR ?= tar # on macos need gtar to get --owner
-DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 
 .PHONY: dist dist-sign distclean
 
 release/Makefile: release/Makefile.dist
 	echo "GIT_TAG := $(GIT_TAG)" > $@
-	echo "GIT_STATUS := $(GIT_STATUS)" >> $@
 	echo "GIT_SHA := $(GIT_SHA)" >> $@
 	cat $< >> $@
 
