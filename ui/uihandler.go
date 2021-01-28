@@ -216,13 +216,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		uiRunMapMutex.Unlock()
 		log.Infof("New run id %d", runid)
 	}
-	httpopts := fhttp.NewHTTPOptions(url)
+	httpopts := &fhttp.HTTPOptions{}
+	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
+	httpopts = httpopts.Init(url)
 	defaultHeaders := httpopts.AllHeaders()
 	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
-	httpopts.HTTPReqTimeOut = timeout
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
