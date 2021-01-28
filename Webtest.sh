@@ -42,7 +42,7 @@ set -o pipefail
 docker ps
 BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
-CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
+CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL -timeout $TIMEOUT"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://www.google.com/robots.txt > /dev/null
 
