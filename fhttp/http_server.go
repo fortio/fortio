@@ -60,8 +60,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if !hasQuestionMark && len(defaultParams) > 0 {
 		newQS := r.RequestURI + "?" + defaultParams
 		log.LogVf("Adding default base query string %q to %v trying %q", defaultParams, r.URL, newQS)
-		nr := http.Request{}
-		nr = *r
+		nr := *r
 		var err error
 		nr.URL, err = url.ParseRequestURI(newQS)
 		if err != nil {

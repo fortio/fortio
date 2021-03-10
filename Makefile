@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v31
+BUILD_IMAGE_TAG := v32
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -60,6 +60,11 @@ lint:
 	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
 		"cd /go/src/fortio.org/fortio \
 		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
+
+docker-test:
+	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
+		"cd /go/src/fortio.org/fortio \
+		&& time make test"
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.
