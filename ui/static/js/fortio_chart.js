@@ -14,7 +14,7 @@
 
 // TODO: object-ify
 
-var linearXAxe = {
+const linearXAxe = {
   type: 'linear',
   scaleLabel: {
     display: true,
@@ -25,20 +25,20 @@ var linearXAxe = {
     }
   }
 }
-var logXAxe = {
+const logXAxe = {
   type: 'logarithmic',
   scaleLabel: {
     display: true,
     labelString: 'Response time in ms (log scale)'
   },
   ticks: {
-        // min: dataH[0].x, // newer chart.js are ok with 0 on x axis too
+    // min: dataH[0].x, // newer chart.js are ok with 0 on x axis too
     callback: function (tick, index, ticks) {
       return tick.toLocaleString()
     }
   }
 }
-var linearYAxe = {
+const linearYAxe = {
   id: 'H',
   type: 'linear',
   ticks: {
@@ -49,13 +49,13 @@ var linearYAxe = {
     labelString: 'Count'
   }
 }
-var logYAxe = {
+const logYAxe = {
   id: 'H',
   type: 'logarithmic',
   display: true,
   ticks: {
-        // min: 1, // log mode works even with 0s
-        // Needed to not get scientific notation display:
+    // min: 1, // log mode works even with 0s
+    // Needed to not get scientific notation display:
     callback: function (tick, index, ticks) {
       return tick.toString()
     }
@@ -66,12 +66,12 @@ var logYAxe = {
   }
 }
 
-var chart = {}
-var overlayChart = {}
-var mchart = {}
+let chart = {}
+let overlayChart = {}
+let mchart = {}
 
 function myRound (v, digits = 6) {
-  var p = Math.pow(10, digits)
+  const p = Math.pow(10, digits)
   return Math.round(v * p) / p
 }
 
@@ -80,34 +80,34 @@ function pad (n) {
 }
 
 function formatDate (dStr) {
-  var d = new Date(dStr)
+  const d = new Date(dStr)
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
         pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
 }
 
 function makeTitle (res) {
-  var title = []
+  const title = []
   if (res.Labels !== '') {
     if (res.URL) { // http results
-        title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
+      title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
     } else { // grpc results
-        title.push(res.Labels + ' - ' + res.Destination + ' - ' + formatDate(res.StartTime))
+      title.push(res.Labels + ' - ' + res.Destination + ' - ' + formatDate(res.StartTime))
     }
   }
-  var percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
+  let percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
   if (res.DurationHistogram.Percentiles) {
-    for (var i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
-      var p = res.DurationHistogram.Percentiles[i]
+    for (let i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
+      const p = res.DurationHistogram.Percentiles[i]
       percStr += ', p' + p.Percentile + ' ' + myRound(1000 * p.Value, 2) + ' ms'
     }
   }
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
-  var statusOk = res.RetCodes[200]
+  let statusOk = res.RetCodes[200]
   if (!statusOk) { // grpc or tcp results
-    statusOk = res.RetCodes["SERVING"] || res.RetCodes["OK"]
+    statusOk = res.RetCodes.SERVING || res.RetCodes.OK
   }
-  var total = res.DurationHistogram.Count
-  var errStr = 'no error'
+  const total = res.DurationHistogram.Count
+  let errStr = 'no error'
   if (statusOk !== total) {
     if (statusOk) {
       errStr = myRound(100.0 * (total - statusOk) / total, 2) + '% errors'
@@ -117,23 +117,23 @@ function makeTitle (res) {
   }
   title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
         myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), jitter: ' + 
-		res.Jitter + ", " + errStr)
+        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), jitter: ' +
+  res.Jitter + ', ' + errStr)
   title.push(percStr)
   return title
 }
 
 function fortioResultToJsChartData (res) {
-  var dataP = [{
+  const dataP = [{
     x: 0.0,
     y: 0.0
   }]
-  var len = res.DurationHistogram.Data.length
-  var prevX = 0.0
-  var prevY = 0.0
-  for (var i = 0; i < len; i++) {
-    var it = res.DurationHistogram.Data[i]
-    var x = myRound(1000.0 * it.Start)
+  const len = res.DurationHistogram.Data.length
+  let prevX = 0.0
+  let prevY = 0.0
+  for (let i = 0; i < len; i++) {
+    const it = res.DurationHistogram.Data[i]
+    let x = myRound(1000.0 * it.Start)
     if (i === 0) {
       // Extra point, 1/N at min itself
       dataP.push({
@@ -149,7 +149,7 @@ function fortioResultToJsChartData (res) {
       }
     }
     x = myRound(1000.0 * it.End)
-    var y = myRound(it.Percent, 3)
+    const y = myRound(it.Percent, 3)
     dataP.push({
       x: x,
       y: y
@@ -157,12 +157,12 @@ function fortioResultToJsChartData (res) {
     prevX = x
     prevY = y
   }
-  var dataH = []
-  var prev = 1000.0 * res.DurationHistogram.Data[0].Start
-  for (i = 0; i < len; i++) {
-    it = res.DurationHistogram.Data[i]
-    var startX = 1000.0 * it.Start
-    var endX = 1000.0 * it.End
+  const dataH = []
+  let prev = 1000.0 * res.DurationHistogram.Data[0].Start
+  for (let i = 0; i < len; i++) {
+    const it = res.DurationHistogram.Data[i]
+    const startX = 1000.0 * it.Start
+    const endX = 1000.0 * it.End
     if (startX !== prev) {
       dataH.push({
         x: myRound(prev),
@@ -206,20 +206,20 @@ function makeOverlayChartTitle (titleA, titleB) {
   return [
     'A: ' + titleA[0], titleA[1], // Skip 3rd line.
     '',
-    'B: ' + titleB[0], titleB[1], // Skip 3rd line.
+    'B: ' + titleB[0], titleB[1] // Skip 3rd line.
   ]
 }
 
 function makeOverlayChart (dataA, dataB) {
-  var chartEl = document.getElementById('chart1')
+  const chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(overlayChart).length !== 0) {
     return
   }
   deleteSingleChart()
   deleteMultiChart()
-  var ctx = chartEl.getContext('2d')
-  var title = makeOverlayChartTitle(dataA.title, dataB.title)
+  const ctx = chartEl.getContext('2d')
+  const title = makeOverlayChartTitle(dataA.title, dataB.title)
   overlayChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -286,7 +286,7 @@ function makeOverlayChart (dataA, dataB) {
             labelString: '%'
           }
         },
-          linearYAxe
+        linearYAxe
         ]
       }
     }
@@ -295,13 +295,13 @@ function makeOverlayChart (dataA, dataB) {
 }
 
 function makeChart (data) {
-  var chartEl = document.getElementById('chart1')
+  const chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(chart).length === 0) {
     deleteOverlayChart()
     deleteMultiChart()
-      // Creation (first or switch) time
-    var ctx = chartEl.getContext('2d')
+    // Creation (first or switch) time
+    const ctx = chartEl.getContext('2d')
     chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -351,12 +351,12 @@ function makeChart (data) {
               labelString: '%'
             }
           },
-            linearYAxe
+          linearYAxe
           ]
         }
       }
     })
-      // TODO may need updateChart() if we persist settings even the first time
+    // TODO may need updateChart() if we persist settings even the first time
   } else {
     chart.data.datasets[0].data = data.dataP
     chart.data.datasets[1].data = data.dataH
@@ -366,22 +366,22 @@ function makeChart (data) {
 }
 
 function getUpdateForm () {
-  var form = document.getElementById('updtForm')
-  var xMin = form.xmin.value.trim()
-  var xMax = form.xmax.value.trim()
-  var xIsLogarithmic = form.xlog.checked
-  var yIsLogarithmic = form.ylog.checked
+  const form = document.getElementById('updtForm')
+  const xMin = form.xmin.value.trim()
+  const xMax = form.xmax.value.trim()
+  const xIsLogarithmic = form.xlog.checked
+  const yIsLogarithmic = form.ylog.checked
   return { xMin, xMax, xIsLogarithmic, yIsLogarithmic }
 }
 
 function getSelectedResults () {
   // Undefined if on "graph-only" page
-  var select = document.getElementById('files')
-  var selectedResults
+  const select = document.getElementById('files')
+  let selectedResults
   if (select) {
-    var selectedOptions = select.selectedOptions
+    const selectedOptions = select.selectedOptions
     selectedResults = []
-    for (var option of selectedOptions) {
+    for (const option of selectedOptions) {
       selectedResults.push(option.text)
     }
   } else {
@@ -391,17 +391,17 @@ function getSelectedResults () {
 }
 
 function updateQueryString () {
-  var location = document.location
-  var params = new URLSearchParams(location.search)
-  var form = getUpdateForm()
+  const location = document.location
+  const params = new URLSearchParams(location.search)
+  const form = getUpdateForm()
   params.set('xMin', form.xMin)
   params.set('xMax', form.xMax)
   params.set('xLog', form.xIsLogarithmic)
   params.set('yLog', form.yIsLogarithmic)
-  var selectedResults = getSelectedResults()
+  const selectedResults = getSelectedResults()
   params.delete('sel')
   if (selectedResults) {
-    for (var result of selectedResults) {
+    for (const result of selectedResults) {
       params.append('sel', result)
     }
   }
@@ -409,22 +409,22 @@ function updateQueryString () {
 }
 
 function updateChartOptions (chart) {
-  var form = getUpdateForm()
-  var scales = chart.config.options.scales
-  var newXMin = parseFloat(form.xMin)
-  var newXAxis = form.xIsLogarithmic ? logXAxe : linearXAxe
-  var newYAxis = form.yIsLogarithmic ? logYAxe : linearYAxe
+  const form = getUpdateForm()
+  const scales = chart.config.options.scales
+  const newXMin = parseFloat(form.xMin)
+  const newXAxis = form.xIsLogarithmic ? logXAxe : linearXAxe
+  const newYAxis = form.yIsLogarithmic ? logYAxe : linearYAxe
   chart.config.options.scales = {
     xAxes: [newXAxis],
     yAxes: [scales.yAxes[0], newYAxis]
   }
   chart.update() // needed for scales.xAxes[0] to exist
-  var newNewXAxis = chart.config.options.scales.xAxes[0]
+  const newNewXAxis = chart.config.options.scales.xAxes[0]
   newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
-  var formXMax = form.xMax
-  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max' ?
-      undefined :
-      parseFloat(formXMax)
+  const formXMax = form.xMax
+  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max'
+    ? undefined
+    : parseFloat(formXMax)
   chart.update()
 }
 
@@ -433,7 +433,7 @@ function objHasProps (obj) {
 }
 
 function getCurrentChart () {
-  var currentChart
+  let currentChart
   if (objHasProps(chart)) {
     currentChart = chart
   } else if (objHasProps(overlayChart)) {
@@ -446,17 +446,17 @@ function getCurrentChart () {
   return currentChart
 }
 
-var timeoutID = 0
+let timeoutID = 0
 function updateChart (chart = getCurrentChart()) {
   updateChartOptions(chart)
   if (timeoutID > 0) {
     clearTimeout(timeoutID)
   }
-  timeoutID = setTimeout("updateQueryString()", 750)
+  timeoutID = setTimeout(updateQueryString, 750)
 }
 
 function multiLabel (res) {
-  var l = formatDate(res.StartTime)
+  let l = formatDate(res.StartTime)
   if (res.Labels !== '') {
     l += ' - ' + res.Labels
   }
@@ -465,13 +465,13 @@ function multiLabel (res) {
 
 function findData (slot, idx, res, p) {
   // Not very efficient but there are only a handful of percentiles
-  var pA = res.DurationHistogram.Percentiles
+  const pA = res.DurationHistogram.Percentiles
   if (!pA) {
-//    console.log('No percentiles in res', res)
+    //    console.log('No percentiles in res', res)
     return
   }
-  var pN = Number(p)
-  for (var i = 0; i < pA.length; i++) {
+  const pN = Number(p)
+  for (let i = 0; i < pA.length; i++) {
     if (pA[i].Percentile === pN) {
       mchart.data.datasets[slot].data[idx] = 1000.0 * pA[i].Value
       return
@@ -496,7 +496,7 @@ function fortioAddToMultiResult (i, res) {
 
 function endMultiChart (len) {
   mchart.data.labels = mchart.data.labels.slice(0, len)
-  for (var i = 0; i < mchart.data.datasets.length; i++) {
+  for (let i = 0; i < mchart.data.datasets.length; i++) {
     mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
   }
   mchart.update()
@@ -529,14 +529,14 @@ function deleteSingleChart () {
 function makeMultiChart () {
   document.getElementById('running').style.display = 'none'
   document.getElementById('update').style.visibility = 'hidden'
-  var chartEl = document.getElementById('chart1')
+  const chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(mchart).length !== 0) {
     return
   }
   deleteSingleChart()
   deleteOverlayChart()
-  var ctx = chartEl.getContext('2d')
+  const ctx = chartEl.getContext('2d')
   mchart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -649,11 +649,11 @@ function makeMultiChart () {
   // Hide QPS axis on clicking QPS dataset.
   mchart.options.legend.onClick = (event, legendItem) => {
     // Toggle dataset hidden (default behavior).
-    var dataset = mchart.data.datasets[legendItem.datasetIndex]
+    const dataset = mchart.data.datasets[legendItem.datasetIndex]
     dataset.hidden = !dataset.hidden
     if (dataset.label === 'QPS') {
       // Toggle QPS y-axis.
-      var qpsYAxis = mchart.options.scales.yAxes[1]
+      const qpsYAxis = mchart.options.scales.yAxes[1]
       qpsYAxis.display = !qpsYAxis.display
     }
     mchart.update()
@@ -661,15 +661,15 @@ function makeMultiChart () {
 }
 
 function runTestForDuration (durationInSeconds) {
-  var progressBar = document.getElementById('progressBar')
+  const progressBar = document.getElementById('progressBar')
   if (durationInSeconds <= 0) {
-      // infinite case
+    // infinite case
     progressBar.removeAttribute('value')
     return
   }
-  var startTimeMillis = Date.now()
-  var updatePercentage = function () {
-    var barPercentage = Math.min(100, (Date.now() - startTimeMillis) / (10 * durationInSeconds))
+  const startTimeMillis = Date.now()
+  const updatePercentage = function () {
+    const barPercentage = Math.min(100, (Date.now() - startTimeMillis) / (10 * durationInSeconds))
     progressBar.value = barPercentage
     if (barPercentage < 100) {
       setTimeout(updatePercentage, 50 /* milliseconds */) // 20fps
@@ -678,10 +678,10 @@ function runTestForDuration (durationInSeconds) {
   updatePercentage()
 }
 
-var lastDuration = ''
+let lastDuration = ''
 
 function toggleDuration (el) {
-  var d = document.getElementById('duration')
+  const d = document.getElementById('duration')
   if (el.checked) {
     lastDuration = d.value
     d.value = ''
@@ -690,11 +690,10 @@ function toggleDuration (el) {
   }
 }
 
-let customHeaderElement = '<input type=\"text\" name=\"H\" size=40 value=\"\" /> <br />';
+const customHeaderElement = '<input type="text" name="H" size=40 value="" /> <br />'
 
-function addCustomHeader() {
-    let customHeaderElements = document.getElementsByName("H");
-    let lastElement = customHeaderElements[customHeaderElements.length - 1];
-    lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
+function addCustomHeader () {
+  const customHeaderElements = document.getElementsByName('H')
+  const lastElement = customHeaderElements[customHeaderElements.length - 1]
+  lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
 }
-
