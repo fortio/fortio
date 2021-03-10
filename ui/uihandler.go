@@ -745,7 +745,10 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
-	flusher := w.(http.Flusher)
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("processTSV expecting a flushable response")
+	}
 	lines := strings.Split(sdata, "\n")
 	n := len(lines)
 
@@ -784,7 +787,10 @@ type ListBucketResult struct {
 func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
 	// We already know this parses as we just fetched it:
 	bu, _ := url.Parse(baseURL)
-	flusher := w.(http.Flusher)
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		log.Fatalf("processXML expecting a flushable response")
+	}
 	l := ListBucketResult{}
 	err := xml.Unmarshal(data, &l)
 	if err != nil {
