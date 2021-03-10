@@ -34,7 +34,7 @@
 {{if .DoStop}}
 <p>Stoping runs as per request.</p>
 {{else}}
-<form>
+<form id="run-form" method="GET">
   <div>
     Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
     URL: <input type="text" name="url" size="80" value="http://{{.URLHostPort}}/echo?delay=250us:30,5ms:5&status=503:0.5,429:1.5" /> <br />
@@ -55,7 +55,7 @@
     <input type="text" name="H" size=40 value="" /> <br />
     <button type="button" onclick="addCustomHeader()">+</button>
     <br />
-    Payload:<br /><textarea name="payload" rows="5" cols="75"></textarea><br />
+    Payload:<br /><textarea name="payload" rows="5" cols="75" id="payload" onchange="checkPayload()"></textarea><br />
     Load using:<br />
     tcp/udp/http: <input type="radio" name="runner" value="http" checked/>
     (https insecure:<input type="checkbox" name="https-insecure" />,

@@ -697,3 +697,11 @@ function addCustomHeader () {
   const lastElement = customHeaderElements[customHeaderElements.length - 1]
   lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
 }
+
+function checkPayload () {
+  const len = document.getElementById('payload').value.length
+  // console.log("payload length is ", len)
+  if (len > 100) {
+    document.getElementById('run-form').method = 'POST'
+  }
+}
