@@ -370,8 +370,10 @@ function getUpdateForm () {
   const xMin = form.xmin.value.trim()
   const xMax = form.xmax.value.trim()
   const xIsLogarithmic = form.xlog.checked
+  const yMin = form.ymin.value.trim()
+  const yMax = form.ymax.value.trim()
   const yIsLogarithmic = form.ylog.checked
-  return { xMin, xMax, xIsLogarithmic, yIsLogarithmic }
+  return { xMin, xMax, xIsLogarithmic, yMin, yMax, yIsLogarithmic }
 }
 
 function getSelectedResults () {
@@ -397,6 +399,8 @@ function updateQueryString () {
   params.set('xMin', form.xMin)
   params.set('xMax', form.xMax)
   params.set('xLog', form.xIsLogarithmic)
+  params.set('yMin', form.yMin)
+  params.set('yMax', form.yMax)
   params.set('yLog', form.yIsLogarithmic)
   const selectedResults = getSelectedResults()
   params.delete('sel')
@@ -412,6 +416,7 @@ function updateChartOptions (chart) {
   const form = getUpdateForm()
   const scales = chart.config.options.scales
   const newXMin = parseFloat(form.xMin)
+  const newYMin = parseFloat(form.yMin)
   const newXAxis = form.xIsLogarithmic ? logXAxe : linearXAxe
   const newYAxis = form.yIsLogarithmic ? logYAxe : linearYAxe
   chart.config.options.scales = {
@@ -422,9 +427,15 @@ function updateChartOptions (chart) {
   const newNewXAxis = chart.config.options.scales.xAxes[0]
   newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
   const formXMax = form.xMax
-  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max'
-    ? undefined
-    : parseFloat(formXMax)
+  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max' ?
+      undefined :
+      parseFloat(formXMax)
+  const newNewYAxis = chart.config.options.scales.yAxes[1]
+  newNewYAxis.ticks.min = form.yMin === '' ? undefined : newYMin
+  const formYMax = form.yMax
+  newNewYAxis.ticks.max = formYMax === '' || formYMax === 'max' ?
+      undefined :
+      parseFloat(formYMax)
   chart.update()
 }
 

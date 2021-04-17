@@ -131,7 +131,9 @@ Select or multi select to graph...
 Time axis min <input type="text" name="xmin" value="{{.ChartOptions.XMin}}" size="5" /> ms,
 max <input type="text" name="xmax" value="{{.ChartOptions.XMax}}" size="5" /> ms,
 logarithmic: <input name="xlog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.XIsLog}} checked {{end}} /> -
-Count axis logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.YIsLog}} checked {{end}} />
+Count axis min <input type="text" name="ymin" value="{{.ChartOptions.YMin}}" size="5" /> ms,
+max <input type="text" name="ymax" value="{{.ChartOptions.YMax}}" size="5" /> ms,
+logarithmic: <input name="ylog" type="checkbox" onclick="updateChart()" {{if .ChartOptions.YIsLog}} checked {{end}} />
 </form>
 </div>
 {{if .DoSearch}}

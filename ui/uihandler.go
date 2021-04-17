@@ -464,6 +464,8 @@ func DataList() (dataList []string) {
 type ChartOptions struct {
 	XMin   string
 	XMax   string
+	YMin   string
+	YMax   string
 	XIsLog bool
 	YIsLog bool
 }
@@ -488,6 +490,8 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	xMax := r.FormValue("xMax")
 	// Ignore error, xLog == nil is the same as xLog being unspecified.
 	xLog, _ := strconv.ParseBool(r.FormValue("xLog"))
+	yMin := r.FormValue("yMin")
+	yMax := r.FormValue("yMax")
 	yLog, _ := strconv.ParseBool(r.FormValue("yLog"))
 	dataList := DataList()
 	selectedValues := r.URL.Query()["sel"]
@@ -502,6 +506,8 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 		XMin:   xMin,
 		XMax:   xMax,
 		XIsLog: xLog,
+		YMin:   yMin,
+		YMax:   yMax,
 		YIsLog: yLog,
 	}
 	err := browseTemplate.Execute(w, &struct {
