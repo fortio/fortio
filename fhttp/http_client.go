@@ -61,8 +61,7 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
-	//nolint // G404 is expected because we are using weak random number generator due to performance.
-	rander = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
+	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
