@@ -130,10 +130,11 @@ var (
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
-	staticDirFlag = flag.String("static-dir", "", "Absolute `path` to the dir containing the static files dir")
-	dataDirFlag   = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
-	proxiesFlags  proxiesFlagList
-	proxies       = make([]string, 0)
+	// do not remove the flag for backward compatibility.
+	_            = flag.String("static-dir", "", "Deprecated. Absolute `path` to the dir containing the static files dir")
+	dataDirFlag  = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
+	proxiesFlags proxiesFlagList
+	proxies      = make([]string, 0)
 	// -M flag.
 	httpMultiFlags httpMultiFlagList
 	httpMulties    = make([]string, 0)
@@ -226,7 +227,7 @@ func main() {
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		if !ui.Report(baseURL, *echoPortFlag, *staticDirFlag, *dataDirFlag) {
+		if !ui.Report(baseURL, *echoPortFlag, *dataDirFlag) {
 			os.Exit(1) // error already logged
 		}
 	case "tcp-echo":
@@ -259,7 +260,7 @@ func main() {
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *staticDirFlag, *dataDirFlag, percList) {
+		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
 			os.Exit(1) // error already logged
 		}
 		startProxies()

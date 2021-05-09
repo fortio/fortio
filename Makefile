@@ -151,7 +151,7 @@ $(BUILD_DIR)/build-info.txt:
 	echo "$(shell date +'%Y-%m-%d %H:%M') $(GIT_SHA)" > $@
 
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
-	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
+	echo "-s -X main.defaultDataDir=$(DATA_DIR) \
   -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
   -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
 
