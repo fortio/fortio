@@ -87,11 +87,11 @@ var (
 	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
 	ConfigDirectoryFlag = flag.String("config", "",
 		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
-	// Path for the client custom certificate.
+	// CertFlag is the flag for the path for the client custom certificate.
 	CertFlag = flag.String("cert", "", "`Path` to the certificate file to be used for client or server TLS")
-	// Path for the key for the `cert`.
+	// KeyFlag is the flag for the path for the key for the `cert`.
 	KeyFlag = flag.String("key", "", "`Path` to the key file matching the -cert")
-	// Path for custom CA to verify server certificates in client calls.
+	// CACertFlag is the flag for the path of the custom CA to verify server certificates in client calls.
 	CACertFlag = flag.String("cacert", "",
 		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
 			"if empty, use https:// prefix for standard internet/system CAs")
