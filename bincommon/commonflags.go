@@ -87,6 +87,11 @@ var (
 	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
 	ConfigDirectoryFlag = flag.String("config", "",
 		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
+	CertFlag   = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
+	KeyFlag    = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
+	CACertFlag = flag.String("cacert", "",
+		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
+			"if empty, use https:// prefix for standard internet CAs TLS")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -165,5 +170,8 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true
 	}
+	httpOpts.CACert = *CACertFlag
+	httpOpts.Cert = *CertFlag
+	httpOpts.Key = *KeyFlag
 	return &httpOpts
 }
