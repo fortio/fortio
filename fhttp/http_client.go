@@ -441,21 +441,21 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
 			if err != nil {
 				log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", o.Cert, o.Key, err)
-			} else {
-				tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
+				return nil, err
 			}
+			tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
 		}
 		if len(o.CACert) > 0 {
 			// Load CA cert
 			caCert, err := ioutil.ReadFile(o.CACert)
 			if err != nil {
 				log.Errf("Unable to read CA from %v: %v", o.CACert, err)
-			} else {
-				log.LogVf("Using custom CA from %v", o.CACert)
-				caCertPool := x509.NewCertPool()
-				caCertPool.AppendCertsFromPEM(caCert)
-				tr.TLSClientConfig.RootCAs = caCertPool
+				return nil, err
 			}
+			log.LogVf("Using custom CA from %v", o.CACert)
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tr.TLSClientConfig.RootCAs = caCertPool
 		}
 	}
 

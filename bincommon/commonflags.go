@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"fortio.org/fortio/fhttp"
@@ -129,7 +130,8 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
 	client, _ := fhttp.NewClient(o)
-	if client == nil {
+	// big gotcha that nil client isn't nil interface value (!)
+	if client == nil || reflect.ValueOf(client).IsNil() {
 		return // error logged already
 	}
 	code, data, header := client.Fetch()
