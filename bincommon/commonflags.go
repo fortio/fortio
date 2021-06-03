@@ -87,11 +87,14 @@ var (
 	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
 	ConfigDirectoryFlag = flag.String("config", "",
 		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
-	CertFlag   = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
-	KeyFlag    = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
+	// Path for the client custom certificate.
+	CertFlag = flag.String("cert", "", "`Path` to the certificate file to be used for client or server TLS")
+	// Path for the key for the `cert`.
+	KeyFlag = flag.String("key", "", "`Path` to the key file matching the -cert")
+	// Path for custom CA to verify server certificates in client calls.
 	CACertFlag = flag.String("cacert", "",
-		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
-			"if empty, use https:// prefix for standard internet CAs TLS")
+		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
+			"if empty, use https:// prefix for standard internet/system CAs")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
