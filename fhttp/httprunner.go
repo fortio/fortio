@@ -98,7 +98,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		// Create a client (and transport) and connect once for each 'thread'
 		var err error
 		httpstate[i].client, err = NewClient(&o.HTTPOptions)
-		if httpstate[i].client == nil {
+		// nil check on interface doesn't work
+		if err != nil {
 			return nil, err
 		}
 		if o.Exactly <= 0 {

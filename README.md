@@ -46,13 +46,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/1.15.2/fortio-linux_x64-1.15.2.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/1.16.0/fortio-linux_x64-1.16.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/1.15.2/fortio_1.15.2_amd64.deb
-dpkg -i fortio_1.15.2-1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/1.16.0/fortio_1.16.0_amd64.deb
+dpkg -i fortio_1.16.0-1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/1.15.2/fortio-1.15.2-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/1.16.0/fortio-1.16.0-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -61,7 +61,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/1.15.2/fortio_win_1.15.2.zip and extract all to some location then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/1.16.0/fortio_win_1.16.0.zip and extract all to some location then using the Windows Command Prompt:
 ```
 cd fortio
 fortio.exe server
@@ -105,7 +105,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.15.2 usage:
+Φορτίο 1.16.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, http-echo,
 redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
@@ -135,10 +135,10 @@ url from the first request is used)
   -c int
         Number of connections/goroutine/threads (default 4)
   -cacert Path
-        Path to a custom CA certificate file to be used for the GRPC client
-TLS, if empty, use https:// prefix for standard internet CAs TLS
+        Path to a custom CA certificate file to be used for the TLS client
+connections, if empty, use https:// prefix for standard internet/system CAs
   -cert Path
-        Path to the certificate file to be used for GRPC server TLS
+        Path to the certificate file to be used for client or server TLS
   -compression
         Enable http compression
   -config path
@@ -197,7 +197,7 @@ output, unless -a is used)
   -keepalive
         Keep connection alive (only for fast http 1.1) (default true)
   -key Path
-        Path to the key file used for GRPC server TLS
+        Path to the key file matching the -cert
   -labels string
         Additional config data/labels to add to the resulting JSON, defaults to
 target URL and hostname
@@ -294,15 +294,15 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 ```Shell
 $ fortio server &
 14:11:05 I fortio_main.go:171> Not using dynamic flag watching (use -config to set watch directory)
-Fortio 1.15.2 tcp-echo server listening on [::]:8078
-Fortio 1.15.2 grpc 'ping' server listening on [::]:8079
-Fortio 1.15.2 https redirector server listening on [::]:8081
-Fortio 1.15.2 echo server listening on [::]:8080
+Fortio 1.16.0 tcp-echo server listening on [::]:8078
+Fortio 1.16.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.16.0 https redirector server listening on [::]:8081
+Fortio 1.16.0 echo server listening on [::]:8080
 Data directory is /Users/ldemailly/go/src/fortio.org/fortio
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:11:05 I fortio_main.go:233> All fortio 1.15.2 release go1.16.3 servers started!
+14:11:05 I fortio_main.go:233> All fortio 1.16.0 release go1.16.5 servers started!
 ```
 
 ### Change the port / binding address
@@ -315,8 +315,8 @@ $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
 Https redirector running on :8081
-Fortio 1.15.2 grpc ping server listening on port :8079
-Fortio 1.15.2 echo server listening on port 10.10.10.10:8088
+Fortio 1.16.0 grpc ping server listening on port :8079
+Fortio 1.16.0 echo server listening on port 10.10.10.10:8088
 ```
 
 ### Unix domain sockets
@@ -325,12 +325,12 @@ You can use unix domain socket for any server/client:
 
 ```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
-Fortio 1.15.2 grpc 'ping' server listening on [::]:8079
-Fortio 1.15.2 https redirector server listening on [::]:8081
-Fortio 1.15.2 echo server listening on /tmp/fortio-uds-http
+Fortio 1.16.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.16.0 https redirector server listening on [::]:8081
+Fortio 1.16.0 echo server listening on /tmp/fortio-uds-http
 UI started - visit:
 fortio curl -unix-socket=/tmp/fortio-uds-http http://localhost/fortio/
-14:58:45 I fortio_main.go:217> All fortio 1.15.2 unknown go1.16.3 servers started!
+14:58:45 I fortio_main.go:217> All fortio 1.16.0 unknown go1.16.5 servers started!
 $ fortio curl -unix-socket=/tmp/fortio-uds-http http://foo.bar/debug
 15:00:48 I http_client.go:428> Using unix domain socket /tmp/fortio-uds-http instead of foo.bar http
 HTTP/1.1 200 OK
@@ -338,14 +338,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Wed, 08 Aug 2018 22:00:48 GMT
 Content-Length: 231
 
-Φορτίο version 1.15.2 unknown go1.16.3 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
+Φορτίο version 1.16.0 unknown go1.16.5 echo debug server up for 2m3.4s on ldemailly-macbookpro - request from
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: foo.bar
-User-Agent: fortio.org/fortio-1.15.2
+User-Agent: fortio.org/fortio-1.16.0
 
 body:
 ```
@@ -354,10 +354,10 @@ body:
 Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
 ```Shell
 $ fortio tcp-echo &
-Fortio 1.15.2 tcp-echo TCP server listening on [::]:8078
-19:45:30 I fortio_main.go:238> All fortio 1.15.2 release go1.16.3 servers started!
+Fortio 1.16.0 tcp-echo TCP server listening on [::]:8078
+19:45:30 I fortio_main.go:238> All fortio 1.16.0 release go1.16.5 servers started!
 $ fortio load -qps -1 -n 100000 tcp://localhost:8078
-Fortio 1.15.2 running at -1 queries per second, 16->16 procs, for 100000 calls: tcp://localhost:8078
+Fortio 1.16.0 running at -1 queries per second, 16->16 procs, for 100000 calls: tcp://localhost:8078
 20:01:31 I tcprunner.go:218> Starting tcp test for tcp://localhost:8078 with 4 threads at -1.0 qps
 Starting at max qps with 4 thread(s) [gomax 16] for exactly 100000 calls (25000 per thread + 0)
 20:01:32 I periodic.go:558> T003 ended after 1.240585427s : 25000 calls. qps=20151.77629520873
@@ -383,11 +383,11 @@ All done 100000 calls (plus 0 warmup) 0.049 ms avg, 80495.0 qps
 Start the udp-echo server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
 ```
 $ fortio udp-echo &
-Fortio 1.15.2 udp-echo UDP server listening on [::]:8078
+Fortio 1.16.0 udp-echo UDP server listening on [::]:8078
 21:54:52 I fortio_main.go:273> Note: not using dynamic flag watching (use -config to set watch directory)
-21:54:52 I fortio_main.go:281> All fortio 1.15.2 release go1.16.3 servers started!
+21:54:52 I fortio_main.go:281> All fortio 1.16.0 release go1.16.5 servers started!
 $ fortio load -qps -1 -n 100000 udp://localhost:8078/
-Fortio 1.15.2 running at -1 queries per second, 16->16 procs, for 100000 calls: udp://localhost:8078/
+Fortio 1.16.0 running at -1 queries per second, 16->16 procs, for 100000 calls: udp://localhost:8078/
 21:56:48 I udprunner.go:222> Starting udp test for udp://localhost:8078/ with 4 threads at -1.0 qps
 Starting at max qps with 4 thread(s) [gomax 16] for exactly 100000 calls (25000 per thread + 0)
 21:56:49 I periodic.go:558> T003 ended after 969.635695ms : 25000 calls. qps=25782.879208051432
@@ -469,8 +469,8 @@ $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
 Https redirector running on :8081
-Fortio 1.15.2 grpc ping server listening on port :8079
-Fortio 1.15.2 echo server listening on port localhost:8080
+Fortio 1.16.0 grpc ping server listening on port :8079
+Fortio 1.16.0 echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
 Using server key /path/to/fortio/server.key to construct TLS credentials
 ```
@@ -515,7 +515,7 @@ Load (low default qps/threading) test:
 
 ```Shell
 $ fortio load http://www.google.com
-Fortio 1.15.2 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
+Fortio 1.16.0 running at 8 queries per second, 8->8 procs, for 5s: http://www.google.com
 19:10:33 I httprunner.go:84> Starting http test for http://www.google.com with 4 threads at 8.0 qps
 Starting at 8 qps with 4 thread(s) [gomax 8] for 5s : 10 calls each (total 40)
 19:10:39 I periodic.go:314> T002 ended after 5.056753279s : 10 calls. qps=1.9775534712220633
@@ -546,7 +546,7 @@ Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hi
 
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
-Fortio 1.15.2 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
+Fortio 1.16.0 running at 8 queries per second, 8->8 procs, for 5s: https://fortio-stage.istio.io
 16:32:56 I grpcrunner.go:139> Starting GRPC Ping Delay=250ms PayloadLength=11 test for https://fortio-stage.istio.io with 4*2 threads at 8.0 qps
 16:32:56 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
 16:32:57 I grpcrunner.go:261> stripping https scheme. grpc destination: fortio-stage.istio.io. grpc port: 443
@@ -651,14 +651,14 @@ Content-Type: text/plain; charset=UTF-8
 Date: Mon, 08 Jan 2018 22:26:26 GMT
 Content-Length: 230
 
-Φορτίο version 1.15.2 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
+Φορτίο version 1.16.0 echo debug server up for 39s on ldemailly-macbookpro - request from [::1]:65055
 
 GET /debug HTTP/1.1
 
 headers:
 
 Host: localhost:8080
-User-Agent: fortio.org/fortio-1.15.2
+User-Agent: fortio.org/fortio-1.16.0
 Foo: Bar
 
 body:
@@ -683,7 +683,7 @@ Example listen on 1 extra port and every request sent to that 1 port is forward 
 # in one window or &
 $ fortio server -M "5554 http://localhost:8080 http://localhost:8080"
 [...]
-Fortio 1.15.2 Multi on 5554 server listening on [::]:5554
+Fortio 1.16.0 Multi on 5554 server listening on [::]:5554
 10:09:56 I http_forwarder.go:152> Multi-server on [::]:5554 running with &{Targets:[{Destination:http://localhost:8080 MirrorOrigin:true} {Destination:http://localhost:8080 MirrorOrigin:true}] Name:Multi on [::]:5554 client:0xc0001ccc00}
 ```
 Call the debug endpoint on both
@@ -695,7 +695,7 @@ Date: Wed, 07 Oct 2020 17:11:06 GMT
 Content-Length: 684
 Content-Type: text/plain; charset=utf-8
 
-Φορτίο version 1.15.2 unknown go1.16.3 echo debug server up for 1m9.3s on C02C77BHMD6R - request from [::1]:51020
+Φορτίο version 1.16.0 unknown go1.16.5 echo debug server up for 1m9.3s on C02C77BHMD6R - request from [::1]:51020
 
 POST /debug HTTP/1.1
 
@@ -704,14 +704,14 @@ headers:
 Host: localhost:8080
 Accept-Encoding: gzip
 Content-Type: application/octet-stream
-User-Agent: fortio.org/fortio-1.15.2
+User-Agent: fortio.org/fortio-1.16.0
 X-Fortio-Multi-Id: 1
 X-On-Behalf-Of: [::1]:51019
 
 body:
 
 a test
-Φορτίο version 1.15.2 unknown go1.16.3 echo debug server up for 1m9.3s on C02C77BHMD6R - request from [::1]:51020
+Φορτίο version 1.16.0 unknown go1.16.5 echo debug server up for 1m9.3s on C02C77BHMD6R - request from [::1]:51020
 
 POST /debug HTTP/1.1
 
@@ -720,7 +720,7 @@ headers:
 Host: localhost:8080
 Accept-Encoding: gzip
 Content-Type: application/octet-stream
-User-Agent: fortio.org/fortio-1.15.2
+User-Agent: fortio.org/fortio-1.16.0
 X-Fortio-Multi-Id: 2
 X-On-Behalf-Of: [::1]:51019
 
@@ -741,15 +741,15 @@ Example: open 2 additional listening ports and forward all requests received on 
 
 ```Shell
 $ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080"
-Fortio 1.15.2 grpc 'ping' server listening on [::]:8079
-Fortio 1.15.2 https redirector server listening on [::]:8081
-Fortio 1.15.2 echo server listening on [::]:8080
+Fortio 1.16.0 grpc 'ping' server listening on [::]:8079
+Fortio 1.16.0 https redirector server listening on [::]:8081
+Fortio 1.16.0 echo server listening on [::]:8080
 Data directory is /home/dl
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-Fortio 1.15.2 proxy for [::1]:8080 server listening on [::]:8888
-Fortio 1.15.2 proxy for [::1]:8080 server listening on [::1]:8889
+Fortio 1.16.0 proxy for [::1]:8080 server listening on [::]:8888
+Fortio 1.16.0 proxy for [::1]:8080 server listening on [::1]:8889
 ```
 
 ## Server URLs and features

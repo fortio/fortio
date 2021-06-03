@@ -110,7 +110,7 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 	}
 }
 
-// GRPCRunnerOptions includes the base RunnerOptions plus http specific
+// GRPCRunnerOptions includes the base RunnerOptions plus grpc specific
 // options.
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
