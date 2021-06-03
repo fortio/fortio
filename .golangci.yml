@@ -353,6 +353,7 @@ linters:
     - testpackage
     - wrapcheck
     - exhaustivestruct
+    - tagliatelle
 # TODO consider putting these back, when they stop being bugged (ifshort, wastedassign,...)
     - paralleltest
     - thelper
