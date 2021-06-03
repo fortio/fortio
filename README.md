@@ -46,13 +46,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/1.16.0/fortio-linux_x64-1.16.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.16.0/fortio-linux_x64-1.16.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/1.16.0/fortio_1.16.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.16.0/fortio_1.16.0_amd64.deb
 dpkg -i fortio_1.16.0-1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/1.16.0/fortio-1.16.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.16.0/fortio-1.16.0-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -61,7 +61,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/1.16.0/fortio_win_1.16.0.zip and extract all to some location then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.16.0/fortio_win_1.16.0.zip and extract all to some location then using the Windows Command Prompt:
 ```
 cd fortio
 fortio.exe server
