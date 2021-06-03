@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v33
+BUILD_IMAGE_TAG := v34
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -129,7 +129,7 @@ BUILD_DIR := /tmp/fortio_build
 LIB_DIR := /usr/share/fortio
 DATA_DIR := .
 OFFICIAL_BIN := ../fortio.bin
-GOOS := 
+GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
 DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
@@ -160,7 +160,7 @@ $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 official-build: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
-	
+
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
 
