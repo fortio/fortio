@@ -135,10 +135,10 @@ url from the first request is used)
   -c int
         Number of connections/goroutine/threads (default 4)
   -cacert Path
-        Path to a custom CA certificate file to be used for the GRPC client
-TLS, if empty, use https:// prefix for standard internet CAs TLS
+        Path to a custom CA certificate file to be used for the TLS client
+connections, if empty, use https:// prefix for standard internet/system CAs
   -cert Path
-        Path to the certificate file to be used for GRPC server TLS
+        Path to the certificate file to be used for client or server TLS
   -compression
         Enable http compression
   -config path
@@ -197,7 +197,7 @@ output, unless -a is used)
   -keepalive
         Keep connection alive (only for fast http 1.1) (default true)
   -key Path
-        Path to the key file used for GRPC server TLS
+        Path to the key file matching the -cert
   -labels string
         Additional config data/labels to add to the resulting JSON, defaults to
 target URL and hostname
