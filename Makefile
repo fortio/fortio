@@ -150,14 +150,21 @@ $(BUILD_DIR)/build-info.txt:
 	-mkdir -p $(BUILD_DIR)
 	echo "$(shell date +'%Y-%m-%d %H:%M') $(GIT_SHA)" > $@
 
+# This needs to be redone between build targets (so the windows build for instance gets the right LIB_DIR)
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
 	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
   -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
   -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
 
-.PHONY: official-build official-build-version official-build-clean
+.PHONY: official-build official-build-internal official-build-version official-build-clean clean-link-flags
 
-official-build: $(BUILD_DIR)/link-flags.txt
+official-build: clean-link-flags official-build-internal
+
+# Fix 474
+clean-link-flags:
+	-$(RM) $(BUILD_DIR)/link-flags.txt
+
+official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 
