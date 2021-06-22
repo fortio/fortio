@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"fortio.org/fortio/fhttp"
@@ -87,6 +88,14 @@ var (
 	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
 	ConfigDirectoryFlag = flag.String("config", "",
 		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
+	// CertFlag is the flag for the path for the client custom certificate.
+	CertFlag = flag.String("cert", "", "`Path` to the certificate file to be used for client or server TLS")
+	// KeyFlag is the flag for the path for the key for the `cert`.
+	KeyFlag = flag.String("key", "", "`Path` to the key file matching the -cert")
+	// CACertFlag is the flag for the path of the custom CA to verify server certificates in client calls.
+	CACertFlag = flag.String("cacert", "",
+		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
+			"if empty, use https:// prefix for standard internet/system CAs")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -121,7 +130,8 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
 	client, _ := fhttp.NewClient(o)
-	if client == nil {
+	// big gotcha that nil client isn't nil interface value (!)
+	if client == nil || reflect.ValueOf(client).IsNil() {
 		return // error logged already
 	}
 	code, data, header := client.Fetch()
@@ -165,5 +175,8 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 		httpOpts.FollowRedirects = true
 		httpOpts.DisableFastClient = true
 	}
+	httpOpts.CACert = *CACertFlag
+	httpOpts.Cert = *CertFlag
+	httpOpts.Key = *KeyFlag
 	return &httpOpts
 }

@@ -107,12 +107,7 @@ var (
 	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
-	certFlag        = flag.String("cert", "", "`Path` to the certificate file to be used for GRPC server TLS")
-	keyFlag         = flag.String("key", "", "`Path` to the key file used for GRPC server TLS")
-	caCertFlag      = flag.String("cacert", "",
-		"`Path` to a custom CA certificate file to be used for the GRPC client TLS, "+
-			"if empty, use https:// prefix for standard internet CAs TLS")
-	echoPortFlag = flag.String("http-port", "8080",
+	echoPortFlag    = flag.String("http-port", "8080",
 		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
 	tcpPortFlag = flag.String("tcp-port", "8078",
 		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
@@ -255,7 +250,7 @@ func main() {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
-			fgrpc.PingServer(*grpcPortFlag, *certFlag, *keyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+			fgrpc.PingServer(*grpcPortFlag, *bincommon.CertFlag, *bincommon.KeyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
@@ -343,9 +338,6 @@ func fortioLoad(justCurl bool, percList []float64) {
 		usageErr("Error: fortio load/curl needs a url or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
-	httpOpts.CACert = *caCertFlag
-	httpOpts.Cert = *certFlag
-	httpOpts.Key = *keyFlag
 	if justCurl {
 		bincommon.FetchURL(httpOpts)
 		return
@@ -400,7 +392,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			CACert:             *caCertFlag,
+			CACert:             *bincommon.CACertFlag,
 			Insecure:           bincommon.TLSInsecure(),
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
@@ -494,7 +486,7 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
-	cert := *caCertFlag
+	cert := *bincommon.CACertFlag
 	var err error
 	if *doHealthFlag {
 		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count, bincommon.TLSInsecure())
