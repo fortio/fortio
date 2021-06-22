@@ -79,7 +79,7 @@ func (c *TestCount) Run(i int) {
 	c.lock.Lock()
 	(*c.count)++
 	c.lock.Unlock()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestStart(t *testing.T) {
@@ -87,7 +87,7 @@ func TestStart(t *testing.T) {
 	var lock sync.Mutex
 	c := TestCount{&count, &lock}
 	o := RunnerOptions{
-		QPS:        11.4,
+		QPS:        9.4,
 		NumThreads: 1,
 		Duration:   1 * time.Second,
 	}
@@ -95,19 +95,20 @@ func TestStart(t *testing.T) {
 	r.Options().MakeRunners(&c)
 	count = 0
 	r.Run()
-	if count != 11 {
-		t.Errorf("Test executed unexpected number of times %d instead %d", count, 11)
+	expected := int64(9)
+	if count != expected {
+		t.Errorf("Test executed unexpected number of times %d instead %d", count, expected)
 	}
 	count = 0
 	oo := r.Options()
-	oo.NumThreads = 10 // will be lowered to 5 so 10 calls (2 in each thread)
+	oo.NumThreads = 10 // will be lowered to 4 so 8 calls (2 in each thread)
 	r.Run()
-	if count != 10 {
-		t.Errorf("MT Test executed unexpected number of times %d instead %d", count, 10)
+	if count != 8 {
+		t.Errorf("MT Test executed unexpected number of times %d instead %d", count, 8)
 	}
 	// note: it's kind of a bug this only works after Run() and not before
-	if oo.NumThreads != 5 {
-		t.Errorf("Lowering of thread count broken, got %d instead of 5", oo.NumThreads)
+	if oo.NumThreads != 4 {
+		t.Errorf("Lowering of thread count broken, got %d instead of 4", oo.NumThreads)
 	}
 	count = 0
 	oo.Duration = 1 * time.Nanosecond
@@ -125,7 +126,7 @@ func TestStartMaxQps(t *testing.T) {
 	o := RunnerOptions{
 		QPS:        -1, // max speed (0 is default qps, not max)
 		NumThreads: 4,
-		Duration:   140 * time.Millisecond,
+		Duration:   290 * time.Millisecond,
 	}
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
@@ -133,7 +134,7 @@ func TestStartMaxQps(t *testing.T) {
 	var res1 HasRunnerResult // test that interface
 	res := r.Run()
 	res1 = res.Result()
-	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	expected := int64(3 * 4) // can start 3 100ms in 290ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
 	actual := res1.Result().DurationHistogram.Count
 	if actual != expected {
@@ -330,14 +331,14 @@ func TestSleepFallingBehind(t *testing.T) {
 	o := RunnerOptions{
 		QPS:        1000000, // similar to max qps but with sleep falling behind
 		NumThreads: 4,
-		Duration:   140 * time.Millisecond,
+		Duration:   290 * time.Millisecond,
 	}
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
 	res := r.Run()
 	r.Options().ReleaseRunners()
-	expected := int64(3 * 4) // can start 3 50ms in 140ms * 4 threads
+	expected := int64(3 * 4) // can start 3 100ms in 290ms * 4 threads
 	// Check the count both from the histogram and from our own test counter:
 	actual := res.DurationHistogram.Count
 	if actual > expected+2 || actual < expected-2 {
