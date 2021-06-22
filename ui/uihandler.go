@@ -21,6 +21,7 @@ import (
 
 	// nolint: gosec // md5 is mandated, not our choice
 	"crypto/md5"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -34,7 +35,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,6 +56,13 @@ import (
 // and add unit tests.
 
 var (
+	//go:embed static/*
+	staticFS embed.FS
+	//go:embed templates/*
+	templateFS embed.FS
+)
+
+var (
 	// UI and Debug prefix/paths (read in ui handler).
 	uiPath      string // absolute (base)
 	logoPath    string // relative
@@ -65,12 +72,7 @@ var (
 	// Used to construct default URL to self.
 	urlHostPort string
 	// Start time of the UI Server (for uptime info).
-	startTime time.Time
-	// Directory where the static content and templates are to be loaded from.
-	// This is replaced at link time to the packaged directory (e.g /usr/share/fortio/)
-	// but when fortio is installed with go get we use RunTime to find that directory.
-	// (see Dockerfile for how to set it).
-	resourcesDir     string
+	startTime        time.Time
 	extraBrowseLabel string // Extra label for report only
 	// Directory where results are written to/read from.
 	dataDir        string
@@ -92,25 +94,6 @@ const (
 	faviconPath = "/favicon.ico"
 	modegrpc    = "grpc"
 )
-
-// Gets the resources directory from one of 3 sources.
-func getResourcesDir(override string) string {
-	if override != "" {
-		log.Infof("Using resources directory from override: %s", override)
-		return override
-	}
-	if resourcesDir != "" {
-		log.LogVf("Using resources directory set at link time: %s", resourcesDir)
-		return resourcesDir
-	}
-	_, filename, _, ok := runtime.Caller(0)
-	log.LogVf("Guessing resources directory from runtime source location: %v - %s", ok, filename)
-	if ok {
-		return path.Dir(filename)
-	}
-	log.Errf("Unable to get source tree location. Failing to serve static contents.")
-	return ""
-}
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
 // JSON serialized options as input.
@@ -904,7 +887,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
-func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir string, percentileList []float64) bool {
+func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
 	baseURL = baseurl
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
@@ -938,37 +921,32 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 	// link time value or the directory relative to this file to find the static
 	// contents, so no matter where or how the go binary is generated, the static
 	// dir should be found.
-	staticRsrcDir = getResourcesDir(staticRsrcDir)
-	if staticRsrcDir != "" { // nolint: nestif
-		fs := http.FileServer(http.Dir(staticRsrcDir))
-		prefix := uiPath + version.Short()
-		mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
-		mux.Handle(faviconPath, LogAndAddCacheControl(fs))
-		var err error
-		mainTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/main.html"),
-			path.Join(staticRsrcDir, "templates/header.html"))
-		if err != nil {
-			log.Critf("Unable to parse main template: %v", err)
-		}
-		browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"),
-			path.Join(staticRsrcDir, "templates/header.html"))
-		if err != nil {
-			log.Critf("Unable to parse browse template: %v", err)
-		} else {
-			mux.HandleFunc(uiPath+"browse", BrowseHandler)
-		}
-		syncTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/sync.html"),
-			path.Join(staticRsrcDir, "templates/header.html"))
-		if err != nil {
-			log.Critf("Unable to parse sync template: %v", err)
-		} else {
-			mux.HandleFunc(uiPath+"sync", SyncHandler)
-		}
-		dflagSetURL := uiPath + "flags/set"
-		dflagEndPt := endpoint.NewFlagsEndpoint(flag.CommandLine, dflagSetURL)
-		mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
-		mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
+	fs := http.FileServer(http.FS(staticFS))
+	prefix := uiPath + version.Short()
+	mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
+	mux.Handle(faviconPath, LogAndAddCacheControl(fs))
+	var err error
+	mainTemplate, err = template.ParseFS(templateFS, "templates/main.html", "templates/header.html")
+	if err != nil {
+		log.Critf("Unable to parse main template: %v", err)
 	}
+	browseTemplate, err = template.ParseFS(templateFS, "templates/browse.html", "templates/header.html")
+	if err != nil {
+		log.Critf("Unable to parse browse template: %v", err)
+	} else {
+		mux.HandleFunc(uiPath+"browse", BrowseHandler)
+	}
+	syncTemplate, err = template.ParseFS(templateFS, "templates/sync.html", "templates/header.html")
+	if err != nil {
+		log.Critf("Unable to parse sync template: %v", err)
+	} else {
+		mux.HandleFunc(uiPath+"sync", SyncHandler)
+	}
+	dflagSetURL := uiPath + "flags/set"
+	dflagEndPt := endpoint.NewFlagsEndpoint(flag.CommandLine, dflagSetURL)
+	mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
+	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
+
 	if dataDir != "" {
 		fs := http.FileServer(http.Dir(dataDir))
 		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
@@ -999,7 +977,7 @@ func Serve(baseurl, port, debugpath, uipath, staticRsrcDir string, datadir strin
 
 // Report starts the browsing only UI server on the given port.
 // Similar to Serve with only the read only part.
-func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
+func Report(baseurl, port, datadir string) bool {
 	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
 	http.DefaultServeMux = http.NewServeMux()
 	baseURL = baseurl
@@ -1018,14 +996,12 @@ func Report(baseurl, port, staticRsrcDir string, datadir string) bool {
 	dataDir = datadir
 	logoPath = version.Short() + "/static/img/logo.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
-	staticRsrcDir = getResourcesDir(staticRsrcDir)
-	fs := http.FileServer(http.Dir(staticRsrcDir))
+	fs := http.FileServer(http.FS(staticFS))
 	prefix := uiPath + version.Short()
 	mux.Handle(prefix+"/static/", LogAndAddCacheControl(http.StripPrefix(prefix, fs)))
 	mux.Handle(faviconPath, LogAndAddCacheControl(fs))
 	var err error
-	browseTemplate, err = template.ParseFiles(path.Join(staticRsrcDir, "templates/browse.html"),
-		path.Join(staticRsrcDir, "templates/header.html"))
+	browseTemplate, err = template.ParseFS(templateFS, "templates/browse.html", "templates/header.html")
 	if err != nil {
 		log.Critf("Unable to parse browse template: %v", err)
 	} else {

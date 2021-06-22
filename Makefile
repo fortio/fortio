@@ -152,7 +152,7 @@ $(BUILD_DIR)/build-info.txt:
 
 # This needs to be redone between build targets (so the windows build for instance gets the right LIB_DIR)
 $(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
-	echo "-s -X fortio.org/fortio/ui.resourcesDir=$(LIB_DIR) -X main.defaultDataDir=$(DATA_DIR) \
+	echo "-s -X main.defaultDataDir=$(DATA_DIR) \
   -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
   -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
 
