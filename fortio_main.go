@@ -126,7 +126,7 @@ var (
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
 	// do not remove the flag for backward compatibility.  Was absolute `path` to the dir containing the static files dir
-	// no embeded.
+	// which is now embedded in the binary thanks to that support in golang 1.16.
 	_            = flag.String("static-dir", "", "Deprecated/unused `path`.")
 	dataDirFlag  = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags proxiesFlagList
