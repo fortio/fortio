@@ -219,10 +219,10 @@ MAN_INSTALL_DIR = $(DESTDIR)/usr/share/man/man1
 BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
-	-mkdir -p $(BIN_INSTALL_DIR) $(LIB_INSTALL_DIR) $(MAN_INSTALL_DIR) # $(DATA_INSTALL_DIR)
+	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR) # $(LIB_INSTALL_DIR) $(DATA_INSTALL_DIR)
 	# -chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
-	cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
+	#cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
 	cp docs/fortio.1 $(MAN_INSTALL_DIR)
 
 # Test distribution (only used by maintainer)

@@ -14,8 +14,8 @@ FROM scratch as release
 # NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # TODO: get rid of *.bak, *~ and other spurious non source files
-COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
-COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
+#COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
+#COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
 COPY --from=build /go/src/fortio.org/fortio_go_latest.bin /usr/bin/fortio
 EXPOSE 8078
 EXPOSE 8079

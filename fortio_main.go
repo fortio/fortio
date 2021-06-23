@@ -125,8 +125,9 @@ var (
 	curlFlag   = flag.Bool("curl", false, "Just fetch the content once")
 	labelsFlag = flag.String("labels", "",
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
-	// do not remove the flag for backward compatibility.
-	_            = flag.String("static-dir", "", "Deprecated. Absolute `path` to the dir containing the static files dir")
+	// do not remove the flag for backward compatibility.  Was absolute `path` to the dir containing the static files dir
+	// which is now embedded in the binary thanks to that support in golang 1.16.
+	_            = flag.String("static-dir", "", "Deprecated/unused `path`.")
 	dataDirFlag  = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
 	proxiesFlags proxiesFlagList
 	proxies      = make([]string, 0)
