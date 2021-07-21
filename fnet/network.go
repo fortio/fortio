@@ -42,6 +42,8 @@ const (
 	PrefixHTTP = "http://"
 	// PrefixHTTPS is a constant value for representing secure http protocol that can be added prefix of url.
 	PrefixHTTPS = "https://"
+	// PrefixXDS is a constant value for representing XDS resolver protocol used by gRPC.
+	PrefixXDS = "xds:///"
 
 	// POST is a constant value that indicates http method as post.
 	POST = "POST"
