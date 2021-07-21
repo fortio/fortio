@@ -385,6 +385,16 @@ func TestGRPCDestination(t *testing.T) {
 			"https://2001:dba::1/",
 			"[2001:dba::1]:443",
 		},
+		{
+			"XDS url with port",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local:8079",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local:8079",
+		},
+		{
+			"XDS url without port",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local:8079",
+		},
 	}
 
 	for _, tc := range tests {

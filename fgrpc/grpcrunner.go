@@ -76,6 +76,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
+	log.Infof("Normalized server address")
 	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
@@ -294,6 +295,11 @@ func grpcDestination(dest string) (parsedDest string) {
 		port = fnet.StandardHTTPSPort
 		log.Infof("stripping https scheme. grpc destination: %v. grpc port: %s",
 			parsedDest, port)
+	case strings.HasPrefix(dest, fnet.PrefixXDS):
+		if _, _, err := net.SplitHostPort(dest[len(fnet.PrefixXDS):]); err == nil {
+			return dest
+		}
+		return dest + fnet.NormalizePort(fnet.DefaultGRPCPort)
 	default:
 		parsedDest = dest
 		port = fnet.DefaultGRPCPort
