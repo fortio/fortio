@@ -15,20 +15,20 @@
 package fnet // import "fortio.org/fortio/fnet"
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"fortio.org/fortio/log"
+	"fortio.org/fortio/version"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"fortio.org/fortio/log"
-	"fortio.org/fortio/version"
 )
 
 const (
@@ -82,6 +82,8 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	if err != nil {
 		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
+	// slower but we seem to only do this on init anyway, and this guarantees UTF-8
+	Payload = []byte(base64.StdEncoding.EncodeToString(Payload)[:len(Payload)])
 }
 
 // NormalizePort parses port and returns host:port if port is in the form

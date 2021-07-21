@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -610,13 +611,23 @@ func TestGeneratePayload(t *testing.T) {
 			payloadFile: "", payloadSize: 0, payload: "",
 			expectedResLen: 0,
 		},
+		{
+			payloadFile: "", payloadSize: 123, payload: "",
+			expectedResLen: 123,
+		},
 	}
 
 	for _, test := range tests {
+		if test.payloadSize != 0 {
+			fnet.ChangeMaxPayloadSize(test.payloadSize)
+		}
 		payload := fnet.GeneratePayload(test.payloadFile, test.payloadSize, test.payload)
 		if len(payload) != test.expectedResLen {
 			t.Errorf("Got %d, expected %d for GeneratePayload() as payload length", len(payload),
 				test.expectedResLen)
+		}
+		if !utf8.Valid(payload) {
+			t.Errorf("Payload was not valid UTF-8 (f: %q, len: %d, p: %q)", test.payloadFile, test.payloadSize, test.payload)
 		}
 	}
 }
