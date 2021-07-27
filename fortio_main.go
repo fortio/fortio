@@ -399,6 +399,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 			Payload:            httpOpts.PayloadString(),
+			Profiler:           *profileFlag,
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
 			UnixDomainSocket:   httpOpts.UnixDomainSocket,
