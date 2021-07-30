@@ -33,12 +33,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/credentials/xds"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	// this installs resolvers and balancers within gRPC to support xds:/// addresses
 	_ "google.golang.org/grpc/xds"
 )
-
-// xdsSecuritySupportEnv is the feature flag used by gRPC to enable security support.
-// See https://github.com/grpc/grpc-go/blob/22c535818725b54cc34ccbc4b953318f19bc13a6/internal/xds/env/env.go
-const xdsSecuritySupportEnv = "GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT"
 
 // Dial dials grpc using insecure or tls transport security when serverAddr
 // has prefixHTTPS or cert is provided. If override is set to a non empty string,
@@ -58,7 +55,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 	case strings.HasPrefix(o.Destination, fnet.PrefixHTTPS):
 		creds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: o.Insecure}) // nolint: gosec // explicit flag
 		opts = append(opts, grpc.WithTransportCredentials(creds))
-	case strings.HasPrefix(o.Destination, fnet.PrefixXDS) && strings.EqualFold(os.Getenv(xdsSecuritySupportEnv), "true"):
+	case strings.HasPrefix(o.Destination, fnet.PrefixXDS):
 		// when using the xds:/// scheme, use
 		creds, err := xds.NewClientCredentials(xds.ClientOptions{FallbackCreds: insecure.NewCredentials()})
 		if err != nil {
@@ -76,7 +73,6 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
-	log.Infof("Normalized server address")
 	conn, err = grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
