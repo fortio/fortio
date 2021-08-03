@@ -117,6 +117,8 @@ var (
 	grpcPortFlag = flag.String("grpc-port", fnet.DefaultGRPCPort,
 		"grpc server port. Can be in the form of host:port, ip:port or `port` or /unix/domain/path or \""+disabled+
 			"\" to not start the grpc server.")
+	grpcXDSFlag = flag.Bool("grpc-xds", false,
+		"uses xds.NewGRPCServer to support server-side xDS configuration in gRPC")
 	echoDbgPathFlag = flag.String("echo-debug-path", "/debug",
 		"http echo server `URI` for debug, empty turns off that part (more secure)")
 	jsonFlag = flag.String("json", "",
@@ -251,7 +253,8 @@ func main() {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
-			fgrpc.PingServer(*grpcPortFlag, *bincommon.CertFlag, *bincommon.KeyFlag, fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag))
+			fgrpc.PingServer(*grpcPortFlag, *bincommon.CertFlag, *bincommon.KeyFlag,
+				fgrpc.DefaultHealthServiceName, uint32(*maxStreamsFlag), *grpcXDSFlag)
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)

@@ -43,7 +43,7 @@ func TestGRPCRunner(t *testing.T) {
 	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 	uds := fnet.GetUniqueUnixDomainPath("fortio-grpc-test")
-	uPath := PingServer(uds, "", "", "", 10)
+	uPath := PingServer(uds, "", "", "", 10, false)
 	uDest := "foo.bar:125"
 
 	ro := periodic.RunnerOptions{

@@ -17,6 +17,8 @@ package fgrpc
 
 import (
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/xds"
 	"net"
 	"os"
 	"time"
@@ -27,6 +29,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -39,7 +42,9 @@ const (
 	Error = "ERROR"
 )
 
-type pingSrv struct{}
+type pingSrv struct{
+	UnimplementedPingServerServer
+}
 
 func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
 	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
@@ -53,12 +58,19 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 	return &out, nil
 }
 
+// grpcServer composes common interfaces of grpc.Server and xds.GRPCServer
+type grpcServer interface {
+	grpc.ServiceRegistrar
+	Serve(lis net.Listener) error
+	GetServiceInfo() map[string]grpc.ServiceInfo
+}
+
 // PingServer starts a grpc ping (and health) echo server.
 // returns the port being bound (useful when passing "0" as the port to
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
-func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) net.Addr {
+func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams uint32, useXDS bool) net.Addr {
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return nil
@@ -76,8 +88,20 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 		log.Infof("Using server certificate %v to construct TLS credentials", cert)
 		log.Infof("Using server key %v to construct TLS credentials", key)
 		grpcOptions = append(grpcOptions, grpc.Creds(creds))
+	} else if useXDS {
+		creds, err := xdscreds.NewServerCredentials(xdscreds.ServerOptions{FallbackCreds: insecure.NewCredentials()})
+		if err != nil {
+			log.Fatalf("Failed to build xDS credentials: %v\n", err)
+		}
+		grpcOptions = append(grpcOptions, grpc.Creds(creds))
 	}
-	grpcServer := grpc.NewServer(grpcOptions...)
+
+	var grpcServer grpcServer
+	if useXDS {
+		grpcServer = xds.NewGRPCServer(grpcOptions...)
+	} else {
+		grpcServer = grpc.NewServer(grpcOptions...)
+	}
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
@@ -94,7 +118,7 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 // PingServerTCP is PingServer() assuming tcp instead of possible unix domain socket port, returns
 // the numeric port.
 func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) int {
-	addr := PingServer(port, cert, key, healthServiceName, maxConcurrentStreams)
+	addr := PingServer(port, cert, key, healthServiceName, maxConcurrentStreams, false)
 	if addr == nil {
 		return -1
 	}

@@ -2,6 +2,7 @@
 // protoc ping.proto --go_out=plugins=grpc:.
 syntax = "proto3";
 package fgrpc;
+option go_package="../fgrpc";
 
 message PingMessage {
   int64 seq      = 1; // sequence number
