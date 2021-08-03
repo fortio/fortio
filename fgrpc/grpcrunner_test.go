@@ -387,8 +387,8 @@ func TestGRPCDestination(t *testing.T) {
 		},
 		{
 			"XDS url with port",
-			"xds:///fortioserver.twopods-istio.svc.cluster.local:8079",
-			"xds:///fortioserver.twopods-istio.svc.cluster.local:8079",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local:9090",
+			"xds:///fortioserver.twopods-istio.svc.cluster.local:9090",
 		},
 		{
 			"XDS url without port",
