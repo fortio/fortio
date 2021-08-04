@@ -913,7 +913,7 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+fetch2URI, fhttp.FetcherHandler2)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	logoPath = version.Short() + "/static/img/logo.svg"
+	logoPath = version.Short() + "/static/img/fortio-logo.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
