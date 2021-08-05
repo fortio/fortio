@@ -1,0 +1,8 @@
+<svg viewBox="0 0 167 109" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <path id="sail" fill="#fff" d="M422 561l-292 79-118-79 411 0Zm-282-350v280l-138 45 138-325ZM173 11l0 480 250 47-250-527Z"/>
+</defs>
+<g transform="scale(.1666)"><use href="#sail"/></g>
+<g transform="translate(69) scale(.1333)"><use href="#sail"/></g>
+<g transform="translate(124) scale(.1)"><use href="#sail"/></g>
+</svg>
