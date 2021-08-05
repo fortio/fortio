@@ -62,7 +62,7 @@ $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"SERVING": 100'
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
-LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
+LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/fortio-logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
   exit 1
@@ -87,7 +87,7 @@ for p in "" browse sync; do
   # Check the page doesn't 404s
   $CURL ${BASE_FORTIO}${p}
   # Check that page includes 3 logos
-  LOGOS=$($CURL ${BASE_FORTIO}${p} | grep -c "${VERSION}/static/img/logo.svg")
+  LOGOS=$($CURL ${BASE_FORTIO}${p} | grep -c "${VERSION}/static/img/fortio-logo.svg")
   if [ "$LOGOS" -ne 3 ]; then
     echo "expected 3 logos in the ${p} page"
     exit 1
