@@ -86,10 +86,10 @@ VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
 for p in "" browse sync; do
   # Check the page doesn't 404s
   $CURL ${BASE_FORTIO}${p}
-  # Check that page includes 3 logos
+  # Check that page includes the logo
   LOGOS=$($CURL ${BASE_FORTIO}${p} | grep -c "${VERSION}/static/img/fortio-logo.svg")
-  if [ "$LOGOS" -ne 3 ]; then
-    echo "expected 3 logos in the ${p} page"
+  if [ "$LOGOS" -ne 1 ]; then
+    echo "expected a logo in the ${p} page"
     exit 1
   fi
 done
