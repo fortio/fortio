@@ -1,8 +1,8 @@
 // regenerate the .pb.go file after any change using
-// protoc ping.proto --go_out=plugins=grpc:.
+// protoc --go_out=. --go_opt=paths=source_relative ./ping.proto --go-grpc_out=. --go-grpc_opt=paths=source_relative
 syntax = "proto3";
 package fgrpc;
-option go_package="../fgrpc";
+option go_package = "github.com/fortio/forito/fgrpc";
 
 message PingMessage {
   int64 seq      = 1; // sequence number
