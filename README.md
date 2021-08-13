@@ -11,7 +11,7 @@
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
 
-Fortio is also used by, among others, [Meshery](https://meshery.layer5.io/docs/extensibility#which-are-currently-supported)
+Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators)
 
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
