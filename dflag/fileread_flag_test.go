@@ -12,8 +12,8 @@ import (
 
 func TestFileFlag_ReadsWithADefault(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithFileFlag("testdata/fileread_good.json")
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after create, but before reading files")
+	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithFileFlag("testdata/fileread_good.json")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after create, but before reading files")
 	assert.NoError(t, ReadFileFlags(set), "reading from a file should succeed")
 	assert.EqualValues(t,
 		&outerJSON{FieldInts: []int{42}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: false}},
@@ -23,17 +23,17 @@ func TestFileFlag_ReadsWithADefault(t *testing.T) {
 
 func TestFileFlag_EmptyPathsAreIgnored(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithFileFlag("")
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after create, but before reading files")
+	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithFileFlag("")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after create, but before reading files")
 	assert.NoError(t, ReadFileFlags(set), "reading from a file should succeed")
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after read from file")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after read from file")
 }
 
 func TestFileFlag_BadFlagPathThenGood(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag, fileFlag := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithFileFlag("testdata/unknown.json")
+	dynFlag, fileFlag := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithFileFlag("testdata/unknown.json")
 	assert.Error(t, ReadFileFlags(set), "reading from must not succeed for an unknown json")
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after failed to read a file")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after failed to read a file")
 	// try changing the path to good one
 	fileFlag.Set("testdata/fileread_good.json")
 	assert.NoError(t, ReadFileFlags(set), "reading from a corrected set file should succeed")
@@ -41,7 +41,7 @@ func TestFileFlag_BadFlagPathThenGood(t *testing.T) {
 
 func TestFileFlag_BadFileContent(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithFileFlag("testdata/fileread_bad.json")
+	dynFlag, _ := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithFileFlag("testdata/fileread_bad.json")
 	assert.Error(t, ReadFileFlags(set), "reading from must not succeed for an unknown json")
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after failed to read a file")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after failed to read a file")
 }

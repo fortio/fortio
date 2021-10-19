@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var defaultJSON = &outerJSON{
+var defaultJSONOne = &outerJSON{
 	FieldInts:   []int{1, 3, 3, 7},
 	FieldString: "non-empty",
 	FieldInner: &innerJSON{
@@ -20,11 +20,21 @@ var defaultJSON = &outerJSON{
 	},
 }
 
+var defaultJSONTwo = &outerJSON{
+	FieldInts:   []int{1, 3, 3, 7},
+	FieldString: "non-empty",
+	FieldInner: &innerJSON{
+		FieldBool: true,
+	},
+}
+
+var defaultJSONArray = &[]outerJSON{*defaultJSONOne, *defaultJSONTwo}
+
 func TestDynJSON_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it")
+	dynFlag := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it")
 
-	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after create")
+	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after create")
 
 	err := set.Set("some_json_1", `{"ints": [42], "string": "new-value", "inner": { "bool": false } }`)
 	assert.NoError(t, err, "setting value must succeed")
@@ -36,7 +46,7 @@ func TestDynJSON_SetAndGet(t *testing.T) {
 
 func TestDynJSON_IsMarkedDynamic(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it")
+	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it")
 	assert.True(t, IsFlagDynamic(set.Lookup("some_json_1")))
 }
 
@@ -54,7 +64,7 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 		return nil
 	}
 
-	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithValidator(validator)
+	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithValidator(validator)
 
 	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`), "no error from validator when inputo k")
 	assert.Error(t, set.Set("some_json_1", `{"ints": [42]}`), "error from validator when value out of range")
@@ -63,19 +73,40 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 func TestDynJSON_FiresNotifier(t *testing.T) {
 	waitCh := make(chan bool, 1)
 	notifier := func(oldVal interface{}, newVal interface{}) {
-		assert.EqualValues(t, defaultJSON, oldVal, "old value in notify must match previous value")
+		assert.EqualValues(t, defaultJSONOne, oldVal, "old value in notify must match previous value")
 		assert.EqualValues(t, &outerJSON{FieldInts: []int{42}, FieldString: "bar"}, newVal, "new value in notify must match set value")
 		waitCh <- true
 	}
 
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithNotifier(notifier)
+	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_json_1", `{"ints": [42], "string":"bar"}`)
 	select {
 	case <-time.After(5 * time.Millisecond):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
+}
+
+func TestDynJSONArray_SetAndGet(t *testing.T) {
+	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
+	dynFlag := DynJSON(set, "some_json_1", defaultJSONArray, "Use it or lose it")
+
+	assert.EqualValues(t, defaultJSONArray, dynFlag.Get(), "value must be default after create")
+
+	err := set.Set("some_json_1", `[{"ints": [42], "string": "new-value", "inner": { "bool": false } }, 
+																							{"ints": [24], "string": "new-value", "inner": { "bool": true } }]`)
+	assert.NoError(t, err, "setting value must succeed")
+
+	var newJSONArray = &[]outerJSON{
+		{FieldInts: []int{42}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: false}},
+		{FieldInts: []int{24}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: true}},
+	}
+
+	assert.EqualValues(t,
+		newJSONArray,
+		dynFlag.Get(),
+		"value must be set after update")
 }
 
 type outerJSON struct {
