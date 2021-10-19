@@ -190,6 +190,8 @@ type HTTPOptions struct {
 	Payload         []byte // body for http request, implies POST if not empty.
 
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
+	LogErrors        bool   // whether to log non 2xx code as they occur or not
+	Id               int    // id to use for logging (thread id when used as a runner)
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -302,6 +304,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
+// TODO: refactor common parts with FastClient
 type Client struct {
 	url                  string
 	path                 string // original path of the request's url
@@ -313,6 +316,8 @@ type Client struct {
 	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
 	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
+	logErrors            bool
+	id                   int
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -368,7 +373,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 	}
 	resp, err := c.client.Do(c.req)
 	if err != nil {
-		log.Errf("Unable to send %s request for %s : %v", c.req.Method, c.url, err)
+		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, c.req.Method, c.url, err)
 		return http.StatusBadRequest, []byte(err.Error()), 0
 	}
 	var data []byte
@@ -382,16 +387,19 @@ func (c *Client) Fetch() (int, []byte, int) {
 	data, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Errf("Unable to read response for %s : %v", c.url, err)
+		log.Errf("[%d] Unable to read response for %s : %v", c.id, c.url, err)
 		code := resp.StatusCode
 		if codeIsOK(code) {
 			code = http.StatusNoContent
-			log.Warnf("Ok code despite read error, switching code to %d", code)
+			log.Warnf("[%d] Ok code despite read error, switching code to %d", c.id, code)
 		}
 		return code, data, 0
 	}
 	code := resp.StatusCode
-	log.Debugf("Got %d : %s for %s %s - response is %d bytes", code, resp.Status, c.req.Method, c.url, len(data))
+	log.Debugf("[%d] Got %d : %s for %s %s - response is %d bytes", c.id, code, resp.Status, c.req.Method, c.url, len(data))
+	if c.logErrors && !codeIsOK(code) {
+		log.Warnf("[%d] Non ok http code %d", c.id, code)
+	}
 	return code, data, 0
 }
 
@@ -473,6 +481,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			Transport: &tr,
 		},
 		transport: &tr,
+		id:        o.Id,
+		logErrors: o.LogErrors,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
@@ -524,6 +534,8 @@ type FastClient struct {
 	halfClose    bool // allow/do half close when keepAlive is false
 	reqTimeout   time.Duration
 	uuidMarkers  [][]byte
+	logErrors    bool
+	id           int
 }
 
 // Close cleans up any resources used by FastClient.
@@ -578,7 +590,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
-		http10: o.HTTP10, halfClose: o.AllowHalfClose,
+		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.Id,
 	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
@@ -721,7 +733,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 			} // else:
 			log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
 		} else {
-			log.Warnf("Unable to close write non tcp connection %v", conn)
+			log.Warnf("[%d] Unable to close write non tcp connection %v", c.id, conn)
 		}
 	}
 	// Read the response:
@@ -763,7 +775,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					c.errorCount++
 					err = conn.Close() // close the previous one
 					if err != nil {
-						log.Warnf("Error closing dead socket %v: %v", conn, err)
+						log.Warnf("[%d] Error closing dead socket %v: %v", c.id, conn, err)
 					}
 					c.code = RetryOnce // special "retry once" code
 					return
@@ -790,7 +802,9 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) // TODO do that only once...
 			// TODO handle 100 Continue, make the "ok" codes configurable
 			if !codeIsOK(c.code) {
-				log.Warnf("Parsed non ok code %d (%v)", c.code, string(c.buffer[:retcodeOffset+3]))
+				if c.logErrors {
+					log.Warnf("[%d] Non ok http code %d (%v)", c.id, c.code, string(c.buffer[:retcodeOffset+3]))
+				}
 				break
 			}
 			if log.LogDebug() {
@@ -825,7 +839,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 						// Content-Length mode:
 						contentLength = ParseDecimal(c.buffer[offset+len(contentLengthHeader) : c.headerLen])
 						if contentLength < 0 {
-							log.Warnf("Warning: content-length unparsable %s", string(c.buffer[offset+2:offset+len(contentLengthHeader)+4]))
+							log.Warnf("[%d] Warning: content-length unparsable %s", c.id, string(c.buffer[offset+2:offset+len(contentLengthHeader)+4]))
 							keepAlive = false
 							break
 						}
@@ -853,15 +867,15 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							if log.LogVerbose() {
 								log.LogVf("Warning: content-length missing in %s", string(c.buffer[:c.headerLen]))
 							} else {
-								log.Warnf("Warning: content-length missing (%d bytes headers)", c.headerLen)
+								log.Warnf("[%d] Warning: content-length missing (%d bytes headers)", c.id, c.headerLen)
 							}
 							keepAlive = false // can't keep keepAlive
 							break
 						}
 					} // end of content-length section
 					if max > len(c.buffer) {
-						log.Warnf("Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
-							c.headerLen, contentLength, (c.headerLen+contentLength)/1024+1)
+						log.Warnf("[%d] Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
+							c.id, c.headerLen, contentLength, (c.headerLen+contentLength)/1024+1)
 						// TODO: just consume the extra instead
 						max = len(c.buffer)
 					}
