@@ -96,7 +96,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
-		o.HTTPOptions.Id = i
+		o.HTTPOptions.ID = i
 		// Create a client (and transport) and connect once for each 'thread'
 		var err error
 		httpstate[i].client, err = NewClient(&o.HTTPOptions)

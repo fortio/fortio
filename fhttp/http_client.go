@@ -191,7 +191,7 @@ type HTTPOptions struct {
 
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
 	LogErrors        bool   // whether to log non 2xx code as they occur or not
-	Id               int    // id to use for logging (thread id when used as a runner)
+	ID               int    // id to use for logging (thread id when used as a runner)
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -304,7 +304,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
-// TODO: refactor common parts with FastClient
+// TODO: refactor common parts with FastClient.
 type Client struct {
 	url                  string
 	path                 string // original path of the request's url
@@ -481,7 +481,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			Transport: &tr,
 		},
 		transport: &tr,
-		id:        o.Id,
+		id:        o.ID,
 		logErrors: o.LogErrors,
 	}
 	if !o.FollowRedirects {
@@ -590,7 +590,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
-		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.Id,
+		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
 	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {

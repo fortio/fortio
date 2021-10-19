@@ -96,6 +96,7 @@ var (
 	CACertFlag = flag.String("cacert", "",
 		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
 			"if empty, use https:// prefix for standard internet/system CAs")
+	// LogErrorsFlag determines if the non ok http error codes get logged as they occur or not.
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
 )
 
