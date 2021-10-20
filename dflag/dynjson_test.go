@@ -66,8 +66,10 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 
 	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithValidator(validator)
 
-	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`), "no error from validator when inputo k")
-	assert.Error(t, set.Set("some_json_1", `{"ints": [42]}`), "error from validator when value out of range")
+	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`),
+		"no error from validator")
+	assert.Error(t, set.Set("some_json_1", `{"ints": [42]}`),
+		"error from validator when value out of range")
 }
 
 func TestDynJSON_FiresNotifier(t *testing.T) {
@@ -100,7 +102,7 @@ func TestDynJSONArray_SetAndGet(t *testing.T) {
 																							{"ints": [24], "string": "new-value", "inner": { "bool": true } }]`)
 	assert.NoError(t, err, "setting value must succeed")
 
-	var newJSONArray = &[]outerJSON{
+	newJSONArray := &[]outerJSON{
 		{FieldInts: []int{42}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: false}},
 		{FieldInts: []int{24}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: true}},
 	}
@@ -130,22 +132,27 @@ func TestDynJSONArray_FiresValidators(t *testing.T) {
 			if v.FieldString == "" {
 				return fmt.Errorf("FieldString must not be empty")
 			}
-
 		}
 		return nil
 	}
 
 	DynJSON(set, "some_json_array", defaultJSONArray, "Use it or lose it").WithValidator(validator)
 
-	assert.NoError(t, set.Set("some_json_array", `[{"ints": [42], "string":"bar"}, {"ints": [24], "string":"foo"}]`), "no error from validator when inputo k")
-	assert.Error(t, set.Set("some_json_array", `{"ints": [42]}`), "error from validator when required value is missing")
+	assert.NoError(t, set.Set("some_json_array",
+		`[{"ints": [42], "string":"bar"}, {"ints": [24], "string":"foo"}]`),
+		"no error from validator when inputo k")
+	assert.Error(t, set.Set("some_json_array", `{"ints": [42]}`),
+		"error from validator when required value is missing")
 }
 
 func TestDynJSONArray_FiresNotifier(t *testing.T) {
 	waitCh := make(chan bool, 1)
 	notifier := func(oldVal interface{}, newVal interface{}) {
 		assert.EqualValues(t, defaultJSONArray, oldVal, "old value in notify must match previous value")
-		assert.EqualValues(t, &[]outerJSON{{FieldInts: []int{42}, FieldString: "new-value", FieldInner: &innerJSON{FieldBool: false}}}, newVal, "new value in notify must match set value")
+		assert.EqualValues(t, &[]outerJSON{{
+			FieldInts: []int{42}, FieldString: "new-value",
+			FieldInner: &innerJSON{FieldBool: false},
+		}}, newVal, "new value in notify must match set value")
 		waitCh <- true
 	}
 
