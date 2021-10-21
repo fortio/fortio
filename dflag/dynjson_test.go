@@ -20,7 +20,15 @@ var defaultJSON = &outerJSON{
 	},
 }
 
-var defaultJSONArray = &[]outerJSON{*defaultJSON, *defaultJSON}
+var defaultJSONTwo = &outerJSON{
+	FieldInts:   []int{2, 3, 4, 5},
+	FieldString: "non-empty",
+	FieldInner: &innerJSON{
+		FieldBool: false,
+	},
+}
+
+var defaultJSONArray = &[]outerJSON{*defaultJSON, *defaultJSONTwo}
 
 func TestDynJSON_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
@@ -142,7 +150,7 @@ func TestDynJSONArray_FiresValidators(t *testing.T) {
 
 	assert.NoError(t, set.Set("some_json_array",
 		`[{"ints": [42], "string":"bar"}, {"ints": [24], "string":"foo"}]`),
-		"no error from validator when inputo k")
+		"no error from validator")
 	assert.Error(t, set.Set("some_json_array", `{"ints": [42]}`),
 		"error from validator when required value is missing")
 }
