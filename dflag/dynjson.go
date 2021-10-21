@@ -16,10 +16,14 @@ import (
 // New values based on the default constructor of `value` type will be created on each update.
 func DynJSON(flagSet *flag.FlagSet, name string, value interface{}, usage string) *DynJSONValue {
 	reflectVal := reflect.ValueOf(value)
-	if (reflectVal.Kind() != reflect.Ptr || reflectVal.Elem().Kind() != reflect.Struct) &&
-		(reflectVal.Kind() != reflect.Ptr || reflectVal.Elem().Kind() != reflect.Slice) {
+
+	notPtr := reflectVal.Kind() != reflect.Ptr
+	notStruct := reflectVal.Elem().Kind() != reflect.Struct
+	notSlice := reflectVal.Elem().Kind() != reflect.Slice
+	if notPtr || (notStruct && notSlice) {
 		panic("DynJSON value must be a pointer to a struct or to a slice")
 	}
+
 	dynValue := &DynJSONValue{
 		ptr:        unsafe.Pointer(reflectVal.Pointer()),
 		structType: reflectVal.Type().Elem(),

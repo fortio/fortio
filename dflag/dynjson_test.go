@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var defaultJSONOne = &outerJSON{
+var defaultJSON = &outerJSON{
 	FieldInts:   []int{1, 3, 3, 7},
 	FieldString: "non-empty",
 	FieldInner: &innerJSON{
@@ -20,7 +20,7 @@ var defaultJSONOne = &outerJSON{
 	},
 }
 
-var defaultJSONTwo = &outerJSON{
+var defaultJSONElemOne = &outerJSON{
 	FieldInts:   []int{1, 3, 3, 7},
 	FieldString: "non-empty",
 	FieldInner: &innerJSON{
@@ -28,13 +28,21 @@ var defaultJSONTwo = &outerJSON{
 	},
 }
 
-var defaultJSONArray = &[]outerJSON{*defaultJSONOne, *defaultJSONTwo}
+var defaultJSONElemTwo = &outerJSON{
+	FieldInts:   []int{2, 3, 4, 5},
+	FieldString: "non-empty",
+	FieldInner: &innerJSON{
+		FieldBool: false,
+	},
+}
+
+var defaultJSONArray = &[]outerJSON{*defaultJSONElemOne, *defaultJSONElemTwo}
 
 func TestDynJSON_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	dynFlag := DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it")
+	dynFlag := DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it")
 
-	assert.EqualValues(t, defaultJSONOne, dynFlag.Get(), "value must be default after create")
+	assert.EqualValues(t, defaultJSON, dynFlag.Get(), "value must be default after create")
 
 	err := set.Set("some_json_1", `{"ints": [42], "string": "new-value", "inner": { "bool": false } }`)
 	assert.NoError(t, err, "setting value must succeed")
@@ -46,7 +54,7 @@ func TestDynJSON_SetAndGet(t *testing.T) {
 
 func TestDynJSON_IsMarkedDynamic(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it")
+	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it")
 	assert.True(t, IsFlagDynamic(set.Lookup("some_json_1")))
 }
 
@@ -64,7 +72,7 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 		return nil
 	}
 
-	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithValidator(validator)
+	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithValidator(validator)
 
 	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`),
 		"no error from validator")
@@ -75,13 +83,13 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 func TestDynJSON_FiresNotifier(t *testing.T) {
 	waitCh := make(chan bool, 1)
 	notifier := func(oldVal interface{}, newVal interface{}) {
-		assert.EqualValues(t, defaultJSONOne, oldVal, "old value in notify must match previous value")
+		assert.EqualValues(t, defaultJSON, oldVal, "old value in notify must match previous value")
 		assert.EqualValues(t, &outerJSON{FieldInts: []int{42}, FieldString: "bar"}, newVal, "new value in notify must match set value")
 		waitCh <- true
 	}
 
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
-	DynJSON(set, "some_json_1", defaultJSONOne, "Use it or lose it").WithNotifier(notifier)
+	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithNotifier(notifier)
 	err := set.Set("some_json_1", `{"ints": [42], "string":"bar"}`)
 	assert.NoError(t, err, "setting value must succeed")
 
