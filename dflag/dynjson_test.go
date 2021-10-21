@@ -74,10 +74,8 @@ func TestDynJSON_FiresValidators(t *testing.T) {
 
 	DynJSON(set, "some_json_1", defaultJSON, "Use it or lose it").WithValidator(validator)
 
-	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`),
-		"no error from validator")
-	assert.Error(t, set.Set("some_json_1", `{"ints": [42]}`),
-		"error from validator when value out of range")
+	assert.NoError(t, set.Set("some_json_1", `{"ints": [42], "string":"bar"}`), "no error from validator")
+	assert.Error(t, set.Set("some_json_1", `{"ints": [42]}`), "error from validator when value out of range")
 }
 
 func TestDynJSON_FiresNotifier(t *testing.T) {
@@ -98,6 +96,18 @@ func TestDynJSON_FiresNotifier(t *testing.T) {
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
+}
+
+func TestDynJSON_InvalidInput(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Test function TestDynJSONArray_InvalidInput did not panic")
+		}
+	}()
+
+	invalidInput := "invalid"
+	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
+	DynJSON(set, "some_json_array", &invalidInput, "Use it or lose it")
 }
 
 func TestDynJSONArray_SetAndGet(t *testing.T) {
