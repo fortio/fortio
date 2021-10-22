@@ -61,9 +61,8 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.17.1/fortio_win_1.17.1.zip and extract all to some location then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.17.1/fortio_win_1.17.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
-cd fortio
 fortio.exe server
 ```
 (at the prompt, allow the windows firewall to let connections in)
@@ -288,6 +287,39 @@ should be user:password
 </details>
 
 See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
+
+## Server URLs and features
+
+Fortio `server` has the following feature for the http listening on 8080 (all paths and ports are configurable through flags above):
+
+* A simple echo server which will echo back posted data (for any path not mentioned below).
+
+  For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
+
+| Parameter | Usage, example |
+|-----------|----------------|
+| delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
+| status    | http status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+| size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
+| close     | close the socket after answering e.g `close=true` |
+| header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
+
+You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
+`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
+
+* `/debug` will echo back the request in plain text for human debugging.
+
+* `/fortio/` A UI to
+  * Run/Trigger tests and graph the results.
+  * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
+  * Proxy/fetch other URLs
+  * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
+  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
+  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
+
+The `report` mode is a readonly subset of the above directly on `/`.
+
+There is also the GRPC health and ping servers, as well as the http->https redirector.
 
 ## Example use and output
 
@@ -753,39 +785,6 @@ http://localhost:8080/fortio/
 Fortio 1.17.1 proxy for [::1]:8080 server listening on [::]:8888
 Fortio 1.17.1 proxy for [::1]:8080 server listening on [::1]:8889
 ```
-
-## Server URLs and features
-
-Fortio `server` has the following feature for the http listening on 8080 (all paths and ports are configurable through flags above):
-
-* A simple echo server which will echo back posted data (for any path not mentioned below).
-
-  For instance `curl -d abcdef http://localhost:8080/` returns `abcdef` back. It supports the following optional query argument parameters:
-
-| Parameter | Usage, example |
-|-----------|----------------|
-| delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
-| status    | http status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
-| size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
-| close     | close the socket after answering e.g `close=true` |
-| header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
-
-You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
-`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
-
-* `/debug` will echo back the request in plain text for human debugging.
-
-* `/fortio/` A UI to
-  * Run/Trigger tests and graph the results.
-  * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
-  * Proxy/fetch other URLs
-  * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
-  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
-  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
-
-The `report` mode is a readonly subset of the above directly on `/`.
-
-There is also the GRPC health and ping servers, as well as the http->https redirector.
 
 ## Implementation details
 
