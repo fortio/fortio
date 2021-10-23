@@ -42,15 +42,15 @@ func Error(w http.ResponseWriter, msg ErrorReply) {
 // . is all the json
 // .foo.bar.blah will extract that part of the tree.
 func GetConfigAtPath(path string, data []byte) (map[string]interface{}, error) {
-	var f interface{}
-	if err := json.Unmarshal(data, &f); err != nil {
+	// that's what Unmarshal does anyway if you pass interface{} var, skips a cast even for dynamic/unknown json
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, err
 	}
-	m := f.(map[string]interface{})
 	return getConfigAtPath(path, m)
 }
 
-// recurse on the requested path
+// recurse on the requested path.
 func getConfigAtPath(path string, m map[string]interface{}) (map[string]interface{}, error) {
 	path = strings.TrimLeft(path, ".")
 	if path == "" {
@@ -96,7 +96,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 }
 
 // RESTRunHandler is api version of UI submit handler.
-func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
+func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	fhttp.LogRequest(r, "REST Run Api call")
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
@@ -207,7 +207,8 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run executes the run (can be called async or not, writer is nil for async mode).
-func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{}, runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
+func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
+	runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
