@@ -132,7 +132,7 @@ func Run(w http.ResponseWriter, r *http.Request, runner, url string, ro periodic
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
-	if runner == modegrpc {
+	if runner == modegrpc { // nolint: nestif
 		grpcSecure := (r.FormValue("grpc-secure") == "on")
 		grpcPing := (r.FormValue("ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
