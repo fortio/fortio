@@ -107,7 +107,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
 	jsonPath := r.FormValue("jsonPath")
 	var jd map[string]interface{}
-	if jsonPath != "" {
+	if len(data) > 0 {
 		// Json input and deserialize options from that path, eg. for flagger:
 		// jsonPath=metadata
 		jd, err = GetConfigAtPath(jsonPath, data)
