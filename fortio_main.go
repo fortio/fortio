@@ -386,6 +386,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
 		Jitter:      *jitterFlag,
+		RunID:       *bincommon.RunIDFlag,
 	}
 	var res periodic.HasRunnerResult
 	var err error

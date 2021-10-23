@@ -87,13 +87,19 @@ function formatDate (dStr) {
 
 function makeTitle (res) {
   const title = []
-  if (res.Labels !== '') {
-    if (res.URL) { // http results
-      title.push(res.Labels + ' - ' + res.URL + ' - ' + formatDate(res.StartTime))
-    } else { // grpc results
-      title.push(res.Labels + ' - ' + res.Destination + ' - ' + formatDate(res.StartTime))
-    }
+  let firstLine = ''
+  if ((typeof res.RunID !== 'undefined')  &&  (res.RunID!== 0)) {
+    firstLine = '(' + res.RunID + ') '
   }
+  if (res.Labels !== '') {
+    firstLine += res.Labels + ' - '
+  }
+  if (res.URL) { // http results
+    firstLine+= res.URL
+  } else { // grpc/tcp results
+    firstLine+= res.Destination
+  }
+  title.push(firstLine+ ' - ' + formatDate(res.StartTime))
   let percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
   if (res.DurationHistogram.Percentiles) {
     for (let i = 0; i < res.DurationHistogram.Percentiles.length; i++) {

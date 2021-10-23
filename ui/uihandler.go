@@ -201,6 +201,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		runs[runid] = &ro
 		uiRunMapMutex.Unlock()
 		log.Infof("New run id %d", runid)
+		ro.RunID = id
 	}
 	httpopts := &fhttp.HTTPOptions{}
 	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value

@@ -19,18 +19,20 @@ import (
 	"fortio.org/fortio/udprunner"
 )
 
+// ErrorReply is returned on errors.
 type ErrorReply struct {
 	Error     string
 	Exception error
 }
 
+// Error writes serialized ErrorReply to the writer.
 func Error(w http.ResponseWriter, msg ErrorReply) {
 	w.WriteHeader(http.StatusBadRequest)
 	b, _ := json.Marshal(msg)
 	_, _ = w.Write(b)
 }
 
-// RESTHandler is api version of UI submit handler
+// RESTRunHandler is api version of UI submit handler
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Run Api call")
 	DoSave := (r.FormValue("save") == "on")
@@ -93,6 +95,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	runid := id
 	runs[runid] = &ro
 	uiRunMapMutex.Unlock()
+	ro.RunID = runid
 	log.Infof("New run id %d", runid)
 	httpopts := &fhttp.HTTPOptions{}
 	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
@@ -120,6 +123,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
 		// detach?
 	}
+
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
