@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -36,27 +37,105 @@ func Error(w http.ResponseWriter, msg ErrorReply) {
 	_, _ = w.Write(b)
 }
 
+// GetConfigAtPath deserializes the bytes as JSON and
+// extracts the map at the given path (only supports simple expression:
+// . is all the json
+// .foo.bar.blah will extract that part of the tree.
+func GetConfigAtPath(path string, data []byte) (map[string]interface{}, error) {
+	var f interface{}
+	if err := json.Unmarshal(data, &f); err != nil {
+		return nil, err
+	}
+	m := f.(map[string]interface{})
+	return getConfigAtPath(path, m)
+}
+
+// recurse on the requested path
+func getConfigAtPath(path string, m map[string]interface{}) (map[string]interface{}, error) {
+	path = strings.TrimLeft(path, ".")
+	if path == "" {
+		return m, nil
+	}
+	parts := strings.SplitN(path, ".", 2)
+	log.Debugf("split got us %v", parts)
+	first := parts[0]
+	rest := ""
+	if len(parts) == 2 {
+		rest = parts[1]
+	}
+	nm, found := m[first]
+	if !found {
+		return nil, fmt.Errorf("%q not found in json", first)
+	}
+	mm, ok := nm.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%q path is not a map", first)
+	}
+	return getConfigAtPath(rest, mm)
+}
+
+func FormValue(r *http.Request, json map[string]interface{}, key string) string {
+	// query args have priority
+	res := r.FormValue(key)
+	if res != "" {
+		log.Debugf("key %q in query args so using that value %q", key, res)
+		return res
+	}
+	res2, found := json[key]
+	if !found {
+		log.Debugf("key %q not in json map", key)
+		return ""
+	}
+	res, ok := res2.(string)
+	if !ok {
+		log.Warnf("%q is %+v / not a string, can't be used", key, res2)
+		return ""
+	}
+	log.LogVf("Getting %q from json: %q", key, res)
+	return res
+}
+
 // RESTRunHandler is api version of UI submit handler.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Run Api call")
-	url := r.FormValue("url")
-	runner := r.FormValue("runner")
+	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	if err != nil {
+		log.Errf("Error reading %v", err)
+		Error(w, ErrorReply{"body read error", err})
+		return
+	}
+	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
+	jsonPath := r.FormValue("jsonPath")
+	var jd map[string]interface{}
+	if jsonPath != "" {
+		// Json input and deserialize options from that path, eg. for flagger:
+		// jsonPath=metadata
+		jd, err = GetConfigAtPath(jsonPath, data)
+		if err != nil {
+			log.Errf("Error deserializing %v", err)
+			Error(w, ErrorReply{"body json deserialization error: " + err.Error(), err})
+			return
+		}
+		log.Infof("Body: %+v", jd)
+	}
+	url := FormValue(r, jd, "url")
+	runner := FormValue(r, jd, "runner")
 	if runner == "" {
 		runner = "http"
 	}
 	log.Infof("Starting API run %s load request from %v for %s", runner, r.RemoteAddr, url)
-	async := (r.FormValue("async") == "on")
-	payload := r.FormValue("payload")
-	labels := r.FormValue("labels")
-	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
-	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
-	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
-	durStr := r.FormValue("t")
-	jitter := (r.FormValue("jitter") == "on")
-	stdClient := (r.FormValue("stdclient") == "on")
-	httpsInsecure := (r.FormValue("https-insecure") == "on")
-	resolve := r.FormValue("resolve")
-	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
+	async := (FormValue(r, jd, "async") == "on")
+	payload := FormValue(r, jd, "payload")
+	labels := FormValue(r, jd, "labels")
+	resolution, _ := strconv.ParseFloat(FormValue(r, jd, "r"), 64)
+	percList, _ := stats.ParsePercentiles(FormValue(r, jd, "p"))
+	qps, _ := strconv.ParseFloat(FormValue(r, jd, "qps"), 64)
+	durStr := FormValue(r, jd, "t")
+	jitter := (FormValue(r, jd, "jitter") == "on")
+	stdClient := (FormValue(r, jd, "stdclient") == "on")
+	httpsInsecure := (FormValue(r, jd, "https-insecure") == "on")
+	resolve := FormValue(r, jd, "resolve")
+	timeoutStr := strings.TrimSpace(FormValue(r, jd, "timeout"))
 	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
@@ -68,12 +147,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
 		}
 	}
-	c, _ := strconv.Atoi(r.FormValue("c"))
+	c, _ := strconv.Atoi(FormValue(r, jd, "c"))
 	out := io.Writer(os.Stderr)
 	if len(percList) == 0 && !strings.Contains(r.URL.RawQuery, "p=") {
 		percList = defaultPercentileList
 	}
-	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64)
+	n, _ := strconv.ParseInt(FormValue(r, jd, "n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
 		Error(w, ErrorReply{"URL is required", nil})
 		return
@@ -121,21 +200,21 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
 		w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
-		go Run(nil, r, runner, url, ro, httpopts)
+		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
-	Run(w, r, runner, url, ro, httpopts)
+	Run(w, r, jd, runner, url, ro, httpopts)
 }
 
 // Run executes the run (can be called async or not, writer is nil for async mode).
-func Run(w http.ResponseWriter, r *http.Request, runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
+func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{}, runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
 	if runner == modegrpc { // nolint: nestif
-		grpcSecure := (r.FormValue("grpc-secure") == "on")
-		grpcPing := (r.FormValue("ping") == "on")
-		grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
+		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
+		grpcPing := (FormValue(r, jd, "ping") == "on")
+		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions: ro,
 			Destination:   url,
@@ -187,7 +266,7 @@ func Run(w http.ResponseWriter, r *http.Request, runner, url string, ro periodic
 		log.Fatalf("Unable to json serialize result: %v", err)
 	}
 	id := res.Result().ID()
-	doSave := (r.FormValue("save") == "on")
+	doSave := (FormValue(r, jd, "save") == "on")
 	if doSave {
 		SaveJSON(id, json)
 	}
