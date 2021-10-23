@@ -74,6 +74,8 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	return getConfigAtPath(rest, mm)
 }
 
+// FormValue gets the value from the query arguments/url parameter or from the
+// provided map (json data).
 func FormValue(r *http.Request, json map[string]interface{}, key string) string {
 	// query args have priority
 	res := r.FormValue(key)
@@ -282,18 +284,22 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	}
 }
 
+// RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
 }
 
+// RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
 func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Stop Api call")
-	i := StopByRunID(0) // TODO: get from input
+	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
+	i := StopByRunID(runid)
 	w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
 }
 
+// StopByRunID stops all the runs if passed 0 or the runid provided.
 func StopByRunID(runid int64) int {
 	uiRunMapMutex.Lock()
 	if runid <= 0 { // Stop all
