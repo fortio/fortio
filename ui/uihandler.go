@@ -89,10 +89,13 @@ var (
 )
 
 const (
-	fetchURI    = "fetch/"
-	fetch2URI   = "fetch2/"
-	faviconPath = "/favicon.ico"
-	modegrpc    = "grpc"
+	fetchURI      = "fetch/"
+	fetch2URI     = "fetch2/"
+	restRunURI    = "rest/run"
+	restStatusURI = "rest/status"
+	restStopURI   = "rest/stop"
+	faviconPath   = "/favicon.ico"
+	modegrpc      = "grpc"
 )
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -256,23 +259,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case menu:
 		// nothing more to do
 	case stop:
-		if runid <= 0 { // Stop all
-			i := 0
-			uiRunMapMutex.Lock()
-			for _, v := range runs {
-				v.Abort()
-				i++
-			}
-			uiRunMapMutex.Unlock()
-			log.Infof("Interrupted all %d runs", i)
-		} else { // Stop one
-			uiRunMapMutex.Lock()
-			v, found := runs[runid]
-			if found {
-				v.Abort()
-			}
-			uiRunMapMutex.Unlock()
-		}
+		StopByRunID(runid)
 	case run:
 		// mode == run case:
 		for _, header := range r.Form["H"] {
@@ -353,20 +340,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 			}
-			return
-		}
-		if savedAs != "" {
-			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
-				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
-		}
+		} else {
+			if savedAs != "" {
+				_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
+					" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
+			}
 
-		_, _ = w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-			res.Result().DurationHistogram.Count,
-			1000.*res.Result().DurationHistogram.Avg,
-			res.Result().ActualQPS)))
-		ResultToJsData(w, json)
-		_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
+			_, _ = w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+				res.Result().DurationHistogram.Count,
+				1000.*res.Result().DurationHistogram.Avg,
+				res.Result().ActualQPS)))
+			ResultToJsData(w, json)
+			_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
+		}
+		uiRunMapMutex.Lock()
 		delete(runs, runid)
+		uiRunMapMutex.Unlock()
 	}
 }
 
@@ -912,6 +901,14 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	// h2 incoming and https outgoing ok fetcher
 	mux.HandleFunc(uiPath+fetch2URI, fhttp.FetcherHandler2)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
+
+	// New REST apis.
+	restRunPath := uiPath + restRunURI
+	mux.HandleFunc(restRunPath, RESTRunHandler)
+	restStatusPath := uiPath + restStatusURI
+	mux.HandleFunc(restStatusPath, RESTStatusHandler)
+	restStopPath := uiPath + restStopURI
+	mux.HandleFunc(restStopPath, RESTStopHandler)
 
 	logoPath = version.Short() + "/static/img/fortio-logo.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
