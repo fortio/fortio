@@ -121,7 +121,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
-	DoSave := (r.FormValue("save") == "on")
+	doSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	runid := int64(0)
 	runner := r.FormValue("runner")
@@ -318,6 +318,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			res, err = fhttp.RunHTTPTest(&o)
 		}
+		uiRunMapMutex.Lock()
+		delete(runs, ro.RunID)
+		uiRunMapMutex.Unlock()
 		if err != nil {
 			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 
@@ -332,7 +335,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		savedAs := ""
 		id := res.Result().ID()
-		if DoSave {
+		if doSave {
 			savedAs = SaveJSON(id, json)
 		}
 		if JSONOnly {
@@ -341,22 +344,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 			}
-		} else {
-			if savedAs != "" {
-				_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
-					" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
-			}
-
-			_, _ = w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-				res.Result().DurationHistogram.Count,
-				1000.*res.Result().DurationHistogram.Avg,
-				res.Result().ActualQPS)))
-			ResultToJsData(w, json)
-			_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
+			return
 		}
-		uiRunMapMutex.Lock()
-		delete(runs, runid)
-		uiRunMapMutex.Unlock()
+		if savedAs != "" {
+			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
+				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
+		}
+		_, _ = w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+			res.Result().DurationHistogram.Count,
+			1000.*res.Result().DurationHistogram.Avg,
+			res.Result().ActualQPS)))
+		ResultToJsData(w, json)
+		_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
 	}
 }
 

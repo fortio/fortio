@@ -27,15 +27,18 @@ type ErrorReply struct {
 
 // Error writes serialized ErrorReply to the writer.
 func Error(w http.ResponseWriter, msg ErrorReply) {
+	if w == nil {
+		// async mode, nothing to do
+		return
+	}
 	w.WriteHeader(http.StatusBadRequest)
 	b, _ := json.Marshal(msg)
 	_, _ = w.Write(b)
 }
 
-// RESTRunHandler is api version of UI submit handler
+// RESTRunHandler is api version of UI submit handler.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Run Api call")
-	DoSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	runner := r.FormValue("runner")
 	if runner == "" {
@@ -50,9 +53,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 	durStr := r.FormValue("t")
 	jitter := (r.FormValue("jitter") == "on")
-	grpcSecure := (r.FormValue("grpc-secure") == "on")
-	grpcPing := (r.FormValue("ping") == "on")
-	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
 	stdClient := (r.FormValue("stdclient") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
@@ -121,19 +121,27 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
 		w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
-		// detach?
+		go Run(nil, r, runner, url, ro, httpopts)
+		return
 	}
+	Run(w, r, runner, url, ro, httpopts)
+}
 
+// Run executes the run (can be called async or not, writer is nil for async mode).
+func Run(w http.ResponseWriter, r *http.Request, runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
 	if runner == modegrpc {
+		grpcSecure := (r.FormValue("grpc-secure") == "on")
+		grpcPing := (r.FormValue("ping") == "on")
+		grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions: ro,
 			Destination:   url,
 			UsePing:       grpcPing,
 			Delay:         grpcPingDelay,
-			Insecure:      httpsInsecure,
+			Insecure:      httpopts.Insecure,
 		}
 		if grpcSecure {
 			o.Destination = fhttp.AddHTTPS(url)
@@ -145,7 +153,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 		o := tcprunner.RunnerOptions{
 			RunnerOptions: ro,
 		}
-		o.ReqTimeout = timeout
+		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
 		res, err = tcprunner.RunTCPTest(&o)
@@ -154,7 +162,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 		o := udprunner.RunnerOptions{
 			RunnerOptions: ro,
 		}
-		o.ReqTimeout = timeout
+		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
 		res, err = udprunner.RunUDPTest(&o)
@@ -166,6 +174,9 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}
+	uiRunMapMutex.Lock()
+	delete(runs, ro.RunID)
+	uiRunMapMutex.Unlock()
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		Error(w, ErrorReply{"Aborting because of error", err})
@@ -176,18 +187,19 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Unable to json serialize result: %v", err)
 	}
 	id := res.Result().ID()
-	if DoSave {
+	doSave := (r.FormValue("save") == "on")
+	if doSave {
 		SaveJSON(id, json)
+	}
+	if w == nil {
+		// async, no result to output
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(json)
 	if err != nil {
 		log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 	}
-	uiRunMapMutex.Lock()
-	delete(runs, runid)
-	uiRunMapMutex.Unlock()
-	//	}()
 }
 
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
