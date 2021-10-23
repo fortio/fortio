@@ -321,7 +321,7 @@ You can set a default value for all these by passing `-echo-server-default-param
   * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
-  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see #493).
+  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [#493](https://github.com/fortio/fortio/pull/493)).
   * `/fortio/rest/stop` stops all current run or by run id.
 
 The `report` mode is a readonly subset of the above directly on `/`.
