@@ -98,6 +98,8 @@ var (
 			"if empty, use https:// prefix for standard internet/system CAs")
 	// LogErrorsFlag determines if the non ok http error codes get logged as they occur or not.
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
+	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
+	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.

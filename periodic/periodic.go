@@ -130,8 +130,10 @@ type RunnerOptions struct {
 	// When multiple clients are used to generate requests, they tend to send
 	// requests very close to one another, causing a thundering herd problem
 	// Enabling jitter (+/-10%) allows these requests to be de-synchronized
-	// When enabled, it is only effective in the '-qps' mode
+	// When enabled, it is only effective in the '-qps' mode.
 	Jitter bool
+	// Optional run id; used by the server to identify runs.
+	RunID int64
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -148,6 +150,7 @@ type RunnerResults struct {
 	DurationHistogram *stats.HistogramData
 	Exactly           int64 // Echo back the requested count
 	Jitter            bool
+	RunID             int64 // Echo back the optional run id.
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -462,7 +465,8 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	result := RunnerResults{
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles), r.Exactly, r.Jitter,
+		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
+		r.Exactly, r.Jitter, r.RunID,
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
@@ -581,11 +585,15 @@ func getJitter(t time.Duration) time.Duration {
 	return time.Duration(j)
 }
 
-// ID Returns an id for the result: 96 bytes YYYY-MM-DD-HHmmSS_{alpha_labels}
+// ID Returns an id for the result: 96 bytes YYYY-MM-DD-HHmmSS_{RunID}_{alpha_labels}
+// where RunID is the RunID if not 0.
 // where alpha_labels is the filtered labels with only alphanumeric characters
 // and all non alpha num replaced by _; truncated to 96 bytes.
 func (r *RunnerResults) ID() string {
 	base := formatDate(&r.StartTime)
+	if r.RunID != 0 {
+		base += fmt.Sprintf("_%d", r.RunID)
+	}
 	if r.Labels == "" {
 		return base
 	}
