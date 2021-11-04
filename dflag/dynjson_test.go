@@ -20,7 +20,7 @@ var defaultJSON = &outerJSON{
 	},
 }
 
-var JsonValue2 = &outerJSON{
+var JSONValue2 = &outerJSON{
 	FieldInts:   []int{2, 3, 4, 5},
 	FieldString: "non-empty",
 	FieldInner: &innerJSON{
@@ -28,7 +28,7 @@ var JsonValue2 = &outerJSON{
 	},
 }
 
-var defaultJSONArray = &[]outerJSON{*defaultJSON, *JsonValue2}
+var defaultJSONArray = &[]outerJSON{*defaultJSON, *JSONValue2}
 
 func TestDynJSON_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
