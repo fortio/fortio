@@ -1,0 +1,48 @@
+
+name: Release
+
+on:
+  push:
+    tags:
+    - '*'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Build
+        id: build
+        run: |
+          make release
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo ::set-output name=VERSION::${VERSION}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Fortio ${{ steps.build.outputs.VERSION }}
+          draft: true
+
+      - name: Upload release artifact
+        id: upload-release-asset1
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
+          asset_name: fortio_win_${{ steps.build.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+      
