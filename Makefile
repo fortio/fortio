@@ -257,7 +257,7 @@ debian-sbuild:
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); sbuild
 
 info:
+	@echo "GIT_SHA=$(GIT_SHA)"
+	@echo "GIT_TAG=$(GIT_TAG)"
 	pwd
-	ls -l
-	echo "GIT_SHA=$(GIT_SHA)"
-	echo "GIT_TAG=$(GIT_TAG)"
+	ls -la

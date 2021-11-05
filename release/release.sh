@@ -35,3 +35,4 @@ unzip -l release/tgz/*.zip
 # then save the results 1 level up
 mv release/tgz/* release/
 rmdir release/tgz
+ls -l ./release

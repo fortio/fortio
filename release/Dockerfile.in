@@ -7,7 +7,7 @@ COPY docs/fortio.1 usr/share/man/man1/fortio.1
 RUN mkdir /tgz
 # Make sure the list here is both minimal and complete
 # we could take all of * but that adds system directories to the tar
-RUN tar cvf - usr/share/fortio/* usr/share/man/man1/fortio.1 usr/bin/fortio | gzip --best > /tgz/fortio-linux_x64-$(./usr/bin/fortio version -s).tgz
+RUN tar cvf - usr/share/man/man1/fortio.1 usr/bin/fortio | gzip --best > /tgz/fortio-linux_x64-$(./usr/bin/fortio version -s).tgz
 COPY --from=build /go/src/fortio.org/fortio.exe usr/share/fortio/
 WORKDIR /stage/usr/share/fortio
 RUN zip -9 -r fortio_win_$(/stage/usr/bin/fortio version -s).zip fortio.exe && mv *.zip /tgz
