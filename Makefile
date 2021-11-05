@@ -255,3 +255,9 @@ debian-dist: distclean debian-dist-common
 # assumes you ran one of the previous 2 target first
 debian-sbuild:
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); sbuild
+
+info:
+	pwd
+	ls -l
+	echo "GIT_SHA=$(GIT_SHA)"
+	echo "GIT_TAG=$(GIT_TAG)"

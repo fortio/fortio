@@ -21,9 +21,10 @@ jobs:
       - name: Build
         id: build
         run: |
-          make release
           VERSION=${GITHUB_REF/refs\/tags\//}
           echo ::set-output name=VERSION::${VERSION}
+          make info
+          make release
 
       - name: Create Release
         id: create_release
@@ -45,4 +46,3 @@ jobs:
           asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
           asset_name: fortio_win_${{ steps.build.outputs.VERSION }}.zip
           asset_content_type: application/zip
-      
