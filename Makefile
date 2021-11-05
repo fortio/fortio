@@ -189,9 +189,9 @@ dist: release/Makefile
 	# put the source files where they can be used as gopath by go,
 	# except leave the debian dir where it needs to be (below the version dir)
 	git ls-files \
-		| awk '{printf("src/fortio.org/fortio/%s\n", $$0)}' \
-		| (cd ../../.. ; $(TAR) \
-		--xform="s|^src|fortio-$(DIST_VERSION)/src|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
+		| awk '{printf("fortio/%s\n", $$0)}' \
+		| (cd ../ ; $(TAR) \
+		--xform="s|^fortio/|fortio-$(DIST_VERSION)/src/fortio.org/fortio/|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
 		--owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
 	# move the release/Makefile at the top (after the version dir)
 	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" \
