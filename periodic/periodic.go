@@ -408,8 +408,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
-	offsetSec := float64(r.Offset) / float64(time.Second)
-	functionDuration := stats.NewHistogram(offsetSec, r.Resolution)
+	functionDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
