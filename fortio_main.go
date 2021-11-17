@@ -104,6 +104,7 @@ var (
 	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
 	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
+	offsetFlag      = flag.Duration("o", defaults.Offset, "Offset duration of the histogram data")
 	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
@@ -387,6 +388,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Exactly:     *exactlyFlag,
 		Jitter:      *jitterFlag,
 		RunID:       *bincommon.RunIDFlag,
+		Offset:      *offsetFlag,
 	}
 	var res periodic.HasRunnerResult
 	var err error
