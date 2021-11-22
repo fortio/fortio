@@ -141,6 +141,9 @@ debug-tags:
 	@echo "GIT_TAG=$(GIT_TAG)"
 	@echo "DIST_VERSION=$(DIST_VERSION)"
 
+echo-version:
+	@echo "$(DIST_VERSION)"
+
 # Putting spaces in linker replaced variables is hard but does work.
 # This sets up the static directory outside of the go source tree and
 # the default data directory to a /var/lib/... volume

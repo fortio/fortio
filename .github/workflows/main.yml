@@ -21,10 +21,10 @@ jobs:
       - name: Build
         id: build
         run: |
-          VERSION=${GITHUB_REF/refs\/tags\/v/}
-          echo ::set-output name=VERSION::${VERSION}
           make info
           make release
+          VERSION=$(make echo-version)
+          echo ::set-output name=VERSION::${VERSION}
 
       - name: Create Release
         id: create_release
