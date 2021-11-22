@@ -25,6 +25,9 @@ jobs:
           make release
           VERSION=$(make echo-version)
           echo ::set-output name=VERSION::${VERSION}
+          PACKAGE_VERSION=$(make echo-package-version)
+          echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
+          echo "Version $VERSION, Package version $PACKAGE_VERSION"
 
       - name: Create Release
         id: create_release
@@ -64,8 +67,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
-          asset_name: fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.PACKAGE_VERSION }}.tgz
+          asset_name: fortio-linux_x64-${{ steps.build.outputs.PACKAGE_VERSION }}.tgz
           asset_content_type: application/x-compressed-tar
       - name: Upload release artifact 4
         id: upload-release-asset4
@@ -85,5 +88,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
-          asset_name: fortio__win_${{ steps.build.outputs.VERSION }}.zip
+          asset_name: fortio_win_${{ steps.build.outputs.VERSION }}.zip
           asset_content_type: application/zip

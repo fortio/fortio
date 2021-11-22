@@ -144,6 +144,10 @@ debug-tags:
 echo-version:
 	@echo "$(DIST_VERSION)"
 
+# FPM (for rpm...) converts - to _
+echo-package-version:
+	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
+
 # Putting spaces in linker replaced variables is hard but does work.
 # This sets up the static directory outside of the go source tree and
 # the default data directory to a /var/lib/... volume
