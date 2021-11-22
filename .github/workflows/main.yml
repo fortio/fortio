@@ -57,8 +57,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/fortio-${{ steps.build.outputs.VERSION }}-1.x86_64.rpm
-          asset_name: fortio-${{ steps.build.outputs.VERSION }}-1.x86_64.rpm
+          asset_path: release/fortio-${{ steps.build.outputs.PACKAGE_VERSION }}-1.x86_64.rpm
+          asset_name: fortio-${{ steps.build.outputs.PACKAGE_VERSION }}-1.x86_64.rpm
           asset_content_type: application/x-rpm
       - name: Upload release artifact 3
         id: upload-release-asset3
@@ -67,8 +67,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.PACKAGE_VERSION }}.tgz
-          asset_name: fortio-linux_x64-${{ steps.build.outputs.PACKAGE_VERSION }}.tgz
+          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_name: fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
           asset_content_type: application/x-compressed-tar
       - name: Upload release artifact 4
         id: upload-release-asset4
