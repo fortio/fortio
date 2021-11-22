@@ -29,6 +29,7 @@ set -o pipefail
 rm -f release/tgz/*
 rmdir release/tgz || true
 docker cp -a fortio_release:/tgz/ release/tgz
+ls -lRa ./release
 # Check the tar balls and zip
 tar tvfz release/tgz/*.tgz
 unzip -l release/tgz/*.zip
