@@ -21,7 +21,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          VERSION=${GITHUB_REF/refs\/tags\//}
+          VERSION=${GITHUB_REF/refs\/tags\/v/}
           echo ::set-output name=VERSION::${VERSION}
           make info
           make release
@@ -36,7 +36,7 @@ jobs:
           release_name: Fortio ${{ steps.build.outputs.VERSION }}
           draft: true
 
-      - name: Upload release artifact
+      - name: Upload release artifact 1
         id: upload-release-asset1
         uses: actions/upload-release-asset@v1
         env:
@@ -46,3 +46,44 @@ jobs:
           asset_path: release/fortio_${{ steps.build.outputs.VERSION }}.orig.tar.gz
           asset_name: fortio_${{ steps.build.outputs.VERSION }}.orig.tar.gz
           asset_content_type: application/x-compressed-tar
+# Todo find a way to upload all in 1... it's silly to have to do 1 by 1
+      - name: Upload release artifact 2
+        id: upload-release-asset2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio-${{ steps.build.outputs.VERSION }}-1.x86_64.rpm
+          asset_name: fortio-${{ steps.build.outputs.VERSION }}-1.x86_64.rpm
+          asset_content_type: application/x-rpm
+      - name: Upload release artifact 3
+        id: upload-release-asset3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_name: fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_content_type: application/x-compressed-tar
+      - name: Upload release artifact 4
+        id: upload-release-asset4
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio_${{ steps.build.outputs.VERSION }}_amd64.deb
+          asset_name: fortio_${{ steps.build.outputs.VERSION }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
+      - name: Upload release artifact 5
+        id: upload-release-asset5
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
+          asset_name: fortio__win_${{ steps.build.outputs.VERSION }}.zip
+          asset_content_type: application/zip
