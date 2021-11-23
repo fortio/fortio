@@ -18,6 +18,12 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
       - name: Build
         id: build
         run: |
@@ -28,6 +34,13 @@ jobs:
           PACKAGE_VERSION=$(make echo-package-version)
           echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
           echo "Version $VERSION, Package version $PACKAGE_VERSION"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}
 
       - name: Create Release
         id: create_release
@@ -90,15 +103,3 @@ jobs:
           asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
           asset_name: fortio_win_${{ steps.build.outputs.VERSION }}.zip
           asset_content_type: application/zip
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: true
-          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}
