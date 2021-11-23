@@ -141,6 +141,13 @@ debug-tags:
 	@echo "GIT_TAG=$(GIT_TAG)"
 	@echo "DIST_VERSION=$(DIST_VERSION)"
 
+echo-version:
+	@echo "$(DIST_VERSION)"
+
+# FPM (for rpm...) converts - to _
+echo-package-version:
+	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
+
 # Putting spaces in linker replaced variables is hard but does work.
 # This sets up the static directory outside of the go source tree and
 # the default data directory to a /var/lib/... volume
@@ -189,9 +196,9 @@ dist: release/Makefile
 	# put the source files where they can be used as gopath by go,
 	# except leave the debian dir where it needs to be (below the version dir)
 	git ls-files \
-		| awk '{printf("src/fortio.org/fortio/%s\n", $$0)}' \
-		| (cd ../../.. ; $(TAR) \
-		--xform="s|^src|fortio-$(DIST_VERSION)/src|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
+		| awk '{printf("fortio/%s\n", $$0)}' \
+		| (cd ../ ; $(TAR) \
+		--xform="s|^fortio/|fortio-$(DIST_VERSION)/src/fortio.org/fortio/|;s|^.*debian/|fortio-$(DIST_VERSION)/debian/|" \
 		--owner=0 --group=0 -c -f - -T -) > $(DIST_PATH)
 	# move the release/Makefile at the top (after the version dir)
 	$(TAR) --xform="s|^release/|fortio-$(DIST_VERSION)/|" \
@@ -255,3 +262,9 @@ debian-dist: distclean debian-dist-common
 # assumes you ran one of the previous 2 target first
 debian-sbuild:
 	cd $(TMP_DIST_DIR)/fortio-$(DIST_VERSION); sbuild
+
+info:
+	@echo "GIT_SHA=$(GIT_SHA)"
+	@echo "GIT_TAG=$(GIT_TAG)"
+	pwd
+	ls -la

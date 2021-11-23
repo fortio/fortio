@@ -1,0 +1,105 @@
+
+name: Release
+
+on:
+  push:
+    tags:
+    - '*'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build
+        id: build
+        run: |
+          make info
+          make release
+          VERSION=$(make echo-version)
+          echo ::set-output name=VERSION::${VERSION}
+          PACKAGE_VERSION=$(make echo-package-version)
+          echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
+          echo "Version $VERSION, Package version $PACKAGE_VERSION"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}, fortio/fortio:latest
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Fortio ${{ steps.build.outputs.VERSION }}
+          draft: true
+
+      - name: Upload release artifact 1
+        id: upload-release-asset1
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: release/fortio_${{ steps.build.outputs.VERSION }}.orig.tar.gz
+          asset_name: fortio_${{ steps.build.outputs.VERSION }}.orig.tar.gz
+          asset_content_type: application/x-compressed-tar
+# Todo find a way to upload all in 1... it's silly to have to do 1 by 1
+      - name: Upload release artifact 2
+        id: upload-release-asset2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio-${{ steps.build.outputs.PACKAGE_VERSION }}-1.x86_64.rpm
+          asset_name: fortio-${{ steps.build.outputs.PACKAGE_VERSION }}-1.x86_64.rpm
+          asset_content_type: application/x-rpm
+      - name: Upload release artifact 3
+        id: upload-release-asset3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_name: fortio-linux_x64-${{ steps.build.outputs.VERSION }}.tgz
+          asset_content_type: application/x-compressed-tar
+      - name: Upload release artifact 4
+        id: upload-release-asset4
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio_${{ steps.build.outputs.VERSION }}_amd64.deb
+          asset_name: fortio_${{ steps.build.outputs.VERSION }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
+      - name: Upload release artifact 5
+        id: upload-release-asset5
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/fortio_win_${{ steps.build.outputs.VERSION }}.zip
+          asset_name: fortio_win_${{ steps.build.outputs.VERSION }}.zip
+          asset_content_type: application/zip
