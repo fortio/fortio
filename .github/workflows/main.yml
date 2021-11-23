@@ -40,7 +40,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}
+          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}, fortio/fortio:latest
 
       - name: Create Release
         id: create_release
