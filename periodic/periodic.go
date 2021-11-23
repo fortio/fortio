@@ -134,6 +134,8 @@ type RunnerOptions struct {
 	Jitter bool
 	// Optional run id; used by the server to identify runs.
 	RunID int64
+	// Optional Offect Duration; to offset the histogram function duration
+	Offset time.Duration
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -406,7 +408,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
-	functionDuration := stats.NewHistogram(0, r.Resolution)
+	functionDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
