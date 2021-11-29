@@ -1,0 +1,39 @@
+/* support dark mode */
+:root {
+    color-scheme: light dark;
+}
+
+/* from   https://www.joshwcomeau.com/css/custom-css-reset/ + modifications */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 2.5%;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    line-height: 1.25;
+    -webkit-font-smoothing: antialiased;
+}
+
+img, picture, video, canvas, svg {
+    display: block;
+    max-width: 100%;
+}
+
+input, button, textarea, select {
+    font: inherit;
+}
+
+p, h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+}
+
+#root, #__next {
+    isolation: isolate;
+}

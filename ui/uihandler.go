@@ -910,7 +910,7 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	restStopPath := uiPath + restStopURI
 	mux.HandleFunc(restStopPath, RESTStopHandler)
 
-	logoPath = version.Short() + "/static/img/fortio-logo.svg"
+	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified

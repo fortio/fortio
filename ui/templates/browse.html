@@ -12,6 +12,7 @@ h1 {
   font-size: 120%;
 }
 </style>
+<link rel="stylesheet" href="{{.Version}}/static/css/fortio.css">
 </head>
 {{template "header" .}}
 <h1>Φορτίο (fortio) v{{.Version}}{{.Extra}}</h1>
@@ -119,7 +120,7 @@ search.addEventListener('keyup', filterFiles);
 </script>
 {{end}}
 <div class="chart-container" id="cc1" style="position: relative; height:75vh; width:98vw; visibility: hidden">
-<canvas style="background-color: #fff" id="chart1"></canvas>
+<canvas id="chart1"></canvas>
 </div>
 <div id="running">
 <br/>

@@ -4,6 +4,7 @@
   <script src="{{.ChartJSPath}}"></script>
   <script src="{{.Version}}/static/js/fortio_chart.js"></script>
   <link rel="icon" href="../favicon.ico"/>
+  <link rel="stylesheet" href="{{.Version}}/static/css/fortio.css">
 </head>
 {{template "header" .}}
 <h1>Φορτίο (fortio) v{{.Version}}{{if not .DoLoad}} control UI{{end}}</h1>
@@ -19,7 +20,7 @@
 </div>
 <script>runTestForDuration({{.TestExpectedDurationSeconds}})</script>
 <div class="chart-container" id="cc1" style="position: relative; height:75vh; width:98vw; display:none;">
-  <canvas style="background-color: #fff;" id="chart1"></canvas>
+  <canvas id="chart1"></canvas>
 </div>
 <div id="update" style="visibility: hidden">
   <form id="updtForm" action="javascript:updateChart()">
