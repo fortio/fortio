@@ -20,7 +20,7 @@ FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1
 LOGLEVEL=info # change to debug to debug
 MAXPAYLOAD=8 # Max Payload size for echo?size= in kb
 TIMEOUT=10s # need to be higher than test duration done through fetch
-CERT=/etc/ssl/certs/ca-certificates.crt
+#CERT=/etc/ssl/certs/ca-certificates.crt
 TEST_CERT_VOL=/etc/ssl/certs/fortio
 DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
@@ -29,10 +29,10 @@ FORTIO_BIN_PATH=fortio # /usr/bin/fortio is the full path but isn't needed
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
 function cleanup {
   set +e # errors are ok during cleanup
-#  docker logs $DOCKERID # uncomment to debug
-  docker stop $DOCKERID
+#  docker logs "$DOCKERID" # uncomment to debug
+  docker stop "$DOCKERID"
   docker rm -f $DOCKERNAME
-  docker stop $DOCKERSECID # may not be set yet, it's ok
+  docker stop "$DOCKERSECID" # may not be set yet, it's ok
   docker rm -f $DOCKERSECNAME
   docker rm -f $DOCKERSECVOLNAME
 }
@@ -42,15 +42,16 @@ set -o pipefail
 docker ps
 BASE_URL="http://localhost:8080"
 BASE_FORTIO="$BASE_URL$FORTIO_UI_PREFIX"
+LOGO=fortio-logo-gradient-no-bg.svg
 CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL -timeout $TIMEOUT"
 # Check https works (certs are in the image) - also tests autoswitch to std client for https
 $CURL https://www.google.com/robots.txt > /dev/null
 
 # Check that quiet is quiet. Issue #385.
 QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet www.google.com"
-if [ `$QUIETCURLTEST 2>&1 1> /dev/null | wc -l` -ne 0 ]; then
+if [ "$($QUIETCURLTEST 2>&1 > /dev/null  | wc -l)" -ne 0 ]; then
   echo "Error, -quiet still outputs logs"
-  $QUIETCURLTEST 2>&1 1> /dev/null
+  $QUIETCURLTEST > /dev/null
   exit 1
 fi
 
@@ -62,7 +63,7 @@ $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"SERVING": 100'
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
-LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/fortio-logo.svg" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
+LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/${LOGO}" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
   exit 1
@@ -83,13 +84,14 @@ fi
 
 # Check main, sync, browse pages
 VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
+LOGOPATH="${VERSION}/static/img/${LOGO}"
 for p in "" browse sync; do
   # Check the page doesn't 404s
   $CURL ${BASE_FORTIO}${p}
   # Check that page includes the logo
-  LOGOS=$($CURL ${BASE_FORTIO}${p} | grep -c "${VERSION}/static/img/fortio-logo.svg")
+  LOGOS=$($CURL ${BASE_FORTIO}${p} | { grep -c "$LOGOPATH" || true; })
   if [ "$LOGOS" -ne 1 ]; then
-    echo "expected a logo in the ${p} page"
+    echo "*** Expected to find logo $LOGOPATH in the ${BASE_FORTIO}${p} page"
     exit 1
   fi
 done
@@ -111,11 +113,11 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 # pprof should be there, no 404/error
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
-$CURL $PPROF_URL | grep -i TotalAlloc # should find this in memory profile
+$CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v35 /bin/true # cleaned up by name
+docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v36 /bin/true # cleaned up by name
 # copying cert files into the certs volume of the dummy container
-for f in ca.crt server.crt server.key; do docker cp $PWD/cert-tmp/$f $DOCKERSECVOLNAME:$TEST_CERT_VOL/$f; done
+for f in ca.crt server.crt server.key; do docker cp "$PWD/cert-tmp/$f" "$DOCKERSECVOLNAME:$TEST_CERT_VOL/$f"; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.
 # mounts certs volume from dummy container.
 DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --volumes-from $DOCKERSECVOLNAME fortio/fortio:webtest server -cacert $TEST_CERT_VOL/ca.crt -cert $TEST_CERT_VOL/server.crt -key $TEST_CERT_VOL/server.key -grpc-port 8097 -http-port 8098 -redirect-port 8090 -loglevel $LOGLEVEL)
@@ -123,13 +125,13 @@ DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --
 docker exec $DOCKERSECNAME $FORTIO_BIN_PATH grpcping -cacert $TEST_CERT_VOL/ca.crt localhost:8097
 docker exec $DOCKERSECNAME $FORTIO_BIN_PATH load -grpc -cacert $TEST_CERT_VOL/ca.crt localhost:8097
 # switch to report mode
-docker stop $DOCKERID
+docker stop "$DOCKERID"
 docker rm $DOCKERNAME
 DOCKERNAME=fortio_report
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest report -loglevel $LOGLEVEL)
 docker ps
 CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
-if $CURL $PPROF_URL ; then
+if $CURL "$PPROF_URL" ; then
   echo "pprof should 404 on report mode!"
   exit 1
 else

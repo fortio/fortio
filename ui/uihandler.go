@@ -700,14 +700,14 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	client, _ := fhttp.NewStdClient(o)
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
-		w.WriteHeader(422 /*Unprocessable Entity*/)
+		// too late to write headers
 		return
 	}
 	code, data, _ := client.Fetch()
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
-		w.WriteHeader(424 /*Failed Dependency*/)
+		// too late to write headers
 		return
 	}
 	sdata := strings.TrimSpace(string(data))
@@ -910,7 +910,7 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	restStopPath := uiPath + restStopURI
 	mux.HandleFunc(restStopPath, RESTStopHandler)
 
-	logoPath = version.Short() + "/static/img/fortio-logo.svg"
+	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 
 	// Serve static contents in the ui/static dir. If not otherwise specified
