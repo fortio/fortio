@@ -88,18 +88,18 @@ function formatDate (dStr) {
 function makeTitle (res) {
   const title = []
   let firstLine = ''
-  if ((typeof res.RunID !== 'undefined')  &&  (res.RunID!== 0)) {
+  if ((typeof res.RunID !== 'undefined') && (res.RunID !== 0)) {
     firstLine = '(' + res.RunID + ') '
   }
   if (res.Labels !== '') {
     firstLine += res.Labels + ' - '
   }
   if (res.URL) { // http results
-    firstLine+= res.URL
+    firstLine += res.URL
   } else { // grpc/tcp results
-    firstLine+= res.Destination
+    firstLine += res.Destination
   }
-  title.push(firstLine+ ' - ' + formatDate(res.StartTime))
+  title.push(firstLine + ' - ' + formatDate(res.StartTime))
   let percStr = 'min ' + myRound(1000.0 * res.DurationHistogram.Min, 3) + ' ms, average ' + myRound(1000.0 * res.DurationHistogram.Avg, 3) + ' ms'
   if (res.DurationHistogram.Percentiles) {
     for (let i = 0; i < res.DurationHistogram.Percentiles.length; i++) {
@@ -433,15 +433,15 @@ function updateChartOptions (chart) {
   const newNewXAxis = chart.config.options.scales.xAxes[0]
   newNewXAxis.ticks.min = form.xMin === '' ? undefined : newXMin
   const formXMax = form.xMax
-  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max' ?
-      undefined :
-      parseFloat(formXMax)
+  newNewXAxis.ticks.max = formXMax === '' || formXMax === 'max'
+    ? undefined
+    : parseFloat(formXMax)
   const newNewYAxis = chart.config.options.scales.yAxes[1]
   newNewYAxis.ticks.min = form.yMin === '' ? undefined : newYMin
   const formYMax = form.yMax
-  newNewYAxis.ticks.max = formYMax === '' || formYMax === 'max' ?
-      undefined :
-      parseFloat(formYMax)
+  newNewYAxis.ticks.max = formYMax === '' || formYMax === 'max'
+    ? undefined
+    : parseFloat(formYMax)
   chart.update()
 }
 
@@ -723,4 +723,4 @@ function checkPayload () {
   }
 }
 // same color as darkmode bg color (darker luminance than logo middle)
-Chart.defaults.global.defaultFontColor = 'hsl(16, 67%, 7%)';
+Chart.defaults.global.defaultFontColor = 'hsl(16, 67%, 7%)'
