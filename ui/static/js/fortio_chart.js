@@ -722,3 +722,5 @@ function checkPayload () {
     document.getElementById('run-form').method = 'POST'
   }
 }
+// same color as darkmode bg color (darker luminance than logo middle)
+Chart.defaults.global.defaultFontColor = 'hsl(16, 67%, 7%)';

@@ -3,7 +3,34 @@
     color-scheme: light dark;
 }
 
-/* from   https://www.joshwcomeau.com/css/custom-css-reset/ + modifications */
+input[type="text"] {
+    padding: 1px 1px;
+    margin-top: 2px;
+    margin-bottom: 1px;
+}
+
+#chart1 {
+    background-color: white;
+}
+
+body {
+    background-color: hsl(0, 0%, 90%)
+}
+
+@media (prefers-color-scheme: dark) {
+    #chart1 {
+        background-color: hsl(33, 32%, 88%); /* still 'white'ish but not blindingly white */
+    }
+    body {
+        background-color: hsl(16, 67%, 7%); /* lower luminance, near black version of logo color */
+    }
+}
+
+
+/*
+ from https://www.joshwcomeau.com/css/custom-css-reset/ + modifications
+(no 0 margin for instance as that breaks the chart)
+*/
 *, *::before, *::after {
     box-sizing: border-box;
 }
