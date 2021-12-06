@@ -174,6 +174,11 @@ var (
 	mirrorOriginFlag = flag.Bool("multi-mirror-origin", true, "Mirror the request url to the target for multi proxies (-M)")
 	multiSerialFlag  = flag.Bool("multi-serial-mode", false, "Multi server (-M) requests one at a time instead of parallel mode")
 	udpTimeoutFlag   = flag.Duration("udp-timeout", udprunner.UDPTimeOutDefaultValue, "Udp timeout")
+
+	accessLogFileFlag = flag.String("access-log-file", "",
+		"file to log all requests to. Maybe have performance impacts")
+	accessLogFileFormat = flag.String("access-log-format", "",
+		"format for access log. Support values: [json, influx]")
 )
 
 // nolint: funlen // well yes it's fairly big and lotsa ifs.
@@ -390,6 +395,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Jitter:      *jitterFlag,
 		RunID:       *bincommon.RunIDFlag,
 		Offset:      *offsetFlag,
+	}
+	if *accessLogFileFlag != "" {
+		al, err := periodic.NewAccessLogger(*accessLogFileFlag, *accessLogFileFormat)
+		if err != nil {
+			_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
+			os.Exit(1)
+		}
+		ro.AccessLogger = al
 	}
 	var res periodic.HasRunnerResult
 	var err error

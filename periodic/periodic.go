@@ -135,7 +135,8 @@ type RunnerOptions struct {
 	// Optional run id; used by the server to identify runs.
 	RunID int64
 	// Optional Offect Duration; to offset the histogram function duration
-	Offset time.Duration
+	Offset       time.Duration
+	AccessLogger *AccessLogger
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -488,6 +489,32 @@ func (r *periodicRunner) Run() RunnerResults {
 	return result
 }
 
+type AccessLogger struct {
+	mu     sync.Mutex
+	file   *os.File
+	format string
+}
+
+func NewAccessLogger(file, format string) (*AccessLogger, error) {
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &AccessLogger{file: f, format: format}, nil
+}
+
+func (a *AccessLogger) Report(thread int, time int64, latency float64) {
+	a.mu.Lock()
+	switch a.format {
+	case "influx":
+		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
+		fmt.Fprintf(a.file, `latency,thread=%d value=%f %d`+"\n", thread, latency, time)
+	case "json", "":
+		fmt.Fprintf(a.file, `{"latency":%f,"timestamp":%d,"thread":%d}`+"\n", latency, time, thread)
+	}
+	a.mu.Unlock()
+}
+
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
 // nolint: gocognit // we should try to simplify it though.
 func runOne(id int, runnerChan chan struct{},
@@ -517,7 +544,11 @@ MainLoop:
 			}
 		}
 		f.Run(id)
-		funcTimes.Record(time.Since(fStart).Seconds())
+		latency := time.Since(fStart).Seconds()
+		if r.AccessLogger != nil {
+			r.AccessLogger.Report(id, fStart.UnixNano(), latency)
+		}
+		funcTimes.Record(latency)
 		i++
 		// if using QPS / pre calc expected call # mode:
 		if useQPS { // nolint: nestif
