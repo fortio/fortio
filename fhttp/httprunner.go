@@ -24,6 +24,7 @@ import (
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
+	"golang.org/x/sync/errgroup"
 )
 
 // Most of the code in this file is the library-fication of code originally
@@ -93,6 +94,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
+	warmup := errgroup.Group{}
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -105,13 +107,17 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		if o.Exactly <= 0 {
-			code, data, headerSize := httpstate[i].client.Fetch()
-			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
-			}
-			if i == 0 && log.LogVerbose() {
-				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
-			}
+			i := i
+			warmup.Go(func() error {
+				code, data, headerSize := httpstate[i].client.Fetch()
+				if !o.AllowInitialErrors && !codeIsOK(code) {
+					return fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+				}
+				if i == 0 && log.LogVerbose() {
+					log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+				}
+				return nil
+			})
 		}
 		// Setup the stats for each 'thread'
 		httpstate[i].sizes = total.sizes.Clone()
@@ -119,6 +125,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].RetCodes = make(map[int]int64)
 		httpstate[i].AbortOn = total.AbortOn
 		httpstate[i].aborter = total.aborter
+	}
+	if err := warmup.Wait(); err != nil {
+		return nil, err
 	}
 	// TODO avoid copy pasta with grpcrunner
 	if o.Profiler != "" {
