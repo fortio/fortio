@@ -50,7 +50,7 @@ curl -L https://github.com/fortio/fortio/releases/download/v1.19.0/fortio-linux_
  | sudo tar -C / -xvzpf -
 # or the debian package
 wget https://github.com/fortio/fortio/releases/download/v1.19.0/fortio_1.19.0_amd64.deb
-dpkg -i fortio_1.19.0-1_amd64.deb
+dpkg -i fortio_1.19.0_amd64.deb
 # or the rpm
 rpm -i https://github.com/fortio/fortio/releases/download/v1.19.0/fortio-1.19.0-1.x86_64.rpm
 ```
