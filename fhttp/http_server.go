@@ -378,6 +378,7 @@ var proxyClient = CreateProxyClient()
 
 // FetcherHandler2 is the handler for the fetcher/proxy that supports h2 input and makes a
 // new request with only tracing headers copied.
+// Note this should only be made available to trusted clients.
 func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Fetch proxy2")
 	vals, ok := r.URL.Query()["url"]
@@ -401,8 +402,9 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	OnBehalfOfRequest(req, r)
 	resp, err := proxyClient.Do(req)
 	if err != nil {
-		log.Errf("Error for %q: %v", url, err)
-		http.Error(w, "query failed, invalid url", http.StatusBadRequest)
+		msg := fmt.Sprintf("Error for %q: %v", url, err)
+		log.Errf(msg)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	log.LogVf("Success for %+v", req)
