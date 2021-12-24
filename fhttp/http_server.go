@@ -46,7 +46,7 @@ var (
 	startTime time.Time
 	// EchoRequests is the number of request received. Only updated in Debug mode.
 	EchoRequests int64
-	// TODO find a way to only include this on binaries and not library mode. (#433)
+	// TODO find a way to only include this on binaries and not library mode (#433).
 	defaultEchoServerParams = dflag.DynString(flag.CommandLine, "echo-server-default-params", "",
 		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
 	fetch2CopiesAllHeader = dflag.DynBool(flag.CommandLine, "proxy-all-headers", true,
