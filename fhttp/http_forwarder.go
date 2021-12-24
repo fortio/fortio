@@ -88,15 +88,20 @@ func CopyHeaders(req, r *http.Request, all bool) {
 }
 
 // MakeSimpleRequest makes a new request for url but copies trace headers from input request r.
-func MakeSimpleRequest(url string, r *http.Request) *http.Request {
+// or all the headers if copyAllHeaders is true.
+func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.Request {
 	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
 		return nil
 	}
-	// Copy only trace headers
-	CopyHeaders(req, r, false)
-	req.Header.Add("User-Agent", userAgent)
+	// Copy only trace headers or all of them:
+	CopyHeaders(req, r, copyAllHeaders)
+	if copyAllHeaders {
+		req.Header.Add("X-Proxy-Agent", userAgent)
+	} else {
+		req.Header.Add("User-Agent", userAgent)
+	}
 	return req
 }
 
@@ -124,7 +129,7 @@ func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Reque
 	if t.MirrorOrigin {
 		req = makeMirrorRequest(t.Destination, r, data)
 	} else {
-		req = MakeSimpleRequest(t.Destination, r)
+		req = MakeSimpleRequest(t.Destination, r, false)
 	}
 	if req == nil {
 		// error already logged
