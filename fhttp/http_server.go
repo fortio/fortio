@@ -45,9 +45,12 @@ var (
 	// Start time of the server (used in debug handler for uptime).
 	startTime time.Time
 	// EchoRequests is the number of request received. Only updated in Debug mode.
-	EchoRequests            int64
+	EchoRequests int64
+	// TODO find a way to only include this on binaries and not library mode. (#433)
 	defaultEchoServerParams = dflag.DynString(flag.CommandLine, "echo-server-default-params", "",
 		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
+	fetch2CopiesAllHeader = dflag.DynBool(flag.CommandLine, "proxy-all-headers", true,
+		"Determines if only tracing or all headers (and cookies) are copied from request on the fetch2 ui/server endpoint")
 )
 
 // EchoHandler is an http server handler echoing back the input.
@@ -377,11 +380,12 @@ func SetupPPROF(mux *http.ServeMux) {
 var proxyClient = CreateProxyClient()
 
 // FetcherHandler2 is the handler for the fetcher/proxy that supports h2 input and makes a
-// new request with only tracing headers copied.
+// new request with all headers copied (allows to test sticky routing)
 // Note this should only be made available to trusted clients.
 func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Fetch proxy2")
-	vals, ok := r.URL.Query()["url"]
+	query := r.URL.Query()
+	vals, ok := query["url"]
 	if !ok {
 		http.Error(w, "missing url query argument", http.StatusBadRequest)
 		return
@@ -394,7 +398,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
-	req := MakeSimpleRequest(url, r)
+	req := MakeSimpleRequest(url, r, fetch2CopiesAllHeader.Get())
 	if req == nil {
 		http.Error(w, "parsing url failed, invalid url", http.StatusBadRequest)
 		return
@@ -428,7 +432,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		log.Errf("hijacking not supported: %v", r.Proto)
-		http.Error(w, "User fetch2 when using http/2.0", http.StatusHTTPVersionNotSupported)
+		http.Error(w, "Use fetch2 when using http/2.0", http.StatusHTTPVersionNotSupported)
 		return
 	}
 	conn, _, err := hj.Hijack()
