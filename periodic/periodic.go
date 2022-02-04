@@ -507,13 +507,19 @@ func runOne(id int, runnerChan chan struct{},
 	useExactly := (r.Exactly > 0)
 	f := r.Runners[id]
 	if useQPS && r.Uniform {
-		delayBetweenRequest := 1. / float64(perThreadQPS)
+		delayBetweenRequest := 1. / perThreadQPS
 		// When using uniform mode, we should wait a bit relative to our QPS and thread ID.
 		// For example, with 10 threads and 1 QPS, thread 8 should delay 0.7s.
 		delaySeconds := delayBetweenRequest - (delayBetweenRequest / float64(r.NumThreads) * float64(r.NumThreads-id))
 		delayDuration := time.Duration(delaySeconds * float64(time.Second))
 		start = start.Add(delayDuration)
-		time.Sleep(delayDuration)
+		log.Debugf("%s sleep %v for uniform distribution", tIDStr, delayDuration)
+		select {
+		case <-runnerChan:
+			return
+		case <-time.After(delayDuration):
+			// continue normal execution
+		}
 	}
 
 MainLoop:

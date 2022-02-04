@@ -224,6 +224,32 @@ func TestExactlyMaxQps(t *testing.T) {
 	r.Options().ReleaseRunners()
 }
 
+func TestUniform(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+	c := TestCount{&count, &lock}
+	expected := int64(40)
+	o := RunnerOptions{
+		QPS:        100,
+		NumThreads: 4,
+		Duration:   time.Second,
+		Uniform:    true,
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Uniform executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Uniform executed unexpected number of times %d instead %d", count, expected)
+	}
+	r.Options().ReleaseRunners()
+}
+
 func TestID(t *testing.T) {
 	tests := []struct {
 		labels string // input
