@@ -495,9 +495,9 @@ type fileAccessLogger struct {
 	format string
 }
 
-// AccessLogger defines an interface to report a single request
+// AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
-	// Report logs a single request to a file
+	// Report logs a single request to a file.
 	Report(thread int, time int64, latency float64)
 }
 
@@ -510,7 +510,7 @@ func NewFileAccessLogger(file, format string) (AccessLogger, error) {
 	return &fileAccessLogger{file: f, format: format}, nil
 }
 
-// Report logs a single request to a file
+// Report logs a single request to a file.
 func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
 	a.mu.Lock()
 	switch a.format {
