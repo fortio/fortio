@@ -224,6 +224,49 @@ func TestExactlyMaxQps(t *testing.T) {
 	r.Options().ReleaseRunners()
 }
 
+type testAccessLogger struct {
+	sync.Mutex
+	reports int64
+}
+
+func (t *testAccessLogger) Report(thread int, time int64, latency float64) {
+	t.Lock()
+	defer t.Unlock()
+	t.reports++
+}
+
+func TestAccessLogs(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	logger := &testAccessLogger{}
+	c := TestCount{&count, &lock}
+	expected := int64(10)
+	o := RunnerOptions{
+		QPS:          -1, // max qps
+		NumThreads:   4,
+		Duration:     -1, // infinite but should not be used
+		Exactly:      expected,
+		AccessLogger: logger,
+	}
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	res := r.Run()
+	// Check the count both from the histogram and from our own test counter:
+	actual := res.DurationHistogram.Count
+	if actual != expected {
+		t.Errorf("Access logs executed unexpected number of times %d instead %d", actual, expected)
+	}
+	if logger.reports != expected {
+		t.Errorf("Access logs log unexpected number of times %d instead %d", actual, expected)
+	}
+	if count != expected {
+		t.Errorf("Access logs executed unexpected number of times %d instead %d", count, expected)
+	}
+	r.Options().ReleaseRunners()
+}
+
 func TestID(t *testing.T) {
 	tests := []struct {
 		labels string // input

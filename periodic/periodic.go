@@ -136,7 +136,7 @@ type RunnerOptions struct {
 	RunID int64
 	// Optional Offect Duration; to offset the histogram function duration
 	Offset       time.Duration
-	AccessLogger *AccessLogger
+	AccessLogger AccessLogger
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -489,28 +489,37 @@ func (r *periodicRunner) Run() RunnerResults {
 	return result
 }
 
-type AccessLogger struct {
+type fileAccessLogger struct {
 	mu     sync.Mutex
 	file   *os.File
 	format string
 }
 
-func NewAccessLogger(file, format string) (*AccessLogger, error) {
+// AccessLogger defines an interface to report a single request
+type AccessLogger interface {
+	// Report logs a single request to a file
+	Report(thread int, time int64, latency float64)
+}
+
+// NewFileAccessLogger creates an AccessLogger that writes to the provided file in the provided format.
+func NewFileAccessLogger(file, format string) (*fileAccessLogger, error) {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
-	return &AccessLogger{file: f, format: format}, nil
+	return &fileAccessLogger{file: f, format: format}, nil
 }
 
-func (a *AccessLogger) Report(thread int, time int64, latency float64) {
+// Report logs a single request to a file
+func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
 	a.mu.Lock()
 	switch a.format {
 	case "influx":
 		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
-		fmt.Fprintf(a.file, `latency,thread=%d value=%f %d`+"\n", thread, latency, time)
+		fmt.Fprintf(a.file, "latency,thread=%d value=%f %d\n", thread, latency, time)
 	case "json", "":
-		fmt.Fprintf(a.file, `{"latency":%f,"timestamp":%d,"thread":%d}`+"\n", latency, time, thread)
+		fmt.Fprintf(a.file, `{"latency":%f,"timestamp":%d,"thread":%d}
+`, latency, time, thread)
 	}
 	a.mu.Unlock()
 }

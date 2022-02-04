@@ -397,7 +397,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Offset:      *offsetFlag,
 	}
 	if *accessLogFileFlag != "" {
-		al, err := periodic.NewAccessLogger(*accessLogFileFlag, *accessLogFileFormat)
+		al, err := periodic.NewFileAccessLogger(*accessLogFileFlag, *accessLogFileFormat)
 		if err != nil {
 			_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
 			os.Exit(1)
