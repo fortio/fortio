@@ -502,7 +502,7 @@ type AccessLogger interface {
 }
 
 // NewFileAccessLogger creates an AccessLogger that writes to the provided file in the provided format.
-func NewFileAccessLogger(file, format string) (*fileAccessLogger, error) {
+func NewFileAccessLogger(file, format string) (AccessLogger, error) {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
