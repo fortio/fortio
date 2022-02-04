@@ -20,11 +20,11 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sort"
+	"sync"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
-	"golang.org/x/sync/errgroup"
 )
 
 // Most of the code in this file is the library-fication of code originally
@@ -94,7 +94,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
-	warmup := errgroup.Group{}
+	warmup := errgroup{}
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -189,4 +189,38 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Counter.Print(out, "Response Body/Total Sizes")
 	}
 	return &total, nil
+}
+
+// A errgroup is a collection of goroutines working on subtasks that are part of
+// the same overall task.
+type errgroup struct {
+	wg sync.WaitGroup
+
+	errOnce sync.Once
+	err     error
+}
+
+// Wait blocks until all function calls from the Go method have returned, then
+// returns the first non-nil error (if any) from them.
+func (g *errgroup) Wait() error {
+	g.wg.Wait()
+	return g.err
+}
+
+// Go calls the given function in a new goroutine.
+//
+// The first call to return a non-nil error cancels the group; its error will be
+// returned by Wait.
+func (g *errgroup) Go(f func() error) {
+	g.wg.Add(1)
+
+	go func() {
+		defer g.wg.Done()
+
+		if err := f(); err != nil {
+			g.errOnce.Do(func() {
+				g.err = err
+			})
+		}
+	}()
 }
