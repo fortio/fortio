@@ -18,9 +18,7 @@ package ui // import "fortio.org/fortio/ui"
 import (
 	"bytes"
 	"context"
-
-	// nolint: gosec // md5 is mandated, not our choice
-	"crypto/md5"
+	"crypto/md5" // nolint: gosec // md5 is mandated, not our choice
 	"embed"
 	"encoding/base64"
 	"encoding/json"
@@ -116,7 +114,7 @@ const (
 )
 
 // Handler is the main UI handler creating the web forms and processing them.
-// nolint: funlen, gocognit, gocyclo, nestif // should be refactored indeed (TODO)
+// nolint: funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu
@@ -148,6 +146,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 	durStr := r.FormValue("t")
 	jitter := (r.FormValue("jitter") == "on")
+	uniform := (r.FormValue("uniform") == "on")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
 	grpcPing := (r.FormValue("ping") == "on")
 	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
@@ -192,6 +191,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Labels:      labels,
 		Exactly:     n,
 		Jitter:      jitter,
+		Uniform:     uniform,
 	}
 	if mode == run {
 		ro.Normalize()
