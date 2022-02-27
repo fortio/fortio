@@ -177,9 +177,9 @@ var (
 	udpTimeoutFlag   = flag.Duration("udp-timeout", udprunner.UDPTimeOutDefaultValue, "Udp timeout")
 
 	accessLogFileFlag = flag.String("access-log-file", "",
-		"file to log all requests to. Maybe have performance impacts")
-	accessLogFileFormat = flag.String("access-log-format", "",
-		"format for access log. Support values: [json, influx]")
+		"file `path` to log all requests to. Maybe have performance impacts")
+	accessLogFileFormat = flag.String("access-log-format", "json",
+		"`format` for access log. Supported values: [json, influx]")
 )
 
 // nolint: funlen // well yes it's fairly big and lotsa ifs.
@@ -398,16 +398,12 @@ func fortioLoad(justCurl bool, percList []float64) {
 		RunID:       *bincommon.RunIDFlag,
 		Offset:      *offsetFlag,
 	}
-	if *accessLogFileFlag != "" {
-		al, err := periodic.NewFileAccessLogger(*accessLogFileFlag, *accessLogFileFormat)
-		if err != nil {
-			_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
-			os.Exit(1)
-		}
-		ro.AccessLogger = al
+	err := ro.AddAccessLogger(*accessLogFileFlag, *accessLogFileFormat)
+	if err != nil {
+		// Error already logged.
+		os.Exit(1)
 	}
 	var res periodic.HasRunnerResult
-	var err error
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,

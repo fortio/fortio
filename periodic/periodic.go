@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -309,6 +310,11 @@ func (r *periodicRunner) Options() *RunnerOptions {
 }
 
 func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS string, numCalls int64, leftOver int64) {
+	// AccessLogger info check
+	extra := ""
+	if r.AccessLogger != nil {
+		extra = fmt.Sprintf(" with access logger %s", r.AccessLogger.Info())
+	}
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
@@ -317,8 +323,8 @@ func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS s
 	requestedQPS = fmt.Sprintf("%.9g", r.QPS)
 	if !hasDuration && !useExactly {
 		// Always print that as we need ^C to interrupt, in that case the user need to notice
-		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted\n",
-			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0))
+		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted%s\n",
+			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), extra)
 		return
 	}
 	// else:
@@ -343,13 +349,13 @@ func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS s
 	if useExactly {
 		leftOver = r.Exactly - totalCalls
 		if log.Log(log.Warning) {
-			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)\n",
-				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver)
+			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)%s\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver, extra)
 		}
 	} else {
 		if log.Log(log.Warning) {
-			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)\n",
-				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls)
+			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)%s\n",
+				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls, extra)
 		}
 	}
 	return requestedDuration, requestedQPS, numCalls, leftOver
@@ -494,39 +500,91 @@ func (r *periodicRunner) Run() RunnerResults {
 	return result
 }
 
+// AccessLoggerType is the possible formats of the access logger (ACCESS_JSON or ACCESS_INFLUX).
+type AccessLoggerType int
+
+const (
+	ACCESS_JSON AccessLoggerType = iota
+	ACCESS_INFLUX
+)
+
+func (t AccessLoggerType) String() string {
+	if t == ACCESS_JSON {
+		return "json"
+	}
+	return "influx"
+}
+
 type fileAccessLogger struct {
 	mu     sync.Mutex
 	file   *os.File
-	format string
+	format AccessLoggerType
+	info   string
 }
 
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
 	// Report logs a single request to a file.
 	Report(thread int, time int64, latency float64)
+	Info() string
+}
+
+func (r *RunnerOptions) AddAccessLogger(filePath, format string) error {
+	if filePath == "" {
+		return nil
+	}
+	al, err := NewFileAccessLogger(filePath, format)
+	if err != nil {
+		// Error already logged
+		return err
+	}
+	r.AccessLogger = al
+	return nil
 }
 
 // NewFileAccessLogger creates an AccessLogger that writes to the provided file in the provided format.
-func NewFileAccessLogger(file, format string) (AccessLogger, error) {
-	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
+func NewFileAccessLogger(filePath, format string) (AccessLogger, error) {
+	var t AccessLoggerType
+	fl := strings.ToLower(format)
+	if fl == "json" {
+		t = ACCESS_JSON
+	} else if fl == "influx" {
+		t = ACCESS_INFLUX
+	} else {
+		err := fmt.Errorf("invalid format %q, should be \"json\" or \"influx\"", format)
+		log.Errf("%v", err)
 		return nil, err
 	}
-	return &fileAccessLogger{file: f, format: format}, nil
+	return NewFileAccessLoggerByType(filePath, t)
+}
+
+// NewFileAccessLogger creates an AccessLogger that writes to the file in the AccessLoggerType enum format.
+func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (AccessLogger, error) {
+	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		log.Errf("Unable to open access log %s: %v", filePath, err)
+		return nil, err
+	}
+	infoStr := fmt.Sprintf("mode %s to %s", accessType.String(), filePath)
+	return &fileAccessLogger{file: f, format: accessType, info: infoStr}, nil
 }
 
 // Report logs a single request to a file.
 func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
 	a.mu.Lock()
 	switch a.format {
-	case "influx":
+	case ACCESS_INFLUX:
 		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
 		fmt.Fprintf(a.file, "latency,thread=%d value=%f %d\n", thread, latency, time)
-	case "json", "":
-		fmt.Fprintf(a.file, `{"latency":%f,"timestamp":%d,"thread":%d}
-`, latency, time, thread)
+	case ACCESS_JSON:
+		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d}\n", latency, time, thread)
 	}
 	a.mu.Unlock()
+}
+
+// Info is used to print information about the logger.
+func (a *fileAccessLogger) Info() string {
+	return a.info
 }
 
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).

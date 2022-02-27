@@ -235,6 +235,10 @@ func (t *testAccessLogger) Report(thread int, time int64, latency float64) {
 	t.reports++
 }
 
+func (t *testAccessLogger) Info() string {
+	return "test access logger"
+}
+
 func TestAccessLogs(t *testing.T) {
 	var count int64
 	var lock sync.Mutex
