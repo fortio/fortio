@@ -709,8 +709,8 @@ func TestInvalidRequest(t *testing.T) {
 	client.ChangeURL(" http://bad.url.with.space.com/") // invalid url
 	// should not crash (issue #93), should error out
 	code, _, _ := client.Fetch()
-	if code != http.StatusBadRequest {
-		t.Errorf("Got %d code while expecting bad request (%d)", code, http.StatusBadRequest)
+	if code != -1 {
+		t.Errorf("Got %d code while expecting -1 (local error)", code)
 	}
 	o.URL = client.url
 	c2, err := NewStdClient(&o)
@@ -1369,9 +1369,9 @@ func TestInsecureRequest(t *testing.T) {
 		code       int  // expected code
 	}{
 		{false, true, http.StatusOK},
-		{false, false, http.StatusBadRequest},
+		{false, false, -1},
 		{true, true, http.StatusOK},
-		{true, false, http.StatusBadRequest},
+		{true, false, -1},
 	}
 	for _, tst := range tests {
 		o := HTTPOptions{
@@ -1400,9 +1400,9 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 		code       int  // expected code
 	}{
 		{false, true, http.StatusOK},
-		{false, false, http.StatusBadRequest},
+		{false, false, -1},
 		{true, true, http.StatusOK},
-		{true, false, http.StatusBadRequest},
+		{true, false, -1},
 	}
 	for _, tst := range tests {
 		o := HTTPOptions{

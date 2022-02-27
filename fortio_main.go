@@ -167,7 +167,8 @@ var (
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
-	jitterFlag = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' requests")
+	jitterFlag  = flag.Bool("jitter", false, "set to true to de-synchronize parallel clients' by 10%")
+	uniformFlag = flag.Bool("uniform", false, "set to true to de-synchronize parallel clients' requests uniformly")
 	// nc mode flag(s).
 	ncDontStopOnCloseFlag = flag.Bool("nc-dont-stop-on-eof", false, "in netcat (nc) mode, don't abort as soon as remote side closes")
 	// Mirror origin global setting (should be per destination eventually).
@@ -393,6 +394,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		Labels:      labels,
 		Exactly:     *exactlyFlag,
 		Jitter:      *jitterFlag,
+		Uniform:     *uniformFlag,
 		RunID:       *bincommon.RunIDFlag,
 		Offset:      *offsetFlag,
 	}
