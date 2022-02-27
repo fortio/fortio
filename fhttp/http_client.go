@@ -374,7 +374,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, c.req.Method, c.url, err)
-		return http.StatusBadRequest, []byte(err.Error()), 0
+		return -1, []byte(err.Error()), 0
 	}
 	var data []byte
 	if log.LogDebug() {
