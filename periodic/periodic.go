@@ -504,12 +504,12 @@ func (r *periodicRunner) Run() RunnerResults {
 type AccessLoggerType int
 
 const (
-	ACCESS_JSON AccessLoggerType = iota
-	ACCESS_INFLUX
+	AccessJSON AccessLoggerType = iota
+	AccessInflux
 )
 
 func (t AccessLoggerType) String() string {
-	if t == ACCESS_JSON {
+	if t == AccessJSON {
 		return "json"
 	}
 	return "influx"
@@ -529,6 +529,7 @@ type AccessLogger interface {
 	Info() string
 }
 
+// AddAccessLogger adds an AccessLogger that writes to the provided file in the provided format.
 func (r *RunnerOptions) AddAccessLogger(filePath, format string) error {
 	if filePath == "" {
 		return nil
@@ -547,9 +548,9 @@ func NewFileAccessLogger(filePath, format string) (AccessLogger, error) {
 	var t AccessLoggerType
 	fl := strings.ToLower(format)
 	if fl == "json" {
-		t = ACCESS_JSON
+		t = AccessJSON
 	} else if fl == "influx" {
-		t = ACCESS_INFLUX
+		t = AccessInflux
 	} else {
 		err := fmt.Errorf("invalid format %q, should be \"json\" or \"influx\"", format)
 		log.Errf("%v", err)
@@ -558,7 +559,7 @@ func NewFileAccessLogger(filePath, format string) (AccessLogger, error) {
 	return NewFileAccessLoggerByType(filePath, t)
 }
 
-// NewFileAccessLogger creates an AccessLogger that writes to the file in the AccessLoggerType enum format.
+// NewFileAccessLoggerByType creates an AccessLogger that writes to the file in the AccessLoggerType enum format.
 func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (AccessLogger, error) {
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -573,10 +574,10 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
 	a.mu.Lock()
 	switch a.format {
-	case ACCESS_INFLUX:
+	case AccessInflux:
 		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
 		fmt.Fprintf(a.file, "latency,thread=%d value=%f %d\n", thread, latency, time)
-	case ACCESS_JSON:
+	case AccessJSON:
 		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d}\n", latency, time, thread)
 	}
 	a.mu.Unlock()
