@@ -146,6 +146,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 	durStr := r.FormValue("t")
 	jitter := (r.FormValue("jitter") == "on")
+	uniform := (r.FormValue("uniform") == "on")
 	grpcSecure := (r.FormValue("grpc-secure") == "on")
 	grpcPing := (r.FormValue("ping") == "on")
 	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
@@ -190,6 +191,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Labels:      labels,
 		Exactly:     n,
 		Jitter:      jitter,
+		Uniform:     uniform,
 	}
 	if mode == run {
 		ro.Normalize()
