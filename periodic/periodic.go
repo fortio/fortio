@@ -132,6 +132,11 @@ type RunnerOptions struct {
 	// Enabling jitter (+/-10%) allows these requests to be de-synchronized
 	// When enabled, it is only effective in the '-qps' mode.
 	Jitter bool
+	// When multiple clients are used to generate requests, they tend to send
+	// requests very close to one another, causing a thundering herd problem
+	// Enabling uniform causes the requests between connections to be uniformly staggered.
+	// When enabled, it is only effective in the '-qps' mode.
+	Uniform bool
 	// Optional run id; used by the server to identify runs.
 	RunID int64
 	// Optional Offect Duration; to offset the histogram function duration
@@ -497,9 +502,25 @@ func runOne(id int, runnerChan chan struct{},
 	tIDStr := fmt.Sprintf("T%03d", id)
 	perThreadQPS := r.QPS / float64(r.NumThreads)
 	useQPS := (perThreadQPS > 0)
+
 	hasDuration := (r.Duration > 0)
 	useExactly := (r.Exactly > 0)
 	f := r.Runners[id]
+	if useQPS && r.Uniform {
+		delayBetweenRequest := 1. / perThreadQPS
+		// When using uniform mode, we should wait a bit relative to our QPS and thread ID.
+		// For example, with 10 threads and 1 QPS, thread 8 should delay 0.7s.
+		delaySeconds := delayBetweenRequest - (delayBetweenRequest / float64(r.NumThreads) * float64(r.NumThreads-id))
+		delayDuration := time.Duration(delaySeconds * float64(time.Second))
+		start = start.Add(delayDuration)
+		log.Debugf("%s sleep %v for uniform distribution", tIDStr, delayDuration)
+		select {
+		case <-runnerChan:
+			return
+		case <-time.After(delayDuration):
+			// continue normal execution
+		}
+	}
 
 MainLoop:
 	for {
