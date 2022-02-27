@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sort"
+	"sync"
 
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
@@ -93,6 +94,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
+	warmup := errgroup{}
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -105,13 +107,17 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		if o.Exactly <= 0 {
-			code, data, headerSize := httpstate[i].client.Fetch()
-			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
-			}
-			if i == 0 && log.LogVerbose() {
-				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
-			}
+			i := i
+			warmup.Go(func() error {
+				code, data, headerSize := httpstate[i].client.Fetch()
+				if !o.AllowInitialErrors && !codeIsOK(code) {
+					return fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+				}
+				if i == 0 && log.LogVerbose() {
+					log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+				}
+				return nil
+			})
 		}
 		// Setup the stats for each 'thread'
 		httpstate[i].sizes = total.sizes.Clone()
@@ -119,6 +125,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].RetCodes = make(map[int]int64)
 		httpstate[i].AbortOn = total.AbortOn
 		httpstate[i].aborter = total.aborter
+	}
+	if err := warmup.Wait(); err != nil {
+		return nil, err
 	}
 	// TODO avoid copy pasta with grpcrunner
 	if o.Profiler != "" {
@@ -180,4 +189,38 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Counter.Print(out, "Response Body/Total Sizes")
 	}
 	return &total, nil
+}
+
+// A errgroup is a collection of goroutines working on subtasks that are part of
+// the same overall task.
+type errgroup struct {
+	wg sync.WaitGroup
+
+	errOnce sync.Once
+	err     error
+}
+
+// Wait blocks until all function calls from the Go method have returned, then
+// returns the first non-nil error (if any) from them.
+func (g *errgroup) Wait() error {
+	g.wg.Wait()
+	return g.err
+}
+
+// Go calls the given function in a new goroutine.
+//
+// The first call to return a non-nil error cancels the group; its error will be
+// returned by Wait.
+func (g *errgroup) Go(f func() error) {
+	g.wg.Add(1)
+
+	go func() {
+		defer g.wg.Done()
+
+		if err := f(); err != nil {
+			g.errOnce.Do(func() {
+				g.err = err
+			})
+		}
+	}()
 }
