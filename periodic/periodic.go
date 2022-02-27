@@ -504,7 +504,10 @@ func (r *periodicRunner) Run() RunnerResults {
 type AccessLoggerType int
 
 const (
+	// AccessJSON for json format of access log: {"latency":%f,"timestamp":%d,"thread":%d}.
 	AccessJSON AccessLoggerType = iota
+	// AccessInflux of influx format of access log.
+	// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
 	AccessInflux
 )
 
