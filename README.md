@@ -172,6 +172,7 @@ option unset.
   -grpc-port port
         grpc server port. Can be in the form of host:port, ip:port or port or
 /unix/domain/path or "disabled" to not start the grpc server. (default "8079")
+  -h    Print usage/help on stdout
   -halfclose
         When not keepalive, whether to half close the connection (only for fast
 http)

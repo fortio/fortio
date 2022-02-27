@@ -18,9 +18,7 @@ package ui // import "fortio.org/fortio/ui"
 import (
 	"bytes"
 	"context"
-
-	// nolint: gosec // md5 is mandated, not our choice
-	"crypto/md5"
+	"crypto/md5" // nolint: gosec // md5 is mandated, not our choice
 	"embed"
 	"encoding/base64"
 	"encoding/json"
@@ -116,7 +114,7 @@ const (
 )
 
 // Handler is the main UI handler creating the web forms and processing them.
-// nolint: funlen, gocognit, gocyclo, nestif // should be refactored indeed (TODO)
+// nolint: funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu

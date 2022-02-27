@@ -66,7 +66,7 @@ var (
 	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https connections")
 	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
-	resolve             = flag.String("resolve", "", "Resolve CN of cert to this IP, so that we can call https://cn directly")
+	resolve             = flag.String("resolve", "", "Resolve host name to this `IP`")
 	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
@@ -100,6 +100,7 @@ var (
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
 	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
+	HelpFlag  = flag.Bool("h", false, "Print usage/help on stdout")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -113,7 +114,8 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	if len(os.Args) < 2 {
 		return
 	}
-	if strings.Contains(os.Args[1], "version") {
+	firstArg := os.Args[1]
+	if strings.Contains(firstArg, "version") {
 		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
 			// so `fortio version -s` is the short version; everything else is long/full
 			fmt.Println(version.Short())
@@ -122,7 +124,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 		}
 		os.Exit(0)
 	}
-	if strings.Contains(os.Args[1], "help") {
+	if strings.Contains(firstArg, "help") || firstArg == "-h" {
 		usage(os.Stdout)
 		os.Exit(0)
 	}

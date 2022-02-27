@@ -752,7 +752,7 @@ func codeIsOK(code int) bool {
 }
 
 // Response reading:
-// nolint: nestif,funlen,gocognit,gocyclo // TODO: refactor - unwiedly/ugly atm.
+// nolint: nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false

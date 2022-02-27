@@ -194,6 +194,10 @@ func main() {
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 	flag.Parse()
+	if *bincommon.HelpFlag {
+		usage(os.Stdout)
+		os.Exit(0)
+	}
 	if *bincommon.QuietFlag {
 		log.SetLogLevelQuiet(log.Error)
 	}
