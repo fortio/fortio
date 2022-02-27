@@ -100,7 +100,8 @@ var (
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
 	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
-	HelpFlag  = flag.Bool("h", false, "Print usage/help on stdout")
+	// HelpFlag is true if help/usage is being requested by the user.
+	HelpFlag = flag.Bool("h", false, "Print usage/help on stdout")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
