@@ -267,7 +267,6 @@ func TestAccessLogs(t *testing.T) {
 	r.Options().ReleaseRunners()
 }
 
-
 func TestUniform(t *testing.T) {
 	var count int64
 	var lock sync.Mutex
