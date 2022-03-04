@@ -194,6 +194,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	totalCount := float64(total.DurationHistogram.Count)
 	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	_, _ = fmt.Fprintf(out, "Jitter: %t\n", total.Jitter)
+	_, _ = fmt.Fprintf(out, "Uniform: %t\n", total.Uniform)
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
