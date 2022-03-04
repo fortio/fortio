@@ -103,7 +103,7 @@ var (
 	// HelpFlag is true if help/usage is being requested by the user.
 	HelpFlag   = flag.Bool("h", false, "Print usage/help on stdout")
 	warmupFlag = flag.Bool("sequential-warmup", false,
-		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.20 behavior.")
+		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
