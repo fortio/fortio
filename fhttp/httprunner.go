@@ -94,7 +94,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
-	warmup := errgroup{}
+	// First build all the clients sequentially. This ensures we do not have data races when
+	// constructing requests.
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -106,6 +107,10 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	// Next, warm them up in parallel
+	warmup := errgroup{}
+	for i := 0; i < numThreads; i++ {
 		if o.Exactly <= 0 {
 			i := i
 			warmup.Go(func() error {
