@@ -154,10 +154,12 @@ func testPayloadWarmRace(t *testing.T, o *HTTPRunnerOptions) {
 
 func TestPayloadWarmRaceStdClient(t *testing.T) {
 	testPayloadWarmRace(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
+	testPayloadWarmRace(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true, SequentialWarmup: true}})
 }
 
 func TestPayloadWarmRaceFastClient(t *testing.T) {
 	testPayloadWarmRace(t, &HTTPRunnerOptions{})
+	testPayloadWarmRace(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{SequentialWarmup: true}})
 }
 
 func TestHTTPRunnerClientRace(t *testing.T) {
