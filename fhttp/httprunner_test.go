@@ -131,6 +131,34 @@ func TestHttpNotLeakingStdClient(t *testing.T) {
 	testHTTPNotLeaking(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
 }
 
+func testPayloadWarmRace(t *testing.T, o *HTTPRunnerOptions) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo123/", EchoHandler)
+	URL := fmt.Sprintf("http://localhost:%d/echo123/", addr.Port)
+	o.Init(URL)
+	o.NumConnections = 4
+	o.QPS = 16
+	o.Duration = 2 * time.Second
+	o.Payload = []byte("abc")
+	res, err := RunHTTPTest(o)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq := res.DurationHistogram.Count
+	httpOk := res.RetCodes[http.StatusOK]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+}
+func TestPayloadWarmRaceStdClient(t *testing.T) {
+	testPayloadWarmRace(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
+}
+
+func TestPayloadWarmRaceFastClient(t *testing.T) {
+	testPayloadWarmRace(t, &HTTPRunnerOptions{})
+}
+
 func TestHTTPRunnerClientRace(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo1/", EchoHandler)
