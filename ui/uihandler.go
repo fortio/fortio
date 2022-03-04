@@ -151,6 +151,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	grpcPing := (r.FormValue("ping") == "on")
 	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
 	stdClient := (r.FormValue("stdclient") == "on")
+	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
 	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
@@ -209,6 +210,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	defaultHeaders := httpopts.AllHeaders()
 	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
+	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
 	if len(payload) > 0 {

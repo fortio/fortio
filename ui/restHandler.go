@@ -136,6 +136,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	jitter := (FormValue(r, jd, "jitter") == "on")
 	uniform := (FormValue(r, jd, "uniform") == "on")
 	stdClient := (FormValue(r, jd, "stdclient") == "on")
+	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (FormValue(r, jd, "https-insecure") == "on")
 	resolve := FormValue(r, jd, "resolve")
 	timeoutStr := strings.TrimSpace(FormValue(r, jd, "timeout"))
@@ -185,6 +186,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	httpopts = httpopts.Init(url)
 	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
+	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
 	if len(payload) > 0 {

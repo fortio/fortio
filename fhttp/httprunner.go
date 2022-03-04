@@ -77,6 +77,7 @@ type HTTPRunnerOptions struct {
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
+// nolint: funlen, gocognit
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	warmupMode := "parallel"
@@ -94,6 +95,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		RetCodes:    make(map[int]int64),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
+		AbortOn:     o.AbortOn,
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
