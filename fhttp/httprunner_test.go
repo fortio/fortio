@@ -151,6 +151,7 @@ func testPayloadWarmRace(t *testing.T, o *HTTPRunnerOptions) {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
 }
+
 func TestPayloadWarmRaceStdClient(t *testing.T) {
 	testPayloadWarmRace(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
 }
