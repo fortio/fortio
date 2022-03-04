@@ -40,9 +40,9 @@ type HTTPRunnerResults struct {
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
 	// exported result
+	HTTPOptions
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
-	URL         string
 	SocketCount int
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
@@ -77,24 +77,30 @@ type HTTPRunnerOptions struct {
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
+// nolint: funlen, gocognit
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
-	log.Infof("Starting http test for %s with %d threads at %.1f qps", o.URL, o.NumThreads, o.QPS)
+	warmupMode := "parallel"
+	if o.SequentialWarmup {
+		warmupMode = "sequential"
+	}
+	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup", o.URL, o.NumThreads, o.QPS, warmupMode)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := HTTPRunnerResults{
+		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
-		URL:         o.URL,
 		AbortOn:     o.AbortOn,
 		aborter:     r.Options().Stop,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
-	warmup := errgroup{}
+	// First build all the clients sequentially. This ensures we do not have data races when
+	// constructing requests.
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -106,7 +112,25 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if err != nil {
 			return nil, err
 		}
-		if o.Exactly <= 0 {
+		if o.SequentialWarmup && o.Exactly <= 0 {
+			code, data, headerSize := httpstate[i].client.Fetch()
+			if !o.AllowInitialErrors && !codeIsOK(code) {
+				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+			}
+			if i == 0 && log.LogVerbose() {
+				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+			}
+		}
+		// Setup the stats for each 'thread'
+		httpstate[i].sizes = total.sizes.Clone()
+		httpstate[i].headerSizes = total.headerSizes.Clone()
+		httpstate[i].RetCodes = make(map[int]int64)
+		httpstate[i].AbortOn = total.AbortOn
+		httpstate[i].aborter = total.aborter
+	}
+	if o.Exactly <= 0 && !o.SequentialWarmup {
+		warmup := errgroup{}
+		for i := 0; i < numThreads; i++ {
 			i := i
 			warmup.Go(func() error {
 				code, data, headerSize := httpstate[i].client.Fetch()
@@ -119,15 +143,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 				return nil
 			})
 		}
-		// Setup the stats for each 'thread'
-		httpstate[i].sizes = total.sizes.Clone()
-		httpstate[i].headerSizes = total.headerSizes.Clone()
-		httpstate[i].RetCodes = make(map[int]int64)
-		httpstate[i].AbortOn = total.AbortOn
-		httpstate[i].aborter = total.aborter
-	}
-	if err := warmup.Wait(); err != nil {
-		return nil, err
+		if err := warmup.Wait(); err != nil {
+			return nil, err
+		}
 	}
 	// TODO avoid copy pasta with grpcrunner
 	if o.Profiler != "" {

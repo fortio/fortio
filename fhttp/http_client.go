@@ -192,6 +192,7 @@ type HTTPOptions struct {
 	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
 	LogErrors        bool   // whether to log non 2xx code as they occur or not
 	ID               int    // id to use for logging (thread id when used as a runner)
+	SequentialWarmup bool   // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
