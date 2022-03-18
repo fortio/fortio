@@ -528,7 +528,7 @@ func TestPayloadWithEchoBack(t *testing.T) {
 	}
 }
 
-// Test Post request with std client and the socket close after answering
+// Test Post request with std client and the socket close after answering.
 func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
