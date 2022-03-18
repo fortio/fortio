@@ -528,6 +528,31 @@ func TestPayloadWithEchoBack(t *testing.T) {
 	}
 }
 
+// Test Post request with std client and the socket close after answering
+func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+
+	url := fmt.Sprintf("http://localhost:%d/?close=true", a.Port)
+	payload := []byte("{\"test\" : \"test\"}")
+	opts := NewHTTPOptions(url)
+	opts.DisableFastClient = true
+	opts.Payload = payload
+	cli, _ := NewClient(opts)
+
+	for i := 0; i < 3; i++ {
+		code, body, header := cli.Fetch()
+
+		if code != 200 {
+			t.Errorf("Unexpected http status code, expected 200, got %d", code)
+		}
+
+		if !bytes.Equal(body[header:], payload) {
+			t.Errorf("Got %s, expected %q from echo", DebugSummary(body, 512), payload)
+		}
+	}
+}
+
 // Many of the earlier http tests are through httprunner but new tests should go here
 
 func TestUnixDomainHttp(t *testing.T) {
