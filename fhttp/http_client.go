@@ -371,7 +371,10 @@ func (c *Client) Fetch() (int, []byte, int) {
 		bodyBytes := []byte(body)
 		c.req.ContentLength = int64(len(bodyBytes))
 		c.req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+	} else if c.body != "" {
+		c.req.Body = ioutil.NopCloser(bytes.NewReader([]byte(c.body)))
 	}
+
 	resp, err := c.client.Do(c.req)
 	if err != nil {
 		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, c.req.Method, c.url, err)
