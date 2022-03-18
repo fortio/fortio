@@ -46,13 +46,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.21.1/fortio-linux_x64-1.21.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.21.2/fortio-linux_x64-1.21.2.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.21.1/fortio_1.21.1_amd64.deb
-dpkg -i fortio_1.21.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.21.2/fortio_1.21.2_amd64.deb
+dpkg -i fortio_1.21.2_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.21.1/fortio-1.21.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.21.2/fortio-1.21.2-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -61,7 +61,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.21.1/fortio_win_1.21.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.21.2/fortio_win_1.21.2.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -104,7 +104,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.21.1 usage:
+Φορτίο 1.21.2 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
@@ -259,8 +259,8 @@ request on the fetch2 ui/server endpoint (default true)
         Redirect all incoming traffic to https URL (need ingress to work
 properly). Can be in the form of host:port, ip:port, port or "disabled" to
 disable the feature. (default "8081")
-  -resolve string
-        Resolve CN of cert to this IP, so that we can call https://cn directly
+  -resolve IP
+        Resolve host name to this IP
   -runid int
         Optional RunID to add to json result and auto save filename, to match
 server mode
