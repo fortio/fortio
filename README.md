@@ -92,6 +92,8 @@ Most important flags for http load generation:
 | `-c connections` | Number of parallel simultaneous connections (and matching go routine) |
 | `-t duration` | How long to run the test  (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |
 | `-n numcalls` | Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). |
+| `-payload str` or `-payload-file fname` | Switch to using POST with the given payload (see also `-payload-size` for random payload)|
+| `-uniform` | Spread the calls across threads |
 | `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e 1ms), use 1/10th of your expected typical latency |
 | `-H "header: value"` | Can be specified multiple times to add headers (including Host:) |
 | `-a`     |  Automatically save JSON result with filename based on labels and timestamp |
@@ -269,6 +271,8 @@ server mode
   -sequential-warmup
         http(s) runner warmup done in parallel instead of sequentially. When
 set, restores pre 1.21 behavior
+  -server-idle-timeout value
+        Default IdleTimeout for servers (default 30s)
   -static-dir path
         Deprecated/unused path.
   -stdclient
@@ -319,7 +323,7 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 | delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
 | status    | http status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
 | size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
-| close     | close the socket after answering e.g `close=true` |
+| close     | close the socket after answering e.g `close=true` to close after all requests or `close=5.3` to close after approximately 5.3% of requests|
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
 
 You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
