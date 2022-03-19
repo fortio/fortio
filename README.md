@@ -336,7 +336,7 @@ You can set a default value for all these by passing `-echo-server-default-param
   * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
-  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [#493](https://github.com/fortio/fortio/pull/493)).
+  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
   * `/fortio/rest/stop` stops all current run or by run id.
 
 The `report` mode is a readonly subset of the above directly on `/`.
@@ -599,7 +599,7 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 
 ### Remote triggered load test (server mode rest API)
 
-New since 1.18 `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` does to start a run
+New since 1.18 the server has a `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` to start a run.
   - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result)
   - plus read all the run configuration from either query args or jsonPath POSTed info
   - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks
