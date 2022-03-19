@@ -145,7 +145,8 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	os.Stdout.Write(data)
+	os.Stderr.Write(data[:header])
+	os.Stdout.Write(data[header:])
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 		os.Exit(1)

@@ -100,6 +100,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 // RESTRunHandler is api version of UI submit handler.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	fhttp.LogRequest(r, "REST Run Api call")
+	w.Header().Set("Content-Type", "application/json")
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
@@ -136,13 +137,13 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	jitter := (FormValue(r, jd, "jitter") == "on")
 	uniform := (FormValue(r, jd, "uniform") == "on")
 	stdClient := (FormValue(r, jd, "stdclient") == "on")
-	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
+	sequentialWarmup := (FormValue(r, jd, "sequential-warmup") == "on")
 	httpsInsecure := (FormValue(r, jd, "https-insecure") == "on")
 	resolve := FormValue(r, jd, "resolve")
 	timeoutStr := strings.TrimSpace(FormValue(r, jd, "timeout"))
 	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
 	var dur time.Duration
-	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
+	if durStr == "on" {
 		dur = -1
 	} else {
 		var err error
@@ -192,7 +193,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
-	// mode == run case:
 	for _, header := range r.Form["H"] {
 		if len(header) == 0 {
 			continue
@@ -202,6 +202,26 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		if err != nil {
 			log.Errf("Error adding custom headers: %v", err)
 		}
+	}
+	jsonHeaders, found := jd["headers"]
+	for found { // really an if, but using while to break out without else below
+		res, ok := jsonHeaders.([]interface{})
+		if !ok {
+			log.Warnf("Json Headers is %T %v / not an array, can't be used", jsonHeaders, jsonHeaders)
+			break
+		}
+		for _, header := range res {
+			log.LogVf("adding json header %T: %v", header, header)
+			hStr, ok := header.(string)
+			if !ok {
+				log.Errf("Json headers must be an array of strings (got %T: %v)", header, header)
+				continue
+			}
+			if err := httpopts.AddAndValidateExtraHeader(hStr); err != nil {
+				log.Errf("Error adding custom json headers: %v", err)
+			}
+		}
+		break
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
@@ -281,7 +301,6 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		// async, no result to output
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(json)
 	if err != nil {
 		log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
@@ -291,6 +310,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
 }
@@ -298,6 +318,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
 func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Stop Api call")
+	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
 	w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
