@@ -77,7 +77,7 @@ type HTTPRunnerOptions struct {
 }
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
-// nolint: funlen, gocognit
+// nolint: funlen, gocognit, gocyclo
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	warmupMode := "parallel"
