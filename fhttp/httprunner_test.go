@@ -187,7 +187,7 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 func TestClosingAndSocketCount(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo42/", EchoHandler)
-	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=1", addr.Port)
+	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=true", addr.Port)
 	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
 	opts.QPS = 10

@@ -399,7 +399,7 @@ func generateDelay(delay string) time.Duration {
 }
 
 // generateClose from string, format: close=true for 100% close
-// close=true:10 or close=10 for 10% socket close
+// close=true:10 or close=10 for 10% socket close.
 func generateClose(closeStr string) bool {
 	if closeStr == "" || closeStr == "false" {
 		return false

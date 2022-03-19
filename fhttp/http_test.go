@@ -518,6 +518,7 @@ func TestGenerateClose(t *testing.T) {
 		}
 	}
 }
+
 func TestPayloadWithEchoBack(t *testing.T) {
 	tests := []struct {
 		payload           []byte
