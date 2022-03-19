@@ -48,7 +48,7 @@ CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL -timeout
 $CURL https://www.google.com/robots.txt > /dev/null
 
 # Check that quiet is quiet. Issue #385.
-QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet www.google.com"
+QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet -curl-stdout-headers www.google.com"
 if [ "$($QUIETCURLTEST 2>&1 > /dev/null  | wc -l)" -ne 0 ]; then
   echo "Error, -quiet still outputs logs"
   $QUIETCURLTEST > /dev/null

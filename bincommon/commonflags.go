@@ -104,6 +104,8 @@ var (
 	HelpFlag   = flag.Bool("h", false, "Print usage/help on stdout")
 	warmupFlag = flag.Bool("sequential-warmup", false,
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
+	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
+		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -145,8 +147,12 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	os.Stderr.Write(data[:header])
-	os.Stdout.Write(data[header:])
+	if *curlHeadersStdout {
+		os.Stdout.Write(data)
+	} else {
+		os.Stderr.Write(data[:header])
+		os.Stdout.Write(data[header:])
+	}
 	if code != http.StatusOK {
 		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
 		os.Exit(1)
