@@ -152,6 +152,9 @@ no watch)
 from GET to POST.
   -curl
         Just fetch the content once
+  -curl-stdout-headers
+        Restore pre 1.22 behavior where http headers of the fast client are
+output to stdout in curl mode. now stderr by default.
   -data-dir Directory
         Directory where JSON results are stored/read (default ".")
   -echo-debug-path URI
