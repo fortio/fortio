@@ -98,8 +98,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		rqNum := atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
 	}
-	doClose := generateClose(r.FormValue("close"))
-	if doClose {
+	if generateClose(r.FormValue("close")) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
