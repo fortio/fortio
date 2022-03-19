@@ -142,6 +142,8 @@ url from the first request is used)
   -cacert Path
         Path to a custom CA certificate file to be used for the TLS client
 connections, if empty, use https:// prefix for standard internet/system CAs
+  -calc-qps
+        Calculate the qps based on number of requests (-n) and duration (-t)
   -cert Path
         Path to the certificate file to be used for client or server TLS
   -compression
