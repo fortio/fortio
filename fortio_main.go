@@ -180,6 +180,7 @@ var (
 		"file `path` to log all requests to. Maybe have performance impacts")
 	accessLogFileFormat = flag.String("access-log-format", "json",
 		"`format` for access log. Supported values: [json, influx]")
+	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
 // nolint: funlen // well yes it's fairly big and lotsa ifs.
@@ -345,7 +346,7 @@ func fortioNC() {
 	}
 }
 
-// nolint: funlen // maybe refactor/shorten later.
+// nolint: funlen, gocognit // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
@@ -359,6 +360,13 @@ func fortioLoad(justCurl bool, percList []float64) {
 	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
+	if *calcQPS {
+		if *exactlyFlag == 0 || *durationFlag <= 0 {
+			usageErr("Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
+		}
+		qps = float64(*exactlyFlag) / (*durationFlag).Seconds()
+		log.LogVf("Calculated QPS to do %d request in %v: %f", *exactlyFlag, *durationFlag, qps)
+	}
 	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
 		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {

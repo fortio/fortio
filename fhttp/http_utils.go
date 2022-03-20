@@ -398,6 +398,28 @@ func generateDelay(delay string) time.Duration {
 	return 0
 }
 
+// generateClose from string, format: close=true for 100% close
+// close=true:10 or close=10 for 10% socket close.
+func generateClose(closeStr string) bool {
+	if closeStr == "" || closeStr == "false" {
+		return false
+	}
+	if closeStr == "true" { // avoid throwing error for pre 1.22 syntax
+		return true
+	}
+	p, err := strconv.ParseFloat(closeStr, 32)
+	if err != nil {
+		log.Debugf("error %v parsing close=%q treating as true", err, closeStr)
+		return true
+	}
+	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	log.Debugf("close=%f rolled %f", p, res)
+	if res <= float32(p) {
+		return true
+	}
+	return false
+}
+
 // RoundDuration rounds to 10th of second.
 func RoundDuration(d time.Duration) time.Duration {
 	return d.Round(100 * time.Millisecond)

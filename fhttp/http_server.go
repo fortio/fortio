@@ -51,6 +51,7 @@ var (
 		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
 	fetch2CopiesAllHeader = dflag.DynBool(flag.CommandLine, "proxy-all-headers", true,
 		"Determines if only tracing or all headers (and cookies) are copied from request on the fetch2 ui/server endpoint")
+	serverIdleTimeout = dflag.DynDuration(flag.CommandLine, "server-idle-timeout", 30*time.Second, "Default IdleTimeout for servers")
 )
 
 // EchoHandler is an http server handler echoing back the input.
@@ -97,7 +98,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		rqNum := atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
 	}
-	if r.FormValue("close") != "" {
+	if generateClose(r.FormValue("close")) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
@@ -167,7 +168,8 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 	m := http.NewServeMux()
 	h2s := &http2.Server{}
 	s := &http.Server{
-		Handler: h2c.NewHandler(m, h2s),
+		IdleTimeout: serverIdleTimeout.Get(),
+		Handler:     h2c.NewHandler(m, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
