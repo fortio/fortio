@@ -351,6 +351,7 @@ func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 	}
 	if debugPath != "" {
 		mux.HandleFunc(debugPath, DebugHandler)
+		mux.HandleFunc(strings.TrimSuffix(debugPath, "/")+"/echo/", EchoHandler) // Fix #524
 	}
 	mux.HandleFunc("/", EchoHandler)
 	return mux, addr
