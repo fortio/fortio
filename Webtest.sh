@@ -48,7 +48,7 @@ CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL -timeout
 $CURL https://www.google.com/robots.txt > /dev/null
 
 # Check that quiet is quiet. Issue #385.
-QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet www.google.com"
+QUIETCURLTEST="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -quiet -curl-stdout-headers www.google.com"
 if [ "$($QUIETCURLTEST 2>&1 > /dev/null  | wc -l)" -ne 0 ]; then
   echo "Error, -quiet still outputs logs"
   $QUIETCURLTEST > /dev/null
@@ -63,7 +63,7 @@ $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=http://localhost:
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"SERVING": 100'
 # Check we get the logo (need to remove the CR from raw headers)
 VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
-LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/${LOGO}" | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
+LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/${LOGO}" 2>&1 >/dev/null | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
   exit 1

@@ -46,13 +46,13 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.21.2/fortio-linux_x64-1.21.2.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.22.0/fortio-linux_x64-1.22.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.21.2/fortio_1.21.2_amd64.deb
-dpkg -i fortio_1.21.2_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.22.0/fortio_1.22.0_amd64.deb
+dpkg -i fortio_1.22.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.21.2/fortio-1.21.2-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.22.0/fortio-1.22.0-1.x86_64.rpm
 ```
 
 On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
@@ -61,7 +61,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.21.2/fortio_win_1.21.2.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.22.0/fortio_win_1.22.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -106,7 +106,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.21.2 usage:
+Φορτίο 1.22.0 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
@@ -156,6 +156,9 @@ no watch)
 from GET to POST.
   -curl
         Just fetch the content once
+  -curl-stdout-headers
+        Restore pre 1.22 behavior where http headers of the fast client are
+output to stdout in curl mode. now stderr by default.
   -data-dir Directory
         Directory where JSON results are stored/read (default ".")
   -echo-debug-path URI
@@ -342,7 +345,7 @@ You can set a default value for all these by passing `-echo-server-default-param
   * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
-  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [#493](https://github.com/fortio/fortio/pull/493)).
+  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
   * `/fortio/rest/stop` stops all current run or by run id.
 
 The `report` mode is a readonly subset of the above directly on `/`.
@@ -601,6 +604,186 @@ Response Header Sizes : count 40 avg 690.475 +/- 15.77 min 592 max 693 sum 27619
 Response Body/Total Sizes : count 40 avg 12565.2 +/- 301.9 min 12319 max 13665 sum 502608
 All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
+
+
+### Remote triggered load test (server mode rest API)
+
+New since 1.18 the server has a `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` to start a run.
+  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result)
+  - plus read all the run configuration from either query args or jsonPath POSTed info
+  - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks
+  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args)
+
+Examples:
+
+```shell
+$ curl -v -d '{"metadata": {"url":"localhost:8080", "c":"1", "n":"1", "async":"on", "save":"on"}}' \
+     "localhost:8080/fortio/rest/run?jsonPath=.metadata"
+{"started": 3}
+```
+makes a 1 connection 1 query run for localhost:8080 url asynchronously and saves results
+
+or minimally:
+```shell
+curl -s -d '{"url":"localhost:8080"}' "localhost:8080/fortio/rest/run" | jq
+```
+
+More complete example:
+
+With sample.json (all values must be strings, even the numbers):
+```json
+{
+    "metadata": {
+        "url": "localhost:8080",
+        "payload": "foo",
+        "qps": "40",
+        "c": "2",
+        "t": "0.1s",
+        "headers": [
+            "Foo:Bar",
+            "X-Blah: Something else"
+        ],
+        "save": "on"
+    }
+}
+```
+You can run:
+```shell
+$ fortio curl -stdclient -payload-file sample.json "http://localhost:8080/fortio/rest/run?jsonPath=.metadata" > result.json
+```
+which makes requests like this:
+```
+POST / HTTP/1.1
+Host: localhost:8080
+Content-Length: 3
+Content-Type: application/octet-stream
+Foo: Bar
+X-Blah: Something else
+X-On-Behalf-Of: [::1]:62629
+
+foo
+```
+
+and you get in result.json
+```json
+{
+  "RunType": "HTTP",
+  "Labels": "",
+  "StartTime": "2022-03-19T15:34:23.279389-07:00",
+  "RequestedQPS": "40",
+  "RequestedDuration": "100ms",
+  "ActualQPS": 38.44836361217263,
+  "ActualDuration": 104035637,
+  "NumThreads": 2,
+  "Version": "v1.22.0",
+  "DurationHistogram": {
+    "Count": 4,
+    "Min": 0.00027292,
+    "Max": 0.000930407,
+    "Sum": 0.002332047,
+    "Avg": 0.00058301175,
+    "StdDev": 0.00028491034912527755,
+    "Data": [
+      {
+        "Start": 0.00027292,
+        "End": 0.000930407,
+        "Percent": 100,
+        "Count": 4
+      }
+    ],
+    "Percentiles": [
+      {
+        "Percentile": 50,
+        "Value": 0.0004920823333333334
+      },
+      {
+        "Percentile": 75,
+        "Value": 0.0007112446666666667
+      },
+      {
+        "Percentile": 90,
+        "Value": 0.0008427420666666666
+      },
+      {
+        "Percentile": 99,
+        "Value": 0.0009216405066666668
+      },
+      {
+        "Percentile": 99.9,
+        "Value": 0.0009295303506666667
+      }
+    ]
+  },
+  "Exactly": 0,
+  "Jitter": false,
+  "Uniform": false,
+  "RunID": 7,
+  "AccessLoggerInfo": "",
+  "RetCodes": {
+    "200": 4
+  },
+  "URL": "http://localhost:8080",
+  "NumConnections": 1,
+  "Compression": false,
+  "DisableFastClient": false,
+  "HTTP10": false,
+  "DisableKeepAlive": false,
+  "AllowHalfClose": false,
+  "Insecure": false,
+  "FollowRedirects": false,
+  "CACert": "",
+  "Cert": "",
+  "Key": "",
+  "Resolve": "",
+  "HTTPReqTimeOut": 3000000000,
+  "UserCredentials": "",
+  "ContentType": "",
+  "Payload": "Zm9v",
+  "UnixDomainSocket": "",
+  "LogErrors": false,
+  "ID": 0,
+  "SequentialWarmup": false,
+  "Sizes": {
+    "Count": 4,
+    "Min": 118,
+    "Max": 118,
+    "Sum": 472,
+    "Avg": 118,
+    "StdDev": 0,
+    "Data": [
+      {
+        "Start": 118,
+        "End": 118,
+        "Percent": 100,
+        "Count": 4
+      }
+    ],
+    "Percentiles": null
+  },
+  "HeaderSizes": {
+    "Count": 4,
+    "Min": 115,
+    "Max": 115,
+    "Sum": 460,
+    "Avg": 115,
+    "StdDev": 0,
+    "Data": [
+      {
+        "Start": 115,
+        "End": 115,
+        "Percent": 100,
+        "Count": 4
+      }
+    ],
+    "Percentiles": null
+  },
+  "SocketCount": 2,
+  "AbortOn": 0
+}
+```
+
+- There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified
+
 
 ### GRPC load test
 
