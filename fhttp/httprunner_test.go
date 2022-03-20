@@ -187,7 +187,7 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 func TestClosingAndSocketCount(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo42/", EchoHandler)
-	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=1", addr.Port)
+	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=true", addr.Port)
 	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
 	opts.QPS = 10
@@ -234,10 +234,10 @@ func TestServe(t *testing.T) {
 	_, addr := ServeTCP("0", "/debugx1")
 	port := addr.Port
 	log.Infof("On addr %s found port: %d", addr, port)
-	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	if port == 0 {
 		t.Errorf("outport: %d must be different", port)
 	}
+	url := fmt.Sprintf("http://localhost:%d/debugx1?env=dump", port)
 	time.Sleep(100 * time.Millisecond)
 	o := NewHTTPOptions(url)
 	o.AddAndValidateExtraHeader("X-Header: value1")
@@ -252,6 +252,17 @@ func TestServe(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "X-Header: value1,value2") {
 		t.Errorf("Multi header not found in %s", DebugSummary(data, 1024))
+	}
+	url2 := fmt.Sprintf("http://localhost:%d/debugx1/echo/foo", port)
+	o2 := NewHTTPOptions(url2)
+	o2.Payload = []byte("abcd")
+	c2, _ := NewClient(o2)
+	code2, data2, header := c2.Fetch()
+	if code2 != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
+	}
+	if string(data2[header:]) != "abcd" {
+		t.Errorf("Unexpected that %s isn't an echo server, got %q", url2, string(data2))
 	}
 }
 
