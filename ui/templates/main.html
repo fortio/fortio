@@ -94,8 +94,11 @@
   </div>
 </form>
 <p><i>Or</i></p>
-<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a> and <a href="{{.DebugPath}}/pprof/">Internal PPROF</a>
+<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>
+and <a href="{{.DebugPath}}/pprof/">Internal PPROF</a>
 and <a href="flags">Command line flags</a>
+and <a href="{{.DebugPath}}/echo/">Additional echo handler under {{.DebugPath}}/echo/</a> (supports all the
+query arguments mentioned on the <a href="https://github.com/fortio/fortio#server-urls-and-features">Echo url features</a> github doc)
 <p><i>Or</i></p>
 <form action="sync">
   <div>
