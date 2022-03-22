@@ -193,16 +193,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
-	for _, header := range r.Form["H"] {
-		if len(header) == 0 {
-			continue
-		}
-		log.LogVf("adding header %v", header)
-		err := httpopts.AddAndValidateExtraHeader(header)
-		if err != nil {
-			log.Errf("Error adding custom headers: %v", err)
-		}
-	}
 	jsonHeaders, found := jd["headers"]
 	for found { // really an if, but using while to break out without else below
 		res, ok := jsonHeaders.([]interface{})
@@ -222,6 +212,16 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 			}
 		}
 		break
+	}
+	for _, header := range r.Form["H"] {
+		if len(header) == 0 {
+			continue
+		}
+		log.LogVf("adding query arg header %v", header)
+		err := httpopts.AddAndValidateExtraHeader(header)
+		if err != nil {
+			log.Errf("Error adding custom query arg headers: %v", err)
+		}
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
