@@ -281,7 +281,7 @@ set, restores pre 1.21 behavior
   -static-dir path
         Deprecated/unused path.
   -stdclient
-        Use the slower net/http standard client (works for TLS)
+        Use the slower net/http standard client (slower but supports h2)
   -sync URL
         index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
   -sync-interval duration
