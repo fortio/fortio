@@ -114,26 +114,22 @@ func TestSchemeCheck(t *testing.T) {
 	tests := []struct {
 		input  string
 		output string
-		stdcli bool
 	}{
-		{"https://www.google.com/", "https://www.google.com/", true},
-		{"www.google.com", "http://www.google.com", false},
-		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd", true}, // not double http:
-		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd", false},  // not double http:
-		{"", "", false},                      // and error in the logs
-		{"x", "http://x", false},             // should not crash because url is shorter than prefix
-		{"http:/", "http://http:/", false},   // boundary
-		{"http://", "http://", false},        // boundary
-		{"https://", "https://", true},       // boundary
-		{"https:/", "http://https:/", false}, // boundary
+		{"https://www.google.com/", "https://www.google.com/"},
+		{"www.google.com", "http://www.google.com"},
+		{"hTTps://foo.bar:123/ab/cd", "hTTps://foo.bar:123/ab/cd"}, // not double http:
+		{"HTTP://foo.bar:124/ab/cd", "HTTP://foo.bar:124/ab/cd"},   // not double http:
+		{"", ""},                      // and error in the logs
+		{"x", "http://x"},             // should not crash because url is shorter than prefix
+		{"http:/", "http://http:/"},   // boundary
+		{"http://", "http://"},        // boundary
+		{"https://", "https://"},      // boundary
+		{"https:/", "http://https:/"}, // boundary
 	}
 	for _, tst := range tests {
 		o := NewHTTPOptions(tst.input)
 		if o.URL != tst.output {
 			t.Errorf("Got %v, expecting %v for url '%s'", o.URL, tst.output, tst.input)
-		}
-		if o.DisableFastClient != tst.stdcli {
-			t.Errorf("Got %v, expecting %v for stdclient for url '%s'", o.DisableFastClient, tst.stdcli, tst.input)
 		}
 	}
 }
@@ -696,12 +692,7 @@ func TestDefaultPort(t *testing.T) {
 	cli.Close()
 	opts.URL = "https://fortio.org" // will be https port 443
 	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
-	cli, err := NewFastClient(opts)
-	if cli != nil || err == nil {
-		// If https support was added, remove this whitebox/for coverage purpose assertion
-		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
-	}
-	cli, err = NewClient(opts)
+	cli, err := NewClient(opts)
 	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}

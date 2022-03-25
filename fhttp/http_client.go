@@ -142,10 +142,6 @@ func (h *HTTPOptions) URLSchemeCheck() {
 	}
 	if strings.HasPrefix(lcURL, hs) {
 		h.https = true
-		if !h.DisableFastClient {
-			log.Warnf("https requested, switching to standard go client")
-			h.DisableFastClient = true
-		}
 		return // url is good
 	}
 	if !strings.HasPrefix(lcURL, "http://") {
@@ -443,32 +439,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-	if o.https { // nolint: nestif // fine for now
-		tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-		if o.Insecure {
-			log.LogVf("Using insecure https")
-			tr.TLSClientConfig.InsecureSkipVerify = true
-		}
-		if len(o.Cert) > 0 && len(o.Key) > 0 {
-			cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
-			if err != nil {
-				log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", o.Cert, o.Key, err)
-				return nil, err
-			}
-			tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
-		}
-		if len(o.CACert) > 0 {
-			// Load CA cert
-			caCert, err := ioutil.ReadFile(o.CACert)
-			if err != nil {
-				log.Errf("Unable to read CA from %v: %v", o.CACert, err)
-				return nil, err
-			}
-			log.LogVf("Using custom CA from %v", o.CACert)
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
-			tr.TLSClientConfig.RootCAs = caCertPool
-		}
+	tr.TLSClientConfig, err = o.TLSClientConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	client := Client{
@@ -495,6 +468,43 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		}
 	}
 	return &client, nil
+}
+
+// TLSClientConfig creates a tls.Config based on input HTTPOptions.
+// ServerName is set later (once host is determined after URL parsing
+// and depending on hostOverride).
+func (h *HTTPOptions) TLSClientConfig() (*tls.Config, error) {
+	if !h.https {
+		return nil, nil
+	}
+	var res *tls.Config
+
+	res = &tls.Config{MinVersion: tls.VersionTLS12}
+	if h.Insecure {
+		log.LogVf("Using insecure https")
+		res.InsecureSkipVerify = true
+	}
+	if len(h.Cert) > 0 && len(h.Key) > 0 {
+		cert, err := tls.LoadX509KeyPair(h.Cert, h.Key)
+		if err != nil {
+			log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", h.Cert, h.Key, err)
+			return nil, err
+		}
+		res.Certificates = []tls.Certificate{cert}
+	}
+	if len(h.CACert) > 0 {
+		// Load CA cert
+		caCert, err := ioutil.ReadFile(h.CACert)
+		if err != nil {
+			log.Errf("Unable to read CA from %v: %v", h.CACert, err)
+			return nil, err
+		}
+		log.LogVf("Using custom CA from %v", h.CACert)
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		res.RootCAs = caCertPool
+	}
+	return res, nil
 }
 
 // FetchURL fetches the data at the given url using the standard client and default options.
@@ -540,6 +550,8 @@ type FastClient struct {
 	uuidMarkers  [][]byte
 	logErrors    bool
 	id           int
+	https        bool
+	tlsConfig    *tls.Config
 }
 
 // Close cleans up any resources used by FastClient.
@@ -587,14 +599,15 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		log.Errf("Bad url '%s' : %v", urlString, err)
 		return nil, err
 	}
-	if url.Scheme != "http" {
-		log.Errf("Only http is supported with the optimized client, use -stdclient for url %s", o.URL)
-		return nil, fmt.Errorf("only http for fast client")
+	tlsConfig, err := o.TLSClientConfig()
+	if err != nil {
+		return nil, err
 	}
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
+		https: o.https, tlsConfig: tlsConfig,
 	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
@@ -626,6 +639,9 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	customHostHeader := (o.hostOverride != "")
 	if customHostHeader {
 		host = o.hostOverride
+	}
+	if tlsConfig != nil {
+		tlsConfig.ServerName = host
 	}
 	var buf bytes.Buffer
 	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
@@ -670,10 +686,20 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 // connect to destination.
 func (c *FastClient) connect() net.Conn {
 	c.socketCount++
-	socket, err := net.Dial(c.dest.Network(), c.dest.String())
-	if err != nil {
-		log.Errf("Unable to connect to %v : %v", c.dest, err)
-		return nil
+	var socket net.Conn
+	var err error
+	if c.https {
+		socket, err = tls.Dial(c.dest.Network(), c.dest.String(), c.tlsConfig)
+		if err != nil {
+			log.Errf("Unable to TLS connect to %v : %v", c.dest, err)
+			return nil
+		}
+	} else {
+		socket, err = net.Dial(c.dest.Network(), c.dest.String())
+		if err != nil {
+			log.Errf("Unable to connect to %v : %v", c.dest, err)
+			return nil
+		}
 	}
 	fnet.SetSocketBuffers(socket, len(c.buffer), len(c.req))
 	return socket
