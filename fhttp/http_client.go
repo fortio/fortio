@@ -470,7 +470,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	return &client, nil
 }
 
-// TLSClientConfig() creates a tls.Config based on input HTTPOptions.
+// TLSClientConfig creates a tls.Config based on input HTTPOptions.
 // ServerName is set later (once host is determined after URL parsing
 // and depending on hostOverride).
 func (h *HTTPOptions) TLSClientConfig() (*tls.Config, error) {
