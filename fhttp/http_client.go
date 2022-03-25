@@ -470,33 +470,36 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	return &client, nil
 }
 
-func (o *HTTPOptions) TLSClientConfig() (*tls.Config, error) {
-	if !o.https {
+// TLSClientConfig() creates a tls.Config based on input HTTPOptions.
+// ServerName is set later (once host is determined after URL parsing
+// and depending on hostOverride).
+func (h *HTTPOptions) TLSClientConfig() (*tls.Config, error) {
+	if !h.https {
 		return nil, nil
 	}
 	var res *tls.Config
 
 	res = &tls.Config{MinVersion: tls.VersionTLS12}
-	if o.Insecure {
+	if h.Insecure {
 		log.LogVf("Using insecure https")
 		res.InsecureSkipVerify = true
 	}
-	if len(o.Cert) > 0 && len(o.Key) > 0 {
-		cert, err := tls.LoadX509KeyPair(o.Cert, o.Key)
+	if len(h.Cert) > 0 && len(h.Key) > 0 {
+		cert, err := tls.LoadX509KeyPair(h.Cert, h.Key)
 		if err != nil {
-			log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", o.Cert, o.Key, err)
+			log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", h.Cert, h.Key, err)
 			return nil, err
 		}
 		res.Certificates = []tls.Certificate{cert}
 	}
-	if len(o.CACert) > 0 {
+	if len(h.CACert) > 0 {
 		// Load CA cert
-		caCert, err := ioutil.ReadFile(o.CACert)
+		caCert, err := ioutil.ReadFile(h.CACert)
 		if err != nil {
-			log.Errf("Unable to read CA from %v: %v", o.CACert, err)
+			log.Errf("Unable to read CA from %v: %v", h.CACert, err)
 			return nil, err
 		}
-		log.LogVf("Using custom CA from %v", o.CACert)
+		log.LogVf("Using custom CA from %v", h.CACert)
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 		res.RootCAs = caCertPool

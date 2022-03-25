@@ -692,12 +692,7 @@ func TestDefaultPort(t *testing.T) {
 	cli.Close()
 	opts.URL = "https://fortio.org" // will be https port 443
 	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
-	cli, err := NewFastClient(opts)
-	if cli != nil || err == nil {
-		// If https support was added, remove this whitebox/for coverage purpose assertion
-		t.Errorf("fast client isn't supposed to support https (yet), got %v", cli)
-	}
-	cli, err = NewClient(opts)
+	cli, err := NewClient(opts)
 	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}
