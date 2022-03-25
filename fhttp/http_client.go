@@ -637,7 +637,9 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	if customHostHeader {
 		host = o.hostOverride
 	}
-	tlsConfig.ServerName = host
+	if tlsConfig != nil {
+		tlsConfig.ServerName = host
+	}
 	var buf bytes.Buffer
 	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
 	if !bc.http10 || customHostHeader {
