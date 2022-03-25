@@ -1,26 +1,25 @@
 # Dependencies and linters for build:
-FROM ubuntu:focal
+FROM golang:1.17.8
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
-  DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install ca-certificates curl make git gcc \
-  libc6-dev apt-transport-https ssh ruby-dev build-essential rpm gnupg zip netcat
+  DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install  libc6-dev apt-transport-https ssh \
+  ruby-dev build-essential rpm gnupg zip netcat
+
 # Install FPM
 RUN gem install --no-document fpm
-# From fortio 1.4 onward we dropped go 1.8 compatibility
-RUN curl -f https://dl.google.com/go/go1.17.8.linux-amd64.tar.gz | tar xfz - -C /usr/local
-ENV GOPATH /go
-RUN mkdir -p $GOPATH/bin
-ENV PATH /usr/local/go/bin:$PATH:$GOPATH/bin
 RUN go version # check it's indeed the version we expect
+
 # golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GOPATH/bin
+# See https://github.com/golangci/golangci-lint/issues/2374
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
 RUN golangci-lint version
+
 # Docker:
-RUN curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | apt-key add
-RUN echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" > /etc/apt/sources.list.d/docker.list
-RUN apt-get -y update
-RUN apt-get install --no-install-recommends -y docker-ce
+RUN curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add
+RUN echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list
+RUN apt-get -y update && apt-get install --no-install-recommends -y docker-ce
+
 WORKDIR /build
 VOLUME /build
 COPY .golangci.yml .
