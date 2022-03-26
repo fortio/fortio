@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
@@ -106,7 +107,7 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
 func PingClientCall(serverAddr, cacert string, n int, payload string, delay time.Duration, insecure bool) (float64, error) {
-	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert, Insecure: insecure}
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: fhttp.TLSOptions{CACert: cacert, Insecure: insecure}}
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
@@ -165,7 +166,7 @@ type HealthResultMap map[string]int64
 // service.
 func GrpcHealthCheck(serverAddr, cacert string, svcname string, n int, insecure bool) (*HealthResultMap, error) {
 	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
-	o := GRPCRunnerOptions{Destination: serverAddr, CACert: cacert, Insecure: insecure}
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: fhttp.TLSOptions{CACert: cacert, Insecure: insecure}}
 	conn, err := Dial(&o)
 	if err != nil {
 		return nil, err

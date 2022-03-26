@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
@@ -68,15 +69,15 @@ func TestGRPCRunner(t *testing.T) {
 			name: "valid secure runner",
 			runnerOpts: GRPCRunnerOptions{
 				Destination: sDest,
-				CACert:      caCrt,
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 			expect: true,
 		},
 		{
 			name: "valid unix domain socket runner",
 			runnerOpts: GRPCRunnerOptions{
-				Destination:      uDest,
-				UnixDomainSocket: uPath.String(),
+				Destination: uDest,
+				TLSOptions:  fhttp.TLSOptions{UnixDomainSocket: uPath.String()},
 			},
 			expect: true,
 		},
@@ -129,7 +130,7 @@ func TestGRPCRunner(t *testing.T) {
 			name: "invalid name in secure runner cert",
 			runnerOpts: GRPCRunnerOptions{
 				Destination:  sDest,
-				CACert:       caCrt,
+				TLSOptions:   fhttp.TLSOptions{CACert: caCrt},
 				CertOverride: "invalidName",
 			},
 			expect: false,
@@ -138,7 +139,7 @@ func TestGRPCRunner(t *testing.T) {
 			name: "invalid cert for secure runner",
 			runnerOpts: GRPCRunnerOptions{
 				Destination: sDest,
-				CACert:      "../missing/cert.crt",
+				TLSOptions:  fhttp.TLSOptions{CACert: "../missing/cert.crt"},
 			},
 			expect: false,
 		},
@@ -240,7 +241,7 @@ func TestGRPCRunnerWithError(t *testing.T) {
 			name: "secure runner",
 			runnerOpts: GRPCRunnerOptions{
 				Destination: sDest,
-				CACert:      caCrt,
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 		},
 		{
@@ -253,14 +254,14 @@ func TestGRPCRunnerWithError(t *testing.T) {
 			name: "invalid secure runner to insecure server",
 			runnerOpts: GRPCRunnerOptions{
 				Destination: iDest,
-				CACert:      caCrt,
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 		},
 		{
 			name: "invalid name in runner cert",
 			runnerOpts: GRPCRunnerOptions{
 				Destination:  sDest,
-				CACert:       caCrt,
+				TLSOptions:   fhttp.TLSOptions{CACert: caCrt},
 				CertOverride: "invalidName",
 			},
 		},

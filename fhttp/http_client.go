@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -160,6 +159,7 @@ const (
 
 // HTTPOptions holds the common options of both http clients and the headers.
 type HTTPOptions struct {
+	TLSOptions
 	URL               string
 	NumConnections    int  // num connections (for std client)
 	Compression       bool // defaults to no compression, only used by std client
@@ -167,28 +167,21 @@ type HTTPOptions struct {
 	HTTP10            bool // defaults to http1.1
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
-	Insecure          bool // do not verify certs for https
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
-	CACert            string // `Path` to a custom CA certificate file to be used
-	Cert              string // `Path` to the certificate file to be used
-	Key               string // `Path` to the key file used
 	Resolve           string // resolve Common Name to this ip when use CN as target url
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
-	hostOverride   string
-	HTTPReqTimeOut time.Duration // timeout value for http request
-
-	UserCredentials string // user credentials for authorization
-	ContentType     string // indicates request body type, implies POST instead of GET
-	Payload         []byte // body for http request, implies POST if not empty.
-
-	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
-	LogErrors        bool   // whether to log non 2xx code as they occur or not
-	ID               int    // id to use for logging (thread id when used as a runner)
-	SequentialWarmup bool   // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
+	hostOverride     string
+	HTTPReqTimeOut   time.Duration // timeout value for http request
+	UserCredentials  string        // user credentials for authorization
+	ContentType      string        // indicates request body type, implies POST instead of GET
+	Payload          []byte        // body for http request, implies POST if not empty.
+	LogErrors        bool          // whether to log non 2xx code as they occur or not
+	ID               int           // id to use for logging (thread id when used as a runner)
+	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -439,11 +432,12 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-	tr.TLSClientConfig, err = o.TLSClientConfig()
-	if err != nil {
-		return nil, err
+	if o.https {
+		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
-
 	client := Client{
 		url:                  o.URL,
 		path:                 req.URL.Path,
@@ -468,43 +462,6 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		}
 	}
 	return &client, nil
-}
-
-// TLSClientConfig creates a tls.Config based on input HTTPOptions.
-// ServerName is set later (once host is determined after URL parsing
-// and depending on hostOverride).
-func (h *HTTPOptions) TLSClientConfig() (*tls.Config, error) {
-	if !h.https {
-		return nil, nil
-	}
-	var res *tls.Config
-
-	res = &tls.Config{MinVersion: tls.VersionTLS12}
-	if h.Insecure {
-		log.LogVf("Using insecure https")
-		res.InsecureSkipVerify = true
-	}
-	if len(h.Cert) > 0 && len(h.Key) > 0 {
-		cert, err := tls.LoadX509KeyPair(h.Cert, h.Key)
-		if err != nil {
-			log.Errf("LoadX509KeyPair error for cert %v / key %v: %v", h.Cert, h.Key, err)
-			return nil, err
-		}
-		res.Certificates = []tls.Certificate{cert}
-	}
-	if len(h.CACert) > 0 {
-		// Load CA cert
-		caCert, err := ioutil.ReadFile(h.CACert)
-		if err != nil {
-			log.Errf("Unable to read CA from %v: %v", h.CACert, err)
-			return nil, err
-		}
-		log.LogVf("Using custom CA from %v", h.CACert)
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		res.RootCAs = caCertPool
-	}
-	return res, nil
 }
 
 // FetchURL fetches the data at the given url using the standard client and default options.
@@ -599,15 +556,17 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		log.Errf("Bad url '%s' : %v", urlString, err)
 		return nil, err
 	}
-	tlsConfig, err := o.TLSClientConfig()
-	if err != nil {
-		return nil, err
-	}
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
-		https: o.https, tlsConfig: tlsConfig,
+		https: o.https,
+	}
+	if o.https {
+		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
@@ -640,8 +599,8 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	if customHostHeader {
 		host = o.hostOverride
 	}
-	if tlsConfig != nil {
-		tlsConfig.ServerName = host
+	if bc.tlsConfig != nil {
+		bc.tlsConfig.ServerName = host
 	}
 	var buf bytes.Buffer
 	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
