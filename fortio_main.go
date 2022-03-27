@@ -420,16 +420,14 @@ func fortioLoad(justCurl bool, percList []float64) {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
-			CACert:             *bincommon.CACertFlag,
-			Insecure:           bincommon.TLSInsecure(),
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
 			Payload:            httpOpts.PayloadString(),
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
-			UnixDomainSocket:   httpOpts.UnixDomainSocket,
 		}
+		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
 		o := tcprunner.RunnerOptions{
@@ -514,13 +512,12 @@ func grpcClient() {
 	if count <= 0 {
 		count = 1
 	}
-	cert := *bincommon.CACertFlag
+	httpOpts := bincommon.SharedHTTPOptions()
 	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, cert, *healthSvcFlag, count, bincommon.TLSInsecure())
+		_, err = fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions)
 	} else {
-		httpOpts := bincommon.SharedHTTPOptions()
-		_, err = fgrpc.PingClientCall(host, cert, count, httpOpts.PayloadString(), *pingDelayFlag, httpOpts.Insecure)
+		_, err = fgrpc.PingClientCall(host, count, httpOpts.PayloadString(), *pingDelayFlag, &httpOpts.TLSOptions)
 	}
 	if err != nil {
 		// already logged

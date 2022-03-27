@@ -16,7 +16,6 @@ package fgrpc // import "fortio.org/fortio/fgrpc"
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -25,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
@@ -38,20 +38,14 @@ import (
 // it will override the virtual host name of authority in requests.
 func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 	var opts []grpc.DialOption
-	switch {
-	case o.CACert != "":
-		var creds credentials.TransportCredentials
-		creds, err = credentials.NewClientTLSFromFile(o.CACert, o.CertOverride)
+	if o.CACert != "" || strings.HasPrefix(o.Destination, fnet.PrefixHTTPS) {
+		tlsConfig, err := o.TLSOptions.TLSClientConfig()
 		if err != nil {
-			log.Errf("Invalid TLS credentials: %v\n", err)
 			return nil, err
 		}
-		log.Infof("Using CA certificate %v to construct TLS credentials", o.CACert)
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	case strings.HasPrefix(o.Destination, fnet.PrefixHTTPS):
-		creds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: o.Insecure}) // nolint: gosec // explicit flag
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	default:
+		tlsConfig.ServerName = o.CertOverride
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
 	serverAddr := grpcDestination(o.Destination)
@@ -114,18 +108,16 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 // options.
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
+	fhttp.TLSOptions
 	Destination        string
 	Service            string        // Service to be checked when using grpc health check
 	Profiler           string        // file to save profiles to. defaults to no profiling
 	Payload            string        // Payload to be sent for grpc ping service
 	Streams            int           // number of streams. total go routines and data streams will be streams*numthreads.
 	Delay              time.Duration // Delay to be sent when using grpc ping service
-	CACert             string        // Path to CA certificate for grpc TLS
 	CertOverride       string        // Override the cert virtual host of authority for testing
-	Insecure           bool          // Allow unknown CA / self signed
 	AllowInitialErrors bool          // whether initial errors don't cause an abort
 	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
-	UnixDomainSocket   string        // unix domain socket path to use for physical connection instead of Destination
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.

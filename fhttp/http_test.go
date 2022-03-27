@@ -579,7 +579,7 @@ func TestUnixDomainHttp(t *testing.T) {
 	if addr == nil {
 		t.Fatalf("Error for Serve for %s", uds)
 	}
-	o := HTTPOptions{UnixDomainSocket: uds, URL: "http://foo.bar:123/debug1"}
+	o := HTTPOptions{TLSOptions: TLSOptions{UnixDomainSocket: uds}, URL: "http://foo.bar:123/debug1"}
 	client, _ := NewClient(&o)
 	code, data, _ := client.Fetch()
 	if code != http.StatusOK {
@@ -1415,7 +1415,7 @@ func TestInsecureRequest(t *testing.T) {
 		o := HTTPOptions{
 			DisableFastClient: tst.fastClient,
 			URL:               expiredURL,
-			Insecure:          tst.insecure,
+			TLSOptions:        TLSOptions{Insecure: tst.insecure},
 		}
 		code, _ := Fetch(&o)
 		if code != tst.code {
@@ -1446,7 +1446,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 		o := HTTPOptions{
 			DisableFastClient: tst.fastClient,
 			URL:               url,
-			Insecure:          tst.insecure,
+			TLSOptions:        TLSOptions{Insecure: tst.insecure},
 			Resolve:           "127.0.0.1",
 		}
 		code, _ := Fetch(&o)

@@ -247,8 +247,8 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 			Destination:   url,
 			UsePing:       grpcPing,
 			Delay:         grpcPingDelay,
-			Insecure:      httpopts.Insecure,
 		}
+		o.TLSOptions = httpopts.TLSOptions
 		if grpcSecure {
 			o.Destination = fhttp.AddHTTPS(url)
 		}
