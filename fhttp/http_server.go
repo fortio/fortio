@@ -339,6 +339,11 @@ func CacheOn(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "max-age=365000000, immutable")
 }
 
+// EchoDebugPath returns the additional echo handler path behind debugPath (ie /debug -> /debug/echo/).
+func EchoDebugPath(debugPath string) string {
+	return strings.TrimSuffix(debugPath, "/") + "/echo/"
+}
+
 // Serve starts a debug / echo http server on the given port.
 // Returns the mux and addr where the listening socket is bound.
 // The .Port can be retrieved from it when requesting the 0 port as
@@ -351,7 +356,7 @@ func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 	}
 	if debugPath != "" {
 		mux.HandleFunc(debugPath, DebugHandler)
-		mux.HandleFunc(strings.TrimSuffix(debugPath, "/")+"/echo/", EchoHandler) // Fix #524
+		mux.HandleFunc(EchoDebugPath(debugPath), EchoHandler) // Fix #524
 	}
 	mux.HandleFunc("/", EchoHandler)
 	return mux, addr

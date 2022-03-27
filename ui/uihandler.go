@@ -65,7 +65,8 @@ var (
 	uiPath      string // absolute (base)
 	logoPath    string // relative
 	chartJSPath string // relative
-	debugPath   string // mostly relative
+	debugPath   string // absolute
+	echoPath    string // absolute
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
 	urlHostPort string
@@ -239,6 +240,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			Version                     string
 			LogoPath                    string
 			DebugPath                   string
+			EchoDebugPath               string
 			ChartJSPath                 string
 			StartTime                   string
 			TargetURL                   string
@@ -250,7 +252,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, defaultHeaders, version.Short(), logoPath, debugPath, chartJSPath,
+			r, defaultHeaders, version.Short(), logoPath, debugPath, echoPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})
@@ -895,7 +897,8 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 		log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
 		uiPath += "/"
 	}
-	debugPath = ".." + debugpath // TODO: calculate actual path if not same number of directories
+	debugPath = debugpath
+	echoPath = fhttp.EchoDebugPath(debugpath)
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
 	// For backward compatibility with http:// only fetcher
