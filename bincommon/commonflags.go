@@ -64,7 +64,7 @@ var (
 	httpReqTimeoutFlag  = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
 	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (slower but supports h2)")
 	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
-	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https connections")
+	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https/tls/grpc connections")
 	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	resolve             = flag.String("resolve", "", "Resolve host name to this `IP`")
 	headersFlags        headersFlagList
