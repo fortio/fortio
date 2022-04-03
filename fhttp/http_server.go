@@ -102,6 +102,12 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
+	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
+	if gzip {
+		gwz := NewGzipHttpResponseWriter(w)
+		defer gwz.Close()
+		w = gwz
+	}
 	// process header(s) args, must be before size to compose properly
 	for _, hdr := range r.Form["header"] {
 		log.LogVf("Adding requested header %s", hdr)
@@ -355,7 +361,7 @@ func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 		return nil, nil // error already logged
 	}
 	if debugPath != "" {
-		mux.HandleFunc(debugPath, DebugHandler)
+		mux.Handle(debugPath, Gzip(http.HandlerFunc(DebugHandler)))
 		mux.HandleFunc(EchoDebugPath(debugPath), EchoHandler) // Fix #524
 	}
 	mux.HandleFunc("/", EchoHandler)
