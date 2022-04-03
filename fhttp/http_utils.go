@@ -468,7 +468,6 @@ func generateSingleProbability(value string, name string) bool {
 		return true
 	}
 	return false
-
 }
 
 // generateClose from string, format: close=true for 100% close
@@ -525,8 +524,8 @@ func (w *GzipResponseWriter) Close() error {
 	return err
 }
 
-// NewGzipHttpResponseWriter returns a wrapper for gzip'ing the response.
-func NewGzipHttpResponseWriter(w http.ResponseWriter) *GzipResponseWriter {
+// NewGzipHTTPResponseWriter returns a wrapper for gzip'ing the response.
+func NewGzipHTTPResponseWriter(w http.ResponseWriter) *GzipResponseWriter {
 	log.LogVf("Doing gzip compression")
 	w.Header().Set("Content-Encoding", "gzip")
 	gz := gzPool.Get().(*gzip.Writer)
@@ -543,7 +542,7 @@ func Gzip(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		gzw := NewGzipHttpResponseWriter(w)
+		gzw := NewGzipHTTPResponseWriter(w)
 		defer gzw.Close()
 		next.ServeHTTP(gzw, r)
 	})

@@ -104,7 +104,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
 	if gzip {
-		gwz := NewGzipHttpResponseWriter(w)
+		gwz := NewGzipHTTPResponseWriter(w)
 		defer gwz.Close()
 		w = gwz
 	}
