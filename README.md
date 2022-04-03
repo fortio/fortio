@@ -330,6 +330,7 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 | size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
 | close     | close the socket after answering e.g `close=true` to close after all requests or `close=5.3` to close after approximately 5.3% of requests|
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
+| gzip      | If `Accept-Encoding: gzip` is passed in headers by the caller/client; and `gzip=true` is in the query args, all response will be gzipped; or if `gzip=42.7` is passed, approximately 42.7% will|
 
 You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
 `fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
