@@ -8,6 +8,7 @@ IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
 BUILD_IMAGE_TAG := v38
+BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -108,11 +109,11 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	docker buildx build --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
+	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) --load -t $(DOCKER_TAG) .
 
 docker-push-internal: docker-internal
 	@echo "### Now pushing $(DOCKER_TAG)"
-	docker buildx build --push --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
+	docker buildx build --push --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
 release: dist
 	release/release.sh
