@@ -515,6 +515,28 @@ func TestGenerateClose(t *testing.T) {
 	}
 }
 
+func TestGenerateGzip(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		// not numbers
+		{"true", true},
+		{"false", false},
+		{"x", true},
+		// Numbers
+		{"0", false},
+		{"0.0", false},
+		{"99.9999999", true}, // well, in theory this should fail once in a blue moon
+		{"100", true},
+	}
+	for _, tst := range tests {
+		if actual := generateGzip(tst.input); actual != tst.expected {
+			t.Errorf("Got %v, expected %v for generateGzip(%q)", actual, tst.expected, tst.input)
+		}
+	}
+}
+
 func TestPayloadWithEchoBack(t *testing.T) {
 	tests := []struct {
 		payload           []byte

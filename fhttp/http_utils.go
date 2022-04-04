@@ -15,6 +15,7 @@
 package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
+	"compress/gzip"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -444,31 +445,107 @@ func generateDelay(delay string) time.Duration {
 	return 0
 }
 
-// generateClose from string, format: close=true for 100% close
-// close=true:10 or close=10 for 10% socket close.
-func generateClose(closeStr string) bool {
-	if closeStr == "" || closeStr == "false" {
+// generateSingleProbability takes a string value and a name and returns a boolean.
+// false if the value is missing or "false".
+// true if the value is "true" or doesn't parse as a floating point number.
+// otherwise if the value is a floating point number X; use it as a percentage
+// and roll a dice to be true X% of the time.
+func generateSingleProbability(value string, name string) bool {
+	if value == "" || value == "false" {
 		return false
 	}
-	if closeStr == "true" { // avoid throwing error for pre 1.22 syntax
+	if value == "true" { // avoid throwing error for pre 1.22 syntax
 		return true
 	}
-	p, err := strconv.ParseFloat(closeStr, 32)
+	p, err := strconv.ParseFloat(value, 32)
 	if err != nil {
-		log.Debugf("error %v parsing close=%q treating as true", err, closeStr)
+		log.Debugf("error %v parsing %s=%q treating as true", err, name, value)
 		return true
 	}
 	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
-	log.Debugf("close=%f rolled %f", p, res)
+	log.Debugf("%s=%f rolled %f", name, p, res)
 	if res <= float32(p) {
 		return true
 	}
 	return false
 }
 
+// generateClose from string, format: close=true for 100% close
+// close=true:10 or close=10 for 10% socket close.
+func generateClose(closeStr string) bool {
+	return generateSingleProbability(closeStr, "close")
+}
+
+// generateGzip from string, format: gzip=true or gzip=100 for 100% gzip
+// gzip=42.3 for 42.3% gzip result (if Accept-Encoding is gzip).
+func generateGzip(gzipStr string) bool {
+	return generateSingleProbability(gzipStr, "gzip")
+}
+
 // RoundDuration rounds to 10th of second.
 func RoundDuration(d time.Duration) time.Duration {
 	return d.Round(100 * time.Millisecond)
+}
+
+// Inspired by https://gist.github.com/CJEnright/bc2d8b8dc0c1389a9feeddb110f822d7 (thanks!)
+// (with fixes/adaptation)
+
+var gzPool = sync.Pool{
+	New: func() interface{} {
+		log.LogVf("Pool new gzip")
+		w := gzip.NewWriter(ioutil.Discard)
+		return w
+	},
+}
+
+// GzipResponseWriter wraps the response and gzips the content.
+type GzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+	gz *gzip.Writer
+}
+
+// WriteHeader intercepts the actual to remove any Content-Length that may have been added before compression.
+func (w *GzipResponseWriter) WriteHeader(status int) {
+	w.ResponseWriter.Header().Del("Content-Length")
+	w.ResponseWriter.WriteHeader(status)
+}
+
+// Write sends the Write() to the gzip Writer.
+func (w *GzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+// Close must be called in defer inside the handler using this.
+func (w *GzipResponseWriter) Close() error {
+	err := w.gz.Close()
+	gzPool.Put(w.gz)
+	w.gz = nil // just in case there is a bug, will be NPE instead of race
+	return err
+}
+
+// NewGzipHTTPResponseWriter returns a wrapper for gzip'ing the response.
+func NewGzipHTTPResponseWriter(w http.ResponseWriter) *GzipResponseWriter {
+	log.LogVf("Doing gzip compression")
+	w.Header().Set("Content-Encoding", "gzip")
+	gz := gzPool.Get().(*gzip.Writer)
+	gz.Reset(w)
+	return &GzipResponseWriter{ResponseWriter: w, Writer: gz, gz: gz}
+}
+
+// Gzip wraps a handler for automatic gzip.
+func Gzip(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// in our case we only wrap if we decided (gzip=x % rolled true) to gzip and so we already checked headers
+		// but leaving the check so this can be reused in generic code.
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		gzw := NewGzipHTTPResponseWriter(w)
+		defer gzw.Close()
+		next.ServeHTTP(gzw, r)
+	})
 }
 
 // -- formerly in uihandler:

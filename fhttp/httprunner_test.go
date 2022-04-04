@@ -16,6 +16,8 @@
 package fhttp
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -227,6 +229,24 @@ func TestHTTPRunnerBadServer(t *testing.T) {
 	log.Infof("Got expected error from mismatch/bad server: %v", err)
 }
 
+func gUnzipData(t *testing.T, data []byte) (resData []byte) {
+	b := bytes.NewBuffer(data)
+
+	r, err := gzip.NewReader(b)
+	if err != nil {
+		t.Errorf("gunzip NewReader: %v", err)
+		return
+	}
+	var resB bytes.Buffer
+	_, err = resB.ReadFrom(r)
+	if err != nil {
+		t.Errorf("gunzip ReadFrom: %v", err)
+		return
+	}
+	resData = resB.Bytes()
+	return
+}
+
 // need to be the last test as it installs Serve() which would make
 // the error test for / url above fail:
 
@@ -259,10 +279,67 @@ func TestServe(t *testing.T) {
 	c2, _ := NewClient(o2)
 	code2, data2, header := c2.Fetch()
 	if code2 != http.StatusOK {
-		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
+		t.Errorf("Unexpected non 200 ret code for debug echo url %s : %d", url2, code2)
 	}
 	if string(data2[header:]) != "abcd" {
 		t.Errorf("Unexpected that %s isn't an echo server, got %q", url2, string(data2))
+	}
+	// Accept gzip but no actual gzip=true
+	o2.AddAndValidateExtraHeader("Accept-Encoding: gzip")
+	c3, _ := NewClient(o2)
+	code3, data3, header := c3.Fetch()
+	if code3 != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug echo url %s : %d", url2, code3)
+	}
+	if string(data3[header:]) != "abcd" {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip but no gzip true isn't a plain echo server, got %q", url2, string(data3))
+	}
+	url4 := url2 + "?gzip=true"
+	o4 := NewHTTPOptions(url4)
+	expected4 := "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"
+	o4.Payload = []byte(expected4)
+	o4.AddAndValidateExtraHeader("Accept-Encoding: gzip")
+	c4, _ := NewClient(o4)
+	code4, data4, header := c4.Fetch()
+	if code4 != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url4, code4)
+	}
+	if string(data4[header:]) == expected4 {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true is a plain echo server, got %q", url4, string(data4))
+	}
+	if len(data4)-header >= len(expected4) {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true returns bigger payload %d (not compressed), got %q",
+			url4, len(data4)-header, string(data4))
+	}
+	data4unzip := gUnzipData(t, data4[header:])
+	if string(data4unzip) != expected4 {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true doesn't gunzip to echo, got %q", url4, string(data4))
+	}
+	url5 := url4 + "&size=400"
+	o5 := NewHTTPOptions(url5)
+	c5, _ := NewClient(o5)
+	code5, data5, header := c5.Fetch()
+	if code5 != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code5)
+	}
+	expected6 := data5[header:] // when we actually compress we should get same as this after gunzip
+	if len(data5)-header != 400 {
+		t.Errorf("Unexpected that %s without Accept-Encoding: gzip and ?gzip=true&size=400 should return 400 bytes, got %d",
+			url5, len(data5)-header)
+	}
+	o5.AddAndValidateExtraHeader("Accept-Encoding: gzip")
+	c6, _ := NewClient(o5)
+	code6, data6, header := c6.Fetch()
+	if code6 != http.StatusOK {
+		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code6)
+	}
+	data6unzip := gUnzipData(t, data6[header:])
+	if !bytes.Equal(data6unzip, expected6) {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true doesn't gunzip to echo, got %q", url5, string(data6))
+	}
+	if len(data6)-header <= 400 {
+		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true and random payload compresses to lower than 400: %d",
+			url5, len(data6)-header)
 	}
 }
 

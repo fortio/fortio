@@ -650,13 +650,13 @@ func (c *FastClient) connect() net.Conn {
 	if c.https {
 		socket, err = tls.Dial(c.dest.Network(), c.dest.String(), c.tlsConfig)
 		if err != nil {
-			log.Errf("Unable to TLS connect to %v : %v", c.dest, err)
+			log.Errf("[%d] Unable to TLS connect to %v : %v", c.id, c.dest, err)
 			return nil
 		}
 	} else {
 		socket, err = net.Dial(c.dest.Network(), c.dest.String())
 		if err != nil {
-			log.Errf("Unable to connect to %v : %v", c.dest, err)
+			log.Errf("[%d] Unable to connect to %v : %v", c.id, c.dest, err)
 			return nil
 		}
 	}
@@ -701,28 +701,28 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	if err != nil || conErr != nil {
 		if reuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
-			log.Infof("Closing dead socket %v (%v)", conn, err)
+			log.Infof("[%d] Closing dead socket %v (%v)", c.id, c.dest, err)
 			conn.Close()
 			c.errorCount++
 			return c.Fetch() // recurse once
 		}
-		log.Errf("Unable to write to %v %v : %v", conn, c.dest, err)
+		log.Errf("[%d] Unable to write to %v : %v", c.id, c.dest, err)
 		return c.returnRes()
 	}
 	if n != len(c.req) {
-		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
+		log.Errf("[%d] Short write to %v : %d instead of %d", c.id, c.dest, n, len(c.req))
 		return c.returnRes()
 	}
 	if !c.keepAlive && c.halfClose { // nolint: nestif
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {
-				log.Errf("Unable to close write to %v %v : %v", conn, c.dest, err)
+				log.Errf("[%d] Unable to close write to %v : %v", c.id, c.dest, err)
 				return c.returnRes()
 			} // else:
 			log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
 		} else {
-			log.Warnf("[%d] Unable to close write non tcp connection %v", c.id, conn)
+			log.Warnf("[%d] Unable to close write non tcp connection %v", c.id, c.dest)
 		}
 	}
 	// Read the response:
@@ -760,11 +760,11 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			if err != nil {
 				if reusedSocket && c.size == 0 {
 					// Ok for reused socket to be dead once (close by server)
-					log.Infof("Closing dead socket %v (err %v at first read)", conn, err)
+					log.Infof("[%d] Closing dead socket %v (err %v at first read)", c.id, c.dest, err)
 					c.errorCount++
 					err = conn.Close() // close the previous one
 					if err != nil {
-						log.Warnf("[%d] Error closing dead socket %v: %v", c.id, conn, err)
+						log.Warnf("[%d] Error closing dead socket %v: %v", c.id, c.dest, err)
 					}
 					c.code = RetryOnce // special "retry once" code
 					return
@@ -773,7 +773,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					// handled below as possibly normal end of stream after we read something
 					break
 				}
-				log.Errf("Read error %v %v %d : %v", conn, c.dest, c.size, err)
+				log.Errf("[%d] Read error for %v %d : %v", c.id, c.dest, c.size, err)
 				c.code = SocketError
 				break
 			}
@@ -870,7 +870,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					}
 					if checkConnectionClosedHeader {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
-							log.Infof("Server wants to close connection, no keep-alive!")
+							log.Infof("[%d] Server wants to close connection, no keep-alive!", c.id)
 							keepAlive = false
 							max = len(c.buffer) // reset to read as much as available
 						}
@@ -923,7 +923,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		c.socket = conn // keep the open socket
 	} else {
 		if err := conn.Close(); err != nil {
-			log.Errf("Close error %v %v %d : %v", conn, c.dest, c.size, err)
+			log.Errf("[%d] Close error %v %d : %v", c.id, c.dest, c.size, err)
 		} else {
 			log.Debugf("Closed ok %v from %v after reading %d bytes", conn, c.dest, c.size)
 		}
