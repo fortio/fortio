@@ -5,10 +5,7 @@ COPY . fortio
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
 RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_BIN=../fortio_go_latest.bin
-# Check we still build with go 1.8 (and macos does not break)
-RUN if [ x"$(dpkg --print-architecture)" = x"amd64" ]; then make -C fortio official-build BUILD_DIR=/build OFFICIAL_BIN=../fortio_go_latest.mac GOOS=darwin GO_BIN=/usr/local/go/bin/go; fi
-# Windows release, for now assumes running from fortio directory (static resources in .)
-RUN if [ x"$(dpkg --print-architecture)" = x"amd64" ]; then make -C fortio official-build BUILD_DIR=/build LIB_DIR=. OFFICIAL_BIN=../fortio.exe GOOS=windows; fi
+
 # Minimal image with just the binary and certs
 FROM scratch as release
 # NOTE: the list of files here, if updated, must be changed in release/Dockerfile.in too

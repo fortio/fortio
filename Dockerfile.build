@@ -3,7 +3,7 @@ FROM golang:1.17.8
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
-  DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install  libc6-dev apt-transport-https ssh \
+  DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install libc6-dev apt-transport-https ssh \
   ruby-dev build-essential rpm gnupg zip netcat
 
 # Install FPM
@@ -16,9 +16,11 @@ RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.2
 RUN golangci-lint version
 
 # Docker:
-RUN curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add
-RUN echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list
-RUN apt-get -y update && apt-get install --no-install-recommends -y docker-ce
+RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
+    curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add; \
+    echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get -y update && apt-get install --no-install-recommends -y docker-ce; \
+    fi
 
 WORKDIR /build
 VOLUME /build

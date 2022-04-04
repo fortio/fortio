@@ -96,7 +96,6 @@ FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
-	docker pull ubuntu:focal
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
 update-build-image-tag:
@@ -109,11 +108,11 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	docker build -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
+	docker buildx build --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
 docker-push-internal: docker-internal
 	@echo "### Now pushing $(DOCKER_TAG)"
-	docker push $(DOCKER_TAG)
+	docker buildx build --push --platform linux/amd64,linux/arm64,linux/ppc64le,linux/s390x -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
 release: dist
 	release/release.sh

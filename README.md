@@ -46,7 +46,7 @@ docker run fortio/fortio load http://www.google.com/ # For a test run
 Or download one of the binary distributions, from the [releases](https://github.com/fortio/fortio/releases) assets page or for instance:
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.25.0/fortio-linux_x64-1.25.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.25.0/fortio-linux_amd64-1.25.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
 wget https://github.com/fortio/fortio/releases/download/v1.25.0/fortio_1.25.0_amd64.deb
