@@ -140,8 +140,9 @@ type RunnerOptions struct {
 	Uniform bool
 	// Optional run id; used by the server to identify runs.
 	RunID int64
-	// Optional Offect Duration; to offset the histogram function duration
-	Offset       time.Duration
+	// Optional Offset Duration; to offset the histogram function duration
+	Offset time.Duration
+	// Optional AccessLogger to log every request made. See AddAccessLogger.
 	AccessLogger AccessLogger
 }
 
@@ -311,12 +312,7 @@ func (r *periodicRunner) Options() *RunnerOptions {
 	return &r.RunnerOptions // sort of returning this here
 }
 
-func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS string, numCalls int64, leftOver int64) {
-	// AccessLogger info check
-	extra := ""
-	if r.AccessLogger != nil {
-		extra = fmt.Sprintf(" with access logger %s", r.AccessLogger.Info())
-	}
+func (r *periodicRunner) runQPSSetup(extra string) (requestedDuration string, requestedQPS string, numCalls int64, leftOver int64) {
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
@@ -363,15 +359,15 @@ func (r *periodicRunner) runQPSSetup() (requestedDuration string, requestedQPS s
 	return requestedDuration, requestedQPS, numCalls, leftOver
 }
 
-func (r *periodicRunner) runNoQPSSetup() (requestedDuration string, numCalls int64, leftOver int64) {
+func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string, numCalls int64, leftOver int64) {
 	// r.Duration will be 0 if endless flag has been provided. Otherwise it will have the provided duration time.
 	hasDuration := (r.Duration > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
 	useExactly := (r.Exactly > 0)
 	if !useExactly && !hasDuration {
 		// Always log something when waiting for ^C
-		_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted\n",
-			r.NumThreads, runtime.GOMAXPROCS(0))
+		_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted%s\n",
+			r.NumThreads, runtime.GOMAXPROCS(0), extra)
 		return
 	}
 	// else:
@@ -384,12 +380,12 @@ func (r *periodicRunner) runNoQPSSetup() (requestedDuration string, numCalls int
 		numCalls = r.Exactly / int64(r.NumThreads)
 		leftOver = r.Exactly % int64(r.NumThreads)
 		if log.Log(log.Warning) {
-			_, _ = fmt.Fprintf(r.Out, "for %s (%d per thread + %d)\n", requestedDuration, numCalls, leftOver)
+			_, _ = fmt.Fprintf(r.Out, "for %s (%d per thread + %d)%s\n", requestedDuration, numCalls, leftOver, extra)
 		}
 	} else {
 		requestedDuration = fmt.Sprint(r.Duration)
 		if log.Log(log.Warning) {
-			_, _ = fmt.Fprintf(r.Out, "for %s\n", requestedDuration)
+			_, _ = fmt.Fprintf(r.Out, "for %s%s\n", requestedDuration, extra)
 		}
 	}
 	return
@@ -406,11 +402,16 @@ func (r *periodicRunner) Run() RunnerResults {
 	var numCalls int64
 	var leftOver int64 // left over from r.Exactly / numThreads
 	var requestedDuration string
+	// AccessLogger info check
+	extra := ""
+	if r.AccessLogger != nil {
+		extra = fmt.Sprintf(" with access logger %s", r.AccessLogger.Info())
+	}
 	requestedQPS := "max"
 	if useQPS {
-		requestedDuration, requestedQPS, numCalls, leftOver = r.runQPSSetup()
+		requestedDuration, requestedQPS, numCalls, leftOver = r.runQPSSetup(extra)
 	} else {
-		requestedDuration, numCalls, leftOver = r.runNoQPSSetup()
+		requestedDuration, numCalls, leftOver = r.runMaxQPSSetup(extra)
 	}
 	runnersLen := len(r.Runners)
 	if runnersLen == 0 {
