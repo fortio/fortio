@@ -275,11 +275,11 @@ func TestUniformAndNoCatchUp(t *testing.T) {
 	var count int64
 	var lock sync.Mutex
 	c := TestCount{&count, &lock}
-	// TODO: make an actual test vs just exercise the code.
-	// +3 warmup -3 at the end
-	expected := int64(20)
+	// TODO: make an actual test vs sort of just exercise the code.
+	// also explain why 34 (with nocatchup, 40 without)
+	expected := int64(34)
 	o := RunnerOptions{
-		QPS:        10,
+		QPS:        85,
 		NumThreads: 2,
 		Duration:   2 * time.Second,
 		Uniform:    true,
