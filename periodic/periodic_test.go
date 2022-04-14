@@ -271,16 +271,19 @@ func TestAccessLogs(t *testing.T) {
 	r.Options().ReleaseRunners()
 }
 
-func TestUniform(t *testing.T) {
+func TestUniformAndNoCatchUp(t *testing.T) {
 	var count int64
 	var lock sync.Mutex
 	c := TestCount{&count, &lock}
-	expected := int64(40)
+	// TODO: make an actual test vs just exercise the code.
+	// +3 warmup -3 at the end
+	expected := int64(20)
 	o := RunnerOptions{
-		QPS:        100,
-		NumThreads: 4,
-		Duration:   time.Second,
+		QPS:        10,
+		NumThreads: 2,
+		Duration:   2 * time.Second,
 		Uniform:    true,
+		NoCatchUp:  true,
 	}
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
