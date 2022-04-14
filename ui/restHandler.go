@@ -136,6 +136,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	durStr := FormValue(r, jd, "t")
 	jitter := (FormValue(r, jd, "jitter") == "on")
 	uniform := (FormValue(r, jd, "uniform") == "on")
+	nocatchup := (FormValue(r, jd, "nocatchup") == "on")
 	stdClient := (FormValue(r, jd, "stdclient") == "on")
 	sequentialWarmup := (FormValue(r, jd, "sequential-warmup") == "on")
 	httpsInsecure := (FormValue(r, jd, "https-insecure") == "on")
@@ -173,6 +174,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		Exactly:     n,
 		Jitter:      jitter,
 		Uniform:     uniform,
+		NoCatchUp:   nocatchup,
 	}
 	ro.Normalize()
 	uiRunMapMutex.Lock()

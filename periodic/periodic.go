@@ -144,6 +144,8 @@ type RunnerOptions struct {
 	Offset time.Duration
 	// Optional AccessLogger to log every request made. See AddAccessLogger.
 	AccessLogger AccessLogger
+	// No catch-up: if true we will do exactly the requested QPS and not try to catch up if the target is temporarily slow.
+	NoCatchUp bool
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -161,6 +163,7 @@ type RunnerResults struct {
 	Exactly           int64 // Echo back the requested count
 	Jitter            bool
 	Uniform           bool
+	NoCatchUp         bool
 	RunID             int64 // Echo back the optional run id
 	AccessLoggerInfo  string
 }
@@ -487,7 +490,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	result := RunnerResults{
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
-		r.Exactly, r.Jitter, r.Uniform, r.RunID, loggerInfo,
+		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo,
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
@@ -648,36 +651,45 @@ MainLoop:
 			r.AccessLogger.Report(id, fStart.UnixNano(), latency)
 		}
 		funcTimes.Record(latency)
-		i++
 		// if using QPS / pre calc expected call # mode:
 		if useQPS { // nolint: nestif
-			if (useExactly || hasDuration) && i >= numCalls {
-				break // expected exit for that mode
-			}
-			elapsed := time.Since(start)
-			var targetElapsedInSec float64
-			if hasDuration {
-				// This next line is tricky - such as for 2s duration and 1qps there is 1
-				// sleep of 2s between the 2 calls and for 3qps in 1sec 2 sleep of 1/2s etc
-				targetElapsedInSec = (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
-			} else {
-				// Calculate the target elapsed when in endless execution
-				targetElapsedInSec = float64(i) / perThreadQPS
-			}
-			targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
-			sleepDuration := targetElapsedDuration - elapsed
-			if r.Jitter {
-				sleepDuration += getJitter(sleepDuration)
-			}
-			log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
-			sleepTimes.Record(sleepDuration.Seconds())
-			select {
-			case <-runnerChan:
-				break MainLoop
-			case <-time.After(sleepDuration):
-				// continue normal execution
+			for {
+				i++
+				if (useExactly || hasDuration) && i >= numCalls {
+					break MainLoop // expected exit for that mode
+				}
+				var targetElapsedInSec float64
+				if hasDuration {
+					// This next line is tricky - such as for 2s duration and 1qps there is 1
+					// sleep of 2s between the 2 calls and for 3qps in 1sec 2 sleep of 1/2s etc
+					targetElapsedInSec = (float64(i) + float64(i)/float64(numCalls-1)) / perThreadQPS
+				} else {
+					// Calculate the target elapsed when in endless execution
+					targetElapsedInSec = float64(i) / perThreadQPS
+				}
+				targetElapsedDuration := time.Duration(int64(targetElapsedInSec * 1e9))
+				elapsed := time.Since(start)
+				sleepDuration := targetElapsedDuration - elapsed
+				if r.NoCatchUp && sleepDuration < 0 {
+					// Skip that request as we took too long
+					log.LogVf("%s request took too long %.04f s, would sleep %v, skipping iter %d", tIDStr, latency, sleepDuration, i)
+					continue
+				}
+				if r.Jitter {
+					sleepDuration += getJitter(sleepDuration)
+				}
+				log.Debugf("%s target next dur %v - sleep %v", tIDStr, targetElapsedDuration, sleepDuration)
+				sleepTimes.Record(sleepDuration.Seconds())
+				select {
+				case <-runnerChan:
+					break MainLoop
+				case <-time.After(sleepDuration):
+					// continue normal execution
+				}
+				break // NoCatchUp false or sleepDuration > 0
 			}
 		} else { // Not using QPS
+			i++
 			if useExactly && i >= numCalls {
 				break
 			}
