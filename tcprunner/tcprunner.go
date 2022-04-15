@@ -16,10 +16,12 @@ package tcprunner
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"sort"
+	"syscall"
 	"time"
 
 	"fortio.org/fortio/fhttp"
@@ -155,7 +157,7 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 			return nil, err
 		}
 	} else {
-		log.Debugf("Reusing socket %v", conn)
+		log.Debugf("[%d] Reusing socket %+v", c.connID, conn)
 	}
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
@@ -163,10 +165,11 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	if c.doGenerate {
 		c.req = GeneratePayload(c.connID, c.messageCount) // TODO write directly in buffer to avoid generating garbage for GC to clean
 	}
+	expectedLen := len(c.req)
 	n, err := conn.Write(c.req)
 	c.bytesSent = c.bytesSent + int64(n)
 	if log.LogDebug() {
-		log.Debugf("wrote %d (%q): %v", n, string(c.req), err)
+		log.Debugf("[%d] wrote %d (%s): %v", c.connID, n, fnet.DebugSummary(c.req, 256), err)
 	}
 	if err != nil || conErr != nil {
 		if reuse {
@@ -175,25 +178,36 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 			conn.Close()
 			return c.Fetch() // recurse once
 		}
-		log.Errf("Unable to write to %v %v : %v", conn, c.dest, err)
+		log.Errf("[%d] Unable to write to %v: %v", c.connID, c.dest, err)
 		return nil, err
 	}
 	if n != len(c.req) {
-		log.Errf("Short write to %v %v : %d instead of %d", conn, c.dest, n, len(c.req))
+		log.Errf("[%d] Short write to %v: %d instead of %d", c.connID, c.dest, n, expectedLen)
 		return nil, io.ErrShortWrite
 	}
 	// assert that len(c.buffer) == len(c.req)
-	n, err = conn.Read(c.buffer)
-	c.bytesReceived = c.bytesReceived + int64(n)
-	if log.LogDebug() {
-		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
-	}
-	if n < len(c.req) {
-		return c.buffer[:n], errShortRead
-	}
-	if n > len(c.req) {
-		log.Errf("BUG: read more than possible %d vs %d", n, len(c.req))
-		return c.buffer[:n], errLongRead
+	totalRead := 0
+	for {
+		n, err = conn.Read(c.buffer[totalRead:])
+		if log.LogDebug() {
+			log.Debugf("[%d] read %d (%s): %v", c.connID, n, fnet.DebugSummary(c.buffer[totalRead:totalRead+n], 256), err)
+		}
+		c.bytesReceived = c.bytesReceived + int64(n)
+		totalRead += n
+		if totalRead == expectedLen { // break first, assuming no err, so we don't test that for EOF case
+			break
+		}
+		if err != nil {
+			log.Errf("[%d] Unable to read: %v", c.connID, err)
+			if errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET) {
+				return c.buffer[:totalRead], errShortRead
+			}
+			return c.buffer[:totalRead], err
+		}
+		if totalRead > expectedLen {
+			log.Errf("[%d] BUG: read more than possible +%d to %d vs %d", c.connID, n, totalRead, expectedLen)
+			return c.buffer[:totalRead], errLongRead
+		}
 	}
 	if !bytes.Equal(c.buffer, c.req) {
 		log.Infof("Mismatch between sent %q and received %q", string(c.req), string(c.buffer))
