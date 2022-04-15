@@ -360,16 +360,17 @@ There is also the GRPC health and ping servers, as well as the http->https redir
 
 ```Shell
 $ fortio server &
-14:11:05 I fortio_main.go:171> Not using dynamic flag watching (use -config to set watch directory)
-Fortio X.Y.Z tcp-echo server listening on [::]:8078
-Fortio X.Y.Z grpc 'ping' server listening on [::]:8079
-Fortio X.Y.Z https redirector server listening on [::]:8081
-Fortio X.Y.Z echo server listening on [::]:8080
-Data directory is /Users/ldemailly/go/src/fortio.org/fortio
+Fortio X.Y.Z tcp-echo server listening on tcp [::]:8078
+Fortio X.Y.Z udp-echo server listening on udp [::]:8078
+Fortio X.Y.Z grpc 'ping' server listening on tcp [::]:8079
+Fortio X.Y.Z https redirector server listening on tcp [::]:8081
+Fortio X.Y.Z http-echo server listening on tcp [::]:8080
+Data directory is /Users/ldemailly/dev/fortio
 UI started - visit:
 http://localhost:8080/fortio/
 (or any host/ip reachable on this server)
-14:11:05 I fortio_main.go:233> All fortio X.Y.Z release goM.m.p servers started!
+14:11:05 I fortio_main.go:285> Note: not using dynamic flag watching (use -config to set watch directory)
+14:11:05 I fortio_main.go:293> All fortio X.Y.Z unknown goM.m.p servers started!
 ```
 
 ### Change the port / binding address
