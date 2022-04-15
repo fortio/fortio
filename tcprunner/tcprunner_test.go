@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/log"
 )
 
 func TestTCPRunnerBadDestination(t *testing.T) {
@@ -69,6 +70,7 @@ func TestTCPRunnerLargePayload(t *testing.T) {
 	opts.QPS = 10
 	opts.Destination = destination
 	opts.Payload = fnet.GenerateRandomPayload(120000)
+	log.SetLogLevel(log.Debug)
 	res, err := RunTCPTest(&opts)
 	if err != nil {
 		t.Error(err)
