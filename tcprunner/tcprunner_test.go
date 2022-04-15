@@ -56,6 +56,35 @@ func TestTCPRunner(t *testing.T) {
 	if res.SocketCount != res.RunnerResults.NumThreads {
 		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
+	if res.BytesReceived != res.BytesSent {
+		t.Errorf("Bytes received %d should bytes sent %d", res.BytesReceived, res.BytesSent)
+	}
+}
+
+func TestTCPRunnerLargePayload(t *testing.T) {
+	addr := fnet.TCPEchoServer("test-echo-runner", ":0")
+	destination := fmt.Sprintf("tcp://localhost:%d/", addr.(*net.TCPAddr).Port)
+
+	opts := RunnerOptions{}
+	opts.QPS = 10
+	opts.Destination = destination
+	opts.Payload = fnet.GenerateRandomPayload(120000)
+	res, err := RunTCPTest(&opts)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	totalReq := res.DurationHistogram.Count
+	tcpOk := res.RetCodes[TCPStatusOK]
+	if totalReq != tcpOk {
+		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
+	}
+	if res.SocketCount != res.RunnerResults.NumThreads {
+		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
+	}
+	if res.BytesReceived != res.BytesSent {
+		t.Errorf("Bytes received %d should bytes sent %d", res.BytesReceived, res.BytesSent)
+	}
 }
 
 func TestTCPNotLeaking(t *testing.T) {
