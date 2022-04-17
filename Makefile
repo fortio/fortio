@@ -97,11 +97,13 @@ FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
+	docker buildx create --use
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
+SED:=sed
 update-build-image-tag:
-	@echo 'Need to use gnu sed (brew install gnu-sed; PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$$PATH")'
-	sed --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	@echo 'Need to use gnu sed (brew install gnu-sed; make update-build-image-tag SED=gsed)'
+	$(SED) --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -109,9 +111,12 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
+	# --load doesn't work on mac m1 with docker desktop even after docker buildx create --use - thoughts?
 	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) --load -t $(DOCKER_TAG) .
 
-docker-push-internal: docker-internal
+docker-push-internal: docker-internal docker-buildx-push
+
+docker-buildx-push:
 	@echo "### Now pushing $(DOCKER_TAG)"
 	docker buildx build --push --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
