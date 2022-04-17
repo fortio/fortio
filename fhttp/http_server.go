@@ -356,7 +356,7 @@ func EchoDebugPath(debugPath string) string {
 // input for dynamic http server.
 func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 	startTime = time.Now()
-	mux, addr := HTTPServer("echo", port)
+	mux, addr := HTTPServer("http-echo", port)
 	if addr == nil {
 		return nil, nil // error already logged
 	}
