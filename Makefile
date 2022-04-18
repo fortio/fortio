@@ -7,7 +7,12 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v38
+BUILD_IMAGE_TAG := v39
+BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+BUILDX_POSTFIX :=
+ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
+	BUILDX_POSTFIX = --load
+endif
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -96,12 +101,13 @@ FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
 	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
-	docker pull ubuntu:focal
+	docker buildx create --use
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
+SED:=sed
 update-build-image-tag:
-	@echo 'Need to use gnu sed (brew install gnu-sed; PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$$PATH")'
-	sed --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	@echo 'Need to use gnu sed (brew install gnu-sed; make update-build-image-tag SED=gsed)'
+	$(SED) --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-version:
 	@echo "### Docker is `which docker`"
@@ -109,11 +115,13 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	docker build -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
+	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
 
-docker-push-internal: docker-internal
+docker-push-internal: docker-internal docker-buildx-push
+
+docker-buildx-push:
 	@echo "### Now pushing $(DOCKER_TAG)"
-	docker push $(DOCKER_TAG)
+	docker buildx build --push --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) .
 
 release: dist
 	release/release.sh

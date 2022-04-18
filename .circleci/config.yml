@@ -7,7 +7,7 @@ version: 2
 defaultEnv: &defaultEnv
     docker:
       # specify the version
-      - image: docker.io/fortio/fortio.build:v38
+      - image: docker.io/fortio/fortio.build:v39
     working_directory: /go/src/fortio.org/fortio
 
 jobs:
@@ -20,9 +20,12 @@ jobs:
     <<: *defaultEnv
     steps:
       - setup_remote_docker:
-          version: 17.11.0-ce
+          version: 20.10.12
       - checkout
-      - run: make release-test
+      - run: |
+          docker context create release-tests
+          docker buildx create release-tests --use
+          make release-test BUILDX_PLATFORMS=linux/amd64
   linters:
     <<: *defaultEnv
     steps:
