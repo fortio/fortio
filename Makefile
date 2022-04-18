@@ -9,6 +9,10 @@ IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 DOCKER_PREFIX := docker.io/fortio/fortio
 BUILD_IMAGE_TAG := v39
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+BUILDX_POSTFIX :=
+ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
+	BUILDX_POSTFIX = --load
+endif
 BUILD_IMAGE := $(DOCKER_PREFIX).build:$(BUILD_IMAGE_TAG)
 
 TAG:=$(USER)$(shell date +%y%m%d_%H%M%S)
@@ -111,8 +115,7 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	# --load doesn't work on mac m1 with docker desktop even after docker buildx create --use - thoughts?
-	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) --load -t $(DOCKER_TAG) .
+	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
 
 docker-push-internal: docker-internal docker-buildx-push
 
