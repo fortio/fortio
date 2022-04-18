@@ -20,7 +20,7 @@ jobs:
     <<: *defaultEnv
     steps:
       - setup_remote_docker:
-          version: 20.10.11
+          version: 20.10.12
       - checkout
       - run: |
           docker context create release-tests
