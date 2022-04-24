@@ -70,22 +70,22 @@ let chart = {}
 let overlayChart = {}
 let mchart = {}
 
-function myRound(v, digits = 6) {
+function myRound (v, digits = 6) {
   const p = Math.pow(10, digits)
   return Math.round(v * p) / p
 }
 
-function pad(n) {
+function pad (n) {
   return (n < 10) ? ('0' + n) : n
 }
 
-function formatDate(dStr) {
+function formatDate (dStr) {
   const d = new Date(dStr)
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
     pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
 }
 
-function makeTitle(res) {
+function makeTitle (res) {
   const title = []
   let firstLine = ''
   if ((typeof res.RunID !== 'undefined') && (res.RunID !== 0)) {
@@ -112,7 +112,7 @@ function makeTitle(res) {
   let errStr = 'no error'
   if (!res.ErrorsDurationHistogram) {
     // Newer simpler calculation when we have the ErrorsDurationHistogram:
-    let statusNotOk = res.ErrorsDurationHistogram.Count
+    const statusNotOk = res.ErrorsDurationHistogram.Count
     if (statusNotOk !== 0) {
       errStr = myRound(100.0 * statusNotOk / total, 2) + '% errors'
     }
@@ -138,7 +138,7 @@ function makeTitle(res) {
   return title
 }
 
-function fortioResultToJsChartData(res) {
+function fortioResultToJsChartData (res) {
   const dataP = [{
     x: 0.0,
     y: 0.0
@@ -197,7 +197,7 @@ function fortioResultToJsChartData(res) {
     prev = endX
   }
   const dataE = []
-  if (res.ErrorsDurationHistogram.Count > 0) {
+  if (res.ErrorsDurationHistogram != null && res.ErrorsDurationHistogram.Count > 0) {
     // TODO: make a function, same as above with dataH->dataE
     prev = 1000.0 * res.ErrorsDurationHistogram.Data[0].Start
     for (let i = 0; i < len; i++) {
@@ -231,20 +231,20 @@ function fortioResultToJsChartData(res) {
   }
 }
 
-function showChart(data) {
+function showChart (data) {
   makeChart(data)
   // Load configuration (min, max, isLogarithmic, ...) from the update form.
   updateChartOptions(chart)
   toggleVisibility()
 }
 
-function toggleVisibility() {
+function toggleVisibility () {
   document.getElementById('running').style.display = 'none'
   document.getElementById('cc1').style.display = 'block'
   document.getElementById('update').style.visibility = 'visible'
 }
 
-function makeOverlayChartTitle(titleA, titleB) {
+function makeOverlayChartTitle (titleA, titleB) {
   // Each string in the array is a separate line
   return [
     'A: ' + titleA[0], titleA[1], // Skip 3rd line.
@@ -253,7 +253,7 @@ function makeOverlayChartTitle(titleA, titleB) {
   ]
 }
 
-function makeOverlayChart(dataA, dataB) {
+function makeOverlayChart (dataA, dataB) {
   const chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(overlayChart).length !== 0) {
@@ -329,7 +329,7 @@ function makeOverlayChart(dataA, dataB) {
             labelString: '%'
           }
         },
-          linearYAxe
+        linearYAxe
         ]
       }
     }
@@ -337,7 +337,7 @@ function makeOverlayChart(dataA, dataB) {
   updateChart(overlayChart)
 }
 
-function makeChart(data) {
+function makeChart (data) {
   const chartEl = document.getElementById('chart1')
   chartEl.style.visibility = 'visible'
   if (Object.keys(chart).length === 0) {
@@ -404,7 +404,7 @@ function makeChart(data) {
               labelString: '%'
             }
           },
-            linearYAxe
+          linearYAxe
           ]
         }
       }
@@ -419,7 +419,7 @@ function makeChart(data) {
   }
 }
 
-function getUpdateForm() {
+function getUpdateForm () {
   const form = document.getElementById('updtForm')
   const xMin = form.xmin.value.trim()
   const xMax = form.xmax.value.trim()
@@ -430,7 +430,7 @@ function getUpdateForm() {
   return { xMin, xMax, xIsLogarithmic, yMin, yMax, yIsLogarithmic }
 }
 
-function getSelectedResults() {
+function getSelectedResults () {
   // Undefined if on "graph-only" page
   const select = document.getElementById('files')
   let selectedResults
@@ -446,7 +446,7 @@ function getSelectedResults() {
   return selectedResults
 }
 
-function updateQueryString() {
+function updateQueryString () {
   const location = document.location
   const params = new URLSearchParams(location.search)
   const form = getUpdateForm()
@@ -466,7 +466,7 @@ function updateQueryString() {
   window.history.replaceState({}, '', `${location.pathname}?${params}`)
 }
 
-function updateChartOptions(chart) {
+function updateChartOptions (chart) {
   const form = getUpdateForm()
   const scales = chart.config.options.scales
   const newXMin = parseFloat(form.xMin)
@@ -493,11 +493,11 @@ function updateChartOptions(chart) {
   chart.update()
 }
 
-function objHasProps(obj) {
+function objHasProps (obj) {
   return Object.keys(obj).length > 0
 }
 
-function getCurrentChart() {
+function getCurrentChart () {
   let currentChart
   if (objHasProps(chart)) {
     currentChart = chart
@@ -512,7 +512,7 @@ function getCurrentChart() {
 }
 
 let timeoutID = 0
-function updateChart(chart = getCurrentChart()) {
+function updateChart (chart = getCurrentChart()) {
   updateChartOptions(chart)
   if (timeoutID > 0) {
     clearTimeout(timeoutID)
@@ -520,7 +520,7 @@ function updateChart(chart = getCurrentChart()) {
   timeoutID = setTimeout(updateQueryString, 750)
 }
 
-function multiLabel(res) {
+function multiLabel (res) {
   let l = formatDate(res.StartTime)
   if (res.Labels !== '') {
     l += ' - ' + res.Labels
@@ -528,7 +528,7 @@ function multiLabel(res) {
   return l
 }
 
-function findData(slot, idx, res, p) {
+function findData (slot, idx, res, p) {
   // Not very efficient but there are only a handful of percentiles
   const pA = res.DurationHistogram.Percentiles
   if (!pA) {
@@ -546,7 +546,7 @@ function findData(slot, idx, res, p) {
   // not found, not set
 }
 
-function fortioAddToMultiResult(i, res) {
+function fortioAddToMultiResult (i, res) {
   mchart.data.labels[i] = multiLabel(res)
   mchart.data.datasets[0].data[i] = 1000.0 * res.DurationHistogram.Min
   findData(1, i, res, '50')
@@ -559,7 +559,7 @@ function fortioAddToMultiResult(i, res) {
   mchart.data.datasets[8].data[i] = res.ActualQPS
 }
 
-function endMultiChart(len) {
+function endMultiChart (len) {
   mchart.data.labels = mchart.data.labels.slice(0, len)
   for (let i = 0; i < mchart.data.datasets.length; i++) {
     mchart.data.datasets[i].data = mchart.data.datasets[i].data.slice(0, len)
@@ -567,7 +567,7 @@ function endMultiChart(len) {
   mchart.update()
 }
 
-function deleteOverlayChart() {
+function deleteOverlayChart () {
   if (Object.keys(overlayChart).length === 0) {
     return
   }
@@ -575,7 +575,7 @@ function deleteOverlayChart() {
   overlayChart = {}
 }
 
-function deleteMultiChart() {
+function deleteMultiChart () {
   if (Object.keys(mchart).length === 0) {
     return
   }
@@ -583,7 +583,7 @@ function deleteMultiChart() {
   mchart = {}
 }
 
-function deleteSingleChart() {
+function deleteSingleChart () {
   if (Object.keys(chart).length === 0) {
     return
   }
@@ -591,7 +591,7 @@ function deleteSingleChart() {
   chart = {}
 }
 
-function makeMultiChart() {
+function makeMultiChart () {
   document.getElementById('running').style.display = 'none'
   document.getElementById('update').style.visibility = 'hidden'
   const chartEl = document.getElementById('chart1')
@@ -725,7 +725,7 @@ function makeMultiChart() {
   }
 }
 
-function runTestForDuration(durationInSeconds) {
+function runTestForDuration (durationInSeconds) {
   const progressBar = document.getElementById('progressBar')
   if (durationInSeconds <= 0) {
     // infinite case
@@ -745,7 +745,7 @@ function runTestForDuration(durationInSeconds) {
 
 let lastDuration = ''
 
-function toggleDuration(el) {
+function toggleDuration (el) {
   const d = document.getElementById('duration')
   if (el.checked) {
     lastDuration = d.value
@@ -757,13 +757,13 @@ function toggleDuration(el) {
 
 const customHeaderElement = '<input type="text" name="H" size=40 value="" /> <br />'
 
-function addCustomHeader() {
+function addCustomHeader () {
   const customHeaderElements = document.getElementsByName('H')
   const lastElement = customHeaderElements[customHeaderElements.length - 1]
   lastElement.nextElementSibling.insertAdjacentHTML('afterend', customHeaderElement)
 }
 
-function checkPayload() {
+function checkPayload () {
   const len = document.getElementById('payload').value.length
   // console.log("payload length is ", len)
   if (len > 100) {
