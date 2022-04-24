@@ -19,13 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-
-	"fortio.org/fortio/log"
 )
-
-func init() {
-	log.SetLogLevel(log.Debug)
-}
 
 func TestMultiProxy(t *testing.T) {
 	_, debugAddr := ServeTCP("0", "/debug")

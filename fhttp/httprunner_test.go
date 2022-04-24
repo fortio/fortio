@@ -80,7 +80,8 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	t.Logf("Number go routine before test %d", ngBefore1)
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo100", EchoHandler)
-	url := fmt.Sprintf("http://localhost:%d/echo100", addr.Port)
+	// Avoid using localhost which can timeout with stdclient (thought this might fail on ipv6 only machines?)
+	url := fmt.Sprintf("http://127.0.0.1:%d/echo100", addr.Port)
 	numCalls := 100
 	opts.NumThreads = numCalls / 2 // make 2 calls per thread
 	opts.Exactly = int64(numCalls)
