@@ -162,13 +162,16 @@ type RunnerResults struct {
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
+	// DurationHistogram all the Run. If you want to exclude the error cases; subtract ErrorsDurationHistogram to each bucket.
 	DurationHistogram *stats.HistogramData
-	Exactly           int64 // Echo back the requested count
-	Jitter            bool
-	Uniform           bool
-	NoCatchUp         bool
-	RunID             int64 // Echo back the optional run id
-	AccessLoggerInfo  string
+	// ErrorsDurationHistogram is the durations of the error (Run returning false) cases.
+	ErrorsDurationHistogram *stats.HistogramData
+	Exactly                 int64 // Echo back the requested count
+	Jitter                  bool
+	Uniform                 bool
+	NoCatchUp               bool
+	RunID                   int64 // Echo back the optional run id
+	AccessLoggerInfo        string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -430,19 +433,21 @@ func (r *periodicRunner) Run() RunnerResults {
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
 	functionDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
+	errorsDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
 		log.LogVf("Running single threaded")
-		runOne(0, runnerChan, functionDuration, sleepTime, numCalls+leftOver, start, r)
+		runOne(0, runnerChan, functionDuration, errorsDuration, sleepTime, numCalls+leftOver, start, r)
 	} else {
 		var wg sync.WaitGroup
-		var fDs []*stats.Histogram
-		var sDs []*stats.Histogram
+		var fDs, eDs, sDs []*stats.Histogram
 		for t := 0; t < r.NumThreads; t++ {
 			durP := functionDuration.Clone()
+			errP := errorsDuration.Clone()
 			sleepP := sleepTime.Clone()
 			fDs = append(fDs, durP)
+			eDs = append(eDs, errP)
 			sDs = append(sDs, sleepP)
 			wg.Add(1)
 			thisNumCalls := numCalls
@@ -450,14 +455,15 @@ func (r *periodicRunner) Run() RunnerResults {
 				// The first thread gets to do the additional work
 				thisNumCalls += leftOver
 			}
-			go func(t int, durP *stats.Histogram, sleepP *stats.Histogram) {
-				runOne(t, runnerChan, durP, sleepP, thisNumCalls, start, r)
+			go func(t int, durP, errP, sleepP *stats.Histogram) {
+				runOne(t, runnerChan, durP, errP, sleepP, thisNumCalls, start, r)
 				wg.Done()
-			}(t, durP, sleepP)
+			}(t, durP, errP, sleepP)
 		}
 		wg.Wait()
 		for t := 0; t < r.NumThreads; t++ {
 			functionDuration.Transfer(fDs[t])
+			errorsDuration.Transfer(eDs[t])
 			sleepTime.Transfer(sDs[t])
 		}
 	}
@@ -493,15 +499,20 @@ func (r *periodicRunner) Run() RunnerResults {
 	result := RunnerResults{
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
+		errorsDuration.Export().CalcPercentiles(r.Percentiles),
 		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo,
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+		if result.ErrorsDurationHistogram.Count > 0 {
+			result.ErrorsDurationHistogram.Print(r.Out, "Error cases")
+		}
 	} else {
 		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
 		for _, p := range result.DurationHistogram.Percentiles {
 			_, _ = fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 		}
+		errorsDuration.Counter.Print(r.Out, "Error cases")
 	}
 	select {
 	case <-runnerChan: // nothing
@@ -606,9 +617,10 @@ func (a *fileAccessLogger) Info() string {
 }
 
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
-// nolint: gocognit // we should try to simplify it though.
-func runOne(id int, runnerChan chan struct{},
-	funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
+// nolint: gocognit, gocyclo // we should try to simplify it though.
+func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *stats.Histogram,
+	numCalls int64, start time.Time, r *periodicRunner,
+) {
 	var i int64
 	endTime := start.Add(r.Duration)
 	tIDStr := fmt.Sprintf("T%03d", id)
@@ -655,6 +667,9 @@ MainLoop:
 			r.AccessLogger.Report(id, fStart.UnixNano(), latency, status, details)
 		}
 		funcTimes.Record(latency)
+		if !status {
+			errTimes.Record(latency)
+		}
 		// if using QPS / pre calc expected call # mode:
 		if useQPS { // nolint: nestif
 			for {
