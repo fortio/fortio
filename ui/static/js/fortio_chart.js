@@ -110,7 +110,7 @@ function makeTitle (res) {
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
   const total = res.DurationHistogram.Count
   let errStr = 'no error'
-  if (!res.ErrorsDurationHistogram) {
+  if (res.ErrorsDurationHistogram != null) {
     // Newer simpler calculation when we have the ErrorsDurationHistogram:
     const statusNotOk = res.ErrorsDurationHistogram.Count
     if (statusNotOk !== 0) {
@@ -143,63 +143,66 @@ function fortioResultToJsChartData (res) {
     x: 0.0,
     y: 0.0
   }]
-  const len = res.DurationHistogram.Data.length
-  let prevX = 0.0
-  let prevY = 0.0
-  for (let i = 0; i < len; i++) {
-    const it = res.DurationHistogram.Data[i]
-    let x = myRound(1000.0 * it.Start)
-    if (i === 0) {
+  const dataH = []
+  const dataE = []
+  if (res.DurationHistogram.Count > 0) {
+    const len = res.DurationHistogram.Data.length
+    let prevX = 0.0
+    let prevY = 0.0
+    for (let i = 0; i < len; i++) {
+      const it = res.DurationHistogram.Data[i]
+      let x = myRound(1000.0 * it.Start)
+      if (i === 0) {
       // Extra point, 1/N at min itself
-      dataP.push({
-        x,
-        y: myRound(100.0 / res.DurationHistogram.Count, 3)
-      })
-    } else {
-      if (prevX !== x) {
         dataP.push({
           x,
-          y: prevY
+          y: myRound(100.0 / res.DurationHistogram.Count, 3)
+        })
+      } else {
+        if (prevX !== x) {
+          dataP.push({
+            x,
+            y: prevY
+          })
+        }
+      }
+      x = myRound(1000.0 * it.End)
+      const y = myRound(it.Percent, 3)
+      dataP.push({
+        x,
+        y
+      })
+      prevX = x
+      prevY = y
+    }
+    let prev = 1000.0 * res.DurationHistogram.Data[0].Start
+    for (let i = 0; i < len; i++) {
+      const it = res.DurationHistogram.Data[i]
+      const startX = 1000.0 * it.Start
+      const endX = 1000.0 * it.End
+      if (startX !== prev) {
+        dataH.push({
+          x: myRound(prev),
+          y: 0
+        }, {
+          x: myRound(startX),
+          y: 0
         })
       }
-    }
-    x = myRound(1000.0 * it.End)
-    const y = myRound(it.Percent, 3)
-    dataP.push({
-      x,
-      y
-    })
-    prevX = x
-    prevY = y
-  }
-  const dataH = []
-  let prev = 1000.0 * res.DurationHistogram.Data[0].Start
-  for (let i = 0; i < len; i++) {
-    const it = res.DurationHistogram.Data[i]
-    const startX = 1000.0 * it.Start
-    const endX = 1000.0 * it.End
-    if (startX !== prev) {
       dataH.push({
-        x: myRound(prev),
-        y: 0
-      }, {
         x: myRound(startX),
-        y: 0
+        y: it.Count
+      }, {
+        x: myRound(endX),
+        y: it.Count
       })
+      prev = endX
     }
-    dataH.push({
-      x: myRound(startX),
-      y: it.Count
-    }, {
-      x: myRound(endX),
-      y: it.Count
-    })
-    prev = endX
   }
-  const dataE = []
   if (res.ErrorsDurationHistogram != null && res.ErrorsDurationHistogram.Count > 0) {
     // TODO: make a function, same as above with dataH->dataE
-    prev = 1000.0 * res.ErrorsDurationHistogram.Data[0].Start
+    let prev = 1000.0 * res.ErrorsDurationHistogram.Data[0].Start
+    const len = res.ErrorsDurationHistogram.Data.length
     for (let i = 0; i < len; i++) {
       const it = res.ErrorsDurationHistogram.Data[i]
       const startX = 1000.0 * it.Start
