@@ -277,7 +277,6 @@ func TestAccessLogs(t *testing.T) {
 	}
 	if logger.success != expected/2 {
 		t.Errorf("Access logs status success unexpected number of times %d instead %d", logger.success, expected/2)
-
 	}
 	r.Options().ReleaseRunners()
 }
