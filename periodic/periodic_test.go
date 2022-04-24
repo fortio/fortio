@@ -15,8 +15,10 @@
 package periodic
 
 import (
+	"bufio"
 	"math"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -279,6 +281,71 @@ func TestAccessLogs(t *testing.T) {
 		t.Errorf("Access logs status success unexpected number of times %d instead %d", logger.success, expected/2)
 	}
 	r.Options().ReleaseRunners()
+}
+
+func TestAccessLogFile(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	c := TestCount{&count, &lock}
+	expected := int64(10)
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Exactly:    expected,
+	}
+
+	for _, format := range []string{"json", "influx"} {
+		dir := t.TempDir()
+		fname := path.Join(dir, "access.log")
+		err := o.AddAccessLogger(fname, format)
+		r := NewPeriodicRunner(&o)
+		r.Options().MakeRunners(&c)
+		count = 0
+		if err != nil {
+			t.Errorf("unexpected error for log file %q %s: %v", fname, format, err)
+		}
+		res := r.Run()
+		totalReq := res.DurationHistogram.Count
+		if totalReq != expected {
+			t.Errorf("Mismatch between requests %d and expected %d", totalReq, expected)
+		}
+		if count != expected {
+			t.Errorf("Mismatch between count %d and expected %d", count, expected)
+		}
+		numErr := res.ErrorsDurationHistogram.Count
+		if numErr <= 1 || numErr >= expected-1 {
+			t.Errorf("Unexpected non ok count %d should be ~ 50%% of %d", numErr, expected)
+		}
+		numOk := res.DurationHistogram.Count - numErr
+		if numOk <= 1 || numOk >= expected-1 {
+			t.Errorf("Unexpected ok count %d should be ~ 50%% of %d", numOk, expected)
+		}
+		file, _ := os.Open(fname)
+		scanner := bufio.NewScanner(file)
+		lineCount := 0
+		linesOk := 0
+		linesNotOk := 0
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "true") {
+				linesOk++
+			}
+			if strings.Contains(line, "false") {
+				linesNotOk++
+			}
+			lineCount++
+		}
+		if lineCount != int(expected) {
+			t.Errorf("unexpected number of lines in access log %s: %d", format, lineCount)
+		}
+		if linesOk != int(numOk) {
+			t.Errorf("unexpected number of lines in access log %s: with ok: %d instead of %d", format, linesOk, numOk)
+		}
+		if linesNotOk != int(numErr) {
+			t.Errorf("unexpected number of lines in access log %s: with not ok: %d instead of %d", format, linesNotOk, numErr)
+		}
+	}
 }
 
 func TestUniformAndNoCatchUp(t *testing.T) {
