@@ -14,7 +14,7 @@
 # limitations under the License.
 set -x
 # Check we can build the image
-NATIVE_PLATFORM="$(make docker-default-platform 2> /dev/null)"
+NATIVE_PLATFORM=$(docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $1}')
 echo "Building for $NATIVE_PLATFORM"
 make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
