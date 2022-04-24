@@ -14,7 +14,9 @@
 # limitations under the License.
 set -x
 # Check we can build the image
-make docker-internal TAG=webtest BUILDX_PLATFORMS="$(make docker-default-platform)" || exit 1
+NATIVE_PLATFORM="$(make docker-default-platform)"
+echo "Building for $NATIVE_PLATFORM"
+make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1.8 (!)
 LOGLEVEL=info # change to debug to debug
