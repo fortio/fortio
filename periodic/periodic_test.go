@@ -79,9 +79,10 @@ type TestCount struct {
 func (c *TestCount) Run(i int) (bool, string) {
 	c.lock.Lock()
 	(*c.count)++
+	status := (*c.count)%2 == 0
 	c.lock.Unlock()
 	time.Sleep(100 * time.Millisecond)
-	return true, ""
+	return status, ""
 }
 
 func TestStart(t *testing.T) {
@@ -229,12 +230,16 @@ func TestExactlyMaxQps(t *testing.T) {
 type testAccessLogger struct {
 	sync.Mutex
 	reports int64
+	success int64
 }
 
 func (t *testAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
 	t.Lock()
 	defer t.Unlock()
 	t.reports++
+	if status {
+		t.success++
+	}
 }
 
 func (t *testAccessLogger) Info() string {
@@ -269,6 +274,10 @@ func TestAccessLogs(t *testing.T) {
 	}
 	if count != expected {
 		t.Errorf("Access logs executed unexpected number of times %d instead %d", count, expected)
+	}
+	if logger.success != expected/2 {
+		t.Errorf("Access logs status success unexpected number of times %d instead %d", logger.success, expected/2)
+
 	}
 	r.Options().ReleaseRunners()
 }
