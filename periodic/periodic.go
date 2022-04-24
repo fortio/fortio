@@ -52,7 +52,10 @@ var DefaultRunnerOptions = RunnerOptions{
 
 // Runnable are the function to run periodically.
 type Runnable interface {
-	Run(tid int)
+	// Run returns a boolean, true for normal/success, false otherwise.
+	// with details being an optional string that can be put in the access logs.
+	// Statistics are split into two sets.
+	Run(tid int) (status bool, details string)
 }
 
 // MakeRunners creates an array of NumThreads identical Runnable instances
@@ -397,7 +400,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
 	r.Stop.Lock()
-	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignment to nil
 	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
@@ -517,7 +520,7 @@ const (
 	// AccessJSON for json format of access log: {"latency":%f,"timestamp":%d,"thread":%d}.
 	AccessJSON AccessLoggerType = iota
 	// AccessInflux of influx format of access log.
-	// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
+	// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/
 	AccessInflux
 )
 
@@ -538,7 +541,7 @@ type fileAccessLogger struct {
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
 	// Report logs a single request to a file.
-	Report(thread int, time int64, latency float64)
+	Report(thread int, time int64, latency float64, status bool, details string)
 	Info() string
 }
 
@@ -584,14 +587,15 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 }
 
 // Report logs a single request to a file.
-func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
+func (a *fileAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
 	a.mu.Lock()
 	switch a.format {
 	case AccessInflux:
-		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
-		fmt.Fprintf(a.file, "latency,thread=%d value=%f %d\n", thread, latency, time)
+		// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/
+		fmt.Fprintf(a.file, "latency,thread=%d,ok=%t value=%f,details=%q %d\n", thread, status, latency, details, time)
 	case AccessJSON:
-		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d}\n", latency, time, thread)
+		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d,\"ok\":%t,\"details\":%q}\n",
+			latency, time, thread, status, details)
 	}
 	a.mu.Unlock()
 }
@@ -645,10 +649,10 @@ MainLoop:
 				break
 			}
 		}
-		f.Run(id)
+		status, details := f.Run(id)
 		latency := time.Since(fStart).Seconds()
 		if r.AccessLogger != nil {
-			r.AccessLogger.Report(id, fStart.UnixNano(), latency)
+			r.AccessLogger.Report(id, fStart.UnixNano(), latency, status, details)
 		}
 		funcTimes.Record(latency)
 		// if using QPS / pre calc expected call # mode:

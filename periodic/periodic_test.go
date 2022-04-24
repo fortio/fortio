@@ -27,7 +27,8 @@ import (
 
 type Noop struct{}
 
-func (n *Noop) Run(t int) {
+func (n *Noop) Run(t int) (bool, string) {
+	return true, ""
 }
 
 // used for when we don't actually run periodic test/want to initialize
@@ -75,11 +76,12 @@ type TestCount struct {
 	lock  *sync.Mutex
 }
 
-func (c *TestCount) Run(i int) {
+func (c *TestCount) Run(i int) (bool, string) {
 	c.lock.Lock()
 	(*c.count)++
 	c.lock.Unlock()
 	time.Sleep(100 * time.Millisecond)
+	return true, ""
 }
 
 func TestStart(t *testing.T) {
@@ -229,7 +231,7 @@ type testAccessLogger struct {
 	reports int64
 }
 
-func (t *testAccessLogger) Report(thread int, time int64, latency float64) {
+func (t *testAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
 	t.Lock()
 	defer t.Unlock()
 	t.reports++
