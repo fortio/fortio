@@ -109,6 +109,9 @@ update-build-image-tag:
 	@echo 'Need to use gnu sed (brew install gnu-sed; make update-build-image-tag SED=gsed)'
 	$(SED) --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
+docker-default-platform:
+	@docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $$1}'
+
 docker-version:
 	@echo "### Docker is `which docker`"
 	@docker version

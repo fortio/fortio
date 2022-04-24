@@ -504,9 +504,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
-		if result.ErrorsDurationHistogram.Count > 0 {
-			result.ErrorsDurationHistogram.Print(r.Out, "Error cases")
-		}
+		result.ErrorsDurationHistogram.Print(r.Out, "Error cases")
 	} else {
 		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
 		for _, p := range result.DurationHistogram.Percentiles {
