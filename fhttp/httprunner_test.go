@@ -251,6 +251,7 @@ func gUnzipData(t *testing.T, data []byte) (resData []byte) {
 	return
 }
 
+// nolint: gocognit
 func TestAccessLog(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo-for-alog/", EchoHandler)
