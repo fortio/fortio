@@ -61,11 +61,17 @@ func (c *Counter) RecordN(v float64, n int) {
 
 // Avg returns the average.
 func (c *Counter) Avg() float64 {
+	if c.Count == 0 {
+		return 0.
+	}
 	return c.Sum / float64(c.Count)
 }
 
 // StdDev returns the standard deviation.
 func (c *Counter) StdDev() float64 {
+	if c.Count == 0 {
+		return 0.
+	}
 	fC := float64(c.Count)
 	sigma := (c.sumOfSquares - c.Sum*c.Sum/fC) / fC
 	// should never happen but it does

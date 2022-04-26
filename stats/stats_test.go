@@ -34,7 +34,7 @@ func TestCounter(t *testing.T) {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 	c.Counter.Print(w, "test1c")
-	expected := "test1c : count 0 avg NaN +/- NaN min 0 max 0 sum 0\n"
+	expected := "test1c : count 0 avg 0 +/- 0 min 0 max 0 sum 0\n"
 	c.Print(w, "test1h", []float64{50.0})
 	expected += "test1h : no data\n"
 	*log.LogFileAndLine = false
@@ -118,9 +118,9 @@ func TestTransferCounter(t *testing.T) {
 	expected := `c1 before merge : count 2 avg 15 +/- 5 min 10 max 20 sum 30
 c2 before merge : count 2 avg 85 +/- 5 min 80 max 90 sum 170
 mergedC1C2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
-c2 after merge : count 0 avg NaN +/- NaN min 0 max 0 sum 0
+c2 after merge : count 0 avg 0 +/- 0 min 0 max 0 sum 0
 mergedC2C1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
-c1 should now be empty : count 0 avg NaN +/- NaN min 0 max 0 sum 0
+c1 should now be empty : count 0 avg 0 +/- 0 min 0 max 0 sum 0
 c3 after merge - 1 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 c3 after merge - 2 : count 4 avg 50 +/- 35.36 min 10 max 90 sum 200
 `

@@ -22,10 +22,7 @@ jobs:
       - setup_remote_docker:
           version: 20.10.12
       - checkout
-      - run: |
-          docker context create release-tests
-          docker buildx create release-tests --use
-          make release-test BUILDX_PLATFORMS=linux/amd64
+      - run: make release-test
   linters:
     <<: *defaultEnv
     steps:

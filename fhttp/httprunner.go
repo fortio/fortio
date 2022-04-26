@@ -16,6 +16,7 @@ package fhttp
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -51,7 +52,7 @@ type HTTPRunnerResults struct {
 
 // Run tests http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (httpstate *HTTPRunnerResults) Run(t int) {
+func (httpstate *HTTPRunnerResults) Run(t int) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	code, body, headerSize := httpstate.client.Fetch()
 	size := len(body)
@@ -63,6 +64,10 @@ func (httpstate *HTTPRunnerResults) Run(t int) {
 		httpstate.aborter.Abort()
 		log.Infof("Aborted run because of code %d - data %s", code, DebugSummary(body, 1024))
 	}
+	if code == http.StatusOK {
+		return true, "200"
+	}
+	return false, fmt.Sprint(code)
 }
 
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
