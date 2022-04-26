@@ -1,0 +1,46 @@
+
+name: Manual Release Update/Rebuild
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to rebuild'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.tags }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build
+        id: build
+        run: |
+          make info
+          make release
+          VERSION=$(make echo-version)
+          echo ::set-output name=VERSION::${VERSION}
+          PACKAGE_VERSION=$(make echo-package-version)
+          echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
+          echo "Version $VERSION, Package version $PACKAGE_VERSION"
+
+      - name: Upload release artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag_name="${GITHUB_REF##*/}"
+          echo "tag_name=$tag_name"
+          echo "other=${{ github.ref }}"
+          gh release upload "${tag_name}" release/*.{tgz,zip,rpm,deb,gz}
+          gh release upload "${tag_name}" release/*.{tgz,zip,rpm,deb,gz}
