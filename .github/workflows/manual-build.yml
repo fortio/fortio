@@ -13,9 +13,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: test
+        run: |
+          echo "tag is ${{ github.event.inputs.tag }}"
+
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.tags }}
+          ref: ${{ github.event.inputs.tag }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
