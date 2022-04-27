@@ -177,6 +177,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// unused ones. We also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
+		fmt.Printf("IP address: %s \n", httpstate[i].client.GetIPAddress())
 		total.SocketCount += httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {

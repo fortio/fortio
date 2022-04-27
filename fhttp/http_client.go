@@ -46,6 +46,7 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
+	GetIPAddress() string
 }
 
 const (
@@ -396,6 +397,11 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
+func (c *Client) GetIPAddress() string {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag).
 func NewClient(o *HTTPOptions) (Fetcher, error) {
@@ -426,6 +432,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			if o.Resolve != "" {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
+			// TODO: Find out how many time this get called. Should be num of conn + error
 			return (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
@@ -511,6 +518,10 @@ type FastClient struct {
 	tlsConfig    *tls.Config
 }
 
+func (c *FastClient) GetIPAddress() string {
+	return c.dest.String()
+}
+
 // Close cleans up any resources used by FastClient.
 func (c *FastClient) Close() int {
 	log.Debugf("Closing %p %s socket count %d", c, c.url, c.socketCount)
@@ -591,8 +602,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 			return nil, err
 		}
 		addr = tAddr
-
-		log.Infof("Thread [%d]: DNS %s resolve to ip address %s \n", o.ID, o.URL, addr)
+		log.Infof("[%d]: DNS %s resolve to ip address %s \n", o.ID, o.URL, addr)
 	}
 	bc.dest = addr
 	// Create the bytes for the request:
