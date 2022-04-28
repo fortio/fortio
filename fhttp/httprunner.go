@@ -37,7 +37,7 @@ type HTTPRunnerResults struct {
 	periodic.RunnerResults
 	client     Fetcher
 	RetCodes   map[int]int64
-	IPCountMap map[string]int64
+	IPCountMap map[string]int64 // TODO: Move it to a shared results struct where all runner should have this field
 	// internal type/data
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
