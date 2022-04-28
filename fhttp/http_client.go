@@ -64,7 +64,6 @@ var (
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
 	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
-	stdClientIP           = make(chan string)
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -401,7 +400,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient.
 func (c *Client) GetIPAddress() string {
-	return <-stdClientIP
+	return c.req.RemoteAddr
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -435,18 +434,14 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
 			// TODO: Find out how many time this get called. Should be num of conn + error
-			conn, err := net.Dial(network, addr)
-			if err != nil {
-				log.Errf("Fail to dial addr %s, err msg: %s\n", addr, err)
-			}
 
-			go func() {
-				stdClientIP <- conn.RemoteAddr().String()
-			}()
-
-			return (&net.Dialer{
+			conn, err := (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
+
+			req.RemoteAddr = conn.RemoteAddr().String()
+
+			return conn, err
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
