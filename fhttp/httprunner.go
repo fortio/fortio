@@ -35,9 +35,9 @@ import (
 // Also is the internal type used per thread/goroutine.
 type HTTPRunnerResults struct {
 	periodic.RunnerResults
-	client   Fetcher
-	RetCodes map[int]int64
-	IPCount  map[string]int64
+	client     Fetcher
+	RetCodes   map[int]int64
+	IPCountMap map[string]int64
 	// internal type/data
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
@@ -49,6 +49,12 @@ type HTTPRunnerResults struct {
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
 	aborter *periodic.Aborter
+}
+
+// IPCountPair stores the ip address and its corresponding usage count
+type IPCountPair struct {
+	ip    string
+	count int64
 }
 
 // Run tests http request fetching. Main call being run at the target QPS.
@@ -99,7 +105,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
-		IPCount:     make(map[string]int64),
+		IPCountMap:  make(map[string]int64),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,
@@ -187,7 +193,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		// Get the report on the IP address each thread use to send traffic
 		ip := httpstate[i].client.GetIPAddress()
 		log.Infof("[%d] Host %s resolve to IP address: %s \n", i, o.URL, ip)
-		total.IPCount[ip]++
+		total.IPCountMap[ip]++
 
 		total.SocketCount += httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
@@ -200,6 +206,17 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
+
+	// Sort the ip address form largest to smallest based on its usage count
+	var ipCountList []IPCountPair
+	for k, v := range total.IPCountMap {
+		ipCountList = append(ipCountList, IPCountPair{k, v})
+	}
+
+	sort.Slice(ipCountList, func(i, j int) bool {
+		return ipCountList[i].count > ipCountList[j].count
+	})
+
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	sort.Ints(keys)
@@ -208,8 +225,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	}
 	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t\n", total.Uniform, total.Jitter)
-	for k, v := range total.IPCount {
-		_, _ = fmt.Fprintf(out, "IP address %s usage count: %d\n", k, v)
+	_, _ = fmt.Fprintf(out, "IP addresses distribution:\n")
+	for _, v := range ipCountList {
+		_, _ = fmt.Fprintf(out, "%s: %d\n", v.ip, v.count)
 	}
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
