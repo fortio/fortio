@@ -121,11 +121,8 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	if ngAfter > ngBefore2+8 {
 		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
 	}
-	if !opts.DisableFastClient {
-		// only fast client so far has a socket count
-		if res.SocketCount != res.RunnerResults.NumThreads {
-			t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
-		}
+	if res.SocketCount != res.RunnerResults.NumThreads {
+		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
 }
 
@@ -190,17 +187,16 @@ func TestHTTPRunnerClientRace(t *testing.T) {
 	}
 }
 
-func TestClosingAndSocketCount(t *testing.T) {
+func testClosingAndSocketCount(t *testing.T, o *HTTPRunnerOptions) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo42/", EchoHandler)
 	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=true", addr.Port)
-	opts := HTTPRunnerOptions{}
-	opts.Init(URL)
-	opts.QPS = 10
+	o.Init(URL)
+	o.QPS = 10
 	numReq := int64(50) // can't do too many without running out of fds on mac
-	opts.Exactly = numReq
-	opts.NumThreads = 5
-	res, err := RunHTTPTest(&opts)
+	o.Exactly = numReq
+	o.NumThreads = 5
+	res, err := RunHTTPTest(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,6 +211,14 @@ func TestClosingAndSocketCount(t *testing.T) {
 	if int64(res.SocketCount) != numReq {
 		t.Errorf("When closing, got %d while expected as many sockets as requests %d", res.SocketCount, numReq)
 	}
+}
+
+func TestClosingAndSocketCountFastClient(t *testing.T) {
+	testClosingAndSocketCount(t, &HTTPRunnerOptions{})
+}
+
+func TestClosingAndSocketCountStdClient(t *testing.T) {
+	testClosingAndSocketCount(t, &HTTPRunnerOptions{HTTPOptions: HTTPOptions{DisableFastClient: true}})
 }
 
 func TestHTTPRunnerBadServer(t *testing.T) {

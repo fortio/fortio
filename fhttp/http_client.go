@@ -310,6 +310,7 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
+	socketCount          *int
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -326,7 +327,7 @@ func (c *Client) Close() int {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
-	return 0 // TODO: find a way to track std client socket usage.
+	return *c.socketCount
 }
 
 // ChangeURL only for standard client, allows fetching a different URL.
@@ -422,6 +423,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	if req == nil {
 		return nil, err
 	}
+
+	var socketCount int
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
 		MaxIdleConnsPerHost: o.NumConnections,
@@ -433,13 +436,12 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			if o.Resolve != "" {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
-			// TODO: Find out how many time this get called. Should be num of conn + error
-
 			conn, err := (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
 
 			req.RemoteAddr = conn.RemoteAddr().String()
+			socketCount++
 
 			return conn, err
 		},
@@ -464,9 +466,10 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			Timeout:   o.HTTPReqTimeOut,
 			Transport: &tr,
 		},
-		transport: &tr,
-		id:        o.ID,
-		logErrors: o.LogErrors,
+		transport:   &tr,
+		id:          o.ID,
+		logErrors:   o.LogErrors,
+		socketCount: &socketCount,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
