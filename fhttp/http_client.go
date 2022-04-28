@@ -399,7 +399,6 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 func (c *Client) GetIPAddress() string {
-	//TODO implement me
 	return stdClientIP
 }
 
@@ -434,7 +433,10 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
 			// TODO: Find out how many time this get called. Should be num of conn + error
-			conn, _ := net.Dial(network, addr)
+			conn, err := net.Dial(network, addr)
+			if err != nil {
+				log.Errf("Fail to dial addr %s, err msg: %s\n", addr, err)
+			}
 			stdClientIP = conn.RemoteAddr().String()
 
 			return (&net.Dialer{
