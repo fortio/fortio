@@ -226,7 +226,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	return &total, nil
 }
 
-// A errgroup is a collection of goroutines working on subtasks that are part of
+// An errgroup is a collection of goroutines working on subtasks that are part of
 // the same overall task.
 type errgroup struct {
 	wg sync.WaitGroup
