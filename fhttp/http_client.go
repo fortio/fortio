@@ -602,7 +602,6 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 			return nil, err
 		}
 		addr = tAddr
-		log.Infof("[%d]: DNS %s resolve to ip address %s \n", o.ID, o.URL, addr)
 	}
 	bc.dest = addr
 	// Create the bytes for the request:

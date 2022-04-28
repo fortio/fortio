@@ -36,6 +36,7 @@ type HTTPRunnerResults struct {
 	periodic.RunnerResults
 	client   Fetcher
 	RetCodes map[int]int64
+	IPCount  map[string]int64
 	// internal type/data
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
@@ -93,6 +94,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
+		IPCount:     make(map[string]int64),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,
@@ -177,7 +179,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// unused ones. We also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
-		fmt.Printf("IP address: %s \n", httpstate[i].client.GetIPAddress())
+		// Get the report on the IP address each thread use to send traffic
+		ip := httpstate[i].client.GetIPAddress()
+		fmt.Printf("[%d] Host %s resolve to IP address: %s \n", i, o.URL, ip)
+		total.IPCount[ip]++
+
 		total.SocketCount += httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
@@ -197,6 +203,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	}
 	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t\n", total.Uniform, total.Jitter)
+	for k, v := range total.IPCount {
+		_, _ = fmt.Fprintf(out, "IP address %s usage count: %d\n", k, v)
+	}
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
