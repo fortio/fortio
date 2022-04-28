@@ -186,7 +186,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
 		ip := httpstate[i].client.GetIPAddress()
-		fmt.Printf("[%d] Host %s resolve to IP address: %s \n", i, o.URL, ip)
+		log.Infof("[%d] Host %s resolve to IP address: %s \n", i, o.URL, ip)
 		total.IPCount[ip]++
 
 		total.SocketCount += httpstate[i].client.Close()
