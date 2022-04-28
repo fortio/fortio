@@ -51,7 +51,7 @@ type HTTPRunnerResults struct {
 	aborter *periodic.Aborter
 }
 
-// IPCountPair stores the ip address and its corresponding usage count
+// IPCountPair stores the ip address and its corresponding usage count.
 type IPCountPair struct {
 	ip    string
 	count int64
@@ -208,7 +208,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 
 	// Sort the ip address form largest to smallest based on its usage count
-	var ipCountList []IPCountPair
+	ipCountList := make([]IPCountPair, len(total.IPCountMap))
 	for k, v := range total.IPCountMap {
 		ipCountList = append(ipCountList, IPCountPair{k, v})
 	}
