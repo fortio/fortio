@@ -63,6 +63,7 @@ var (
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
 	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
+	stdClientIP           string
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -399,7 +400,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 
 func (c *Client) GetIPAddress() string {
 	//TODO implement me
-	panic("implement me")
+	return stdClientIP
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -433,6 +434,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
 			// TODO: Find out how many time this get called. Should be num of conn + error
+			conn, _ := net.Dial(network, addr)
+			stdClientIP = conn.RemoteAddr().String()
+
 			return (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
