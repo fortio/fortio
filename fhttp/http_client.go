@@ -399,7 +399,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using stdClient
+// GetIPAddress get the ip address that DNS resolves to when using stdClient.
 func (c *Client) GetIPAddress() string {
 	return <-stdClientIP
 }
@@ -529,7 +529,7 @@ type FastClient struct {
 	tlsConfig    *tls.Config
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using fast client
+// GetIPAddress get the ip address that DNS resolves to when using fast client.
 func (c *FastClient) GetIPAddress() string {
 	return c.dest.String()
 }

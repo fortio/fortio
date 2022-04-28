@@ -726,7 +726,6 @@ func TestBucketLookUp(t *testing.T) {
 		input float64 // input
 		start float64 // start
 		end   float64 // end
-
 	}{
 		{input: 11, start: 10, end: 11},
 		{input: 171, start: 160, end: 180},
