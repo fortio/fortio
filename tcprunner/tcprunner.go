@@ -47,14 +47,16 @@ type RunnerResults struct {
 
 // Run tests tcp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (tcpstate *RunnerResults) Run(t int) {
+func (tcpstate *RunnerResults) Run(t int) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	_, err := tcpstate.client.Fetch()
 	if err != nil {
-		tcpstate.RetCodes[err.Error()]++
-	} else {
-		tcpstate.RetCodes[TCPStatusOK]++
+		errStr := err.Error()
+		tcpstate.RetCodes[errStr]++
+		return false, errStr
 	}
+	tcpstate.RetCodes[TCPStatusOK]++
+	return true, TCPStatusOK
 }
 
 // TCPOptions are options to the TCPClient.

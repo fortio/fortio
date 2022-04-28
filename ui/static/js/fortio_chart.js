@@ -82,7 +82,7 @@ function pad (n) {
 function formatDate (dStr) {
   const d = new Date(dStr)
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
-        pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+    pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
 }
 
 function makeTitle (res) {
@@ -108,23 +108,32 @@ function makeTitle (res) {
     }
   }
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
-  let statusOk = res.RetCodes[200]
-  if (!statusOk) { // grpc or tcp results
-    statusOk = res.RetCodes.SERVING || res.RetCodes.OK
-  }
   const total = res.DurationHistogram.Count
   let errStr = 'no error'
-  if (statusOk !== total) {
-    if (statusOk) {
-      errStr = myRound(100.0 * (total - statusOk) / total, 2) + '% errors'
-    } else {
-      errStr = '100% errors!'
+  if (res.ErrorsDurationHistogram != null) {
+    // Newer simpler calculation when we have the ErrorsDurationHistogram:
+    const statusNotOk = res.ErrorsDurationHistogram.Count
+    if (statusNotOk !== 0) {
+      errStr = myRound(100.0 * statusNotOk / total, 2) + '% errors'
+    }
+  } else {
+    // Old calculation (for older saved data)
+    let statusOk = res.RetCodes[200]
+    if (!statusOk) { // grpc or tcp results
+      statusOk = res.RetCodes.SERVING || res.RetCodes.OK
+    }
+    if (statusOk !== total) {
+      if (statusOk) {
+        errStr = myRound(100.0 * (total - statusOk) / total, 2) + '% errors'
+      } else {
+        errStr = '100% errors!'
+      }
     }
   }
   title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
-        myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-        res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), jitter: ' +
-        res.Jitter + ', uniform: ' + res.Uniform + ', ' + errStr)
+    myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
+    res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), jitter: ' +
+    res.Jitter + ', uniform: ' + res.Uniform + ', ' + errStr)
   title.push(percStr)
   return title
 }
@@ -134,63 +143,94 @@ function fortioResultToJsChartData (res) {
     x: 0.0,
     y: 0.0
   }]
-  const len = res.DurationHistogram.Data.length
-  let prevX = 0.0
-  let prevY = 0.0
-  for (let i = 0; i < len; i++) {
-    const it = res.DurationHistogram.Data[i]
-    let x = myRound(1000.0 * it.Start)
-    if (i === 0) {
+  const dataH = []
+  const dataE = []
+  if (res.DurationHistogram.Count > 0) {
+    const len = res.DurationHistogram.Data.length
+    let prevX = 0.0
+    let prevY = 0.0
+    for (let i = 0; i < len; i++) {
+      const it = res.DurationHistogram.Data[i]
+      let x = myRound(1000.0 * it.Start)
+      if (i === 0) {
       // Extra point, 1/N at min itself
-      dataP.push({
-        x: x,
-        y: myRound(100.0 / res.DurationHistogram.Count, 3)
-      })
-    } else {
-      if (prevX !== x) {
         dataP.push({
-          x: x,
-          y: prevY
+          x,
+          y: myRound(100.0 / res.DurationHistogram.Count, 3)
+        })
+      } else {
+        if (prevX !== x) {
+          dataP.push({
+            x,
+            y: prevY
+          })
+        }
+      }
+      x = myRound(1000.0 * it.End)
+      const y = myRound(it.Percent, 3)
+      dataP.push({
+        x,
+        y
+      })
+      prevX = x
+      prevY = y
+    }
+    let prev = 1000.0 * res.DurationHistogram.Data[0].Start
+    for (let i = 0; i < len; i++) {
+      const it = res.DurationHistogram.Data[i]
+      const startX = 1000.0 * it.Start
+      const endX = 1000.0 * it.End
+      if (startX !== prev) {
+        dataH.push({
+          x: myRound(prev),
+          y: 0
+        }, {
+          x: myRound(startX),
+          y: 0
         })
       }
-    }
-    x = myRound(1000.0 * it.End)
-    const y = myRound(it.Percent, 3)
-    dataP.push({
-      x: x,
-      y: y
-    })
-    prevX = x
-    prevY = y
-  }
-  const dataH = []
-  let prev = 1000.0 * res.DurationHistogram.Data[0].Start
-  for (let i = 0; i < len; i++) {
-    const it = res.DurationHistogram.Data[i]
-    const startX = 1000.0 * it.Start
-    const endX = 1000.0 * it.End
-    if (startX !== prev) {
       dataH.push({
-        x: myRound(prev),
-        y: 0
-      }, {
         x: myRound(startX),
-        y: 0
+        y: it.Count
+      }, {
+        x: myRound(endX),
+        y: it.Count
       })
+      prev = endX
     }
-    dataH.push({
-      x: myRound(startX),
-      y: it.Count
-    }, {
-      x: myRound(endX),
-      y: it.Count
-    })
-    prev = endX
+  }
+  if (res.ErrorsDurationHistogram != null && res.ErrorsDurationHistogram.Count > 0) {
+    // TODO: make a function, same as above with dataH->dataE
+    let prev = 1000.0 * res.ErrorsDurationHistogram.Data[0].Start
+    const len = res.ErrorsDurationHistogram.Data.length
+    for (let i = 0; i < len; i++) {
+      const it = res.ErrorsDurationHistogram.Data[i]
+      const startX = 1000.0 * it.Start
+      const endX = 1000.0 * it.End
+      if (startX !== prev) {
+        dataE.push({
+          x: myRound(prev),
+          y: 0
+        }, {
+          x: myRound(startX),
+          y: 0
+        })
+      }
+      dataE.push({
+        x: myRound(startX),
+        y: it.Count
+      }, {
+        x: myRound(endX),
+        y: it.Count
+      })
+      prev = endX
+    }
   }
   return {
     title: makeTitle(res),
-    dataP: dataP,
-    dataH: dataH
+    dataP,
+    dataH,
+    dataE
   }
 }
 
@@ -322,6 +362,16 @@ function makeChart (data) {
           cubicInterpolationMode: 'monotone'
         },
         {
+          label: 'Error Histogram',
+          data: data.dataE,
+          yAxisID: 'H',
+          pointStyle: 'rect',
+          radius: 1,
+          borderColor: 'rgba(179, 42, 18, .8)',
+          backgroundColor: 'rgba(179, 42, 18, .65)',
+          lineTension: 0
+        },
+        {
           label: 'Histogram: Count',
           data: data.dataH,
           yAxisID: 'H',
@@ -365,7 +415,8 @@ function makeChart (data) {
     // TODO may need updateChart() if we persist settings even the first time
   } else {
     chart.data.datasets[0].data = data.dataP
-    chart.data.datasets[1].data = data.dataH
+    chart.data.datasets[1].data = data.dataE
+    chart.data.datasets[2].data = data.dataH
     chart.options.title.text = data.title
     updateChart(chart)
   }

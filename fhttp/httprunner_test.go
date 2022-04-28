@@ -16,10 +16,13 @@
 package fhttp
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"runtime"
 	"strings"
 	"testing"
@@ -80,7 +83,8 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	t.Logf("Number go routine before test %d", ngBefore1)
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo100", EchoHandler)
-	url := fmt.Sprintf("http://localhost:%d/echo100", addr.Port)
+	// Avoid using localhost which can timeout with stdclient (thought this might fail on ipv6 only machines?)
+	url := fmt.Sprintf("http://127.0.0.1:%d/echo100", addr.Port)
 	numCalls := 100
 	opts.NumThreads = numCalls / 2 // make 2 calls per thread
 	opts.Exactly = int64(numCalls)
@@ -245,6 +249,84 @@ func gUnzipData(t *testing.T, data []byte) (resData []byte) {
 	}
 	resData = resB.Bytes()
 	return
+}
+
+// nolint: gocognit
+func TestAccessLog(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/echo-for-alog/", EchoHandler)
+	URL := fmt.Sprintf("http://localhost:%d/echo-for-alog/?status=555:50", addr.Port)
+	opts := HTTPRunnerOptions{}
+	opts.Init(URL)
+	opts.QPS = 10
+	numReq := int64(50) // can't do too many without running out of fds on mac
+	opts.Exactly = numReq
+	opts.NumThreads = 5
+	for _, format := range []string{"json", "influx"} {
+		dir := t.TempDir()
+		fname := path.Join(dir, "access.log")
+		err := opts.AddAccessLogger(fname, format)
+		if err != nil {
+			t.Errorf("unexpected error for log file %q %s: %v", fname, format, err)
+		}
+		res, err := RunHTTPTest(&opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		totalReq := res.DurationHistogram.Count
+		if totalReq != numReq {
+			t.Errorf("Mismatch between requests %d and expected %d", totalReq, numReq)
+		}
+		httpOk := res.RetCodes[http.StatusOK]
+		http555 := res.RetCodes[555]
+		if httpOk <= 1 || httpOk >= numReq-1 {
+			t.Errorf("Unexpected ok count %d should be ~ 50%% of %d", httpOk, numReq)
+		}
+		if http555 <= 1 || http555 >= numReq-1 {
+			t.Errorf("Unexpected 555 count %d should be ~ 50%% of %d", http555, numReq)
+		}
+		if totalReq != httpOk+http555 {
+			t.Errorf("Mismatch between requests %d and ok+555 %v", totalReq, res.RetCodes)
+		}
+		file, _ := os.Open(fname)
+		scanner := bufio.NewScanner(file)
+		lineCount := 0
+		linesOk := 0
+		linesNotOk := 0
+		lines200 := 0
+		lines555 := 0
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "true") {
+				linesOk++
+			}
+			if strings.Contains(line, "false") {
+				linesNotOk++
+			}
+			if strings.Contains(line, "\"200\"") {
+				lines200++
+			}
+			if strings.Contains(line, "\"555\"") {
+				lines555++
+			}
+			lineCount++
+		}
+		if lineCount != int(numReq) {
+			t.Errorf("unexpected number of lines in access log %s: %d", format, lineCount)
+		}
+		if linesOk != int(httpOk) {
+			t.Errorf("unexpected number of lines in access log %s: with ok: %d instead of %d", format, linesOk, httpOk)
+		}
+		if lines200 != int(httpOk) {
+			t.Errorf("unexpected number of lines in access log %s: with 200: %d instead of %d", format, lines200, httpOk)
+		}
+		if linesNotOk != int(http555) {
+			t.Errorf("unexpected number of lines in access log %s: with not ok: %d instead of %d", format, linesNotOk, http555)
+		}
+		if lines555 != int(http555) {
+			t.Errorf("unexpected number of lines in access log %s: with 555: %d instead of %d", format, lines555, http555)
+		}
+	}
 }
 
 // need to be the last test as it installs Serve() which would make

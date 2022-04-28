@@ -50,14 +50,16 @@ type RunnerResults struct {
 
 // Run tests udp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (udpstate *RunnerResults) Run(t int) {
+func (udpstate *RunnerResults) Run(t int) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	_, err := udpstate.client.Fetch()
 	if err != nil {
-		udpstate.RetCodes[err.Error()]++
-	} else {
-		udpstate.RetCodes[UDPStatusOK]++
+		errStr := err.Error()
+		udpstate.RetCodes[errStr]++
+		return false, errStr
 	}
+	udpstate.RetCodes[UDPStatusOK]++
+	return true, UDPStatusOK
 }
 
 // UDPOptions are options to the UDPClient.

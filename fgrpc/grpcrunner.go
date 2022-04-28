@@ -80,7 +80,7 @@ type GRPCRunnerResults struct {
 
 // Run exercises GRPC health check or ping at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (grpcstate *GRPCRunnerResults) Run(t int) {
+func (grpcstate *GRPCRunnerResults) Run(t int) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	var err error
 	var res interface{}
@@ -99,9 +99,13 @@ func (grpcstate *GRPCRunnerResults) Run(t int) {
 	if err != nil {
 		log.Warnf("Error making grpc call: %v", err)
 		grpcstate.RetCodes[Error]++
-	} else {
-		grpcstate.RetCodes[status.String()]++
+		return false, err.Error()
 	}
+	grpcstate.RetCodes[status.String()]++
+	if status == grpc_health_v1.HealthCheckResponse_SERVING {
+		return true, "SERVING"
+	}
+	return false, status.String()
 }
 
 // GRPCRunnerOptions includes the base RunnerOptions plus grpc specific

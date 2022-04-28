@@ -52,7 +52,10 @@ var DefaultRunnerOptions = RunnerOptions{
 
 // Runnable are the function to run periodically.
 type Runnable interface {
-	Run(tid int)
+	// Run returns a boolean, true for normal/success, false otherwise.
+	// with details being an optional string that can be put in the access logs.
+	// Statistics are split into two sets.
+	Run(tid int) (status bool, details string)
 }
 
 // MakeRunners creates an array of NumThreads identical Runnable instances
@@ -159,13 +162,16 @@ type RunnerResults struct {
 	ActualDuration    time.Duration
 	NumThreads        int
 	Version           string
+	// DurationHistogram all the Run. If you want to exclude the error cases; subtract ErrorsDurationHistogram to each bucket.
 	DurationHistogram *stats.HistogramData
-	Exactly           int64 // Echo back the requested count
-	Jitter            bool
-	Uniform           bool
-	NoCatchUp         bool
-	RunID             int64 // Echo back the optional run id
-	AccessLoggerInfo  string
+	// ErrorsDurationHistogram is the durations of the error (Run returning false) cases.
+	ErrorsDurationHistogram *stats.HistogramData
+	Exactly                 int64 // Echo back the requested count
+	Jitter                  bool
+	Uniform                 bool
+	NoCatchUp               bool
+	RunID                   int64 // Echo back the optional run id
+	AccessLoggerInfo        string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -397,7 +403,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
 	r.Stop.Lock()
-	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignment to nil
 	r.Stop.Unlock()
 	useQPS := (r.QPS > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
@@ -427,19 +433,21 @@ func (r *periodicRunner) Run() RunnerResults {
 	start := time.Now()
 	// Histogram  and stats for Function duration - millisecond precision
 	functionDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
+	errorsDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
 	if r.NumThreads <= 1 {
 		log.LogVf("Running single threaded")
-		runOne(0, runnerChan, functionDuration, sleepTime, numCalls+leftOver, start, r)
+		runOne(0, runnerChan, functionDuration, errorsDuration, sleepTime, numCalls+leftOver, start, r)
 	} else {
 		var wg sync.WaitGroup
-		var fDs []*stats.Histogram
-		var sDs []*stats.Histogram
+		var fDs, eDs, sDs []*stats.Histogram
 		for t := 0; t < r.NumThreads; t++ {
 			durP := functionDuration.Clone()
+			errP := errorsDuration.Clone()
 			sleepP := sleepTime.Clone()
 			fDs = append(fDs, durP)
+			eDs = append(eDs, errP)
 			sDs = append(sDs, sleepP)
 			wg.Add(1)
 			thisNumCalls := numCalls
@@ -447,14 +455,15 @@ func (r *periodicRunner) Run() RunnerResults {
 				// The first thread gets to do the additional work
 				thisNumCalls += leftOver
 			}
-			go func(t int, durP *stats.Histogram, sleepP *stats.Histogram) {
-				runOne(t, runnerChan, durP, sleepP, thisNumCalls, start, r)
+			go func(t int, durP, errP, sleepP *stats.Histogram) {
+				runOne(t, runnerChan, durP, errP, sleepP, thisNumCalls, start, r)
 				wg.Done()
-			}(t, durP, sleepP)
+			}(t, durP, errP, sleepP)
 		}
 		wg.Wait()
 		for t := 0; t < r.NumThreads; t++ {
 			functionDuration.Transfer(fDs[t])
+			errorsDuration.Transfer(eDs[t])
 			sleepTime.Transfer(sDs[t])
 		}
 	}
@@ -490,15 +499,18 @@ func (r *periodicRunner) Run() RunnerResults {
 	result := RunnerResults{
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
+		errorsDuration.Export().CalcPercentiles(r.Percentiles),
 		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo,
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
+		result.ErrorsDurationHistogram.Print(r.Out, "Error cases")
 	} else {
 		functionDuration.Counter.Print(r.Out, "Aggregated Function Time")
 		for _, p := range result.DurationHistogram.Percentiles {
 			_, _ = fmt.Fprintf(r.Out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 		}
+		errorsDuration.Counter.Print(r.Out, "Error cases")
 	}
 	select {
 	case <-runnerChan: // nothing
@@ -517,7 +529,7 @@ const (
 	// AccessJSON for json format of access log: {"latency":%f,"timestamp":%d,"thread":%d}.
 	AccessJSON AccessLoggerType = iota
 	// AccessInflux of influx format of access log.
-	// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
+	// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/
 	AccessInflux
 )
 
@@ -538,7 +550,7 @@ type fileAccessLogger struct {
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
 	// Report logs a single request to a file.
-	Report(thread int, time int64, latency float64)
+	Report(thread int, time int64, latency float64, status bool, details string)
 	Info() string
 }
 
@@ -584,14 +596,15 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 }
 
 // Report logs a single request to a file.
-func (a *fileAccessLogger) Report(thread int, time int64, latency float64) {
+func (a *fileAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
 	a.mu.Lock()
 	switch a.format {
 	case AccessInflux:
-		// https://docs.influxdata.com/influxdb/v2.1/reference/syntax/line-protocol/
-		fmt.Fprintf(a.file, "latency,thread=%d value=%f %d\n", thread, latency, time)
+		// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/
+		fmt.Fprintf(a.file, "latency,thread=%d,ok=%t value=%f,details=%q %d\n", thread, status, latency, details, time)
 	case AccessJSON:
-		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d}\n", latency, time, thread)
+		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d,\"ok\":%t,\"details\":%q}\n",
+			latency, time, thread, status, details)
 	}
 	a.mu.Unlock()
 }
@@ -602,9 +615,10 @@ func (a *fileAccessLogger) Info() string {
 }
 
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
-// nolint: gocognit // we should try to simplify it though.
-func runOne(id int, runnerChan chan struct{},
-	funcTimes *stats.Histogram, sleepTimes *stats.Histogram, numCalls int64, start time.Time, r *periodicRunner) {
+// nolint: gocognit, gocyclo // we should try to simplify it though.
+func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *stats.Histogram,
+	numCalls int64, start time.Time, r *periodicRunner,
+) {
 	var i int64
 	endTime := start.Add(r.Duration)
 	tIDStr := fmt.Sprintf("T%03d", id)
@@ -645,12 +659,15 @@ MainLoop:
 				break
 			}
 		}
-		f.Run(id)
+		status, details := f.Run(id)
 		latency := time.Since(fStart).Seconds()
 		if r.AccessLogger != nil {
-			r.AccessLogger.Report(id, fStart.UnixNano(), latency)
+			r.AccessLogger.Report(id, fStart.UnixNano(), latency, status, details)
 		}
 		funcTimes.Record(latency)
+		if !status {
+			errTimes.Record(latency)
+		}
 		// if using QPS / pre calc expected call # mode:
 		if useQPS { // nolint: nestif
 			for {

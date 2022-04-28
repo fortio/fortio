@@ -36,7 +36,6 @@ import (
 var uuids map[string]bool
 
 func init() {
-	log.SetLogLevel(log.Debug)
 	uuids = map[string]bool{}
 }
 
