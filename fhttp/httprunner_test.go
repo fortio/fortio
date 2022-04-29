@@ -60,6 +60,10 @@ func TestHTTPRunner(t *testing.T) {
 	if res.SocketCount != res.RunnerResults.NumThreads {
 		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
+	count := getIPUsageCount(res.IPCountMap)
+	if count != res.RunnerResults.NumThreads {
+		t.Errorf("Total IP usage count %d, expected same as thread %d", count, res.RunnerResults.NumThreads)
+	}
 	// Test raw client, should get warning about non init timeout:
 	rawOpts := HTTPOptions{
 		URL: opts.URL,

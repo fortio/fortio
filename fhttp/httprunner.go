@@ -37,7 +37,7 @@ type HTTPRunnerResults struct {
 	periodic.RunnerResults
 	client     Fetcher
 	RetCodes   map[int]int64
-	IPCountMap map[string]int64 // TODO: Move it to a shared results struct where all runner should have this field
+	IPCountMap map[string]int // TODO: Move it to a shared results struct where all runner should have this field
 	// internal type/data
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
@@ -54,7 +54,7 @@ type HTTPRunnerResults struct {
 // IPCountPair stores the ip address and its corresponding usage count.
 type IPCountPair struct {
 	ip    string
-	count int64
+	count int
 }
 
 // Run tests http request fetching. Main call being run at the target QPS.
@@ -105,7 +105,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
-		IPCountMap:  make(map[string]int64),
+		IPCountMap:  make(map[string]int),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,

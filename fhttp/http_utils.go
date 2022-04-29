@@ -627,3 +627,11 @@ func (r *SyncReader) Read(p []byte) (n int, err error) {
 
 	return r.reader.Read(p)
 }
+
+func getIPUsageCount(ipCountMap map[string]int) (count int) {
+	for _, v := range ipCountMap {
+		count += v
+	}
+
+	return count
+}
