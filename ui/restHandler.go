@@ -236,8 +236,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 
 // Run executes the run (can be called async or not, writer is nil for async mode).
 func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
-	runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions,
-) {
+	runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions) {
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
