@@ -310,7 +310,7 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
-	socketCount          *int
+	socketCount          int
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -327,7 +327,7 @@ func (c *Client) Close() int {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
-	return *c.socketCount
+	return c.socketCount
 }
 
 // ChangeURL only for standard client, allows fetching a different URL.
@@ -424,7 +424,22 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		return nil, err
 	}
 
-	var socketCount int
+	client := Client{
+		url:                  o.URL,
+		path:                 req.URL.Path,
+		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
+		rawQuery:             req.URL.RawQuery,
+		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
+		body:                 o.PayloadString(),
+		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
+		req:                  req,
+		client: &http.Client{
+			Timeout: o.HTTPReqTimeOut,
+		},
+		id:        o.ID,
+		logErrors: o.LogErrors,
+	}
+
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
 		MaxIdleConnsPerHost: o.NumConnections,
@@ -441,35 +456,21 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			}).DialContext(ctx, network, addr)
 
 			req.RemoteAddr = conn.RemoteAddr().String()
-			socketCount++
+			client.socketCount++
 
 			return conn, err
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
+
+	client.client.Transport = &tr
+	client.transport = &tr
+
 	if o.https {
 		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
 		if err != nil {
 			return nil, err
 		}
-	}
-	client := Client{
-		url:                  o.URL,
-		path:                 req.URL.Path,
-		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
-		rawQuery:             req.URL.RawQuery,
-		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
-		body:                 o.PayloadString(),
-		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
-		req:                  req,
-		client: &http.Client{
-			Timeout:   o.HTTPReqTimeOut,
-			Transport: &tr,
-		},
-		transport:   &tr,
-		id:          o.ID,
-		logErrors:   o.LogErrors,
-		socketCount: &socketCount,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
