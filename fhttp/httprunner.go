@@ -203,7 +203,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 
 	// Sort the ip address form largest to smallest based on its usage count
 	ipList := make([]string, 0, len(total.IPCountMap))
-	for k, _ := range total.IPCountMap {
+	for k := range total.IPCountMap {
 		ipList = append(ipList, k)
 	}
 
