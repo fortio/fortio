@@ -470,3 +470,11 @@ func TestAbortOn(t *testing.T) {
 		t.Errorf("Abort2 not working, did %d requests expecting ideally 1 and <= %d", count, o.NumThreads)
 	}
 }
+
+func getIPUsageCount(ipCountMap map[string]int) (count int) {
+	for _, v := range ipCountMap {
+		count += v
+	}
+
+	return count
+}
