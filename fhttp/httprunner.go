@@ -51,12 +51,6 @@ type HTTPRunnerResults struct {
 	aborter *periodic.Aborter
 }
 
-// IPCountPair stores the ip address and its corresponding usage count.
-type IPCountPair struct {
-	ip    string
-	count int
-}
-
 // Run tests http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (httpstate *HTTPRunnerResults) Run(t int) (bool, string) {
@@ -208,13 +202,13 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 
 	// Sort the ip address form largest to smallest based on its usage count
-	ipCountList := make([]IPCountPair, 0, len(total.IPCountMap))
-	for k, v := range total.IPCountMap {
-		ipCountList = append(ipCountList, IPCountPair{k, v})
+	ipList := make([]string, 0, len(total.IPCountMap))
+	for k, _ := range total.IPCountMap {
+		ipList = append(ipList, k)
 	}
 
-	sort.Slice(ipCountList, func(i, j int) bool {
-		return ipCountList[i].count > ipCountList[j].count
+	sort.Slice(ipList, func(i, j int) bool {
+		return total.IPCountMap[ipList[i]] > total.IPCountMap[ipList[j]]
 	})
 
 	// Cleanup state:
@@ -224,8 +218,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t\n", total.Uniform, total.Jitter)
 	_, _ = fmt.Fprintf(out, "IP addresses distribution:\n")
-	for _, v := range ipCountList {
-		_, _ = fmt.Fprintf(out, "%s: %d\n", v.ip, v.count)
+	for _, v := range ipList {
+		_, _ = fmt.Fprintf(out, "%s: %d\n", v, total.IPCountMap[v])
 	}
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
