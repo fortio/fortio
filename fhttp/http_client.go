@@ -455,8 +455,14 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
 
-			req.RemoteAddr = conn.RemoteAddr().String()
-			client.socketCount++
+			if conn != nil {
+				newRemoteAddress := conn.RemoteAddr().String()
+				if req.RemoteAddr != "" {
+					log.Infof("Standard client IP address changed from %s to %s", req.RemoteAddr, newRemoteAddress)
+				}
+				req.RemoteAddr = newRemoteAddress
+				client.socketCount++
+			}
 
 			return conn, err
 		},
