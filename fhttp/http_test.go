@@ -700,7 +700,7 @@ func TestBadURLStdClient(t *testing.T) {
 	}
 
 	opts.URL = "http://doesnotexist.fortio.org"
-	cli, err = NewStdClient(opts)
+	cli, _ = NewStdClient(opts)
 	code, _, _ := cli.Fetch()
 	if code != -1 {
 		t.Errorf("config2: client can send request despite bogus url %s", opts.URL)
