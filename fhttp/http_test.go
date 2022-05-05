@@ -676,7 +676,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	cli.Close()
 }
 
-func TestBadUrl(t *testing.T) {
+func TestBadUrlFastClient(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
 	cli, err := NewFastClient(opts)
 	if cli != nil || err == nil {
@@ -688,6 +688,22 @@ func TestBadUrl(t *testing.T) {
 	if cli != nil || err == nil {
 		t.Errorf("config2: got a client %v despite bogus url %s", cli, opts.URL)
 		cli.Close()
+	}
+}
+
+func TestBadURLStdClient(t *testing.T) {
+	opts := NewHTTPOptions("not a valid url")
+	cli, err := NewStdClient(opts)
+	if cli != nil || err == nil {
+		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		cli.Close()
+	}
+
+	opts.URL = "http://doesnotexist.fortio.org"
+	cli, _ = NewStdClient(opts)
+	code, _, _ := cli.Fetch()
+	if code != -1 {
+		t.Errorf("config2: client can send request despite bogus url %s", opts.URL)
 	}
 }
 

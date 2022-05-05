@@ -46,6 +46,8 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
+	// GetIPAddress() get the ip address that DNS resolves to
+	GetIPAddress() string
 }
 
 const (
@@ -308,6 +310,7 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
+	socketCount          int
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -324,7 +327,7 @@ func (c *Client) Close() int {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
-	return 0 // TODO: find a way to track std client socket usage.
+	return c.socketCount
 }
 
 // ChangeURL only for standard client, allows fetching a different URL.
@@ -396,6 +399,11 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
+// GetIPAddress get the ip address that DNS resolves to when using stdClient.
+func (c *Client) GetIPAddress() string {
+	return c.req.RemoteAddr
+}
+
 // NewClient creates either a standard or fast client (depending on
 // the DisableFastClient flag).
 func NewClient(o *HTTPOptions) (Fetcher, error) {
@@ -415,6 +423,23 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	if req == nil {
 		return nil, err
 	}
+
+	client := Client{
+		url:                  o.URL,
+		path:                 req.URL.Path,
+		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
+		rawQuery:             req.URL.RawQuery,
+		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
+		body:                 o.PayloadString(),
+		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
+		req:                  req,
+		client: &http.Client{
+			Timeout: o.HTTPReqTimeOut,
+		},
+		id:        o.ID,
+		logErrors: o.LogErrors,
+	}
+
 	tr := http.Transport{
 		MaxIdleConns:        o.NumConnections,
 		MaxIdleConnsPerHost: o.NumConnections,
@@ -426,34 +451,32 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			if o.Resolve != "" {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
-			return (&net.Dialer{
+			conn, err := (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
+
+			if conn != nil {
+				newRemoteAddress := conn.RemoteAddr().String()
+				if req.RemoteAddr != "" {
+					log.Infof("Standard client IP address changed from %s to %s", req.RemoteAddr, newRemoteAddress)
+				}
+				req.RemoteAddr = newRemoteAddress
+				client.socketCount++
+			}
+
+			return conn, err
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
+
+	client.client.Transport = &tr
+	client.transport = &tr
+
 	if o.https {
 		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
 		if err != nil {
 			return nil, err
 		}
-	}
-	client := Client{
-		url:                  o.URL,
-		path:                 req.URL.Path,
-		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
-		rawQuery:             req.URL.RawQuery,
-		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
-		body:                 o.PayloadString(),
-		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
-		req:                  req,
-		client: &http.Client{
-			Timeout:   o.HTTPReqTimeOut,
-			Transport: &tr,
-		},
-		transport: &tr,
-		id:        o.ID,
-		logErrors: o.LogErrors,
 	}
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
@@ -509,6 +532,11 @@ type FastClient struct {
 	id           int
 	https        bool
 	tlsConfig    *tls.Config
+}
+
+// GetIPAddress get the ip address that DNS resolves to when using fast client.
+func (c *FastClient) GetIPAddress() string {
+	return c.dest.String()
 }
 
 // Close cleans up any resources used by FastClient.

@@ -35,8 +35,9 @@ import (
 // Also is the internal type used per thread/goroutine.
 type HTTPRunnerResults struct {
 	periodic.RunnerResults
-	client   Fetcher
-	RetCodes map[int]int64
+	client     Fetcher
+	RetCodes   map[int]int64
+	IPCountMap map[string]int // TODO: Move it to a shared results struct where all runner should have this field
 	// internal type/data
 	sizes       *stats.Histogram
 	headerSizes *stats.Histogram
@@ -98,6 +99,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
+		IPCountMap:  make(map[string]int),
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,
@@ -182,6 +184,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// unused ones. We also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
+		// Get the report on the IP address each thread use to send traffic
+		ip := httpstate[i].client.GetIPAddress()
+		log.Infof("[%d] %s resolve to IP address: %s\n", i, o.URL, ip)
+		total.IPCountMap[ip]++
+
 		total.SocketCount += httpstate[i].client.Close()
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
@@ -193,14 +200,27 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
 	}
+
+	// Sort the ip address form largest to smallest based on its usage count
+	ipList := make([]string, 0, len(total.IPCountMap))
+	for k := range total.IPCountMap {
+		ipList = append(ipList, k)
+	}
+
+	sort.Slice(ipList, func(i, j int) bool {
+		return total.IPCountMap[ipList[i]] > total.IPCountMap[ipList[j]]
+	})
+
 	// Cleanup state:
 	r.Options().ReleaseRunners()
 	sort.Ints(keys)
 	totalCount := float64(total.DurationHistogram.Count)
-	if !o.DisableFastClient {
-		_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
-	}
+	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
 	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t\n", total.Uniform, total.Jitter)
+	_, _ = fmt.Fprintf(out, "IP addresses distribution:\n")
+	for _, v := range ipList {
+		_, _ = fmt.Fprintf(out, "%s: %d\n", v, total.IPCountMap[v])
+	}
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(out, "Code %3d : %d (%.1f %%)\n", k, total.RetCodes[k], 100.*float64(total.RetCodes[k])/totalCount)
 	}
@@ -216,7 +236,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	return &total, nil
 }
 
-// A errgroup is a collection of goroutines working on subtasks that are part of
+// An errgroup is a collection of goroutines working on subtasks that are part of
 // the same overall task.
 type errgroup struct {
 	wg sync.WaitGroup
