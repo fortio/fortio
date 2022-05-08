@@ -110,7 +110,7 @@ var (
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	echoPortFlag    = flag.String("http-port", "8080",
-		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
+		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	tcpPortFlag = flag.String("tcp-port", "8078",
 		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	udpPortFlag = flag.String("udp-port", "8078",
@@ -271,8 +271,10 @@ func main() {
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
-			os.Exit(1) // error already logged
+		if *echoPortFlag != disabled {
+			if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
+				os.Exit(1) // error already logged
+			}
 		}
 		startProxies()
 	case "grpcping":
