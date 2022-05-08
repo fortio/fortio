@@ -185,7 +185,7 @@ var (
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
-// nolint: funlen // well yes it's fairly big and lotsa ifs.
+// nolint: funlen,gocyclo // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
