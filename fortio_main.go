@@ -110,7 +110,7 @@ var (
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
 	echoPortFlag    = flag.String("http-port", "8080",
-		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path.")
+		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	tcpPortFlag = flag.String("tcp-port", "8078",
 		"tcp echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	udpPortFlag = flag.String("udp-port", "8078",
@@ -185,7 +185,7 @@ var (
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
-// nolint: funlen // well yes it's fairly big and lotsa ifs.
+// nolint: funlen,gocyclo // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
@@ -271,8 +271,10 @@ func main() {
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
-		if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
-			os.Exit(1) // error already logged
+		if *echoPortFlag != disabled {
+			if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
+				os.Exit(1) // error already logged
+			}
 		}
 		startProxies()
 	case "grpcping":

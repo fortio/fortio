@@ -74,8 +74,10 @@ fortio.exe server
 
 Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
-You can get a preview of the reporting/graphing UI at [https://fortio.istio.io/](https://fortio.istio.io/)
+You can get a preview of the reporting/graphing UI at [https://demo.fortio.org/](https://demo.fortio.org/).
+<!--
 and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
+-->
 
 ## Command line arguments
 
