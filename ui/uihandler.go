@@ -998,7 +998,7 @@ func Report(baseurl, port, datadir string) bool {
 	fmt.Printf(uiMsg + "\n")
 	uiPath = "/"
 	dataDir = datadir
-	logoPath = version.Short() + "/static/img/logo.svg"
+	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 	fs := http.FileServer(http.FS(staticFS))
 	prefix := uiPath + version.Short()

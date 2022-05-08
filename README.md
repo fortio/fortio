@@ -1111,7 +1111,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are newer/live examples on [istio.io/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks](https://archive.istio.io/v1.0/docs/concepts/performance-and-scalability/#synthetic-end-to-end-benchmarks)
+There are live examples on [demo.fortio.org](https://demo.fortio.org/)
 
 ## Contributing
 
