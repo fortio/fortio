@@ -172,14 +172,21 @@ func closingServer(listener net.Listener) error {
 // Port can include binding address and/or be port 0.
 func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 	m := http.NewServeMux()
+	return m, HTTPServerWithHandler(name, port, m)
+}
+
+// HTTPServerWithHandler creates and h2c compatible server named name on address/port port.
+// Port can include binding address and/or be port 0.
+// Takes in a handler.
+func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
 	h2s := &http2.Server{}
 	s := &http.Server{
 		IdleTimeout: serverIdleTimeout.Get(),
-		Handler:     h2c.NewHandler(m, h2s),
+		Handler:     h2c.NewHandler(hdlr, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
-		return nil, nil // error already logged
+		return nil // error already logged
 	}
 	go func() {
 		err := s.Serve(listener)
@@ -187,7 +194,7 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 			log.Fatalf("Unable to serve %s on %s: %v", name, addr.String(), err)
 		}
 	}()
-	return m, addr
+	return addr
 }
 
 // DynamicHTTPServer listens on an available port, sets up an http or a closing
