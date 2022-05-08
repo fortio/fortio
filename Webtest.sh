@@ -107,7 +107,7 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 # Do a grpcping to a scheme-prefixed destination. Fortio should append port number
 # re-enable once we get https://grpc.fortio.org:/ fully working with https too
 # docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping https://grpc.fortio.org
-docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping grpc.fortio.org:8079
+docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping grpc.fortio.org # uses default non tls 8079
 # Do a grpcping with -cert flag. Fortio should use valid cert.
 # docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT grpc.fortio.org:443
 # docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT https://grpc.fortio.org
