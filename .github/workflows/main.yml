@@ -67,6 +67,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag_name="${{ github.ref }}"
+          tag_name="${GITHUB_REF##*/}"
           echo "tag_name=$tag_name"
           gh release upload "${tag_name}" release/*.{tgz,zip,rpm,deb,gz}
