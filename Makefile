@@ -98,7 +98,7 @@ all: test go-install lint docker-version docker-push-internal
 # (bump BUILD_IMAGE_TAG), also change this list if the image is used in
 # more places.
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
-	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
+	Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
 	docker buildx create --use
@@ -137,9 +137,10 @@ release: dist
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
-LIB_DIR := /usr/share/fortio
 DATA_DIR := .
-OFFICIAL_BIN := ../fortio.bin
+# Will be ../bin/fortio
+OFFICIAL_DIR := ../
+OFFICIAL_BIN := $(OFFICIAL_DIR)/fortio
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -159,7 +160,6 @@ echo-version:
 echo-package-version:
 	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
 
-# This needs to be redone between build targets (so the windows build for instance gets the right LIB_DIR)
 $(BUILD_DIR)/link-flags.txt:
 	-mkdir -p $(BUILD_DIR)
 	echo "-s -X main.defaultDataDir=$(DATA_DIR)" | tee $@
@@ -221,16 +221,13 @@ install: official-install
 .PHONY: install official-install
 
 BIN_INSTALL_DIR = $(DESTDIR)/usr/bin
-LIB_INSTALL_DIR = $(DESTDIR)$(LIB_DIR)
 MAN_INSTALL_DIR = $(DESTDIR)/usr/share/man/man1
-#DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
 BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
-	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR) # $(LIB_INSTALL_DIR) $(DATA_INSTALL_DIR)
+	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR)
 	# -chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
-	#cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
 	cp docs/fortio.1 $(MAN_INSTALL_DIR)
 
 # Test distribution (only used by maintainer)
