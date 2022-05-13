@@ -58,10 +58,10 @@ func init() { // nolint:gochecknoinits //we do need an init for this
 		log.Errf("fortio: unexpected but no build info available")
 		return
 	}
-	version = binfo.Main.Version
-	if version == "(devel)" {
-		// (devel) messes up the release-tests paths
-		version = "dev"
+	v := binfo.Main.Version
+	// '(devel)' messes up the release-tests paths
+	if v != "(devel)" {
+		version = v
 	}
 	longVersion = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
 	fullVersion = fmt.Sprintf("%s\n%v", longVersion, binfo.String())

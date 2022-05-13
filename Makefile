@@ -182,7 +182,7 @@ ifeq ($(MODE),install)
 	-mv -f $(OFFICIAL_DIR_BIN)/*_*/fortio* $(OFFICIAL_DIR_BIN)
 	-rmdir $(OFFICIAL_DIR_BIN)/*_*
 else
-	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -o $(OFFICIAL_BIN) -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 endif
 
 official-build-version: official-build
