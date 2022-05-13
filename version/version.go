@@ -63,7 +63,7 @@ func init() { // nolint:gochecknoinits //we do need an init for this
 	v := binfo.Main.Version
 	// '(devel)' messes up the release-tests paths
 	if v != "(devel)" {
-		version = v
+		version = v[1:] // skip leading v
 	}
 	longVersion = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
 	fullVersion = fmt.Sprintf("%s\n%v", longVersion, binfo.String())
