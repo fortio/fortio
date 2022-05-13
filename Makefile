@@ -139,7 +139,8 @@ release: dist
 BUILD_DIR := /tmp/fortio_build
 DATA_DIR := .
 OFFICIAL_DIR := /tmp/go_dir
-OFFICIAL_BIN := $(OFFICIAL_DIR)/bin/fortio
+OFFICIAL_DIR_BIN := $(OFFICIAL_DIR)/bin
+OFFICIAL_BIN := $(OFFICIAL_DIR_BIN)/fortio
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -175,9 +176,9 @@ official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 	GOPATH=$(OFFICIAL_DIR) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
-	ls -lR $(OFFICIAL_DIR)/bin
-	-mv -f $(OFFICIAL_DIR)/bin/*_*/fortio* $(OFFICIAL_BIN)
-	-rmdir $(OFFICIAL_DIR)/bin/*_*
+	ls -lR $(OFFICIAL_DIR_BIN)
+	-mv -f $(OFFICIAL_DIR_BIN)/*_*/fortio* $(OFFICIAL_DIR_BIN)
+	-rmdir $(OFFICIAL_DIR_BIN)/*_*
 
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
