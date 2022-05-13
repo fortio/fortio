@@ -174,8 +174,8 @@ clean-link-flags:
 official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 	GOPATH=$(OFFICIAL_DIR) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
-	# rename when building cross architecture
-	-mv -f $(OFFICIAL_DIR)/bin/*/fortio $(OFFICIAL_BIN)
+	# rename when building cross architecture (on windows it has .exe suffix thus the *)
+	-mv -f $(OFFICIAL_DIR)/bin/*/fortio* $(OFFICIAL_BIN)
 	-rmdir $(OFFICIAL_DIR)/bin/*
 
 official-build-version: official-build
