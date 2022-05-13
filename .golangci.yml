@@ -355,6 +355,7 @@ linters:
     - wrapcheck
     - exhaustivestruct
     - tagliatelle
+    - nonamedreturns
 # TODO consider putting these back, when they stop being bugged (ifshort, wastedassign,...)
     - paralleltest
     - thelper

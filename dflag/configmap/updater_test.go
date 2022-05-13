@@ -124,7 +124,8 @@ type (
 
 // eventually tries a given Assert function 5 times over the period of time.
 func eventually(t *testing.T, duration time.Duration,
-	af assertFunc, expected interface{}, actual getter, msgFmt string, msgArgs ...interface{}) {
+	af assertFunc, expected interface{}, actual getter, msgFmt string, msgArgs ...interface{},
+) {
 	increment := duration / 5
 	for i := 0; i < 5; i++ {
 		time.Sleep(increment)

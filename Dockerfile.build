@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.17.9
+FROM golang:1.18.2
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -11,9 +11,7 @@ RUN gem install --no-document fpm
 RUN go version # check it's indeed the version we expect
 
 # golangci-lint
-# See https://github.com/golangci/golangci-lint/issues/2673 (and 2374)
-# Use 1.44.2 which works on arm while 1.45.2 doesn't... somehow
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 RUN golangci-lint version
 
 # Docker:
