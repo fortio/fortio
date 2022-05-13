@@ -137,10 +137,11 @@ release: dist
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
+BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
+BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
 DATA_DIR := .
-OFFICIAL_DIR := /tmp/go_dir
-OFFICIAL_DIR_BIN := $(OFFICIAL_DIR)/bin
-OFFICIAL_BIN := $(OFFICIAL_DIR_BIN)/fortio
+OFFICIAL_DIR := /tmp/fortio_build/result
+OFFICIAL_BIN := $(OFFICIAL_DIR)/fortio
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -163,6 +164,7 @@ echo-package-version:
 
 $(BUILD_DIR)/link-flags.txt:
 	-mkdir -p $(BUILD_DIR)
+	-mkdir -p $(OFFICIAL_DIR)
 	echo "-s -X main.defaultDataDir=$(DATA_DIR)" | tee $@
 
 .PHONY: official-build official-build-internal official-build-version official-build-clean clean-link-flags
@@ -176,11 +178,12 @@ clean-link-flags:
 official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
 ifeq ($(MODE),install)
-	GOPATH=$(OFFICIAL_DIR) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
+	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
-	ls -lR $(OFFICIAL_DIR_BIN)
-	-mv -f $(OFFICIAL_DIR_BIN)/*_*/fortio* $(OFFICIAL_DIR_BIN)
-	-rmdir $(OFFICIAL_DIR_BIN)/*_*
+	ls -lR $(BUILD_DIR_BIN)
+	-mv -f $(BUILD_DIR_BIN)/*_*/fortio* $(BUILD_DIR_BIN)
+	-rmdir $(BUILD_DIR_BIN)/*_*
+	mv -f $(BUILD_DIR_BIN)/fortio* $(OFFICIAL_DIR)
 else
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 endif
@@ -189,7 +192,7 @@ official-build-version: official-build
 	$(OFFICIAL_BIN) version
 
 official-build-clean:
-	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
+	-$(RM) $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree with naming matching debian package conventions
 TAR ?= tar # on macos need gtar to get --owner

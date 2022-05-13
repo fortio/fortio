@@ -15,21 +15,21 @@ COPY . fortio
 RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_DIR=/tmp/fortio_mac GOOS=darwin GO_BIN=/usr/local/go/bin/go
 # Windows release
 RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_DIR=/tmp/fortio_win GOOS=windows
-RUN mv /tmp/fortio_win/bin/fortio.exe /tmp/fortio.exe
+RUN mv /tmp/fortio_win/fortio.exe /tmp/fortio.exe
 # Linux per-architecture binaries building
 RUN sh -c \
     'set -ex; for arch in ${archs}; do \
        make -C fortio official-build BUILD_DIR=/build GOARCH=${arch} OFFICIAL_DIR=/tmp/fortio_${arch}; \
     done'
 
-RUN cd fortio && /tmp/fortio_$(go env GOARCH)/bin/fortio version -s > /tmp/version
+RUN cd fortio && /tmp/fortio_$(go env GOARCH)/fortio version -s > /tmp/version
 
 WORKDIR /stage
 
 # Make per-architecture .tgz files
 RUN sh -c \
     'set -ex; for arch in ${archs}; do \
-        cp /tmp/fortio_${arch}/bin/fortio usr/bin/fortio; \
+        cp /tmp/fortio_${arch}/fortio usr/bin/fortio; \
         # Make sure the list here is both minimal and complete \
         # we could take all of * but that adds system directories to the tar \
         tar cvf - usr/share/man/man1/fortio.1 usr/bin/fortio | gzip --best > /tgz/fortio-linux_${arch}-$(cat /tmp/version).tgz; \
