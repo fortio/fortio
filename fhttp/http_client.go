@@ -456,11 +456,10 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			}).DialContext(ctx, network, addr)
 
 			if conn != nil {
-				newRemoteAddress := conn.RemoteAddr().String()
-				if req.RemoteAddr != "" {
-					log.Infof("Standard client IP address changed from %s to %s", req.RemoteAddr, newRemoteAddress)
+				if newRemoteAddress := conn.RemoteAddr().String(); newRemoteAddress != req.RemoteAddr {
+					log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
+					req.RemoteAddr = newRemoteAddress
 				}
-				req.RemoteAddr = newRemoteAddress
 				client.socketCount++
 			}
 
