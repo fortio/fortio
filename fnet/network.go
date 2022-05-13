@@ -60,7 +60,7 @@ var (
 	MaxPayloadSize = 256 * KILOBYTE
 	// Payload that is returned during echo call.
 	Payload []byte
-	// Atomically incremented counter for dns resolution
+	// Atomically incremented counter for dns resolution.
 	dnsRoundRobin uint32
 )
 
