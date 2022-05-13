@@ -2,9 +2,10 @@
 FROM docker.io/fortio/fortio.build:v40 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
+ARG MODE=install
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
-RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_BIN=../fortio_go_latest.bin
+RUN make -C fortio official-build-version BUILD_DIR=/build MODE=${MODE}
 
 # Minimal image with just the binary and certs
 FROM scratch as release
@@ -13,7 +14,7 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # TODO: get rid of *.bak, *~ and other spurious non source files
 #COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
 #COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
-COPY --from=build /go/src/fortio.org/fortio_go_latest.bin /usr/bin/fortio
+COPY --from=build /build/result/fortio /usr/bin/fortio
 EXPOSE 8078
 EXPOSE 8079
 EXPOSE 8080

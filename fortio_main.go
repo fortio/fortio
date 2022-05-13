@@ -130,14 +130,12 @@ var (
 	// do not remove the flag for backward compatibility.  Was absolute `path` to the dir containing the static files dir
 	// which is now embedded in the binary thanks to that support in golang 1.16.
 	_            = flag.String("static-dir", "", "Deprecated/unused `path`.")
-	dataDirFlag  = flag.String("data-dir", defaultDataDir, "`Directory` where JSON results are stored/read")
+	dataDirFlag  = flag.String("data-dir", ".", "`Directory` where JSON results are stored/read")
 	proxiesFlags proxiesFlagList
 	proxies      = make([]string, 0)
 	// -M flag.
 	httpMultiFlags httpMultiFlagList
 	httpMulties    = make([]string, 0)
-
-	defaultDataDir = "."
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	abortOnFlag            = flag.Int("abort-on", 0,
