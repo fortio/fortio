@@ -159,20 +159,10 @@ echo-version:
 echo-package-version:
 	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
 
-# Putting spaces in linker replaced variables is hard but does work.
-# This sets up the static directory outside of the go source tree and
-# the default data directory to a /var/lib/... volume
-# + rest of build time/git/version magic.
-
-$(BUILD_DIR)/build-info.txt:
-	-mkdir -p $(BUILD_DIR)
-	echo "$(shell date +'%Y-%m-%d %H:%M') $(GIT_SHA)" > $@
-
 # This needs to be redone between build targets (so the windows build for instance gets the right LIB_DIR)
-$(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
-	echo "-s -X main.defaultDataDir=$(DATA_DIR) \
-  -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
-  -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
+$(BUILD_DIR)/link-flags.txt:
+	-mkdir -p $(BUILD_DIR)
+	echo "-s -X main.defaultDataDir=$(DATA_DIR)" | tee $@
 
 .PHONY: official-build official-build-internal official-build-version official-build-clean clean-link-flags
 
@@ -184,7 +174,7 @@ clean-link-flags:
 
 official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
-	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
+	GO_PATH=.. CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@$(DIST_VERSION)
 
 official-build-version: official-build
 	$(OFFICIAL_BIN) version

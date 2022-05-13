@@ -16,20 +16,15 @@
 package version // import "fortio.org/fortio/version"
 import (
 	"runtime"
+	"runtime/debug"
 
 	"fortio.org/fortio/log"
 )
 
-const (
-	debug = false // turn on to debug init()
-)
-
 var (
-	// The following are set by Dockerfile during link time.
-	buildInfo = "unknown"
-	version   = "dev"
-	// computed in init().
-	longVersion = ""
+	// The following are (re)computed in init().
+	version     = "dev"
+	longVersion = "unknown"
 )
 
 // Short returns the 3 digit short version string Major.Minor.Patch[-pre]
@@ -52,8 +47,11 @@ func Long() string {
 // Carefully manually tested all the combinations in pair with Dockerfile.
 
 func init() { // nolint:gochecknoinits //we do need an init for this
-	if debug {
-		log.SetLogLevel(log.Debug)
+	binfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		log.Errf("fortio: unexpected but no build info available")
+		return
 	}
-	longVersion = version + " " + buildInfo + " " + runtime.Version()
+	version = binfo.Main.Version
+	longVersion = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
 }
