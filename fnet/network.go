@@ -65,9 +65,10 @@ var (
 	Payload []byte
 	// Atomically incremented counter for dns resolution.
 	dnsRoundRobin uint32 = 0xffffffff // we want the first one, after increment to be 0
-	// IP types to resolve.
-	FlagResolveIP = dflag.DynString(flag.CommandLine, "resolve-ip", "ip",
-		"Resolve type: ip4 for ipv4, ip6 for ipv6 only, default/ip for both")
+	// IP types to resolve. With round robin you are likely to get ipv6 which may not work
+	// (in particular some test environments like the CI do have ipv6 for localhost but fail to connect).
+	FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", "ip4",
+		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
 )
 
 // nolint: gochecknoinits // needed here (unit change)
@@ -294,8 +295,10 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 }
 
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
-// nil in case of errors. works for both "tcp" and "udp" proto. can also use
-// tcp6 for ipv6 address, tcp4 for ipv4; otherwise it's either/both.
+// nil in case of errors. works for both "tcp" and "udp" proto.
+// Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
+// If the same host is requested, and it has more than 1 IP, returned value will roundrobin
+// over the ips.
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
@@ -304,7 +307,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		host = host[1 : len(host)-1]
 	}
 	isAddr := net.ParseIP(host)
-	filter := FlagResolveIP.Get()
+	filter := FlagResolveIPType.Get()
 	var err error
 	if isAddr != nil {
 		log.Debugf("Host already an IP, will go to %s", isAddr)
