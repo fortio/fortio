@@ -279,6 +279,9 @@ properly). Can be in the form of host:port, ip:port, port or "disabled" to
 disable the feature. (default "8081")
   -resolve IP
         Resolve host name to this IP
+  -resolve-ip-type type
+        Resolve type: ip4 for ipv4, ip6 for ipv6 only, use ip for both (default
+ip4)
   -runid int
         Optional RunID to add to json result and auto save filename, to match
 server mode
