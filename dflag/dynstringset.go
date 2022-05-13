@@ -78,7 +78,8 @@ func (d *DynStringSetValue) WithValidator(validator func(map[string]struct{}) er
 // WithNotifier adds a function that is called every time a new value is successfully set.
 // Each notifier is executed asynchronously in a new go-routine.
 func (d *DynStringSetValue) WithNotifier(notifier func(oldValue map[string]struct{},
-	newValue map[string]struct{})) *DynStringSetValue {
+	newValue map[string]struct{}),
+) *DynStringSetValue {
 	d.notifier = notifier
 	return d
 }
