@@ -138,9 +138,8 @@ release: dist
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
 DATA_DIR := .
-# Will be ../bin/fortio
-OFFICIAL_DIR := ../
-OFFICIAL_BIN := $(OFFICIAL_DIR)/fortio
+OFFICIAL_DIR := /tmp/go_dir
+OFFICIAL_BIN := $(OFFICIAL_DIR)/bin/fortio
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -174,7 +173,7 @@ clean-link-flags:
 
 official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
-	GO_PATH=.. CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@$(DIST_VERSION)
+	GOPATH=$(OFFICIAL_DIR) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
