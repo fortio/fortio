@@ -16,7 +16,7 @@ set -x
 # Check we can build the image
 NATIVE_PLATFORM=$(docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $1}')
 echo "Building for $NATIVE_PLATFORM"
-make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" || exit 1
+make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" MODE=dev || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1.8 (!)
 LOGLEVEL=info # change to debug to debug

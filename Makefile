@@ -118,7 +118,7 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
+	docker buildx build --platform $(BUILDX_PLATFORMS) --build-arg MODE=$(MODE) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
 
 docker-push-internal: docker-internal docker-buildx-push
 
@@ -148,6 +148,7 @@ DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 GIT_SHA ?= $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
+MODE ?= install
 
 debug-tags:
 	@echo "GIT_TAG=$(GIT_TAG)"
@@ -174,11 +175,15 @@ clean-link-flags:
 
 official-build-internal: $(BUILD_DIR)/link-flags.txt
 	$(GO_BIN) version
+ifeq ($(MODE),install)
 	GOPATH=$(OFFICIAL_DIR) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
 	ls -lR $(OFFICIAL_DIR_BIN)
 	-mv -f $(OFFICIAL_DIR_BIN)/*_*/fortio* $(OFFICIAL_DIR_BIN)
 	-rmdir $(OFFICIAL_DIR_BIN)/*_*
+else
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -o $(OFFICIAL_BIN) -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' $(OFFICIAL_TARGET)
+endif
 
 official-build-version: official-build
 	$(OFFICIAL_BIN) version

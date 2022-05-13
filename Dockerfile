@@ -2,9 +2,10 @@
 FROM docker.io/fortio/fortio.build:v40 as build
 WORKDIR /go/src/fortio.org
 COPY . fortio
+ARG MODE=install
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
-RUN make -C fortio official-build-version BUILD_DIR=/build
+RUN make -C fortio official-build-version BUILD_DIR=/build MODE=${MODE}
 
 # Minimal image with just the binary and certs
 FROM scratch as release
