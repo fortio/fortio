@@ -65,8 +65,10 @@ var (
 	Payload []byte
 	// Atomically incremented counter for dns resolution.
 	dnsRoundRobin uint32 = 0xffffffff // we want the first one, after increment to be 0
-	// IP types to resolve. With round robin you are likely to get ipv6 which may not work
-	// (in particular some test environments like the CI do have ipv6 for localhost but fail to connect).
+	// FlagResolveIPType indicates which IP types to resolve.
+	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
+	// use both type (`ip`). In particular some test environments like the CI do have ipv6
+	// for localhost but fail to connect. So we made the default ip4 only.
 	FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", "ip4",
 		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
 )

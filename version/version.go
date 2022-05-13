@@ -39,13 +39,15 @@ func Short() string {
 	return version
 }
 
-// Long returns the full version and build information.
+// Long returns the long version and build information.
 // Format is "X.Y.X[-pre] YYYY-MM-DD HH:MM SHA[-dirty]" date and time is
 // the build date (UTC), sha is the git sha of the source tree.
 func Long() string {
 	return longVersion
 }
 
+// Full returns the Long version + all the run time BuildInfo, ie
+// all the dependent modules and version and hash as well.
 func Full() string {
 	return fullVersion
 }
