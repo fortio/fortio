@@ -14,7 +14,7 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # TODO: get rid of *.bak, *~ and other spurious non source files
 #COPY --from=build /go/src/fortio.org/fortio/ui/static /usr/share/fortio/static
 #COPY --from=build /go/src/fortio.org/fortio/ui/templates /usr/share/fortio/templates
-COPY --from=build /tmp/fortio_build/result/fortio /usr/bin/fortio
+COPY --from=build /build/result/fortio /usr/bin/fortio
 EXPOSE 8078
 EXPOSE 8079
 EXPOSE 8080

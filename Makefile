@@ -140,8 +140,9 @@ BUILD_DIR := /tmp/fortio_build
 BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
 BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
 DATA_DIR := .
-OFFICIAL_DIR := /tmp/fortio_build/result
-OFFICIAL_BIN := $(OFFICIAL_DIR)/fortio
+OFFICIAL_BIN ?= $(BUILD_DIR)/result/fortio
+OFFICIAL_DIR ?= $(dir $(OFFICIAL_BIN))
+
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -238,7 +239,6 @@ BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
 	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR)
-	# -chmod 1777 $(DATA_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
 	cp docs/fortio.1 $(MAN_INSTALL_DIR)
 
