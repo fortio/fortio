@@ -15,7 +15,9 @@
 package fnet // import "fortio.org/fortio/fnet"
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 )
@@ -61,7 +64,10 @@ var (
 	// Payload that is returned during echo call.
 	Payload []byte
 	// Atomically incremented counter for dns resolution.
-	dnsRoundRobin uint32
+	dnsRoundRobin uint32 = 0xffffffff // we want the first one, after increment to be 0
+	// IP types to resolve.
+	FlagResolveIP = dflag.DynString(flag.CommandLine, "resolve-ip", "ip",
+		"Resolve type: ip4 for ipv4, ip6 for ipv6 only, default/ip for both")
 )
 
 // nolint: gochecknoinits // needed here (unit change)
@@ -288,7 +294,8 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 }
 
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
-// nil in case of errors. works for both "tcp" and "udp" proto.
+// nil in case of errors. works for both "tcp" and "udp" proto. can also use
+// tcp6 for ipv6 address, tcp4 for ipv4; otherwise it's either/both.
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
@@ -297,13 +304,14 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		host = host[1 : len(host)-1]
 	}
 	isAddr := net.ParseIP(host)
+	filter := FlagResolveIP.Get()
 	var err error
 	if isAddr != nil {
 		log.Debugf("Host already an IP, will go to %s", isAddr)
 		dest.IP = isAddr
 	} else {
 		var addrs []net.IP
-		addrs, err = net.LookupIP(host)
+		addrs, err = net.DefaultResolver.LookupIP(context.Background(), filter, host)
 		if err != nil {
 			log.Errf("Unable to lookup '%s' : %v", host, err)
 			return nil, err
@@ -322,7 +330,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		log.Errf("Unable to resolve port '%s' : %v", port, err)
 		return nil, err
 	}
-	log.LogVf("Resolved %s:%s to %s addr %+v", host, port, proto, dest)
+	log.LogVf("Resolved %s:%s to %s %s addr %+v", host, port, proto, filter, dest)
 	return dest, nil
 }
 
