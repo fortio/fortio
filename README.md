@@ -50,13 +50,13 @@ You can install from source:
 
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.28.0/fortio-linux_amd64-1.28.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.29.0/fortio-linux_amd64-1.29.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.28.0/fortio_1.28.0_amd64.deb
-dpkg -i fortio_1.28.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.29.0/fortio_1.29.0_amd64.deb
+dpkg -i fortio_1.29.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.28.0/fortio-1.28.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.29.0/fortio-1.29.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -66,7 +66,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.28.0/fortio_win_1.28.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.29.0/fortio_win_1.29.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -114,7 +114,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.28.0 usage:
+Φορτίο 1.29.0 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
@@ -197,7 +197,7 @@ http)
         which service string to pass to health check
   -http-port port
         http echo server port. Can be in the form of host:port, ip:port, port
-or /unix/domain/path. (default "8080")
+or /unix/domain/path or "disabled". (default "8080")
   -http1.0
         Use http1.0 (instead of http 1.1)
   -httpbufferkb kbytes
@@ -279,6 +279,9 @@ properly). Can be in the form of host:port, ip:port, port or "disabled" to
 disable the feature. (default "8081")
   -resolve IP
         Resolve host name to this IP
+  -resolve-ip-type type
+        Resolve type: ip4 for ipv4, ip6 for ipv6 only, use ip for both (default
+ip4)
   -runid int
         Optional RunID to add to json result and auto save filename, to match
 server mode

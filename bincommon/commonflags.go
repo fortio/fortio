@@ -125,7 +125,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 			// so `fortio version -s` is the short version; everything else is long/full
 			fmt.Println(version.Short())
 		} else {
-			fmt.Println(version.Long())
+			fmt.Println(version.Full())
 		}
 		os.Exit(0)
 	}

@@ -15,7 +15,9 @@
 package fnet // import "fortio.org/fortio/fnet"
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,8 +27,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 )
@@ -59,6 +63,14 @@ var (
 	MaxPayloadSize = 256 * KILOBYTE
 	// Payload that is returned during echo call.
 	Payload []byte
+	// Atomically incremented counter for dns resolution.
+	dnsRoundRobin uint32 = 0xffffffff // we want the first one, after increment to be 0
+	// FlagResolveIPType indicates which IP types to resolve.
+	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
+	// use both type (`ip`). In particular some test environments like the CI do have ipv6
+	// for localhost but fail to connect. So we made the default ip4 only.
+	FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", "ip4",
+		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
 )
 
 // nolint: gochecknoinits // needed here (unit change)
@@ -286,6 +298,9 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
 // nil in case of errors. works for both "tcp" and "udp" proto.
+// Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
+// If the same host is requested, and it has more than 1 IP, returned value will roundrobin
+// over the ips.
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
@@ -294,29 +309,33 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		host = host[1 : len(host)-1]
 	}
 	isAddr := net.ParseIP(host)
+	filter := FlagResolveIPType.Get()
 	var err error
 	if isAddr != nil {
 		log.Debugf("Host already an IP, will go to %s", isAddr)
 		dest.IP = isAddr
 	} else {
 		var addrs []net.IP
-		addrs, err = net.LookupIP(host)
+		addrs, err = net.DefaultResolver.LookupIP(context.Background(), filter, host)
 		if err != nil {
 			log.Errf("Unable to lookup '%s' : %v", host, err)
 			return nil, err
 		}
-		if len(addrs) > 1 && log.LogDebug() {
-			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
+		idx := uint32(0)
+		l := uint32(len(addrs))
+		if l > 1 {
+			idx = (atomic.AddUint32(&dnsRoundRobin, 1) % l)
+			log.Debugf("Using address #%d for %s : %v", idx, host, addrs)
 		}
-		log.Debugf("%s will go to %s", proto, addrs[0])
-		dest.IP = addrs[0]
+		log.Debugf("%s will go to %s", proto, addrs[idx])
+		dest.IP = addrs[idx]
 	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve port '%s' : %v", port, err)
 		return nil, err
 	}
-	log.LogVf("Resolved %s:%s to %s addr %+v", host, port, proto, dest)
+	log.LogVf("Resolved %s:%s to %s %s addr %+v", host, port, proto, filter, dest)
 	return dest, nil
 }
 

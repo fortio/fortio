@@ -16,7 +16,7 @@ set -x
 # Check we can build the image
 NATIVE_PLATFORM=$(docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $1}')
 echo "Building for $NATIVE_PLATFORM"
-make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" || exit 1
+make docker-internal TAG=webtest BUILDX_PLATFORMS="$NATIVE_PLATFORM" MODE=dev || exit 1
 FORTIO_UI_PREFIX=/newprefix/ # test the non default prefix (not /fortio/)
 FILE_LIMIT=25 # must be low to detect leaks, go 1.14 seems to need more than go1.8 (!)
 LOGLEVEL=info # change to debug to debug
@@ -117,7 +117,7 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v39 /bin/true # cleaned up by name
+docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v40 /bin/true # cleaned up by name
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp "$PWD/cert-tmp/$f" "$DOCKERSECVOLNAME:$TEST_CERT_VOL/$f"; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.

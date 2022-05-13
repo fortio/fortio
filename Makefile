@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v39
+BUILD_IMAGE_TAG := v40
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -98,7 +98,7 @@ all: test go-install lint docker-version docker-push-internal
 # (bump BUILD_IMAGE_TAG), also change this list if the image is used in
 # more places.
 FILES_WITH_IMAGE:= .circleci/config.yml Dockerfile Dockerfile.echosrv \
-	Dockerfile.test Dockerfile.fcurl release/Dockerfile.in Webtest.sh
+	Dockerfile.fcurl release/Dockerfile.in Webtest.sh
 # then run make update-build-image and check the diff, etc... see release/README.md
 update-build-image:
 	docker buildx create --use
@@ -118,7 +118,7 @@ docker-version:
 
 docker-internal: dependencies
 	@echo "### Now building $(DOCKER_TAG)"
-	docker buildx build --platform $(BUILDX_PLATFORMS) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
+	docker buildx build --platform $(BUILDX_PLATFORMS) --build-arg MODE=$(MODE) -f Dockerfile$(IMAGE) -t $(DOCKER_TAG) $(BUILDX_POSTFIX) .
 
 docker-push-internal: docker-internal docker-buildx-push
 
@@ -137,9 +137,11 @@ release: dist
 
 # Targets used for official builds (initially from Dockerfile)
 BUILD_DIR := /tmp/fortio_build
-LIB_DIR := /usr/share/fortio
-DATA_DIR := .
-OFFICIAL_BIN := ../fortio.bin
+BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
+BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
+OFFICIAL_BIN ?= $(BUILD_DIR)/result/fortio
+OFFICIAL_DIR ?= $(dir $(OFFICIAL_BIN))
+
 GOOS :=
 GO_BIN := go
 GIT_TAG ?= $(shell git describe --tags --match 'v*' --dirty)
@@ -147,6 +149,7 @@ DIST_VERSION ?= $(shell echo $(GIT_TAG) | sed -e "s/^v//")
 GIT_SHA ?= $(shell git rev-parse HEAD)
 # Main/default binary to build: (can be changed to build fcurl or echosrv instead)
 OFFICIAL_TARGET := fortio.org/fortio
+MODE ?= install
 
 debug-tags:
 	@echo "GIT_TAG=$(GIT_TAG)"
@@ -159,38 +162,34 @@ echo-version:
 echo-package-version:
 	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
 
-# Putting spaces in linker replaced variables is hard but does work.
-# This sets up the static directory outside of the go source tree and
-# the default data directory to a /var/lib/... volume
-# + rest of build time/git/version magic.
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/build-info.txt:
-	-mkdir -p $(BUILD_DIR)
-	echo "$(shell date +'%Y-%m-%d %H:%M') $(GIT_SHA)" > $@
+$(OFFICIAL_DIR):
+	mkdir -p $(OFFICIAL_DIR)
 
-# This needs to be redone between build targets (so the windows build for instance gets the right LIB_DIR)
-$(BUILD_DIR)/link-flags.txt: $(BUILD_DIR)/build-info.txt
-	echo "-s -X main.defaultDataDir=$(DATA_DIR) \
-  -X \"fortio.org/fortio/version.buildInfo=$(shell cat $<)\" \
-  -X fortio.org/fortio/version.version=$(DIST_VERSION)" | tee $@
+.PHONY: official-build official-build-internal official-build-version official-build-clean
 
-.PHONY: official-build official-build-internal official-build-version official-build-clean clean-link-flags
+official-build: official-build-internal
 
-official-build: clean-link-flags official-build-internal
-
-# Fix 474
-clean-link-flags:
-	-$(RM) $(BUILD_DIR)/link-flags.txt
-
-official-build-internal: $(BUILD_DIR)/link-flags.txt
+official-build-internal: $(BUILD_DIR) $(OFFICIAL_DIR)
 	$(GO_BIN) version
-	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags '$(shell cat $(BUILD_DIR)/link-flags.txt)' -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
+ifeq ($(MODE),install)
+	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags -s $(OFFICIAL_TARGET)@v$(DIST_VERSION)
+	# rename when building cross architecture (on windows it has .exe suffix thus the *)
+	ls -lR $(BUILD_DIR_BIN)
+	-mv -f $(BUILD_DIR_BIN)/*_*/fortio* $(BUILD_DIR_BIN)
+	-rmdir $(BUILD_DIR_BIN)/*_*
+	mv -f $(BUILD_DIR_BIN)/fortio* $(OFFICIAL_DIR)
+else
+	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags -s -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
+endif
 
 official-build-version: official-build
 	$(OFFICIAL_BIN) version
 
 official-build-clean:
-	-$(RM) $(BUILD_DIR)/build-info.txt $(BUILD_DIR)/link-flags.txt $(OFFICIAL_BIN) release/Makefile
+	-$(RM) $(OFFICIAL_BIN) release/Makefile
 
 # Create a complete source tree with naming matching debian package conventions
 TAR ?= tar # on macos need gtar to get --owner
@@ -231,16 +230,12 @@ install: official-install
 .PHONY: install official-install
 
 BIN_INSTALL_DIR = $(DESTDIR)/usr/bin
-LIB_INSTALL_DIR = $(DESTDIR)$(LIB_DIR)
 MAN_INSTALL_DIR = $(DESTDIR)/usr/share/man/man1
-#DATA_INSTALL_DIR = $(DESTDIR)$(DATA_DIR)
 BIN_INSTALL_EXEC = fortio
 
 official-install: official-build-clean official-build-version
-	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR) # $(LIB_INSTALL_DIR) $(DATA_INSTALL_DIR)
-	# -chmod 1777 $(DATA_INSTALL_DIR)
+	-mkdir -p $(BIN_INSTALL_DIR) $(MAN_INSTALL_DIR)
 	cp $(OFFICIAL_BIN) $(BIN_INSTALL_DIR)/$(BIN_INSTALL_EXEC)
-	#cp -r ui/templates ui/static $(LIB_INSTALL_DIR)
 	cp docs/fortio.1 $(MAN_INSTALL_DIR)
 
 # Test distribution (only used by maintainer)

@@ -93,7 +93,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup", o.URL, o.NumThreads, o.QPS, warmupMode)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
-	numThreads := r.Options().NumThreads
+	numThreads := r.Options().NumThreads // can change during run for c > 2 n
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := HTTPRunnerResults{
@@ -180,8 +180,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		fm.Close()
 		_, _ = fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
-	// Numthreads may have reduced but it should be ok to accumulate 0s from
-	// unused ones. We also must cleanup all the created clients.
+	// Numthreads may have reduced:
+	numThreads = total.RunnerResults.NumThreads
+	// But we also must cleanup all the created clients.
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
@@ -211,7 +212,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		return total.IPCountMap[ipList[i]] > total.IPCountMap[ipList[j]]
 	})
 
-	// Cleanup state:
+	// Cleanup state: (original num thread)
 	r.Options().ReleaseRunners()
 	sort.Ints(keys)
 	totalCount := float64(total.DurationHistogram.Count)
