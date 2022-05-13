@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fortio.org/fortio/log"
@@ -59,6 +60,8 @@ var (
 	MaxPayloadSize = 256 * KILOBYTE
 	// Payload that is returned during echo call.
 	Payload []byte
+	// Atomically incremented counter for dns resolution
+	dnsRoundRobin uint32
 )
 
 // nolint: gochecknoinits // needed here (unit change)
@@ -305,11 +308,14 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 			log.Errf("Unable to lookup '%s' : %v", host, err)
 			return nil, err
 		}
-		if len(addrs) > 1 && log.LogDebug() {
-			log.Debugf("Using only the first of the addresses for %s : %v", host, addrs)
+		idx := uint32(0)
+		l := uint32(len(addrs))
+		if l > 1 {
+			idx = (atomic.AddUint32(&dnsRoundRobin, 1) % l)
+			log.Debugf("Using address #%d for %s : %v", idx, host, addrs)
 		}
-		log.Debugf("%s will go to %s", proto, addrs[0])
-		dest.IP = addrs[0]
+		log.Debugf("%s will go to %s", proto, addrs[idx])
+		dest.IP = addrs[idx]
 	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
