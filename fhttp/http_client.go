@@ -676,14 +676,15 @@ func (c *FastClient) connect() net.Conn {
 	c.socketCount++
 	var socket net.Conn
 	var err error
+	d := &net.Dialer{Timeout: c.reqTimeout}
 	if c.https {
-		socket, err = tls.Dial(c.dest.Network(), c.dest.String(), c.tlsConfig)
+		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
 		if err != nil {
 			log.Errf("[%d] Unable to TLS connect to %v : %v", c.id, c.dest, err)
 			return nil
 		}
 	} else {
-		socket, err = net.Dial(c.dest.Network(), c.dest.String())
+		socket, err = d.Dial(c.dest.Network(), c.dest.String())
 		if err != nil {
 			log.Errf("[%d] Unable to connect to %v : %v", c.id, c.dest, err)
 			return nil
