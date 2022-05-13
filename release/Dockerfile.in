@@ -15,7 +15,7 @@ COPY . fortio
 RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_DIR=/tmp/fortio_mac GOOS=darwin GO_BIN=/usr/local/go/bin/go
 # Windows release
 RUN make -C fortio official-build BUILD_DIR=/build OFFICIAL_DIR=/tmp/fortio_win GOOS=windows
-RUN mv /tmp/fortio_win/bin/*/fortio.exe /tmp/fortio.exe
+RUN mv /tmp/fortio_win/bin/fortio.exe /tmp/fortio.exe
 # Linux per-architecture binaries building
 RUN sh -c \
     'set -ex; for arch in ${archs}; do \
