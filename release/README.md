@@ -14,18 +14,16 @@
   git push -f --tags
   ```
 
-- Also push `latest_release` docker tag/image: wait for the autobuild to make it and then:
-
+- Also push `latest_release` docker tag/image:
   ```Shell
-  # for instance for 0.11.0:
-  docker image pull fortio/fortio:1.1.1
-  docker tag fortio/fortio:1.1.1 fortio/fortio:latest_release
-  docker push fortio/fortio:latest_release
+  go install github.com/regclient/regclient/cmd/regctl@latest
+  regctl image copy fortio/fortio:1.30.0 fortio/fortio:latest_release
   ```
 
 - To update the command line flags in the ../README.md; run `release/updateFlags.sh`
 
 - Update the homebrew tap `brew bump-formula-pr --tag v1.2.3 fortio`
+
 
 ## How to change the build image
 
