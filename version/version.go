@@ -52,19 +52,27 @@ func Full() string {
 	return fullVersion
 }
 
-// Carefully manually tested all the combinations in pair with Dockerfile.
-
-func init() { // nolint:gochecknoinits //we do need an init for this
+// VersionsFromBuildInfo can be called by other programs to get their version strings (short,long and full)
+// and is also used for fortio itself.
+func VersionsFromBuildInfo() (short, long, full string) {
 	binfo, ok := debug.ReadBuildInfo()
 	if !ok {
-		log.Errf("fortio: unexpected but no build info available")
+		log.Errf("fortio version module: unexpected but no build info available")
 		return
 	}
-	v := binfo.Main.Version
+	short = binfo.Main.Version
 	// '(devel)' messes up the release-tests paths
-	if v != "(devel)" {
-		version = v[1:] // skip leading v
+	if short == "(devel)" {
+		short = "dev"
+	} else {
+		short = short[1:] // skip leading v
 	}
-	longVersion = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
-	fullVersion = fmt.Sprintf("%s\n%v", longVersion, binfo.String())
+	long = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
+	full = fmt.Sprintf("%s\n%v", longVersion, binfo.String())
+	return
+}
+
+// This "burns in" the fortio version.
+func init() { // nolint:gochecknoinits //we do need an init for this
+	version, longVersion, fullVersion = VersionsFromBuildInfo()
 }
