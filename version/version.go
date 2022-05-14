@@ -29,19 +29,17 @@ var (
 	fullVersion = "unknown full"
 )
 
-// Short returns the 3 digit short version string Major.Minor.Patch[-pre]
+// Short returns the 3 digit short fortio version string Major.Minor.Patch
+// it matches the project git tag (without the leading v) or "dev" when
+// not built from tag / not `go install fortio.org/fortio@latest`
 // version.Short() is the overall project version (used to version json
-// output too). "-pre" is added when the version doesn't match exactly
-// a git tag or the build isn't from a clean source tree. (only standard
-// dockerfile based build of a clean, tagged source tree should print "X.Y.Z"
-// as short version).
+// output too).
 func Short() string {
 	return version
 }
 
-// Long returns the long version and build information.
-// Format is "X.Y.X[-pre] YYYY-MM-DD HH:MM SHA[-dirty]" date and time is
-// the build date (UTC), sha is the git sha of the source tree.
+// Long returns the long fortio version and build information.
+// Format is "X.Y.X hash go-version processor os".
 func Long() string {
 	return longVersion
 }
@@ -52,9 +50,10 @@ func Full() string {
 	return fullVersion
 }
 
-// VersionsFromBuildInfo can be called by other programs to get their version strings (short,long and full)
+// FromBuildInfo can be called by other programs to get their version strings (short,long and full)
+// automatically added by go 1.18+ when doing `go install project@vX.Y.Z`
 // and is also used for fortio itself.
-func VersionsFromBuildInfo() (short, long, full string) {
+func FromBuildInfo() (short, long, full string) {
 	binfo, ok := debug.ReadBuildInfo()
 	if !ok {
 		log.Errf("fortio version module: unexpected but no build info available")
@@ -62,10 +61,10 @@ func VersionsFromBuildInfo() (short, long, full string) {
 	}
 	short = binfo.Main.Version
 	// '(devel)' messes up the release-tests paths
-	if short == "(devel)" {
+	if short == "(devel)" || short == "" {
 		short = "dev"
 	} else {
-		short = short[1:] // skip leading v
+		short = short[1:] // skip leading v, assumes the project use `vX.Y.Z` tags.
 	}
 	long = short + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
 	full = fmt.Sprintf("%s\n%v", long, binfo.String())
@@ -74,5 +73,5 @@ func VersionsFromBuildInfo() (short, long, full string) {
 
 // This "burns in" the fortio version.
 func init() { // nolint:gochecknoinits //we do need an init for this
-	version, longVersion, fullVersion = VersionsFromBuildInfo()
+	version, longVersion, fullVersion = FromBuildInfo()
 }
