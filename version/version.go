@@ -67,8 +67,8 @@ func VersionsFromBuildInfo() (short, long, full string) {
 	} else {
 		short = short[1:] // skip leading v
 	}
-	long = version + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
-	full = fmt.Sprintf("%s\n%v", longVersion, binfo.String())
+	long = short + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
+	full = fmt.Sprintf("%s\n%v", long, binfo.String())
 	return
 }
 
