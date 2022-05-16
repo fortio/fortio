@@ -629,7 +629,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		host = o.hostOverride
 	}
 	if bc.tlsConfig != nil {
-		bc.tlsConfig.ServerName = host
+		bc.tlsConfig.ServerName = bc.hostname // Shouldn't have a port #571
 	}
 	var buf bytes.Buffer
 	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
