@@ -40,23 +40,22 @@ docker run -p 8080:8080 -p 8079:8079 fortio/fortio server & # For the server
 docker run fortio/fortio load http://www.google.com/ # For a test run
 ```
 
-The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
-
 You can install from source:
 
 1. [Install go](https://golang.org/doc/install) (golang 1.18 or later)
 2. `go install fortio.org/fortio@latest`
-3. you can now run `fortio` (from your gopath bin/ directory)
+3. you can now run `fortio` (from your gopath bin/ directory, usually `~/go/bin`)
 
+The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.30.0/fortio-linux_amd64-1.30.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.30.1/fortio-linux_amd64-1.30.1.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.30.0/fortio_1.30.0_amd64.deb
-dpkg -i fortio_1.30.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.30.1/fortio_1.30.1_amd64.deb
+dpkg -i fortio_1.30.1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.30.0/fortio-1.30.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.30.1/fortio-1.30.1-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -66,7 +65,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.30.0/fortio_win_1.30.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.30.1/fortio_win_1.30.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -114,7 +113,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.30.0 usage:
+Φορτίο 1.30.1 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
