@@ -1141,6 +1141,8 @@ When modifying Javascript, check with [standard](https://github.com/standard/sta
 standard --fix ui/static/js/fortio_chart.js
 ```
 
+New features and bug fixes should include a test.
+
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
