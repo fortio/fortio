@@ -79,13 +79,14 @@ func FromBuildInfoPath(path string) (short, long, full string) {
 		sum = binfo.Main.Sum
 	} else {
 		// try to find the right module
-		for _, m := range binfo.Deps {
+		for i, m := range binfo.Deps {
 			if path == m.Path {
 				fmt.Printf("version: found module path: %q\n", path)
 				short = m.Version
 				sum = m.Sum
 				break
 			}
+			fmt.Printf("%d dep is %s v %s s %s\n", i, m.Path, m.Version, m.Sum)
 		}
 	}
 	long = short + " " + sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
@@ -97,8 +98,10 @@ func FromBuildInfoPath(path string) (short, long, full string) {
 // depending if we are a module or main.
 func init() { // nolint:gochecknoinits //we do need an init for this
 	version, longVersion, fullVersion = FromBuildInfoPath("fortio.org/fortio")
-	fmt.Printf("fortio/version: called init: %s\n", longVersion)
+	fmt.Printf("fortio/version: called init           : %s\n", longVersion)
 	// testing
 	_, lv, _ := FromBuildInfoPath("")
 	fmt.Printf("fortio/version: called init debug main: %s\n", lv)
+	_, lv, _ = FromBuildInfoPath("doesnt/exists")
+	fmt.Printf("fortio/version: called init debug all : %s\n", lv)
 }
