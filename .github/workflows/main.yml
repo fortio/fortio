@@ -3,10 +3,10 @@ name: Release
 
 on:
   push:
-    tags-ignore:
-    - '*test*'
     tags:
-    - '*'
+    # so a vX.Y.Z-test1 doesn't trigger build
+    - 'v*.*.*'
+    - 'v*.*.*-pre*'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
