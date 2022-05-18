@@ -3,6 +3,8 @@ name: Release
 
 on:
   push:
+    tags-ignore:
+    - '*test*'
     tags:
     - '*'
 

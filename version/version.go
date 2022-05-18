@@ -71,7 +71,8 @@ func FromBuildInfo() (short, long, full string) {
 	return
 }
 
-// This "burns in" the fortio version.
+// This "burns in" the fortio version. (or not... depending on how this is built/used)
 func init() { // nolint:gochecknoinits //we do need an init for this
 	version, longVersion, fullVersion = FromBuildInfo()
+	fmt.Printf("fortio/version: called init: %s", longVersion)
 }
