@@ -54,25 +54,51 @@ func Full() string {
 // automatically added by go 1.18+ when doing `go install project@vX.Y.Z`
 // and is also used for fortio itself.
 func FromBuildInfo() (short, long, full string) {
-	binfo, ok := debug.ReadBuildInfo()
-	if !ok {
-		log.Errf("fortio version module: unexpected but no build info available")
-		return
-	}
-	short = binfo.Main.Version
-	// '(devel)' messes up the release-tests paths
-	if short == "(devel)" || short == "" {
-		short = "dev"
-	} else {
-		short = short[1:] // skip leading v, assumes the project use `vX.Y.Z` tags.
-	}
-	long = short + " " + binfo.Main.Sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
-	full = fmt.Sprintf("%s\n%v", long, binfo.String())
-	return
+	return FromBuildInfoPath("")
 }
 
-// This "burns in" the fortio version. (or not... depending on how this is built/used)
+// FromBuildInfoPath returns the version of as specific module if that module isn't already the main one.
+// Used by Fortio library version init to remember it's own version.
+func FromBuildInfoPath(path string) (short, long, full string) {
+	binfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		full = "fortio version module error, no build info"
+		log.Errf(full)
+		return
+	}
+	var sum string
+	if path == "" || binfo.Main.Path == path { // nolint: nestif
+		fmt.Printf("version: found main path: %q", path)
+		short = binfo.Main.Version
+		// '(devel)' messes up the release-tests paths
+		if short == "(devel)" || short == "" {
+			short = "dev"
+		} else {
+			short = short[1:] // skip leading v, assumes the project use `vX.Y.Z` tags.
+		}
+		sum = binfo.Main.Sum
+	} else {
+		// try to find the right module
+		for _, m := range binfo.Deps {
+			if path == m.Path {
+				fmt.Printf("version: found module path: %q", path)
+				short = m.Version
+				sum = m.Sum
+				break
+			}
+		}
+	}
+	long = short + " " + sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
+	full = fmt.Sprintf("%s\n%v", long, binfo.String())
+	return // nolint: nakedret
+}
+
+// This "burns in" the fortio version. we need to get the "right" versions though.
+// depending if we are a module or main.
 func init() { // nolint:gochecknoinits //we do need an init for this
-	version, longVersion, fullVersion = FromBuildInfo()
+	version, longVersion, fullVersion = FromBuildInfoPath("fortio.org/fortio")
 	fmt.Printf("fortio/version: called init: %s", longVersion)
+	// testing
+	_, lv, _ := FromBuildInfoPath("")
+	fmt.Printf("fortio/version: called init debug main: %s", lv)
 }
