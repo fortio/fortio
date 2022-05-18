@@ -79,6 +79,7 @@ func FromBuildInfoPath(path string) (short, long, full string) {
 		sum = binfo.Main.Sum
 	} else {
 		// try to find the right module
+		short = path + " not found in buildinfo"
 		for i, m := range binfo.Deps {
 			if path == m.Path {
 				fmt.Printf("version: found module path: %q\n", path)
