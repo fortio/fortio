@@ -476,14 +476,15 @@ func TestDNSMethods(t *testing.T) {
 		t.Errorf("error ip any resolving google: %v", err)
 	}
 	if addrFirst.String() != addr4.String() {
-		t.Errorf("first ip %v not ipv4 %v", addrFirst, addr4)
+		// dns might change when not in cached mode
+		log.Warnf("first ip %v not ipv4 %v", addrFirst, addr4)
 	}
 	addrSecond, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (2) google: %v", err)
 	}
 	if addrFirst.String() != addrSecond.String() {
-		t.Errorf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
+		log.Warnf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
 	}
 	fnet.FlagResolveMethod.Set("cached-rr")
 	addrThird, err := fnet.Resolve("www.google.com", "80")
@@ -491,22 +492,25 @@ func TestDNSMethods(t *testing.T) {
 		t.Errorf("error ip any resolving (3) google: %v", err)
 	}
 	if addrFirst.String() != addrThird.String() {
-		t.Errorf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
+		log.Warnf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
 	}
 	addrFourth, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (4) google: %v", err)
 	}
 	if addrFourth.String() != addr6.String() {
-		t.Errorf("second cached ip %v not == ipv6 %v in cached-rr mode", addrFourth, addr6)
+		log.Warnf("second cached ip %v not == ipv6 %v in cached-rr mode", addrFourth, addr6)
+	}
+	if addrFourth.String() == addrThird.String() {
+		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for google", addrFourth, addrThird)
 	}
 	// back to first (rr)
 	addrFifth, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (5) google: %v", err)
 	}
-	if addrFirst.String() != addrFifth.String() {
-		t.Errorf("third cached ip %v not == back to first %v in cached-rr mode", addrFifth, addrFirst)
+	if addrThird.String() != addrFifth.String() {
+		t.Errorf("third cached ip %v not == back to first %v in cached-rr mode", addrFifth, addrThird)
 	}
 	// clear cache we'll get first again (if we don't get a completely different one that is)
 	fnet.ClearResolveCache()
@@ -514,11 +518,11 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("error ip any resolving (6) google: %v", err)
 	}
-	if addrAfterCache.String() == addr6.String() {
-		t.Errorf("cache clear failure, we still got 2nd ip (v6): %v", addrAfterCache)
+	if addrAfterCache.String() == addrFourth.String() {
+		t.Errorf("cache clear failure, we still got 2nd ip: %v", addrAfterCache)
 	}
-	if addrAfterCache.String() != addrFirst.String() {
-		t.Errorf("after cache clear we expect to get first %v, we got %v", addrFirst, addrAfterCache)
+	if addrAfterCache.String() != addrThird.String() {
+		log.Warnf("after cache clear we expect to get first %v, we got %v", addrThird, addrAfterCache)
 	}
 	// few extra resolve just for coverage
 	err = fnet.FlagResolveMethod.Set("rnd")
