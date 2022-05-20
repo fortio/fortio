@@ -50,13 +50,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.30.1/fortio-linux_amd64-1.30.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-linux_amd64-1.31.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.30.1/fortio_1.30.1_amd64.deb
-dpkg -i fortio_1.30.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_1.31.0_amd64.deb
+dpkg -i fortio_1.31.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.30.1/fortio-1.30.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-1.31.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -66,7 +66,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.30.1/fortio_win_1.30.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_win_1.31.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -114,7 +114,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.30.1 usage:
+Φορτίο 1.31.0 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
@@ -169,6 +169,10 @@ from GET to POST.
 output to stdout in curl mode. now stderr by default.
   -data-dir Directory
         Directory where JSON results are stored/read (default ".")
+  -dns-method method
+        When a name resolves to multiple ip, which method to pick: cached-rr
+for cached round robin, rnd for random, first for first answer (pre 1.30
+behavior), rr for round robin. (default cached-rr)
   -echo-debug-path URI
         http echo server URI for debug, empty turns off that part (more secure)
 (default "/debug")

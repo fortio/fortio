@@ -319,8 +319,8 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
 }
 
-// Clear DNS cache for cached-rr resolution mode. For instance in case of error, to force re-resolving
-// to potentially changed IPs.
+// ClearResolveCache clears the DNS cache for cached-rr resolution mode.
+// For instance in case of error, to force re-resolving to potentially changed IPs.
 func ClearResolveCache() {
 	dnsMutex.Lock()
 	dnsHost = ""
@@ -332,7 +332,7 @@ func ClearResolveCache() {
 // nil in case of errors. works for both "tcp" and "udp" proto.
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
 // If the same host is requested, and it has more than 1 IP, returned value will first,
-// random or roundrobin over the ips depending on the -dns-method flag value.
+// random or roundrobin or cached roundrobin over the ips depending on the -dns-method flag value.
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}

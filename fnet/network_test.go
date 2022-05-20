@@ -450,6 +450,75 @@ func TestResolveBW(t *testing.T) {
 	}
 }
 
+// This test relies on google answer 2 ips, first ipv4, second ipv6.
+// if that's not the case anymore or in the testing environment, this will fail.
+func TestClearResolveCache(t *testing.T) {
+	fnet.FlagResolveMethod.Set("first")
+	fnet.FlagResolveIPType.Set("ip4")
+	addr4, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip4 resolving google: %v", err)
+	}
+	fnet.FlagResolveIPType.Set("ip6")
+	addr6, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip6 resolving google: %v", err)
+	}
+	if addr4.String() == addr6.String() {
+		t.Errorf("ipv4 %v and ipv6 %v shouldn't be same", addr4, addr6)
+	}
+	fnet.FlagResolveIPType.Set("ip")
+	addrFirst, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving google: %v", err)
+	}
+	if addrFirst.String() != addr4.String() {
+		t.Errorf("first ip %v not ipv4 %v", addrFirst, addr4)
+	}
+	addrSecond, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (2) google: %v", err)
+	}
+	if addrFirst.String() != addrSecond.String() {
+		t.Errorf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
+	}
+	fnet.FlagResolveMethod.Set("cached-rr")
+	addrThird, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (3) google: %v", err)
+	}
+	if addrFirst.String() != addrThird.String() {
+		t.Errorf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
+	}
+	addrFourth, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (4) google: %v", err)
+	}
+	if addrFourth.String() != addr6.String() {
+		t.Errorf("second cached ip %v not == ipv6 %v in cached-rr mode", addrFourth, addr6)
+	}
+	// back to first (rr)
+	addrFifth, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (5) google: %v", err)
+	}
+	if addrFirst.String() != addrFifth.String() {
+		t.Errorf("third cached ip %v not == back to first %v in cached-rr mode", addrFifth, addrFirst)
+	}
+	// clear cache we'll get first again (if we don't get a completely different one that is)
+	fnet.ClearResolveCache()
+	addrAfterCache, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (6) google: %v", err)
+	}
+	if addrAfterCache.String() == addr6.String() {
+		t.Errorf("cache clear failure, we still got 2nd ip (v6): %v", addrAfterCache)
+	}
+	if addrAfterCache.String() != addrFirst.String() {
+		t.Errorf("after cache clear we expect to get first %v, we got %v", addrFirst, addrAfterCache)
+	}
+}
+
 func TestJoinHostAndPort(t *testing.T) {
 	tests := []struct {
 		inputPort string
