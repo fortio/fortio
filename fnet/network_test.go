@@ -486,7 +486,10 @@ func TestDNSMethods(t *testing.T) {
 	if addrFirst.String() != addrSecond.String() {
 		log.Warnf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
 	}
-	fnet.FlagResolveMethod.Set("cached-rr")
+	err = fnet.FlagResolveMethod.Set("cached-rr")
+	if err != nil {
+		t.Fatalf("error setting back cached-rr mode: %v", err)
+	}
 	addrThird, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (3) google: %v", err)
@@ -504,13 +507,13 @@ func TestDNSMethods(t *testing.T) {
 	if addrFourth.String() == addrThird.String() {
 		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for google", addrFourth, addrThird)
 	}
-	// back to first (rr)
+	// back to first (rr) [only if there are only 2 ips]
 	addrFifth, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (5) google: %v", err)
 	}
 	if addrThird.String() != addrFifth.String() {
-		t.Errorf("third cached ip %v not == back to first %v in cached-rr mode", addrFifth, addrThird)
+		log.Warnf("third cached ip %v not == back to first %v in cached-rr mode (if only 2 ips)", addrFifth, addrThird)
 	}
 	// clear cache we'll get first again (if we don't get a completely different one that is)
 	fnet.ClearResolveCache()
