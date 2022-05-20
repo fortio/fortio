@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"fortio.org/fortio/dflag"
@@ -63,19 +62,43 @@ var (
 	MaxPayloadSize = 256 * KILOBYTE
 	// Payload that is returned during echo call.
 	Payload []byte
-	// Atomically incremented counter for dns resolution.
-	dnsRoundRobin uint32 = 0xffffffff // we want the first one, after increment to be 0
 	// FlagResolveIPType indicates which IP types to resolve.
 	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
 	// use both type (`ip`). In particular some test environments like the CI do have ipv6
 	// for localhost but fail to connect. So we made the default ip4 only.
 	FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", "ip4",
 		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
+	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
+	// default assumes one gets all the ips in the first call and does round robin across these.
+	// first just picks the first answer, rr rounds robin on each answer.
+	FlagResolveMethod = dflag.DynString(flag.CommandLine, "dns-method", "cached-rr",
+		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round robin, rnd for random, "+
+			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(dnsValidator)
+	// cache for cached-rr mode.
+	dnsMutex sync.Mutex
+	// all below are updated under lock.
+	dnsHost       string
+	dnsAddrs      []net.IP
+	dnsRoundRobin uint32 = 0
 )
+
+func dnsValidator(inp string) error {
+	valid := map[string]bool{
+		"cached-rr": true,
+		"rnd":       true,
+		"rr":        true,
+		"first":     true,
+	}
+	if valid[inp] {
+		return nil
+	}
+	return fmt.Errorf("invalid value for -dns-method, should be one of cached-rr, first, rnd or rr")
+}
 
 // nolint: gochecknoinits // needed here (unit change)
 func init() {
 	ChangeMaxPayloadSize(MaxPayloadSize)
+	rand.Seed(time.Now().UnixNano())
 }
 
 // ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content.
@@ -296,11 +319,20 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
 }
 
+// Clear DNS cache for cached-rr resolution mode. For instance in case of error, to force re-resolving
+// to potentially changed IPs.
+func ClearResolveCache() {
+	dnsMutex.Lock()
+	dnsHost = ""
+	dnsAddrs = nil
+	dnsMutex.Unlock()
+}
+
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
 // nil in case of errors. works for both "tcp" and "udp" proto.
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
-// If the same host is requested, and it has more than 1 IP, returned value will roundrobin
-// over the ips.
+// If the same host is requested, and it has more than 1 IP, returned value will first,
+// random or roundrobin over the ips depending on the -dns-method flag value.
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
@@ -308,34 +340,63 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		log.Debugf("host %s looks like an IPv6, stripping []", host)
 		host = host[1 : len(host)-1]
 	}
-	isAddr := net.ParseIP(host)
-	filter := FlagResolveIPType.Get()
 	var err error
-	if isAddr != nil {
-		log.Debugf("Host already an IP, will go to %s", isAddr)
-		dest.IP = isAddr
-	} else {
-		var addrs []net.IP
-		addrs, err = net.DefaultResolver.LookupIP(context.Background(), filter, host)
-		if err != nil {
-			log.Errf("Unable to lookup '%s' : %v", host, err)
-			return nil, err
-		}
-		idx := uint32(0)
-		l := uint32(len(addrs))
-		if l > 1 {
-			idx = (atomic.AddUint32(&dnsRoundRobin, 1) % l)
-			log.Debugf("Using address #%d for %s : %v", idx, host, addrs)
-		}
-		log.Debugf("%s will go to %s", proto, addrs[idx])
-		dest.IP = addrs[idx]
-	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
-		log.Errf("Unable to resolve port '%s' : %v", port, err)
+		log.Errf("Unable to resolve %s port '%s' : %v", proto, port, err)
 		return nil, err
 	}
-	log.LogVf("Resolved %s:%s to %s %s addr %+v", host, port, proto, filter, dest)
+	isAddr := net.ParseIP(host)
+	if isAddr != nil {
+		dest.IP = isAddr
+		log.LogVf("Resolved %s:%s already an IP as addr %+v", host, port, dest)
+		return dest, nil
+	}
+	filter := FlagResolveIPType.Get()
+	dnsMethod := FlagResolveMethod.Get()
+	idx := uint32(0)
+	if dnsMethod == "cached-rr" {
+		dnsMutex.Lock()
+		if host == dnsHost {
+			idx = dnsRoundRobin % uint32(len(dnsAddrs))
+			dnsRoundRobin++
+			dest.IP = dnsAddrs[idx]
+			dnsMutex.Unlock() // unlock before IOs
+			log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, dest)
+			return dest, nil
+		}
+		dnsMutex.Unlock()
+	}
+	addrs, err := net.DefaultResolver.LookupIP(context.Background(), filter, host)
+	if err != nil {
+		log.Errf("Unable to lookup '%s' : %v", host, err)
+		return nil, err
+	}
+	l := uint32(len(addrs))
+	if l > 1 {
+		switch dnsMethod {
+		case "cached-rr":
+			// already covered the cache hit case above, so this is a miss/first set
+			dnsMutex.Lock()
+			dnsHost = host
+			dnsAddrs = addrs
+			idx = 0
+			dnsRoundRobin = 1 // next one after 0
+			dnsMutex.Unlock()
+			log.Debugf("First time/new host for caching address for %s : %v", host, addrs)
+		case "rr":
+			idx = dnsRoundRobin % uint32(len(addrs))
+			dnsRoundRobin++
+			log.Debugf("Using rr address #%d for %s : %v", idx, host, addrs)
+		case "first":
+			log.Debugf("Using first address for %s : %v", host, addrs)
+		case "rnd":
+			idx = uint32(rand.Intn(int(l)))
+			log.Debugf("Using rnd address #%d for %s : %v", idx, host, addrs)
+		}
+	}
+	dest.IP = addrs[idx]
+	log.LogVf("Resolved %s:%s to %s %s %s #%d addr %+v", host, port, proto, filter, dnsMethod, idx, dest)
 	return dest, nil
 }
 
