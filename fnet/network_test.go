@@ -452,8 +452,11 @@ func TestResolveBW(t *testing.T) {
 
 // This test relies on google answer 2 ips, first ipv4, second ipv6.
 // if that's not the case anymore or in the testing environment, this will fail.
-func TestClearResolveCache(t *testing.T) {
-	fnet.FlagResolveMethod.Set("first")
+func TestDNSMethods(t *testing.T) {
+	err := fnet.FlagResolveMethod.Set("first")
+	if err != nil {
+		t.Errorf("unexpected error setting method to first: %v", err)
+	}
 	fnet.FlagResolveIPType.Set("ip4")
 	addr4, err := fnet.Resolve("www.google.com", "80")
 	if err != nil {
@@ -516,6 +519,35 @@ func TestClearResolveCache(t *testing.T) {
 	}
 	if addrAfterCache.String() != addrFirst.String() {
 		t.Errorf("after cache clear we expect to get first %v, we got %v", addrFirst, addrAfterCache)
+	}
+	// few extra resolve just for coverage
+	err = fnet.FlagResolveMethod.Set("rnd")
+	if err != nil {
+		t.Errorf("unexpected error setting method to rnd: %v", err)
+	}
+	_, err = fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("unexpected error in rnd mode for resolve of google: %v", err)
+	}
+	fnet.FlagResolveMethod.Set("rr")
+	if err != nil {
+		t.Errorf("unexpected error setting method to rr: %v", err)
+	}
+	_, err = fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("unexpected error in rr mode for resolve of google: %v", err)
+	}
+	// put it back to default
+	err = fnet.FlagResolveMethod.Set("cached-rr")
+	if err != nil {
+		t.Errorf("unexpected error setting method to cached-rr: %v", err)
+	}
+}
+
+func TestBadValueForDNSMethod(t *testing.T) {
+	err := fnet.FlagResolveMethod.Set("foo")
+	if err == nil {
+		t.Errorf("passing foo to FlagResolveMethod.Set should error out/fail validation")
 	}
 }
 
