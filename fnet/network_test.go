@@ -450,6 +450,115 @@ func TestResolveBW(t *testing.T) {
 	}
 }
 
+// This test relies on google answer 2 ips, first ipv4, second ipv6.
+// if that's not the case anymore or in the testing environment, this will fail.
+func TestDNSMethods(t *testing.T) {
+	err := fnet.FlagResolveMethod.Set("first")
+	if err != nil {
+		t.Errorf("unexpected error setting method to first: %v", err)
+	}
+	fnet.FlagResolveIPType.Set("ip4")
+	addr4, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip4 resolving google: %v", err)
+	}
+	fnet.FlagResolveIPType.Set("ip6")
+	addr6, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip6 resolving google: %v", err)
+	}
+	if addr4.String() == addr6.String() {
+		t.Errorf("ipv4 %v and ipv6 %v shouldn't be same", addr4, addr6)
+	}
+	fnet.FlagResolveIPType.Set("ip")
+	addrFirst, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving google: %v", err)
+	}
+	if addrFirst.String() != addr4.String() {
+		// dns might change when not in cached mode
+		log.Warnf("first ip %v not ipv4 %v", addrFirst, addr4)
+	}
+	addrSecond, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (2) google: %v", err)
+	}
+	if addrFirst.String() != addrSecond.String() {
+		log.Warnf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
+	}
+	err = fnet.FlagResolveMethod.Set("cached-rr")
+	if err != nil {
+		t.Fatalf("error setting back cached-rr mode: %v", err)
+	}
+	addrThird, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (3) google: %v", err)
+	}
+	if addrFirst.String() != addrThird.String() {
+		log.Warnf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
+	}
+	addrFourth, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (4) google: %v", err)
+	}
+	if addrFourth.String() != addr6.String() {
+		log.Warnf("second cached ip %v not == ipv6 %v in cached-rr mode", addrFourth, addr6)
+	}
+	if addrFourth.String() == addrThird.String() {
+		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for google", addrFourth, addrThird)
+	}
+	// back to first (rr) [only if there are only 2 ips]
+	addrFifth, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (5) google: %v", err)
+	}
+	if addrThird.String() != addrFifth.String() {
+		log.Warnf("third cached ip %v not == back to first %v in cached-rr mode (if only 2 ips)", addrFifth, addrThird)
+	}
+	// clear cache we'll get first again (if we don't get a completely different one that is)
+	fnet.ClearResolveCache()
+	addrAfterCache, err := fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("error ip any resolving (6) google: %v", err)
+	}
+	if addrAfterCache.String() == addrFourth.String() {
+		t.Errorf("cache clear failure, we still got 2nd ip: %v", addrAfterCache)
+	}
+	if addrAfterCache.String() != addrThird.String() {
+		log.Warnf("after cache clear we expect to get first %v, we got %v", addrThird, addrAfterCache)
+	}
+	// few extra resolve just for coverage
+	err = fnet.FlagResolveMethod.Set("rnd")
+	if err != nil {
+		t.Errorf("unexpected error setting method to rnd: %v", err)
+	}
+	_, err = fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("unexpected error in rnd mode for resolve of google: %v", err)
+	}
+	fnet.FlagResolveMethod.Set("rr")
+	if err != nil {
+		t.Errorf("unexpected error setting method to rr: %v", err)
+	}
+	_, err = fnet.Resolve("www.google.com", "80")
+	if err != nil {
+		t.Errorf("unexpected error in rr mode for resolve of google: %v", err)
+	}
+	// put it back to default
+	err = fnet.FlagResolveMethod.Set("cached-rr")
+	if err != nil {
+		t.Errorf("unexpected error setting method to cached-rr: %v", err)
+	}
+	fnet.FlagResolveIPType.Set("ip4")
+}
+
+func TestBadValueForDNSMethod(t *testing.T) {
+	err := fnet.FlagResolveMethod.Set("foo")
+	if err == nil {
+		t.Errorf("passing foo to FlagResolveMethod.Set should error out/fail validation")
+	}
+}
+
 func TestJoinHostAndPort(t *testing.T) {
 	tests := []struct {
 		inputPort string
