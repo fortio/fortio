@@ -549,6 +549,7 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error setting method to cached-rr: %v", err)
 	}
+	fnet.FlagResolveIPType.Set("ip4")
 }
 
 func TestBadValueForDNSMethod(t *testing.T) {
