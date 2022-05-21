@@ -328,6 +328,21 @@ func ClearResolveCache() {
 	dnsMutex.Unlock()
 }
 
+// checkCache will return true if it found and unlocked, keep the lock otherwise
+func checkCache(host string) (found bool, idx uint32, res net.IP) {
+	dnsMutex.Lock() // unlock before IOs
+	if host != dnsHost {
+		// keep the lock locked
+		return
+	}
+	found = true
+	idx = dnsRoundRobin % uint32(len(dnsAddrs))
+	dnsRoundRobin++
+	res = dnsAddrs[idx]
+	dnsMutex.Unlock() // unlock before IOs
+	log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, dest)
+}
+
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
 // nil in case of errors. works for both "tcp" and "udp" proto.
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
@@ -355,14 +370,10 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 	filter := FlagResolveIPType.Get()
 	dnsMethod := FlagResolveMethod.Get()
 	idx := uint32(0)
+	inCache := false
 	if dnsMethod == "cached-rr" {
-		dnsMutex.Lock()
-		if host == dnsHost {
-			idx = dnsRoundRobin % uint32(len(dnsAddrs))
-			dnsRoundRobin++
-			dest.IP = dnsAddrs[idx]
-			dnsMutex.Unlock() // unlock before IOs
-			log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, dest)
+		inCache, idx, dest.IP = checkCache(host)
+		if inCache {
 			return dest, nil
 		}
 		dnsMutex.Unlock()
@@ -376,8 +387,12 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 	if l > 1 {
 		switch dnsMethod {
 		case "cached-rr":
-			// already covered the cache hit case above, so this is a miss/first set
-			dnsMutex.Lock()
+			// (re)check if we're the first to grab this lock (other threads may be here as well)
+			inCache, idx, dest.IP = checkCache(host)
+			if inCache {
+				return dest, nil
+			}
+			// first time, first thread reaching here:
 			dnsHost = host
 			dnsAddrs = addrs
 			idx = 0
