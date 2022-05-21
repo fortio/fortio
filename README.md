@@ -593,12 +593,17 @@ RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 
 `grpcping` can connect to a non-Fortio TLS server by prefacing the destination with `https://`:
 
 ```Shell
-$ fortio grpcping https://fortio.istio.io
-11:07:55 I grpcrunner.go:275> stripping https scheme. grpc destination: fortio.istio.io. grpc port: 443
-Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.795 sum 12329.795
+$ fortio grpcping https://grpc.fortio.org
+13:48:20 I grpcrunner.go:276> stripping https scheme. grpc destination: grpc.fortio.org. grpc port: 443
+13:48:26 I pingsrv.go:152> Ping RTT 63101562 (avg of 63577000, 63192688, 62535000 ns) clock skew 32021375
+Clock skew histogram usec : count 1 avg 32021.375 +/- 0 min 32021.375 max 32021.375 sum 32021.375
 # range, mid point, percentile, count
->= 12329.8 <= 12329.8 , 12329.8 , 100.00, 1
-# target 50% 12329.8
+>= 32021.4 <= 32021.4 , 32021.4 , 100.00, 1
+# target 50% 32021.4
+RTT histogram usec : count 3 avg 63101.563 +/- 430.2 min 62535 max 63577 sum 189304.688
+# range, mid point, percentile, count
+>= 62535 <= 63577 , 63056 , 100.00, 3
+# target 50% 62795.5
 ```
 
 ### Simple load test
@@ -942,7 +947,7 @@ body:
 If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
 
 ```Shell
-$ fortio report -sync-interval 15m -sync http://storage.googleapis.com:443/fortio-data?prefix=fortio.istio.io/
+$ fortio report -sync-interval 15m -sync "https://storage.googleapis.com/fortio-data?prefix=fortio.istio.io/"
 Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081

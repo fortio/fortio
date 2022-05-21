@@ -700,20 +700,24 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
 	fhttp.OnBehalfOf(o, r)
+	// Increase timeout:
+	o.HTTPReqTimeOut = 5 * time.Second
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
-	// use std client to change the url and handle https:
+	// use std client to avoid chunked raw we can get with fast client:
 	client, _ := fhttp.NewStdClient(o)
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
-		// too late to write headers
+		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	code, data, _ := client.Fetch()
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
-		// too late to write headers
+		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		w.WriteHeader(code)
 		return
 	}
 	sdata := strings.TrimSpace(string(data))

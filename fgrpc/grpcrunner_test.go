@@ -88,7 +88,6 @@ func TestGRPCRunner(t *testing.T) {
 			},
 			expect: false,
 		},
-		/* re-enable once we have a replacement / we have demo.fortio.org running https
 		{
 			name: "valid secure runner using nil credentials to Internet https server",
 			runnerOpts: GRPCRunnerOptions{
@@ -99,33 +98,25 @@ func TestGRPCRunner(t *testing.T) {
 		{
 			name: "valid secure runner using nil credentials to Internet https server, default https port, trailing slash",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "https://fortio.istio.io/",
+				Destination: "https://grpc.fortio.org/",
 			},
 			expect: true,
 		},
 		{
 			name: "invalid secure runner to insecure server",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "fortio.istio.io:443",
+				Destination: "grpc.fortio.org:443",
 			},
 			expect: false,
 		},
 		{
 			name: "invalid secure runner using test cert to https prefix Internet server",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "https://fortio.istio.io:443",
-				CACert:      caCrt,
+				Destination: "https://grpc.fortio.org:443",
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 			expect: false,
 		},
-		{
-			name: "invalid secure runner using test cert to no prefix Internet server",
-			runnerOpts: GRPCRunnerOptions{
-				Destination: "fortio.istio.io:443",
-			},
-			expect: false,
-		},
-		*/
 		{
 			name: "invalid name in secure runner cert",
 			runnerOpts: GRPCRunnerOptions{
@@ -265,28 +256,26 @@ func TestGRPCRunnerWithError(t *testing.T) {
 				CertOverride: "invalidName",
 			},
 		},
-		/* re-enable once we get replacement
 		{
 			name: "valid runner using nil credentials to Internet https server",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "https://fortio.istio.io/",
+				Destination: "https://grpc.fortio.org/",
 			},
 		},
 		{
 			name: "invalid runner using test cert to https prefix Internet server",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "https://fortio.istio.io/",
-				CACert:      caCrt,
+				Destination: "https://grpc.fortio.org/",
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 		},
 		{
 			name: "invalid runner using test cert to no prefix Internet server",
 			runnerOpts: GRPCRunnerOptions{
-				Destination: "fortio.istio.io:443",
-				CACert:      caCrt,
+				Destination: "grpc.fortio.org:443",
+				TLSOptions:  fhttp.TLSOptions{CACert: caCrt},
 			},
 		},
-		*/
 	}
 	for _, test := range tests {
 		test.runnerOpts.Service = "svc2"
