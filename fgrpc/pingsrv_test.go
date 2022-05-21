@@ -32,6 +32,7 @@ func init() {
 	log.SetLogLevel(log.Debug)
 }
 
+//nolint: gocognit
 func TestPingServer(t *testing.T) {
 	TLSSecure := &fhttp.TLSOptions{CACert: caCrt, Insecure: false}
 	TLSSecureMissingCert := &fhttp.TLSOptions{Insecure: false}
