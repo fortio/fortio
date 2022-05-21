@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -549,6 +550,23 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error setting method to cached-rr: %v", err)
 	}
+	fnet.FlagResolveIPType.Set("ip4")
+}
+
+func TestDNSCacheConcurrency(t *testing.T) {
+	// Test isn't actually testing unless you use the debugger but coverage shows the extra if
+	// does happen.
+	fnet.FlagResolveIPType.Set("ip")
+	var wg sync.WaitGroup
+	n := 20
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			fnet.Resolve("localhost", "80")
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 	fnet.FlagResolveIPType.Set("ip4")
 }
 
