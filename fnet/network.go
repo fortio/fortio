@@ -328,19 +328,21 @@ func ClearResolveCache() {
 	dnsMutex.Unlock()
 }
 
-// checkCache will return true if it found and unlocked, keep the lock otherwise
-func checkCache(host string) (found bool, idx uint32, res net.IP) {
+// checkCache will return true if it found and unlocked, keep the lock otherwise.
+// port is only for logging.
+func checkCache(host, port string) (found bool, res net.IP) {
 	dnsMutex.Lock() // unlock before IOs
 	if host != dnsHost {
 		// keep the lock locked
 		return
 	}
 	found = true
-	idx = dnsRoundRobin % uint32(len(dnsAddrs))
+	idx := dnsRoundRobin % uint32(len(dnsAddrs))
 	dnsRoundRobin++
 	res = dnsAddrs[idx]
 	dnsMutex.Unlock() // unlock before IOs
-	log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, dest)
+	log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, res)
+	return
 }
 
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
@@ -372,7 +374,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 	idx := uint32(0)
 	inCache := false
 	if dnsMethod == "cached-rr" {
-		inCache, idx, dest.IP = checkCache(host)
+		inCache, dest.IP = checkCache(host, port)
 		if inCache {
 			return dest, nil
 		}
@@ -388,7 +390,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		switch dnsMethod {
 		case "cached-rr":
 			// (re)check if we're the first to grab this lock (other threads may be here as well)
-			inCache, idx, dest.IP = checkCache(host)
+			inCache, dest.IP = checkCache(host, port)
 			if inCache {
 				return dest, nil
 			}
