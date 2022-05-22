@@ -10,7 +10,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
 <img src="./ui/static/img/fortio-logo-gradient-no-bg.svg" height=109 width=167 align=right />
 
-Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
+Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
 Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators)
 
@@ -20,7 +20,7 @@ It can run for a set duration, for a fixed number of calls, or until interrupted
 
 The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (4Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and REST API to trigger run and see graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
 Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp echoing, tcp proxying, http fan out/scatter and gather proxy server, GRPC echo/health in addition to http, etc...
@@ -30,6 +30,8 @@ and when bugs are found they are fixed quickly, so after 1 year of development a
 
 Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
 As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz)
+
+If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
 
 ## Installation
 
@@ -50,13 +52,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-linux_amd64-1.31.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.31.1/fortio-linux_amd64-1.31.1.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_1.31.0_amd64.deb
-dpkg -i fortio_1.31.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.31.1/fortio_1.31.1_amd64.deb
+dpkg -i fortio_1.31.1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-1.31.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.31.1/fortio-1.31.1-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -66,7 +68,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_win_1.31.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.31.1/fortio_win_1.31.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -114,7 +116,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.31.0 usage:
+Φορτίο 1.31.1 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
