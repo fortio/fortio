@@ -148,7 +148,7 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	}
 	lAddr := listener.Addr()
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s %s\n", version.Short(), name, sockType, lAddr)
+		log.Printf("Fortio %s %s server listening on %s %s\n", version.Short(), name, sockType, lAddr)
 	}
 	return listener, lAddr
 }
@@ -167,7 +167,7 @@ func UDPListen(name string, port string) (*net.UDPConn, net.Addr) {
 		return nil, nil
 	}
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on udp %s\n", version.Short(), name, udpconn.LocalAddr())
+		log.Printf("Fortio %s %s server listening on udp %s\n", version.Short(), name, udpconn.LocalAddr())
 	}
 	return udpconn, udpconn.LocalAddr()
 }
@@ -328,6 +328,23 @@ func ClearResolveCache() {
 	dnsMutex.Unlock()
 }
 
+// checkCache will return true if it found and unlocked, keep the lock otherwise.
+// port is only for logging.
+func checkCache(host, port string) (found bool, res net.IP) {
+	dnsMutex.Lock() // unlock before IOs
+	if host != dnsHost {
+		// keep the lock locked
+		return
+	}
+	found = true
+	idx := dnsRoundRobin % uint32(len(dnsAddrs))
+	dnsRoundRobin++
+	res = dnsAddrs[idx]
+	dnsMutex.Unlock() // unlock before IOs
+	log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, res)
+	return
+}
+
 // ResolveByProto returns the address of the host,port suitable for net.Dial.
 // nil in case of errors. works for both "tcp" and "udp" proto.
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
@@ -355,14 +372,10 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 	filter := FlagResolveIPType.Get()
 	dnsMethod := FlagResolveMethod.Get()
 	idx := uint32(0)
+	inCache := false
 	if dnsMethod == "cached-rr" {
-		dnsMutex.Lock()
-		if host == dnsHost {
-			idx = dnsRoundRobin % uint32(len(dnsAddrs))
-			dnsRoundRobin++
-			dest.IP = dnsAddrs[idx]
-			dnsMutex.Unlock() // unlock before IOs
-			log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, dest)
+		inCache, dest.IP = checkCache(host, port)
+		if inCache {
 			return dest, nil
 		}
 		dnsMutex.Unlock()
@@ -376,8 +389,12 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 	if l > 1 {
 		switch dnsMethod {
 		case "cached-rr":
-			// already covered the cache hit case above, so this is a miss/first set
-			dnsMutex.Lock()
+			// (re)check if we're the first to grab this lock (other threads may be here as well)
+			inCache, dest.IP = checkCache(host, port)
+			if inCache {
+				return dest, nil
+			}
+			// first time, first thread reaching here:
 			dnsHost = host
 			dnsAddrs = addrs
 			idx = 0

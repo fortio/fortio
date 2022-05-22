@@ -10,7 +10,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
 <img src="./ui/static/img/fortio-logo-gradient-no-bg.svg" height=109 width=167 align=right />
 
-Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and now graduated to be its own project.
+Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
 Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators)
 
@@ -20,7 +20,7 @@ It can run for a set duration, for a fixed number of calls, or until interrupted
 
 The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (3Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (4Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and REST API to trigger run and see graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
 Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp echoing, tcp proxying, http fan out/scatter and gather proxy server, GRPC echo/health in addition to http, etc...
@@ -30,6 +30,8 @@ and when bugs are found they are fixed quickly, so after 1 year of development a
 
 Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
 As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz)
+
+If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
 
 ## Installation
 
@@ -50,13 +52,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-linux_amd64-1.31.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.32.0/fortio-linux_amd64-1.32.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_1.31.0_amd64.deb
-dpkg -i fortio_1.31.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.32.0/fortio_1.32.0_amd64.deb
+dpkg -i fortio_1.32.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.31.0/fortio-1.31.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.32.0/fortio-1.32.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -66,7 +68,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.31.0/fortio_win_1.31.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.32.0/fortio_win_1.32.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -114,7 +116,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.31.0 usage:
+Φορτίο 1.32.0 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
@@ -593,12 +595,17 @@ RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 
 `grpcping` can connect to a non-Fortio TLS server by prefacing the destination with `https://`:
 
 ```Shell
-$ fortio grpcping https://fortio.istio.io
-11:07:55 I grpcrunner.go:275> stripping https scheme. grpc destination: fortio.istio.io. grpc port: 443
-Clock skew histogram usec : count 1 avg 12329.795 +/- 0 min 12329.795 max 12329.795 sum 12329.795
+$ fortio grpcping https://grpc.fortio.org
+13:48:20 I grpcrunner.go:276> stripping https scheme. grpc destination: grpc.fortio.org. grpc port: 443
+13:48:26 I pingsrv.go:152> Ping RTT 63101562 (avg of 63577000, 63192688, 62535000 ns) clock skew 32021375
+Clock skew histogram usec : count 1 avg 32021.375 +/- 0 min 32021.375 max 32021.375 sum 32021.375
 # range, mid point, percentile, count
->= 12329.8 <= 12329.8 , 12329.8 , 100.00, 1
-# target 50% 12329.8
+>= 32021.4 <= 32021.4 , 32021.4 , 100.00, 1
+# target 50% 32021.4
+RTT histogram usec : count 3 avg 63101.563 +/- 430.2 min 62535 max 63577 sum 189304.688
+# range, mid point, percentile, count
+>= 62535 <= 63577 , 63056 , 100.00, 3
+# target 50% 62795.5
 ```
 
 ### Simple load test
@@ -942,7 +949,7 @@ body:
 If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
 
 ```Shell
-$ fortio report -sync-interval 15m -sync http://storage.googleapis.com:443/fortio-data?prefix=fortio.istio.io/
+$ fortio report -sync-interval 15m -sync "https://storage.googleapis.com/fortio-data?prefix=fortio.istio.io/"
 Browse only UI starting - visit:
 http://localhost:8080/
 Https redirector running on :8081

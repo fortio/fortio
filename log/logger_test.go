@@ -107,6 +107,8 @@ func TestLogger1(t *testing.T) {
 	expected += "I Log level is now 5 Critical (was 0 Debug)\n"
 	Critf("testing crit %d", i) // should show
 	expected += "C testing crit 7\n"
+	Printf("Printf should always show n=%d", 8)
+	expected += "Printf should always show n=8\n"
 	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {

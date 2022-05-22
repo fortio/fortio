@@ -700,20 +700,24 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 	o := fhttp.NewHTTPOptions(uStr)
 	fhttp.OnBehalfOf(o, r)
+	// Increase timeout:
+	o.HTTPReqTimeOut = 5 * time.Second
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
-	// use std client to change the url and handle https:
+	// use std client to avoid chunked raw we can get with fast client:
 	client, _ := fhttp.NewStdClient(o)
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
-		// too late to write headers
+		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	code, data, _ := client.Fetch()
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
-		// too late to write headers
+		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		w.WriteHeader(code)
 		return
 	}
 	sdata := strings.TrimSpace(string(data))
@@ -962,16 +966,16 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 				datadir = dataDir
 			}
 		}
-		fmt.Println("Data directory is", datadir)
+		log.Printf("Data directory is %s", datadir)
 	}
 	urlHostPort = fnet.NormalizeHostPort(port, addr)
-	uiMsg := "UI started - visit:\n"
+	uiMsg := "\t UI started - visit:\n\t "
 	if strings.Contains(urlHostPort, "-unix-socket=") {
 		uiMsg += fmt.Sprintf("fortio curl %s http://localhost%s", urlHostPort, uiPath)
 	} else {
 		uiMsg += fmt.Sprintf("http://%s%s", urlHostPort, uiPath)
 		if strings.Contains(urlHostPort, "localhost") {
-			uiMsg += "\n(or any host/ip reachable on this server)"
+			uiMsg += "\n\t (or any host/ip reachable on this server)"
 		}
 	}
 	fmt.Println(uiMsg)

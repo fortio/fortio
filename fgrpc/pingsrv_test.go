@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -31,11 +32,13 @@ func init() {
 	log.SetLogLevel(log.Debug)
 }
 
+//nolint: gocognit
 func TestPingServer(t *testing.T) {
 	TLSSecure := &fhttp.TLSOptions{CACert: caCrt, Insecure: false}
 	TLSSecureMissingCert := &fhttp.TLSOptions{Insecure: false}
 	TLSSecureBadCert := &fhttp.TLSOptions{CACert: failCrt, Insecure: true}
 	TLSInsecure := &fhttp.TLSOptions{Insecure: true}
+	TLSInternet := &fhttp.TLSOptions{}
 	iPort := PingServerTCP("0", "", "", "foo", 0)
 	iAddr := fmt.Sprintf("localhost:%d", iPort)
 	t.Logf("insecure grpc ping server running, will connect to %s", iAddr)
@@ -47,12 +50,10 @@ func TestPingServer(t *testing.T) {
 	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
 		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
 	}
-	/* re-enable once we get https://demo.fortio.org/
-	if latency, err := PingClientCall(fnet.PrefixHTTPS+"fortio.istio.io:443", "", 7,
-		"test payload", 0); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(fnet.PrefixHTTPS+"grpc.fortio.org:443", 7,
+		"test payload", 0, TLSInternet); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
-	*/
 	if latency, err := PingClientCall(sAddr, 7, "test payload", 0, TLSSecure); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
@@ -78,11 +79,9 @@ func TestPingServer(t *testing.T) {
 	if r, err := GrpcHealthCheck(sAddr, "", 1, TLSSecure); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
-	/* re-enable once we get https://demo.fortio.org/
-	if r, err := GrpcHealthCheck(fnet.PrefixHTTPS+"fortio.istio.io:443", "", "", 1); err != nil || (*r)[serving] != 1 {
+	if r, err := GrpcHealthCheck(fnet.PrefixHTTPS+"grpc.fortio.org:443", "", 1, TLSInternet); err != nil || (*r)[serving] != 1 {
 		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
 	}
-	*/
 	if r, err := GrpcHealthCheck(iAddr, "foo", 3, TLSInsecure); err != nil || (*r)[serving] != 3 {
 		t.Errorf("Unexpected result %+v, %v with health check for same service as started (foo)", r, err)
 	}
