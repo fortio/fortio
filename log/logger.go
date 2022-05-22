@@ -191,6 +191,11 @@ func logPrintf(lvl Level, format string, rest ...interface{}) {
 	}
 }
 
+// Printf forwards to the underlying go logger to print (with only timestamp prefixing).
+func Printf(format string, rest ...interface{}) {
+	log.Printf(format, rest...)
+}
+
 // SetOutput sets the output to a different writer (forwards to system logger).
 func SetOutput(w io.Writer) {
 	log.SetOutput(w)

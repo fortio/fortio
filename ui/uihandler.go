@@ -966,16 +966,16 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 				datadir = dataDir
 			}
 		}
-		fmt.Println("Data directory is", datadir)
+		log.Printf("Data directory is %s", datadir)
 	}
 	urlHostPort = fnet.NormalizeHostPort(port, addr)
-	uiMsg := "UI started - visit:\n"
+	uiMsg := "\t UI started - visit:\n\t "
 	if strings.Contains(urlHostPort, "-unix-socket=") {
 		uiMsg += fmt.Sprintf("fortio curl %s http://localhost%s", urlHostPort, uiPath)
 	} else {
 		uiMsg += fmt.Sprintf("http://%s%s", urlHostPort, uiPath)
 		if strings.Contains(urlHostPort, "localhost") {
-			uiMsg += "\n(or any host/ip reachable on this server)"
+			uiMsg += "\n\t (or any host/ip reachable on this server)"
 		}
 	}
 	fmt.Println(uiMsg)

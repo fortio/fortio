@@ -148,7 +148,7 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	}
 	lAddr := listener.Addr()
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on %s %s\n", version.Short(), name, sockType, lAddr)
+		log.Printf("Fortio %s %s server listening on %s %s\n", version.Short(), name, sockType, lAddr)
 	}
 	return listener, lAddr
 }
@@ -167,7 +167,7 @@ func UDPListen(name string, port string) (*net.UDPConn, net.Addr) {
 		return nil, nil
 	}
 	if len(name) > 0 {
-		fmt.Printf("Fortio %s %s server listening on udp %s\n", version.Short(), name, udpconn.LocalAddr())
+		log.Printf("Fortio %s %s server listening on udp %s\n", version.Short(), name, udpconn.LocalAddr())
 	}
 	return udpconn, udpconn.LocalAddr()
 }
