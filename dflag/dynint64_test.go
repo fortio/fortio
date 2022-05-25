@@ -7,8 +7,6 @@ import (
 	"flag"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDynInt64_SetAndGet(t *testing.T) {
@@ -37,8 +35,8 @@ func TestDynInt64_FiresValidators(t *testing.T) {
 func TestDynInt64_FiresNotifier(t *testing.T) {
 	waitCh := make(chan bool, 1)
 	notifier := func(oldVal int64, newVal int64) {
-		assert.EqualValues(t, 13371337, oldVal, "old value in notify must match previous value")
-		assert.EqualValues(t, 77007700, newVal, "new value in notify must match set value")
+		assert.EqualValues(t, int64(13371337), oldVal, "old value in notify must match previous value")
+		assert.EqualValues(t, int64(77007700), newVal, "new value in notify must match set value")
 		waitCh <- true
 	}
 

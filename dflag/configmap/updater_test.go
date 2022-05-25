@@ -17,8 +17,6 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -26,6 +24,11 @@ const (
 	firstGoodDir  = "..9989_09_09_07_32_32.099817316"
 	secondGoodDir = "..9289_09_10_03_32_32.039823124"
 	badStaticDir  = "..1289_09_10_03_32_32.039823124"
+)
+
+var (
+	assert  = dflag.Testify{}
+	require = assert
 )
 
 type updaterTestSuite struct {

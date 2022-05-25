@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"fortio.org/fortio/dflag"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+)
+
+var (
+	assert  = dflag.Testify{}
+	require = assert
 )
 
 func TestChecksumFlagSet_Differs(t *testing.T) {

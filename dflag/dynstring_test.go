@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDynString_SetAndGet(t *testing.T) {

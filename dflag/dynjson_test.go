@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var defaultJSON = &outerJSON{
@@ -108,7 +106,7 @@ func TestDynJSONArray_SetAndGet(t *testing.T) {
 
 	assert.EqualValues(t, defaultJSONArray, dynFlag.Get(), "value must be default after create")
 
-	err := set.Set("some_json_array", `[{"ints": [42], "string": "new-value", "inner": { "bool": false } }, 
+	err := set.Set("some_json_array", `[{"ints": [42], "string": "new-value", "inner": { "bool": false } },
 																							{"ints": [24], "string": "new-value", "inner": { "bool": true } }]`)
 	assert.NoError(t, err, "setting value must succeed")
 

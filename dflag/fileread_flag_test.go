@@ -6,8 +6,6 @@ package dflag
 import (
 	"flag"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFileFlag_ReadsWithADefault(t *testing.T) {

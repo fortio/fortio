@@ -7,8 +7,6 @@ import (
 	"flag"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDynFloat64_SetAndGet(t *testing.T) {
