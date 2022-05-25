@@ -71,4 +71,6 @@ jobs:
         run: |
           tag_name="${GITHUB_REF##*/}"
           echo "tag_name=$tag_name"
+          # tends to fail and not find the release somehow; add a small sleep... (yuck)
+          sleep 10
           gh release upload "${tag_name}" release/*.{tgz,zip,rpm,deb,gz}
