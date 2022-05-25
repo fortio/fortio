@@ -6,7 +6,6 @@
 package dflag
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -90,14 +89,17 @@ type hasT interface {
 	SetT(*testing.T)
 }
 
+// TestSuite to be used as base struct for test suites.
 type TestSuite struct {
 	t *testing.T
 }
 
+// T returns the current testing.T.
 func (s *TestSuite) T() *testing.T {
 	return s.t
 }
 
+// SetT sets the testing.T in the suite object.
 func (s *TestSuite) SetT(t *testing.T) {
 	s.t = t
 }
@@ -109,22 +111,18 @@ type hasTearDown interface {
 	TearDownTest()
 }
 
+// Run runs the test suite with SetupTest first and TearDownTest after.
 func (d *Testify) Run(t *testing.T, suite hasT) {
 	suite.SetT(t)
 	tests := []testing.InternalTest{}
 	methodFinder := reflect.TypeOf(suite)
-	var tearDown hasTearDown
+	if setup, ok := suite.(hasSetupTest); ok {
+		setup.SetupTest()
+	}
 	for i := 0; i < methodFinder.NumMethod(); i++ {
 		method := methodFinder.Method(i)
 		if ok, _ := regexp.MatchString("^Test", method.Name); !ok {
 			continue
-		}
-		if setup, ok := suite.(hasSetupTest); ok {
-			setup.SetupTest()
-			continue
-		}
-		if td, ok := suite.(hasTearDown); ok {
-			tearDown = td
 		}
 		test := testing.InternalTest{
 			Name: method.Name,
@@ -135,10 +133,9 @@ func (d *Testify) Run(t *testing.T, suite hasT) {
 		tests = append(tests, test)
 	}
 	for _, test := range tests {
-		fmt.Printf("calling %s\n", test.Name)
 		t.Run(test.Name, test.F)
 	}
-	if tearDown != nil {
+	if tearDown, ok := suite.(hasTearDown); ok {
 		tearDown.TearDownTest()
 	}
 }
