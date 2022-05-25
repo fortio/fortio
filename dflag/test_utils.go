@@ -67,8 +67,7 @@ func (d *Testify) Fail(t *testing.T, msg string) {
 }
 
 var (
-	assert  = Testify{}
-	require = assert
+	assert = Testify{}
 )
 
 // --- End of replacement for "github.com/stretchr/testify/assert"
