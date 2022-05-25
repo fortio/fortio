@@ -121,7 +121,7 @@ $CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile
 DOCKERCURLID=$(docker run -d -v $TEST_CERT_VOL --net host --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v40 sleep 120)
 # while we have something with actual curl binary do
 # Test for h2c upgrade (#562)
-docker exec $DOCKERSECVOLNAME /usr/bin/curl -v --http2 -d foo42 http://localhost:8080/debug | tee >(cat 1>&2) | grep foo42
+docker exec $DOCKERSECVOLNAME /usr/bin/curl -v --http2 -m 10 -d foo42 http://localhost:8080/debug | tee >(cat 1>&2) | grep foo42
 # then resume the self signed CA tests
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp "$PWD/cert-tmp/$f" "$DOCKERSECVOLNAME:$TEST_CERT_VOL/$f"; done
