@@ -1,5 +1,8 @@
 // Copyright 2022 Fortio Authors
 
+// Only in "dflag" for sharing with tests.
+// As tests don't fail, coverage of this particular file is poor.
+
 package dflag
 
 import (
