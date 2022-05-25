@@ -100,7 +100,7 @@ func (s *updaterTestSuite) TestSetupFunction() {
 func (s *updaterTestSuite) TestInitializeSetsValues() {
 	require.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
 	assert.EqualValues(s.T(), *s.staticInt, 1234, "staticInt should be some_int from first directory")
-	assert.EqualValues(s.T(), s.dynInt.Get(), 10001, "staticInt should be some_int from first directory")
+	assert.EqualValues(s.T(), s.dynInt.Get(), int64(10001), "staticInt should be some_int from first directory")
 }
 
 func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
@@ -108,7 +108,7 @@ func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
 	require.NoError(s.T(), s.updater.Start(), "updater start should not return an error")
 	s.linkDataDirTo(secondGoodDir)
 	eventually(s.T(), 1*time.Second,
-		assert.ObjectsAreEqualValues, 20002,
+		assert.ObjectsAreEqualValues, int64(20002),
 		func() interface{} { return s.dynInt.Get() },
 		"some_dynint value should change to the value from secondGoodDir")
 }
