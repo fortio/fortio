@@ -28,7 +28,7 @@ DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
 DOCKERSECVOLNAME=fortio_certs
 FORTIO_BIN_PATH=fortio # /usr/bin/fortio is the full path but isn't needed
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
 function cleanup {
   set +e # errors are ok during cleanup
 #  docker logs "$DOCKERID" # uncomment to debug
@@ -36,6 +36,7 @@ function cleanup {
   docker rm -f $DOCKERNAME
   docker stop "$DOCKERSECID" # may not be set yet, it's ok
   docker rm -f $DOCKERSECNAME
+  docker stop "$DOCKERCURLID"
   docker rm -f $DOCKERSECVOLNAME
 }
 trap cleanup EXIT
@@ -117,7 +118,11 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-docker create -v $TEST_CERT_VOL --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v40 /bin/true # cleaned up by name
+DOCKERCURLID=$(docker run -d -v $TEST_CERT_VOL --net host --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v40 sleep 120)
+# while we have something with actual curl binary do
+# Test for h2c upgrade (#562)
+docker exec $DOCKERSECVOLNAME /usr/bin/curl -v --http2 -d foo42 http://localhost:8080/debug | tee >(cat 1>&2) | grep foo42
+# then resume the self signed CA tests
 # copying cert files into the certs volume of the dummy container
 for f in ca.crt server.crt server.key; do docker cp "$PWD/cert-tmp/$f" "$DOCKERSECVOLNAME:$TEST_CERT_VOL/$f"; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.
