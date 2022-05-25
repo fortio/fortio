@@ -17,7 +17,6 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
-	"github.com/stretchr/testify/suite"
 )
 
 const (
@@ -29,11 +28,11 @@ const (
 var (
 	assert  = dflag.Testify{}
 	require = assert
+	suite   = assert
 )
 
 type updaterTestSuite struct {
-	suite.Suite
-
+	dflag.TestSuite
 	tempDir string
 
 	flagSet   *flag.FlagSet
