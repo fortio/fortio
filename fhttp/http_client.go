@@ -275,7 +275,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	// nolint: noctx // TODO fixme?
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
-		log.Errf("Unable to make %s request for %s : %v", method, o.URL, err)
+		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
 		return nil, err
 	}
 	req.Header = o.GenerateHeaders()
@@ -287,9 +287,9 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	}
 	bytes, err := httputil.DumpRequestOut(req, false)
 	if err != nil {
-		log.Errf("Unable to dump request: %v", err)
+		log.Errf("[%d] Unable to dump request: %v", o.ID, err)
 	} else {
-		log.Debugf("For URL %s, sending:\n%s", o.URL, bytes)
+		log.Debugf("[%d] For URL %s, sending:\n%s", o.ID, o.URL, bytes)
 	}
 	return req, nil
 }
@@ -315,11 +315,11 @@ type Client struct {
 
 // Close cleans up any resources used by NewStdClient.
 func (c *Client) Close() int {
-	log.Debugf("Close() on %+v", c)
+	log.Debugf("[%d] Close() on %+v", c.id, c)
 	if c.req != nil {
 		if c.req.Body != nil {
 			if err := c.req.Body.Close(); err != nil {
-				log.Warnf("Error closing std client body: %v", err)
+				log.Warnf("[%d] Error closing std client body: %v", c.id, err)
 			}
 		}
 		c.req = nil
@@ -375,9 +375,9 @@ func (c *Client) Fetch() (int, []byte, int) {
 	var data []byte
 	if log.LogDebug() {
 		if data, err = httputil.DumpResponse(resp, false); err != nil {
-			log.Errf("Unable to dump response %v", err)
+			log.Errf("[%d] Unable to dump response %v", c.id, err)
 		} else {
-			log.Debugf("For URL %s, received:\n%s", c.url, data)
+			log.Debugf("[%d] For URL %s, received:\n%s", c.id, c.url, data)
 		}
 	}
 	data, err = ioutil.ReadAll(resp.Body)
@@ -542,10 +542,10 @@ func (c *FastClient) GetIPAddress() string {
 
 // Close cleans up any resources used by FastClient.
 func (c *FastClient) Close() int {
-	log.Debugf("Closing %p %s socket count %d", c, c.url, c.socketCount)
+	log.Debugf("[%d] Closing %p %s socket count %d", c.id, c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
-			log.Warnf("Error closing fast client's socket: %v", err)
+			log.Warnf("[%d] Error closing fast client's socket: %v", c.id, err)
 		}
 		c.socket = nil
 	}
@@ -582,7 +582,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {
-		log.Errf("Bad url '%s' : %v", urlString, err)
+		log.Errf("[%d] Bad url %q : %v", o.ID, urlString, err)
 		return nil, err
 	}
 	// note: Host includes the port
@@ -600,11 +600,11 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
 		bc.port = url.Scheme // ie http which turns into 80 later
-		log.LogVf("No port specified, using %s", bc.port)
+		log.LogVf("[%d] No port specified, using %s", bc.id, bc.port)
 	}
 	var addr net.Addr
 	if o.UnixDomainSocket != "" { // nolint: nestif
-		log.Infof("Using unix domain socket %v instead of %v %v", o.UnixDomainSocket, bc.hostname, bc.port)
+		log.Infof("[%d] Using unix domain socket %v instead of %v %v", bc.id, o.UnixDomainSocket, bc.hostname, bc.port)
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
@@ -662,7 +662,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 			bc.uuidMarkers = append(bc.uuidMarkers, []byte(uuidString))
 		}
 	}
-	log.Debugf("Created client:\n%+v\n%s", bc.dest, bc.req)
+	log.Debugf("[%d] Created client:\n%+v\n%s", bc.id, bc.dest, bc.req)
 	return &bc, nil
 }
 
@@ -716,7 +716,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 			return c.returnRes()
 		}
 	} else {
-		log.Debugf("Reusing socket %v", conn)
+		log.Debugf("[%d] Reusing socket %v", c.id, c.dest)
 	}
 	c.socket = nil // because of error returns and single retry
 	conErr := conn.SetDeadline(time.Now().Add(c.reqTimeout))
@@ -750,7 +750,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 				log.Errf("[%d] Unable to close write to %v : %v", c.id, c.dest, err)
 				return c.returnRes()
 			} // else:
-			log.Debugf("Half closed ok after sending request %v %v", conn, c.dest)
+			log.Debugf("[%d] Half closed ok after sending request %v", c.id, c.dest)
 		} else {
 			log.Warnf("[%d] Unable to close write non tcp connection %v", c.id, c.dest)
 		}
@@ -809,8 +809,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			}
 			c.size += n
 			if log.LogDebug() {
-				log.Debugf("Read ok %d total %d so far (-%d headers = %d data) %s",
-					n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
+				log.Debugf("[%d] Read ok %d total %d so far (-%d headers = %d data) %s",
+					c.id, n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
 			}
 		}
 		skipRead = false
@@ -827,8 +827,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 				break
 			}
 			if log.LogDebug() {
-				log.Debugf("Code %d, looking for end of headers at %d / %d, last CRLF %d",
-					c.code, endofHeadersStart, c.size, c.headerLen)
+				log.Debugf("[%d] Code %d, looking for end of headers at %d / %d, last CRLF %d",
+					c.id, c.code, endofHeadersStart, c.size, c.headerLen)
 			}
 			// TODO: keep track of list of newlines to efficiently search headers only there
 			idx := endofHeadersStart
@@ -848,7 +848,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 				// We have headers !
 				c.headerLen += 4 // we use this and not endofHeadersStart so http/1.0 does return 0 and not the optimization for search start
 				if log.LogDebug() {
-					log.Debugf("headers are %d: %s", c.headerLen, c.buffer[:idx])
+					log.Debugf("[%d] headers are %d: %q", c.id, c.headerLen, c.buffer[:idx])
 				}
 				// Find the content length or chunked mode
 				if keepAlive {
@@ -864,7 +864,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 						}
 						max = c.headerLen + contentLength
 						if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
-							log.Debugf("found content length %d", contentLength)
+							log.Debugf("[%d] found content length %d", c.id, contentLength)
 						}
 					} else {
 						// Chunked mode (or err/missing):
@@ -874,17 +874,17 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:c.size])
 							if contentLength == -1 {
 								// chunk length not available yet
-								log.LogVf("chunk mode but no first chunk length yet, reading more")
+								log.LogVf("[%d] chunk mode but no first chunk length yet, reading more", c.id)
 								max = c.headerLen
 								continue
 							}
 							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
-							log.Debugf("chunk-length is %d (%s) setting max to %d",
-								contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
+							log.Debugf("[%d] chunk-length is %d (%s) setting max to %d",
+								c.id, contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
 								max)
 						} else {
 							if log.LogVerbose() {
-								log.LogVf("Warning: content-length missing in %s", string(c.buffer[:c.headerLen]))
+								log.LogVf("[%d] Warning: content-length missing in %q", c.id, string(c.buffer[:c.headerLen]))
 							} else {
 								log.Warnf("[%d] Warning: content-length missing (%d bytes headers)", c.id, c.headerLen)
 							}
@@ -910,10 +910,10 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		} // end of big if parse header
 		if c.size >= max {
 			if !keepAlive {
-				log.Errf("More data is available but stopping after %d, increase -httpbufferkb", max)
+				log.Errf("[%d] More data is available but stopping after %d, increase -httpbufferkb", c.id, max)
 			}
 			if !parsedHeaders && c.parseHeaders {
-				log.Errf("Buffer too small (%d) to even finish reading headers, increase -httpbufferkb to get all the data", max)
+				log.Errf("[%d] Buffer too small (%d) to even finish reading headers, increase -httpbufferkb to get all the data", c.id, max)
 				keepAlive = false
 			}
 			if chunkedMode {
@@ -921,24 +921,25 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 				dataStart, nextChunkLen := ParseChunkSize(c.buffer[max:c.size])
 				if nextChunkLen == -1 {
 					if c.size == max {
-						log.Debugf("Couldn't find next chunk size, reading more %d %d", max, c.size)
+						log.Debugf("[%d] Couldn't find next chunk size, reading more %d %d", c.id, max, c.size)
 					} else {
-						log.Infof("Partial chunk size (%s), reading more %d %d", DebugSummary(c.buffer[max:c.size], 20), max, c.size)
+						log.Infof("[%d] Partial chunk size (%s), reading more %d %d", c.id, DebugSummary(c.buffer[max:c.size], 20), max, c.size)
 					}
 					continue
 				} else if nextChunkLen == 0 {
-					log.Debugf("Found last chunk %d %d", max+dataStart, c.size)
+					log.Debugf("[%d] Found last chunk %d %d", c.id, max+dataStart, c.size)
 					if c.size != max+dataStart+2 || string(c.buffer[c.size-2:c.size]) != "\r\n" {
-						log.Errf("Unexpected mismatch at the end sz=%d expected %d; end of buffer %q", c.size, max+dataStart+2, c.buffer[max:c.size])
+						log.Errf("[%d] Unexpected mismatch at the end sz=%d expected %d; end of buffer %q",
+							c.id, c.size, max+dataStart+2, c.buffer[max:c.size])
 					}
 				} else {
 					max += dataStart + nextChunkLen + 2 // extra CR LF
-					log.Debugf("One more chunk %d -> new max %d", nextChunkLen, max)
+					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, max)
 					if max > len(c.buffer) {
-						log.Errf("Buffer too small for %d data", max)
+						log.Errf("[%d] Buffer too small for %d data", c.id, max)
 					} else {
 						if max <= c.size {
-							log.Debugf("Enough data to reach next chunk, skipping a read")
+							log.Debugf("[%d] Enough data to reach next chunk, skipping a read", c.id)
 							skipRead = true
 						}
 						continue
@@ -955,7 +956,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		if err := conn.Close(); err != nil {
 			log.Errf("[%d] Close error %v %d : %v", c.id, c.dest, c.size, err)
 		} else {
-			log.Debugf("Closed ok %v from %v after reading %d bytes", conn, c.dest, c.size)
+			log.Debugf("[%d] Closed ok from %v after reading %d bytes", c.id, c.dest, c.size)
 		}
 		// we cleared c.socket in caller already
 	}
