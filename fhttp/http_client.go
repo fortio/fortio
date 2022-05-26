@@ -719,7 +719,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Debugf("Reusing socket %v", conn)
 	}
 	c.socket = nil // because of error returns and single retry
-	conErr := conn.SetReadDeadline(time.Now().Add(c.reqTimeout))
+	conErr := conn.SetDeadline(time.Now().Add(c.reqTimeout))
 	// Send the request:
 	req := c.req
 	if len(c.uuidMarkers) > 0 {
