@@ -7,8 +7,6 @@ import (
 	"flag"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDynStringSlice_SetAndGet(t *testing.T) {

@@ -4,3 +4,4 @@ coverage:
   round: nearest       # how coverage is rounded: down/up/nearest
   ignore:              # files and folders that will be removed during processing
     - "**.pb.go"
+    - "dflag/test_utils.go"

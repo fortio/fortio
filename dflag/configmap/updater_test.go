@@ -10,16 +10,12 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 const (
@@ -28,9 +24,14 @@ const (
 	badStaticDir  = "..1289_09_10_03_32_32.039823124"
 )
 
-type updaterTestSuite struct {
-	suite.Suite
+var (
+	assert  = dflag.Testify{}
+	require = assert
+	suite   = assert
+)
 
+type updaterTestSuite struct {
+	dflag.TestSuite
 	tempDir string
 
 	flagSet   *flag.FlagSet
@@ -63,7 +64,7 @@ func (s *updaterTestSuite) TearDownTest() {
 }
 
 func (s *updaterTestSuite) copyTestDataToDir() {
-	copyCmd := exec.Command("cp", "--archive", "testdata", s.tempDir)
+	copyCmd := exec.Command("cp", "-a", "testdata", s.tempDir)
 	require.NoError(s.T(), copyCmd.Run(), "copying testdata directory to tempdir must not fail")
 	// We are storing file testdata/9989_09_09_07_32_32.099817316 and renaming it to testdata/..9989_09_09_07_32_32.099817316,
 	// because go modules don't allow repos with files with .. in their filename. See https://github.com/golang/go/issues/27299.
@@ -75,7 +76,7 @@ func (s *updaterTestSuite) copyTestDataToDir() {
 }
 
 func (s *updaterTestSuite) linkDataDirTo(newDataDir string) {
-	copyCmd := exec.Command("ln", "--symbolic", "--no-dereference", "--force",
+	copyCmd := exec.Command("ln", "-s", "-n", "-f",
 		path.Join(s.tempDir, "testdata", newDataDir),
 		path.Join(s.tempDir, "testdata", "..data"))
 	require.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir tempdir must not fail")
@@ -97,7 +98,7 @@ func (s *updaterTestSuite) TestSetupFunction() {
 func (s *updaterTestSuite) TestInitializeSetsValues() {
 	require.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
 	assert.EqualValues(s.T(), *s.staticInt, 1234, "staticInt should be some_int from first directory")
-	assert.EqualValues(s.T(), s.dynInt.Get(), 10001, "staticInt should be some_int from first directory")
+	assert.EqualValues(s.T(), s.dynInt.Get(), int64(10001), "staticInt should be some_int from first directory")
 }
 
 func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
@@ -105,15 +106,12 @@ func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
 	require.NoError(s.T(), s.updater.Start(), "updater start should not return an error")
 	s.linkDataDirTo(secondGoodDir)
 	eventually(s.T(), 1*time.Second,
-		assert.ObjectsAreEqualValues, 20002,
+		assert.ObjectsAreEqualValues, int64(20002),
 		func() interface{} { return s.dynInt.Get() },
 		"some_dynint value should change to the value from secondGoodDir")
 }
 
 func TestUpdaterSuite(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skipf("Not running on linux (%v), skipping configmap tests", runtime.GOOS)
-	}
 	suite.Run(t, &updaterTestSuite{})
 }
 

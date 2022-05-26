@@ -13,16 +13,19 @@ import (
 	"testing"
 
 	"fortio.org/fortio/dflag"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type endpointTestSuite struct {
-	suite.Suite
+	dflag.TestSuite
 	flagSet  *flag.FlagSet
 	endpoint *FlagsEndpoint
 }
+
+var (
+	assert  = dflag.Testify{}
+	require = assert
+	suite   = assert
+)
 
 func TestEndpointTestSuite(t *testing.T) {
 	suite.Run(t, &endpointTestSuite{})
