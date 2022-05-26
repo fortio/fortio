@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +64,7 @@ func (s *updaterTestSuite) TearDownTest() {
 }
 
 func (s *updaterTestSuite) copyTestDataToDir() {
-	copyCmd := exec.Command("cp", "--archive", "testdata", s.tempDir)
+	copyCmd := exec.Command("cp", "-a", "testdata", s.tempDir)
 	require.NoError(s.T(), copyCmd.Run(), "copying testdata directory to tempdir must not fail")
 	// We are storing file testdata/9989_09_09_07_32_32.099817316 and renaming it to testdata/..9989_09_09_07_32_32.099817316,
 	// because go modules don't allow repos with files with .. in their filename. See https://github.com/golang/go/issues/27299.
@@ -77,7 +76,7 @@ func (s *updaterTestSuite) copyTestDataToDir() {
 }
 
 func (s *updaterTestSuite) linkDataDirTo(newDataDir string) {
-	copyCmd := exec.Command("ln", "--symbolic", "--no-dereference", "--force",
+	copyCmd := exec.Command("ln", "-s", "-n", "-f",
 		path.Join(s.tempDir, "testdata", newDataDir),
 		path.Join(s.tempDir, "testdata", "..data"))
 	require.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir tempdir must not fail")
@@ -113,9 +112,6 @@ func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
 }
 
 func TestUpdaterSuite(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skipf("Not running on linux (%v), skipping configmap tests", runtime.GOOS)
-	}
 	suite.Run(t, &updaterTestSuite{})
 }
 

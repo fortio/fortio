@@ -116,8 +116,13 @@ func (d *Testify) Run(t *testing.T, suite hasT) {
 	suite.SetT(t)
 	tests := []testing.InternalTest{}
 	methodFinder := reflect.TypeOf(suite)
-	if setup, ok := suite.(hasSetupTest); ok {
-		setup.SetupTest()
+	var setup hasSetupTest
+	if s, ok := suite.(hasSetupTest); ok {
+		setup = s
+	}
+	var tearDown hasTearDown
+	if td, ok := suite.(hasTearDown); ok {
+		tearDown = td
 	}
 	for i := 0; i < methodFinder.NumMethod(); i++ {
 		method := methodFinder.Method(i)
@@ -133,10 +138,13 @@ func (d *Testify) Run(t *testing.T, suite hasT) {
 		tests = append(tests, test)
 	}
 	for _, test := range tests {
+		if setup != nil {
+			setup.SetupTest()
+		}
 		t.Run(test.Name, test.F)
-	}
-	if tearDown, ok := suite.(hasTearDown); ok {
-		tearDown.TearDownTest()
+		if tearDown != nil {
+			tearDown.TearDownTest()
+		}
 	}
 }
 
