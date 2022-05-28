@@ -6,7 +6,6 @@
 [![GoDoc](https://godoc.org/fortio.org/fortio?status.svg)](https://godoc.org/fortio.org/fortio)
 [![codecov](https://codecov.io/gh/fortio/fortio/branch/master/graph/badge.svg)](https://codecov.io/gh/fortio/fortio)
 [![CircleCI](https://circleci.com/gh/fortio/fortio.svg?style=shield)](https://circleci.com/gh/fortio/fortio)
-[![Docker Build](https://img.shields.io/docker/cloud/build/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
 [![Docker Pulls](https://img.shields.io/docker/pulls/fortio/fortio.svg)](https://hub.docker.com/r/fortio/fortio)
 <img src="./ui/static/img/fortio-logo-gradient-no-bg.svg" height=109 width=167 align=right />
 
