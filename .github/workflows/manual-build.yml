@@ -1,5 +1,10 @@
 name: Manual Release Update/Rebuild
 
+permissions:
+  actions: read
+  contents: write
+  packages: write
+
 on:
   workflow_dispatch:
     inputs:

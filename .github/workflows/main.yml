@@ -1,5 +1,10 @@
 name: Release
 
+permissions:
+  actions: read
+  contents: write
+  packages: write
+
 on:
   push:
     tags:
