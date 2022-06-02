@@ -47,3 +47,13 @@ make update-build-image-tag
 ```
 
 Check the diff and make lint, webtest, etc and PR
+
+Regularly update pinned github actions
+using https://github.com/mheap/pin-github-action
+```
+npm install -g pin-github-action
+```
+for each action:
+```
+pin-github-action .github/workflows/...yml
+```

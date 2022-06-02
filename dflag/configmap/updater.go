@@ -41,6 +41,7 @@ type Updater struct {
 
 // Setup is a combination/shortcut for New+Initialize+Start.
 func Setup(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
+	log.Infof("Configmap flag value watching on %v", dirPath)
 	u, err := New(flagSet, dirPath)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,6 @@ func Setup(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
 	if err := u.Start(); err != nil {
 		return nil, err
 	}
-	log.Infof("Configmap flag value watching initialized on %v", dirPath)
 	return u, nil
 }
 
@@ -154,7 +154,7 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 }
 
 func (u *Updater) watchForUpdates() {
-	log.Infof("Starting watching")
+	log.Infof("Background thread watching %s now running", u.dirPath)
 	for {
 		select {
 		case event := <-u.watcher.Events:

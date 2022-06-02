@@ -46,8 +46,8 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
-	// GetIPAddress() get the ip address that DNS resolves to
-	GetIPAddress() string
+	// GetIPAddress() returns the pair hostname, ip address that DNS resolved to.
+	GetIPAddress() (string, string)
 }
 
 const (
@@ -400,8 +400,8 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient.
-func (c *Client) GetIPAddress() string {
-	return c.req.RemoteAddr
+func (c *Client) GetIPAddress() (string, string) {
+	return c.req.URL.Host, c.req.RemoteAddr
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -535,9 +535,9 @@ type FastClient struct {
 	tlsConfig    *tls.Config
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using fast client.
-func (c *FastClient) GetIPAddress() string {
-	return c.dest.String()
+// GetIPAddress get the hostname and ip address that DNS resolved to when using fast client.
+func (c *FastClient) GetIPAddress() (string, string) {
+	return c.host, c.dest.String()
 }
 
 // Close cleans up any resources used by FastClient.
