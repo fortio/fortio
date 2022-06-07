@@ -115,8 +115,8 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health localhost
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health -healthservice ping localhost
 # Do a failing on purpose check
-if [ !docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health -healthservice ping_down localhost ]; then
-  echo "*** grpcping -health to ping_down have exit with error/non zero status"
+if docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health -healthservice ping_down localhost; then
+  echo "*** Expecting grpcping -health to ping_down have exit with error/non zero status"
   exit 1
 fi
 # pprof should be there, no 404/error
