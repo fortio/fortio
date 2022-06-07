@@ -516,12 +516,19 @@ func grpcClient() {
 		count = 1
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
-	var err error
 	if *doHealthFlag {
-		_, err = fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions)
-	} else {
-		_, err = fgrpc.PingClientCall(host, count, httpOpts.PayloadString(), *pingDelayFlag, &httpOpts.TLSOptions)
+		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions)
+		if err != nil {
+			// already logged
+			os.Exit(1)
+		}
+		if (*status)["SERVING"] != int64(count) {
+			log.Errf("Unexpected SERVING count %d vs %d", (*status)["SERVING"], count)
+			os.Exit(1)
+		}
+		return
 	}
+	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadString(), *pingDelayFlag, &httpOpts.TLSOptions)
 	if err != nil {
 		// already logged
 		os.Exit(1)
