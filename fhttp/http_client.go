@@ -176,14 +176,15 @@ type HTTPOptions struct {
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
-	hostOverride     string
-	HTTPReqTimeOut   time.Duration // timeout value for http request
-	UserCredentials  string        // user credentials for authorization
-	ContentType      string        // indicates request body type, implies POST instead of GET
-	Payload          []byte        // body for http request, implies POST if not empty.
-	LogErrors        bool          // whether to log non 2xx code as they occur or not
-	ID               int           // id to use for logging (thread id when used as a runner)
-	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
+	hostOverride       string
+	HTTPReqTimeOut     time.Duration // timeout value for http request
+	UserCredentials    string        // user credentials for authorization
+	ContentType        string        // indicates request body type, implies POST instead of GET
+	Payload            []byte        // body for http request, implies POST if not empty.
+	LogErrors          bool          // whether to log non 2xx code as they occur or not
+	ID                 int           // id to use for logging (thread id when used as a runner)
+	SequentialWarmup   bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
+	MaxConnectionReuse [2]int        // range of max number of connection to reuse for each thread.
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -510,29 +511,30 @@ func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 
 // FastClient is a fast, lockfree single purpose http 1.0/1.1 client.
 type FastClient struct {
-	buffer       []byte
-	req          []byte
-	dest         net.Addr
-	socket       net.Conn
-	socketCount  int
-	size         int
-	code         int
-	errorCount   int
-	headerLen    int
-	url          string
-	host         string
-	hostname     string
-	port         string
-	http10       bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
-	keepAlive    bool
-	parseHeaders bool // don't bother in http/1.0
-	halfClose    bool // allow/do half close when keepAlive is false
-	reqTimeout   time.Duration
-	uuidMarkers  [][]byte
-	logErrors    bool
-	id           int
-	https        bool
-	tlsConfig    *tls.Config
+	buffer             []byte
+	req                []byte
+	dest               net.Addr
+	socket             net.Conn
+	socketCount        int
+	size               int
+	code               int
+	errorCount         int
+	headerLen          int
+	url                string
+	host               string
+	hostname           string
+	port               string
+	http10             bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
+	keepAlive          bool
+	parseHeaders       bool // don't bother in http/1.0
+	halfClose          bool // allow/do half close when keepAlive is false
+	reqTimeout         time.Duration
+	uuidMarkers        [][]byte
+	logErrors          bool
+	id                 int
+	https              bool
+	tlsConfig          *tls.Config
+	maxConnectionReuse [2]int
 }
 
 // GetIPAddress get the hostname and ip address that DNS resolved to when using fast client.
@@ -585,11 +587,12 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		log.Errf("[%d] Bad url %q : %v", o.ID, urlString, err)
 		return nil, err
 	}
+
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
-		https: o.https,
+		https: o.https, maxConnectionReuse: o.MaxConnectionReuse,
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()

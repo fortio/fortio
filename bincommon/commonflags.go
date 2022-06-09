@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"fortio.org/fortio/fhttp"
@@ -106,6 +107,7 @@ var (
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
+	maxConnectionReuseFlag = flag.String("max-connection-reuse", "", "Range of max number of connections to reuse for each thread, default to unlimited.")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -170,6 +172,28 @@ func TLSInsecure() bool {
 	return TLSInsecure
 }
 
+func parseMaxConnectionReuse(maxConnectionReuseFlag string) [2]int {
+	maxConnectionRange := strings.Split(maxConnectionReuseFlag, ":")
+	if len(maxConnectionRange) != 2 {
+		log.Errf("Fail to parse -max-connection-reuse flag, please follow the 'min:max' pattern")
+		os.Exit(1)
+	}
+
+	min, err := strconv.Atoi(maxConnectionRange[0])
+	if err != nil {
+		log.Errf("Fail to parse -max-connection-reuse flag, min value is not integer")
+		os.Exit(1)
+	}
+
+	max, err := strconv.Atoi(maxConnectionRange[1])
+	if err != nil {
+		log.Errf("Fail to parse -max-connection-reuse flag, max value is not integer")
+		os.Exit(1)
+	}
+
+	return [2]int{min, max}
+}
+
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between
 // fortio_main and fcurl.
 func SharedHTTPOptions() *fhttp.HTTPOptions {
@@ -196,5 +220,6 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Key = *KeyFlag
 	httpOpts.LogErrors = *LogErrorsFlag
 	httpOpts.SequentialWarmup = *warmupFlag
+	httpOpts.MaxConnectionReuse = parseMaxConnectionReuse(*maxConnectionReuseFlag)
 	return &httpOpts
 }
