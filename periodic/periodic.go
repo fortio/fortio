@@ -106,49 +106,49 @@ func NewAborter() *Aborter {
 // RunnerOptions are the parameters to the PeriodicRunner.
 type RunnerOptions struct {
 	// Type of run (to be copied into results)
-	RunType string
+	RunType string `json:"-"`
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
-	Runners []Runnable
+	Runners []Runnable `json:"-"`
 	// At which (target) rate to run the Runners across NumThreads.
-	QPS float64
+	QPS float64 `json:"qps"`
 	// How long to run the test for. Unless Exactly is specified.
-	Duration time.Duration
+	Duration time.Duration `json:"-"`
 	// Note that this actually maps to gorountines and not actual threads
 	// but threads seems like a more familiar name to use for non go users
 	// and in a benchmarking context
-	NumThreads  int
-	Percentiles []float64
-	Resolution  float64
+	NumThreads  int       `json:"numthreads"`
+	Percentiles []float64 `json:"-"`
+	Resolution  float64   `json:"-"`
 	// Where to write the textual version of the results, defaults to stdout
-	Out io.Writer
+	Out io.Writer `json:"-"`
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
-	Labels string
+	Labels string `json:"labels"`
 	// Aborter to interrupt a run. Will be created if not set/left nil. Or you
 	// can pass your own. It is very important this is a pointer and not a field
 	// as RunnerOptions themselves get copied while the channel and lock must
 	// stay unique (per run).
-	Stop *Aborter
+	Stop *Aborter `json:"-"`
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
-	Exactly int64
+	Exactly int64 `json:"exactly"`
 	// When multiple clients are used to generate requests, they tend to send
 	// requests very close to one another, causing a thundering herd problem
 	// Enabling jitter (+/-10%) allows these requests to be de-synchronized
 	// When enabled, it is only effective in the '-qps' mode.
-	Jitter bool
+	Jitter bool `json:"jitter"`
 	// When multiple clients are used to generate requests, they tend to send
 	// requests very close to one another, causing a thundering herd problem
 	// Enabling uniform causes the requests between connections to be uniformly staggered.
 	// When enabled, it is only effective in the '-qps' mode.
-	Uniform bool
+	Uniform bool `json:"uniform"`
 	// Optional run id; used by the server to identify runs.
-	RunID int64
+	RunID int64 `json:"runid"`
 	// Optional Offset Duration; to offset the histogram function duration
-	Offset time.Duration
+	Offset time.Duration `json:"-"`
 	// Optional AccessLogger to log every request made. See AddAccessLogger.
-	AccessLogger AccessLogger
+	AccessLogger AccessLogger `json:"-"`
 	// No catch-up: if true we will do exactly the requested QPS and not try to catch up if the target is temporarily slow.
-	NoCatchUp bool
+	NoCatchUp bool `json:"nocatchup"`
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.

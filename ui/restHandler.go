@@ -2,6 +2,7 @@ package ui // import "fortio.org/fortio/ui"
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +25,15 @@ import (
 type ErrorReply struct {
 	Error     string
 	Exception error
+}
+
+type StatusResults struct {
+	Results []StatusResult `json:"results"`
+}
+
+type StatusResult struct {
+	RunID  int64                   `json:"runid"`
+	Status *periodic.RunnerOptions `json:"status"`
 }
 
 // Error writes serialized ErrorReply to the writer.
@@ -313,9 +323,49 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
+
+	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
+	statusResult, err := StatusByRunID(runid)
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(fmt.Sprintf("{\"error\": %s}", err.Error())))
+	} else {
+		output, err := json.Marshal(statusResult)
+		if err != nil {
+			log.Fatalf("Unable to json serialize result: %v", err)
+		}
+		w.Write(output)
+	}
+}
+
+// StatusByRunID returns the periodic.RunnerOptions into a StatusResults.
+func StatusByRunID(runid int64) (*StatusResults, error) {
+	statusResults := new(StatusResults)
+	if runid <= 0 {
+		for _, v := range runs {
+			statusResult := StatusResult{
+				RunID:  v.RunID,
+				Status: v,
+			}
+			statusResults.Results = append(statusResults.Results, statusResult)
+		}
+		return statusResults, nil
+	}
+
+	v, found := runs[runid]
+	if found {
+		statusResult := StatusResult{
+			RunID:  v.RunID,
+			Status: v,
+		}
+		statusResults.Results = append(statusResults.Results, statusResult)
+		return statusResults, nil
+	}
+
+	return statusResults, errors.New("runid not found")
 }
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
