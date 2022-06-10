@@ -27,10 +27,12 @@ type ErrorReply struct {
 	Exception error
 }
 
+// StatusResults contains multiple StatusResult.
 type StatusResults struct {
 	Results []StatusResult `json:"results"`
 }
 
+// StatusResult used to output the status from periodic.RunnerOptions and include the RunID.
 type StatusResult struct {
 	RunID  int64                   `json:"runid"`
 	Status *periodic.RunnerOptions `json:"status"`
