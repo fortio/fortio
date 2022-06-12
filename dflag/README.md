@@ -11,6 +11,8 @@ Dynamic, thread-safe `flag` variables that can be modified at runtime through fi
 or [Kubernetes](http://kubernetes.io) configmap changes.
 
 For a similar project for JVM languages (Java, scala) see [java-flagz](https://github.com/mwitkow/java-flagz)
+
+Now rewritten and simplified and extended thanks to Go 1.18 generics (use versions prior to 1.33 if you want to use the older per type implementation)
  
 ## This sounds crazy. Why?
 
