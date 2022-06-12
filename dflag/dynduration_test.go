@@ -14,6 +14,7 @@ func TestDynDuration_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	dynFlag := DynDuration(set, "some_duration_1", 5*time.Second, "Use it or lose it")
 	assert.Equal(t, 5*time.Second, dynFlag.Get(), "value must be default after create")
+	assert.Equal(t, false, dynFlag.IsBoolFlag(), "this is not a boolean flag")
 	err := set.Set("some_duration_1", "10h\n")
 	assert.NoError(t, err, "setting value must succeed")
 	assert.Equal(t, 10*time.Hour, dynFlag.Get(), "value must be set after update")

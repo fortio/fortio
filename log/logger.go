@@ -84,12 +84,18 @@ func init() {
 	}
 	// virtual dynLevel flag that maps back to actual level
 	_ = dflag.DynString(flag.CommandLine, "loglevel", GetLogLevel().String(),
-		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithValidator(func(newStr string) error {
-		_, err := ValidateLevel(newStr)
-		return err
-	}).WithSyncNotifier(func(old, newStr string) {
-		_ = setLogLevelStr(newStr) // will succeed as we just validated it first
-	})
+		fmt.Sprintf("loglevel, one of %v", levelToStrA)).WithInputMutator(
+		func(inp string) string {
+			// The validation map has full lowercase and capitalized first letter version
+			return strings.ToLower(strings.TrimSpace(inp))
+		}).WithValidator(
+		func(newStr string) error {
+			_, err := ValidateLevel(newStr)
+			return err
+		}).WithSyncNotifier(
+		func(old, newStr string) {
+			_ = setLogLevelStr(newStr) // will succeed as we just validated it first
+		})
 	log.SetFlags(log.Ltime)
 }
 
@@ -106,7 +112,7 @@ func (l Level) String() string {
 func ValidateLevel(str string) (Level, error) {
 	var lvl Level
 	var ok bool
-	if lvl, ok = levelToStrM[strings.TrimSpace(str)]; !ok {
+	if lvl, ok = levelToStrM[str]; !ok {
 		return -1, fmt.Errorf("should be one of %v", levelToStrA)
 	}
 	return lvl, nil

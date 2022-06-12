@@ -36,7 +36,7 @@ type updaterTestSuite struct {
 
 	flagSet   *flag.FlagSet
 	staticInt *int
-	dynInt    *dflag.DynInt64Value
+	dynInt    *dflag.DynValue[int64]
 
 	updater *configmap.Updater
 }
