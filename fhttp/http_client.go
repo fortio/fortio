@@ -184,7 +184,7 @@ type HTTPOptions struct {
 	LogErrors          bool          // whether to log non 2xx code as they occur or not
 	ID                 int           // id to use for logging (thread id when used as a runner)
 	SequentialWarmup   bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
-	MaxConnectionReuse [2]int        // range of max number of connection to reuse for each thread.
+	MaxConnectionReuse []int         // range of max number of connection to reuse for each thread.
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -534,7 +534,8 @@ type FastClient struct {
 	id                 int
 	https              bool
 	tlsConfig          *tls.Config
-	maxConnectionReuse [2]int
+	maxConnectionReuse int
+	currentConnection  int
 }
 
 // GetIPAddress get the hostname and ip address that DNS resolved to when using fast client.
@@ -588,11 +589,17 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		return nil, err
 	}
 
+	// Randomly assign a max connection reuse threshold to this thread.
+	var maxConnectionReuse int
+	if len(o.MaxConnectionReuse) == 2 {
+		maxConnectionReuse = o.MaxConnectionReuse[0] + rand.Intn(o.MaxConnectionReuse[1]-o.MaxConnectionReuse[0]+1)
+	}
+
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
-		https: o.https, maxConnectionReuse: o.MaxConnectionReuse,
+		https: o.https, maxConnectionReuse: maxConnectionReuse,
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -712,13 +719,24 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	c.headerLen = 0
 	// Connect or reuse existing socket:
 	conn := c.socket
-	reuse := (conn != nil)
+
+	reuse := conn != nil
+	if c.maxConnectionReuse != 0 && c.currentConnection >= c.maxConnectionReuse {
+		reuse = false
+		c.currentConnection = 0
+		log.LogVf("[%d] Thread reach the threshold for max connection reuse of %d, force create new connection",
+			c.id, c.maxConnectionReuse)
+	}
+
 	if !reuse {
 		conn = c.connect()
 		if conn == nil {
 			return c.returnRes()
 		}
 	} else {
+		if c.maxConnectionReuse != 0 {
+			c.currentConnection++
+		}
 		log.Debugf("[%d] Reusing socket %v", c.id, c.dest)
 	}
 	c.socket = nil // because of error returns and single retry
