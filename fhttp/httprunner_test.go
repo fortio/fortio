@@ -471,6 +471,38 @@ func TestAbortOn(t *testing.T) {
 	}
 }
 
+func TestMaxConnectionReuse(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/foo/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/foo/", addr.Port)
+	opts := HTTPRunnerOptions{}
+	opts.Init(url)
+	opts.QPS = 16
+	opts.URL = url
+	opts.NumThreads = 1
+	opts.Duration = 1 * time.Second
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.SocketCount != opts.NumThreads {
+		t.Errorf("Expecting same connection to be reused when no -max-connection-reuse flag is set")
+	}
+
+	opts.MaxConnectionReuse = []int{4, 4}
+	expectedSocketReuse := (int)(opts.QPS) / opts.MaxConnectionReuse[0]
+	res, err = RunHTTPTest(&opts)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.SocketCount != expectedSocketReuse {
+		t.Errorf("Expecting %d socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+	}
+}
+
 func getIPUsageCount(ipCountMap map[string]int) (count int) {
 	for _, v := range ipCountMap {
 		count += v
