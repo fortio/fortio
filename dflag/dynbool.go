@@ -7,9 +7,9 @@ import (
 	"flag"
 )
 
-// type DynBoolValue DynValue[bool]
+type DynBoolValue = DynValue[bool] // For backward compatibility
 
 // DynBool creates a `Flag` that represents `bool` which is safe to change dynamically at runtime.
-func DynBool(flagSet *flag.FlagSet, name string, value bool, usage string) *DynValue[bool] {
+func DynBool(flagSet *flag.FlagSet, name string, value bool, usage string) *DynBoolValue {
 	return Dyn(flagSet, name, value, usage)
 }

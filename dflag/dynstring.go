@@ -9,8 +9,10 @@ import (
 	"regexp"
 )
 
+type DynStringValue = DynValue[string] // For backward compatibility
+
 // DynString creates a `Flag` that represents `string` which is safe to change dynamically at runtime.
-func DynString(flagSet *flag.FlagSet, name string, value string, usage string) *DynValue[string] {
+func DynString(flagSet *flag.FlagSet, name string, value string, usage string) *DynStringValue {
 	return Dyn(flagSet, name, value, usage)
 }
 

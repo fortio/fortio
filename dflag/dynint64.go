@@ -7,8 +7,10 @@ import (
 	"flag"
 )
 
+type DynInt64Value = DynValue[int64] // For backward compatibility
+
 // DynInt64 creates a `Flag` that represents `int64` which is safe to change dynamically at runtime.
-func DynInt64(flagSet *flag.FlagSet, name string, value int64, usage string) *DynValue[int64] {
+func DynInt64(flagSet *flag.FlagSet, name string, value int64, usage string) *DynInt64Value {
 	return Dyn(flagSet, name, value, usage)
 }
 
