@@ -44,13 +44,37 @@ func IsFlagDynamic(f *flag.Flag) bool {
 
 // ---- Generics section ---
 
+type Set[T comparable] map[T]struct{}
+
+// ValidateDynSetMinElements validates that the given Set has at least x elements.
+func ValidateDynSetMinElements[T comparable](count int) func(Set[T]) error {
+	return func(value Set[T]) error {
+		if len(value) < count {
+			return fmt.Errorf("value set %+v must have at least %v elements", value, count)
+		}
+		return nil
+	}
+}
+
+// ValidateDynSetMinElements validates that the given Set has at least x elements.
+func ValidateDynSliceMinElements[T any](count int) func([]T) error {
+	return func(value []T) error {
+		if len(value) < count {
+			return fmt.Errorf("value slice %+v must have at least %v elements", value, count)
+		}
+		return nil
+	}
+}
+
 type DynValueTypes interface {
-	bool | time.Duration | float64 | int64 | string
+	bool | time.Duration | float64 | int64 | string | []string | Set[string]
 }
 
 type DynValue[T DynValueTypes] struct {
 	DynamicFlagValueTag
 	av           atomic.Value
+	flagName     string
+	flagSet      *flag.FlagSet
 	ready        bool
 	syncNotifier bool
 	validator    func(T) error
@@ -60,7 +84,7 @@ type DynValue[T DynValueTypes] struct {
 }
 
 func Dyn[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage string) *DynValue[T] {
-	dynValue := &DynValue[T]{}
+	dynValue := &DynValue[T]{flagName: name, flagSet: flagSet}
 	dynValue.av.Store(value)
 	dynValue.inpMutator = strings.TrimSpace // default so parsing of numbers etc works well
 	dynValue.ready = true
@@ -91,6 +115,12 @@ func (d *DynValue[T]) Get() T {
 	return d.av.Load().(T)
 }
 
+// ComaStringToSlice converts a coma separated string to a slice.
+func ComaStringToSlice(input string) []string {
+	// originally the heavy handed csv.NewReader(strings.NewReader(input)).Read()
+	return strings.Split(input, ",")
+}
+
 // Parse converts from string to our supported types (it's the missing generics strconv.Parse[T]).
 func Parse[T any](input string) (val T, err error) {
 	switch any(val).(type) {
@@ -112,10 +142,27 @@ func Parse[T any](input string) (val T, err error) {
 		val = any(v).(T)
 	case string:
 		val = any(input).(T)
+	case []string:
+		var v []string
+		v = ComaStringToSlice(input)
+		val = any(v).(T)
+	case Set[string]:
+		var v []string
+		v = ComaStringToSlice(input)
+		val = any(SetFromSlice(v)).(T)
 	default:
 		err = fmt.Errorf("unexpected type %T", val)
 	}
 	return
+}
+
+// SetFromSlice constructs a Set from a slice.
+func SetFromSlice[T comparable](items []T) Set[T] {
+	res := map[T]struct{}{}
+	for _, item := range items {
+		res[item] = struct{}{}
+	}
+	return res
 }
 
 // Set updates the value from a string representation in a thread-safe manner.
@@ -195,7 +242,17 @@ func (d *DynValue[T]) WithInputMutator(mutator func(inp string) string) *DynValu
 	return d
 }
 
-// ValidateDynFloat64Range returns a validator that checks if the float value is in range.
+// WithFileFlag adds an companion <name>_path flag that allows this value to be read from a file with dflag.ReadFileFlags.
+//
+// This is useful for reading large JSON files as flags. If the companion flag's value (whether default or overwritten)
+// is set to empty string, nothing is read.
+//
+// Flag value reads are subject to notifiers and validators.
+func (d *DynValue[T]) WithFileFlag(defaultPath string) (*DynValue[T], *FileReadValue) {
+	return d, FileReadFlag(d.flagSet, d.flagName, defaultPath)
+}
+
+// ValidateRange returns a validator that checks if the value is in the given range.
 func ValidateRange[T constraints.Ordered](fromInclusive T, toInclusive T) func(T) error {
 	return func(value T) error {
 		if value > toInclusive || value < fromInclusive {

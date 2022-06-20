@@ -35,6 +35,7 @@ func TestDynString_InputMutator(t *testing.T) {
 	assert.NoError(t, err, "setting value must succeed")
 	assert.Equal(t, "X"+withSpaces+"Y", dynFlagB.Get(), "value should be changed with X...Y WithInputMutator")
 	assert.Equal(t, "dyn_string", dynFlagA.Type(), "type name should be dyn_string")
+	assert.False(t, dynFlagA.IsBoolFlag())
 }
 
 func TestDynString_IsMarkedDynamic(t *testing.T) {
