@@ -153,7 +153,7 @@ func Parse[T any](input string) (val T, err error) {
 	default:
 		err = fmt.Errorf("unexpected type %T", val)
 	}
-	return
+	return // nolint: nakedret // we return the variables defined in the signature.
 }
 
 // SetFromSlice constructs a Set from a slice.
