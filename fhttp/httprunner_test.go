@@ -477,10 +477,10 @@ func TestMaxConnectionReuse(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/foo/", addr.Port)
 	opts := HTTPRunnerOptions{}
 	opts.Init(url)
-	opts.QPS = 16
+	opts.QPS = 10
 	opts.URL = url
 	opts.NumThreads = 1
-	opts.Duration = 1 * time.Second
+	opts.Exactly = 10
 	res, err := RunHTTPTest(&opts)
 	if err != nil {
 		t.Error(err)
@@ -490,8 +490,8 @@ func TestMaxConnectionReuse(t *testing.T) {
 		t.Errorf("Expecting same connection to be reused when no -max-connection-reuse flag is set")
 	}
 
-	opts.MaxConnectionReuse = []int{4, 4}
-	expectedSocketReuse := (int)(opts.QPS) / opts.MaxConnectionReuse[0]
+	opts.ConnReuseRange = [2]int{1, 1}
+	expectedSocketReuse := (int)(opts.QPS) / opts.ConnReuseRange[0]
 	res, err = RunHTTPTest(&opts)
 
 	if err != nil {

@@ -176,15 +176,15 @@ type HTTPOptions struct {
 	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
-	hostOverride       string
-	HTTPReqTimeOut     time.Duration // timeout value for http request
-	UserCredentials    string        // user credentials for authorization
-	ContentType        string        // indicates request body type, implies POST instead of GET
-	Payload            []byte        // body for http request, implies POST if not empty.
-	LogErrors          bool          // whether to log non 2xx code as they occur or not
-	ID                 int           // id to use for logging (thread id when used as a runner)
-	SequentialWarmup   bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
-	MaxConnectionReuse []int         // range of max number of connection to reuse for each thread.
+	hostOverride     string
+	HTTPReqTimeOut   time.Duration // timeout value for http request
+	UserCredentials  string        // user credentials for authorization
+	ContentType      string        // indicates request body type, implies POST instead of GET
+	Payload          []byte        // body for http request, implies POST if not empty.
+	LogErrors        bool          // whether to log non 2xx code as they occur or not
+	ID               int           // id to use for logging (thread id when used as a runner)
+	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
+	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -511,31 +511,33 @@ func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 
 // FastClient is a fast, lockfree single purpose http 1.0/1.1 client.
 type FastClient struct {
-	buffer             []byte
-	req                []byte
-	dest               net.Addr
-	socket             net.Conn
-	socketCount        int
-	size               int
-	code               int
-	errorCount         int
-	headerLen          int
-	url                string
-	host               string
-	hostname           string
-	port               string
-	http10             bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
-	keepAlive          bool
-	parseHeaders       bool // don't bother in http/1.0
-	halfClose          bool // allow/do half close when keepAlive is false
-	reqTimeout         time.Duration
-	uuidMarkers        [][]byte
-	logErrors          bool
-	id                 int
-	https              bool
-	tlsConfig          *tls.Config
-	maxConnectionReuse int
-	currentConnection  int
+	buffer       []byte
+	req          []byte
+	dest         net.Addr
+	socket       net.Conn
+	socketCount  int
+	size         int
+	code         int
+	errorCount   int
+	headerLen    int
+	url          string
+	host         string
+	hostname     string
+	port         string
+	http10       bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
+	keepAlive    bool
+	parseHeaders bool // don't bother in http/1.0
+	halfClose    bool // allow/do half close when keepAlive is false
+	reqTimeout   time.Duration
+	uuidMarkers  [][]byte
+	logErrors    bool
+	id           int
+	https        bool
+	tlsConfig    *tls.Config
+	// range of connection reuse threshold that current thread will choose from
+	connReuseRange [2]int
+	connReuse      int
+	reuseCount     int
 }
 
 // GetIPAddress get the hostname and ip address that DNS resolved to when using fast client.
@@ -590,16 +592,16 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 	}
 
 	// Randomly assign a max connection reuse threshold to this thread.
-	var maxConnectionReuse int
-	if len(o.MaxConnectionReuse) == 2 {
-		maxConnectionReuse = o.MaxConnectionReuse[0] + rand.Intn(o.MaxConnectionReuse[1]-o.MaxConnectionReuse[0]+1)
+	var connReuse int
+	if o.ConnReuseRange != [2]int{0, 0} {
+		connReuse = generateReuseThreshold(o.ConnReuseRange[0], o.ConnReuseRange[1])
 	}
 
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
-		https: o.https, maxConnectionReuse: maxConnectionReuse,
+		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -720,23 +722,22 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	// Connect or reuse existing socket:
 	conn := c.socket
 
-	reuse := conn != nil
-	if c.maxConnectionReuse != 0 && c.currentConnection >= c.maxConnectionReuse {
-		reuse = false
-		c.currentConnection = 0
-		log.LogVf("[%d] Thread reach the threshold for max connection reuse of %d, force create new connection",
-			c.id, c.maxConnectionReuse)
+	canReuse := conn != nil
+	if canReuse && c.reachedReuseThreshold() {
+		canReuse = false
+		c.connReuse = generateReuseThreshold(c.connReuseRange[0], c.connReuseRange[1])
+		log.LogVf("[%d] Thread reach the threshold for max connection canReuse of %d, force create new connection",
+			c.id, c.connReuse)
 	}
 
-	if !reuse {
+	if !canReuse {
 		conn = c.connect()
+		c.reuseCount = 1
 		if conn == nil {
 			return c.returnRes()
 		}
 	} else {
-		if c.maxConnectionReuse != 0 {
-			c.currentConnection++
-		}
+		c.reuseCount++
 		log.Debugf("[%d] Reusing socket %v", c.id, c.dest)
 	}
 	c.socket = nil // because of error returns and single retry
@@ -750,7 +751,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	}
 	n, err := conn.Write(req)
 	if err != nil || conErr != nil {
-		if reuse {
+		if canReuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
 			log.Infof("[%d] Closing dead socket %v (%v)", c.id, c.dest, err)
 			conn.Close()
@@ -777,7 +778,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		}
 	}
 	// Read the response:
-	c.readResponse(conn, reuse)
+	c.readResponse(conn, canReuse)
 	if c.code == RetryOnce {
 		// Special "eof on reused socket" code
 		return c.Fetch() // recurse once
@@ -971,7 +972,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		}
 	} // end of big for loop
 	// Figure out whether to keep or close the socket:
-	if keepAlive && codeIsOK(c.code) {
+	if keepAlive && codeIsOK(c.code) && !c.reachedReuseThreshold() {
 		c.socket = conn // keep the open socket
 	} else {
 		if err := conn.Close(); err != nil {
@@ -983,7 +984,27 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	}
 }
 
+// Check if current thread reached the connection reuse threshold.
+func (c *FastClient) reachedReuseThreshold() bool {
+	if c.connReuse != 0 && c.reuseCount >= c.connReuse {
+		log.LogVf("[%d] Thread reach the threshold for max connection reuse of %d, force create new connection",
+			c.id, c.connReuse)
+		return true
+	}
+
+	return false
+}
+
 func generateUUID() string {
 	// We use math random instead of crypto random generator due to performance.
 	return uuid.Must(uuid.NewRandomFromReader(rander)).String()
+}
+
+// Generate reuse threshold based on the min and max value in the flag.
+func generateReuseThreshold(min int, max int) int {
+	if min == max {
+		return min
+	}
+
+	return min + rand.Intn(max-min+1)
 }
