@@ -56,7 +56,7 @@ func ValidateDynSetMinElements[T comparable](count int) func(Set[T]) error {
 	}
 }
 
-// ValidateDynSetMinElements validates that the given Set has at least x elements.
+// ValidateDynSliceMinElements validates that the given Set has at least x elements.
 func ValidateDynSliceMinElements[T any](count int) func([]T) error {
 	return func(value []T) error {
 		if len(value) < count {
@@ -67,7 +67,7 @@ func ValidateDynSliceMinElements[T any](count int) func([]T) error {
 }
 
 type DynValueTypes interface {
-	bool | time.Duration | float64 | int64 | string | []string | Set[string]
+	bool | time.Duration | float64 | int64 | string | []string | Set[string] | interface{}
 }
 
 type DynValue[T DynValueTypes] struct {
@@ -84,12 +84,17 @@ type DynValue[T DynValueTypes] struct {
 }
 
 func Dyn[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage string) *DynValue[T] {
+	dynValue := dynInternal(flagSet, name, value, usage)
+	flagSet.Var(dynValue, name, usage)
+	flagSet.Lookup(name).DefValue = fmt.Sprintf("%v", value)
+	return dynValue
+}
+
+func dynInternal[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage string) *DynValue[T] {
 	dynValue := &DynValue[T]{flagName: name, flagSet: flagSet}
 	dynValue.av.Store(value)
 	dynValue.inpMutator = strings.TrimSpace // default so parsing of numbers etc works well
 	dynValue.ready = true
-	flagSet.Var(dynValue, name, usage)
-	flagSet.Lookup(name).DefValue = fmt.Sprintf("%v", value)
 	return dynValue
 }
 
@@ -151,6 +156,7 @@ func Parse[T any](input string) (val T, err error) {
 		v = ComaStringToSlice(input)
 		val = any(SetFromSlice(v)).(T)
 	default:
+		// JSON Set() and thus Parse() is handled in dynjson.go
 		err = fmt.Errorf("unexpected type %T", val)
 	}
 	return // nolint: nakedret // we return the variables defined in the signature.
@@ -178,6 +184,10 @@ func (d *DynValue[T]) Set(rawInput string) error {
 	if err != nil {
 		return err
 	}
+	return d.PostSet(val)
+}
+
+func (d *DynValue[T]) PostSet(val T) error {
 	if d.mutator != nil {
 		val = d.mutator(val)
 	}
