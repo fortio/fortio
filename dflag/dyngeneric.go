@@ -140,8 +140,12 @@ func CommaStringToSlice(input string) []string {
 	return strings.Split(input, ",")
 }
 
-// Parse converts from string to our supported types (it's the missing generics strconv.Parse[T]).
-func Parse[T any](input string) (val T, err error) {
+// Parse converts from string to our supported types (it's the beginning of the missing generics strconv.Parse[T]).
+func Parse[T DynValueTypes](input string) (val T, err error) {
+	return parse[T](input)
+}
+
+func parse[T any](input string) (val T, err error) {
 	switch v := any(&val).(type) {
 	case *bool:
 		*v, err = strconv.ParseBool(input)
@@ -182,7 +186,7 @@ func (d *DynValue[T]) Set(rawInput string) error {
 	if d.inpMutator != nil {
 		input = d.inpMutator(rawInput)
 	}
-	val, err := Parse[T](input)
+	val, err := parse[T](input)
 	if err != nil {
 		return err
 	}
