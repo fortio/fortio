@@ -426,7 +426,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Service:            *healthSvcFlag,
 			Streams:            *streamsFlag,
 			AllowInitialErrors: *allowInitialErrorsFlag,
-			Payload:            httpOpts.PayloadString(),
+			Payload:            httpOpts.PayloadUTF8(),
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
 		}
@@ -528,7 +528,7 @@ func grpcClient() {
 		}
 		return
 	}
-	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadString(), *pingDelayFlag, &httpOpts.TLSOptions)
+	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadUTF8(), *pingDelayFlag, &httpOpts.TLSOptions)
 	if err != nil {
 		// already logged
 		os.Exit(1)
