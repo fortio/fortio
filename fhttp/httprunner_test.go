@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -477,29 +478,23 @@ func TestMaxConnectionReuse(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/foo/", addr.Port)
 	opts := HTTPRunnerOptions{}
 	opts.Init(url)
-	opts.QPS = 10
+	opts.QPS = 50
 	opts.URL = url
 	opts.NumThreads = 1
 	opts.Exactly = 10
-	res, err := RunHTTPTest(&opts)
-	if err != nil {
-		t.Error(err)
-	}
 
-	if res.SocketCount != opts.NumThreads {
-		t.Errorf("Expecting same connection to be reused when no -max-connection-reuse flag is set")
-	}
+	for i := 1; i <= 10; i++ {
+		opts.ConnReuseRange = [2]int{i, i}
+		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
+		res, err := RunHTTPTest(&opts)
 
-	opts.ConnReuseRange = [2]int{1, 1}
-	expectedSocketReuse := (int)(opts.QPS) / opts.ConnReuseRange[0]
-	res, err = RunHTTPTest(&opts)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	if res.SocketCount != expectedSocketReuse {
-		t.Errorf("Expecting %d socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+		if res.SocketCount != (int)(expectedSocketReuse) {
+			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+		}
 	}
 }
 
