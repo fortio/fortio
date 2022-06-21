@@ -24,6 +24,13 @@ func TestDynInt64_IsMarkedDynamic(t *testing.T) {
 	assert.True(t, IsFlagDynamic(set.Lookup("some_int_1")))
 }
 
+func TestDynInt64_Mutator(t *testing.T) {
+	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
+	dynFlag := DynInt64(set, "int_2x", 0, "...").WithValueMutator(func(v int64) int64 { return 2 * v })
+	set.Set("int_2x", "  \t42\n")
+	assert.Equal(t, int64(84), dynFlag.Get(), "value must be 2x after create")
+}
+
 func TestDynInt64_FiresValidators(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	DynInt64(set, "some_int_1", 13371337, "Use it or lose it").WithValidator(ValidateDynInt64Range(0, 2000))

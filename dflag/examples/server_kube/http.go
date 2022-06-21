@@ -24,10 +24,11 @@ var (
 
 	staticInt = flag.Int("example_my_static_int", 1337, "Something integery here.")
 
-	dynStr = dflag.DynString(flag.CommandLine, "example_my_dynamic_string", "initial_value", "Something interesting here.")
-	dynInt = dflag.DynInt64(flag.CommandLine, "example_my_dynamic_int", 1337, "Something integery here.")
-
-	dynBool1 = dflag.DynBool(flag.CommandLine, "example_bool1", false, "Something true... or false. Starting false.")
+	// With generics typing
+	dynStr   = dflag.Dyn(flag.CommandLine, "example_my_dynamic_string", "initial_value", "Something interesting here.")
+	dynInt   = dflag.Dyn(flag.CommandLine, "example_my_dynamic_int", int64(1337), "Something integery here.")
+	dynBool1 = dflag.Dyn(flag.CommandLine, "example_bool1", false, "Something true... or false. Starting false.")
+	// Or explicit:
 	dynBool2 = dflag.DynBool(flag.CommandLine, "example_bool2", true, "Something true... or false. Starting true.")
 
 	// This is an example of a dynamically-modifiable JSON flag of an arbitrary type.

@@ -14,6 +14,7 @@ func TestDynBool_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	dynFlag := DynBool(set, "some_bool_1", true, "Use it or lose it")
 	assert.Equal(t, true, dynFlag.Get(), "value must be default after create")
+	assert.Equal(t, true, dynFlag.IsBoolFlag(), "this is a boolean flag")
 	err := set.Set("some_bool_1", "false")
 	assert.NoError(t, err, "setting value must succeed")
 	assert.Equal(t, false, dynFlag.Get(), "value must be set after update")
@@ -55,6 +56,19 @@ func TestDynBool_FiresNotifier(t *testing.T) {
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
+}
+
+func TestDynBool_SyncNotifier(t *testing.T) {
+	called := false
+	notifier := func(oldVal bool, newVal bool) {
+		assert.EqualValues(t, true, oldVal, "old value in notify must match previous value")
+		assert.EqualValues(t, false, newVal, "new value in notify must match set value")
+		called = true
+	}
+	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
+	DynBool(set, "some_bool_1", true, "Use it or lose it").WithSyncNotifier(notifier)
+	set.Set("some_bool_1", "false")
+	assert.True(t, called, "called")
 }
 
 func Benchmark_Bool_Dyn_Get(b *testing.B) {

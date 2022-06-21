@@ -17,6 +17,7 @@ package log // import "fortio.org/fortio/log"
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"log"
 	"testing"
 )
@@ -37,7 +38,7 @@ func TestLoggerFilenameLine(t *testing.T) {
 	}
 	w.Flush()
 	actual := b.String()
-	expected := "D logger_test.go:36-prefix-test\n"
+	expected := "D logger_test.go:37-prefix-test\n"
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
 	}
@@ -54,6 +55,22 @@ func TestSetLevel(t *testing.T) {
 		t.Errorf("unexpected level after setting debug %v", prev)
 	}
 	err = setLogLevelStr("bogus")
+	if err == nil {
+		t.Errorf("Didn't get an error setting bogus level")
+	}
+}
+
+func TestSetLevelFLag(t *testing.T) {
+	_ = SetLogLevel(Info)
+	err := flag.CommandLine.Set("loglevel", "  deBUG\n")
+	if err != nil {
+		t.Errorf("unexpected error for valid level %v", err)
+	}
+	prev := SetLogLevel(Info)
+	if prev != Debug {
+		t.Errorf("unexpected level after setting debug %v", prev)
+	}
+	err = flag.CommandLine.Set("loglevel", "bogus")
 	if err == nil {
 		t.Errorf("Didn't get an error setting bogus level")
 	}
