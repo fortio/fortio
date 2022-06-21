@@ -161,7 +161,7 @@ func Parse[T any](input string) (val T, err error) {
 		// JSON Set() and thus Parse() is handled in dynjson.go
 		err = fmt.Errorf("unexpected type %T", val)
 	}
-	return // nolint: nakedret // we return the variables defined in the signature.
+	return
 }
 
 // SetFromSlice constructs a Set from a slice.
