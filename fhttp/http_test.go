@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -90,6 +91,18 @@ func TestNewHTTPRequest(t *testing.T) {
 		if tst.ok != (r != nil) {
 			t.Errorf("Got %v, expecting ok %v for url '%s'", r, tst.ok, tst.url)
 		}
+	}
+}
+
+func TestPayloadUTF8(t *testing.T) {
+	opts := HTTPOptions{}
+	opts.Payload = fnet.GenerateRandomPayload(1024)
+	res := opts.PayloadUTF8()
+	if l := len(res); l != 1024 {
+		t.Errorf("Unexpected length %d", l)
+	}
+	if !utf8.ValidString(res) {
+		t.Errorf("PayloadUTF8() not returning valid utf-8 string")
 	}
 }
 
