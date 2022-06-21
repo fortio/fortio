@@ -27,7 +27,7 @@ func (d *Testify) ObjectsAreEqualValues(a, b interface{}) bool {
 // Testify is a short replacement for github.com/stretchr/testify/assert.
 type Testify struct{}
 
-// Get the right line numbers
+// Errorf is a local variant to get the right line numbers.
 func Errorf(t *testing.T, format string, rest ...interface{}) {
 	_, file, line, _ := runtime.Caller(2)
 	file = file[strings.LastIndex(file, "/")+1:]

@@ -42,16 +42,21 @@ func TestDynFlagPrintDefaultsNotCrashing(t *testing.T) {
 			if strings.Contains(line, "value") {
 				t.Errorf("line %q should not have value (boolean flag)", line)
 			}
-		} else if strings.Contains(line, "-int_with_named_type") {
+			continue
+		}
+		if strings.Contains(line, "-int_with_named_type") {
 			good++
 			if !strings.Contains(line, "some") {
 				t.Errorf("line %q should use the `` named param", line)
 			}
-		} else if strings.Contains(line, "-f ") {
+			continue
+		}
+		if strings.Contains(line, "-f ") {
 			good++
 			if !strings.Contains(line, "value") {
 				t.Errorf("line %q should have \"value\" to show flag value is needed", line)
 			}
+			continue
 		}
 	}
 	if good != 3 {
