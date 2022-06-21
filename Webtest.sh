@@ -106,14 +106,19 @@ docker exec $DOCKERNAME $FORTIO_BIN_PATH load -H Foo:Bar -H Blah:Blah -qps 1 -t 
 # Do a grpcping
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
 # Do a grpcping to a scheme-prefixed destination. Fortio should append port number
-# re-enable once we get https://grpc.fortio.org:/ fully working with https too
-# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping https://grpc.fortio.org
+# Do a TLS grpcping. Fortio.org should use valid cert.
+docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping https://grpc.fortio.org
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping grpc.fortio.org # uses default non tls 8079
-# Do a grpcping with -cert flag. Fortio should use valid cert.
-# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT grpc.fortio.org:443
-# docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -cacert $CERT https://grpc.fortio.org
 # Do a local grpcping. Fortio should append default grpc port number to destination
 docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping localhost
+# Do a local health ping
+docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health localhost
+docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health -healthservice ping localhost
+# Do a failing on purpose check
+if docker exec $DOCKERNAME $FORTIO_BIN_PATH grpcping -health -healthservice ping_down localhost; then
+  echo "*** Expecting grpcping -health to ping_down have exit with error/non zero status"
+  exit 1
+fi
 # pprof should be there, no 404/error
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile

@@ -51,13 +51,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.32.3/fortio-linux_amd64-1.32.3.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.33.0/fortio-linux_amd64-1.33.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.32.3/fortio_1.32.3_amd64.deb
-dpkg -i fortio_1.32.3_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.33.0/fortio_1.33.0_amd64.deb
+dpkg -i fortio_1.33.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.32.3/fortio-1.32.3-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.33.0/fortio-1.33.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -67,7 +67,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.32.3/fortio_win_1.32.3.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.33.0/fortio_win_1.33.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -115,7 +115,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.32.3 usage:
+Φορτίο 1.33.0 usage:
 where command is one of: load (load testing), server (starts ui, http-echo,
  redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
  server), report (report only UI server), redirect (only the redirect server),
