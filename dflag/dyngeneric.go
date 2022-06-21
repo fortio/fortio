@@ -42,6 +42,12 @@ func IsFlagDynamic(f *flag.Flag) bool {
 	return df.IsDynamicFlag() // will clearly return true if it exists
 }
 
+type DynamicBoolValueTag struct{}
+
+func (*DynamicBoolValueTag) IsBoolFlag() bool {
+	return true
+}
+
 // ---- Generics section ---
 
 type Set[T comparable] map[T]struct{}
@@ -84,21 +90,26 @@ type DynValue[T DynValueTypes] struct {
 }
 
 func Dyn[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage string) *DynValue[T] {
-	dynValue := dynInternal(flagSet, name, value, usage)
-	flagSet.Var(dynValue, name, usage)
+	dynValue := DynValue[T]{}
+	dynInit(&dynValue, flagSet, name, value, usage)
+	flagSet.Var(&dynValue, name, usage)
 	flagSet.Lookup(name).DefValue = fmt.Sprintf("%v", value)
-	return dynValue
+	return &dynValue
 }
 
-func dynInternal[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage string) *DynValue[T] {
-	dynValue := &DynValue[T]{flagName: name, flagSet: flagSet}
+func dynInit[T DynValueTypes](dynValue *DynValue[T], flagSet *flag.FlagSet, name string, value T, usage string) {
+	dynValue.flagName = name
+	dynValue.flagSet = flagSet
 	dynValue.av.Store(value)
 	dynValue.inpMutator = strings.TrimSpace // default so parsing of numbers etc works well
 	dynValue.ready = true
-	return dynValue
 }
 
-// IsBoolFlag lets the flag parsing know that -flagname is enough to turn to true.
+// Unfortunately IsBoolFlag isn't called, just presence is needed
+// https://github.com/golang/go/issues/53473
+
+/*
+// lets the flag parsing know that -flagname is enough to turn to true.
 func (d *DynValue[T]) IsBoolFlag() bool {
 	var v T
 	switch any(v).(type) {
@@ -108,6 +119,7 @@ func (d *DynValue[T]) IsBoolFlag() bool {
 		return false
 	}
 }
+*/
 
 // Get retrieves the value in a thread-safe manner.
 func (d *DynValue[T]) Get() T {

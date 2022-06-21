@@ -23,18 +23,17 @@ func DynJSON(flagSet *flag.FlagSet, name string, value interface{}, usage string
 		(reflectVal.Elem().Kind() != reflect.Struct && reflectVal.Elem().Kind() != reflect.Slice) {
 		panic("DynJSON value must be a pointer to a struct or to a slice")
 	}
-
-	d := dynInternal(flagSet, name, value, usage)
-
-	dynValue := &DynJSONValue{d, reflectVal.Type().Elem()}
-	flagSet.Var(dynValue, name, usage) // use our Set()
+	dynValue := DynJSONValue{}
+	dynInit(&dynValue.DynValue, flagSet, name, value, usage)
+	dynValue.structType = reflectVal.Type().Elem()
+	flagSet.Var(&dynValue, name, usage) // use our Set()
 	flagSet.Lookup(name).DefValue = dynValue.usageString()
-	return dynValue
+	return &dynValue
 }
 
 // DynJSONValue is a flag-related JSON struct value wrapper.
 type DynJSONValue struct {
-	*DynValue[interface{}]
+	DynValue[interface{}]
 	structType reflect.Type
 }
 
@@ -61,7 +60,7 @@ func (d *DynJSONValue) Set(rawInput string) error {
 
 // String returns the canonical string representation of the type.
 func (d *DynJSONValue) String() string {
-	if d.DynValue == nil || !d.ready {
+	if !d.ready {
 		return ""
 	}
 	out, err := json.Marshal(d.Get())
