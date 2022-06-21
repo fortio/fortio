@@ -72,11 +72,13 @@ func ValidateDynSliceMinElements[T any](count int) func([]T) error {
 	}
 }
 
+// DynValueTypes are the types currently supported by Parse[T] and thus by Dyn[T].
+// DynJSON is special.
 type DynValueTypes interface {
-	bool | time.Duration | float64 | int64 | string | []string | Set[string] | interface{}
+	bool | time.Duration | float64 | int64 | string | []string | Set[string]
 }
 
-type DynValue[T DynValueTypes] struct {
+type DynValue[T any] struct {
 	DynamicFlagValueTag
 	av           atomic.Value
 	flagName     string
@@ -97,7 +99,7 @@ func Dyn[T DynValueTypes](flagSet *flag.FlagSet, name string, value T, usage str
 	return &dynValue
 }
 
-func dynInit[T DynValueTypes](dynValue *DynValue[T], flagSet *flag.FlagSet, name string, value T, usage string) {
+func dynInit[T any](dynValue *DynValue[T], flagSet *flag.FlagSet, name string, value T, usage string) {
 	dynValue.flagName = name
 	dynValue.flagSet = flagSet
 	dynValue.av.Store(value)
@@ -132,46 +134,38 @@ func (d *DynValue[T]) Get() T {
 	return d.av.Load().(T)
 }
 
-// ComaStringToSlice converts a coma separated string to a slice.
-func ComaStringToSlice(input string) []string {
+// CommaStringToSlice converts a coma separated string to a slice.
+func CommaStringToSlice(input string) []string {
 	// originally the heavy handed csv.NewReader(strings.NewReader(input)).Read()
 	return strings.Split(input, ",")
 }
 
-// Parse converts from string to our supported types (it's the missing generics strconv.Parse[T]).
-func Parse[T any](input string) (val T, err error) {
-	switch any(val).(type) {
-	case bool:
-		var v bool
-		v, err = strconv.ParseBool(input)
-		val = any(v).(T)
-	case int64:
-		var v int64
-		v, err = strconv.ParseInt(strings.TrimSpace(input), 0, 64)
-		val = any(v).(T)
-	case float64:
-		var v float64
-		v, err = strconv.ParseFloat(strings.TrimSpace(input), 64)
-		val = any(v).(T)
-	case time.Duration:
-		var v time.Duration
-		v, err = time.ParseDuration(input)
-		val = any(v).(T)
-	case string:
-		val = any(input).(T)
-	case []string:
-		var v []string
-		v = ComaStringToSlice(input)
-		val = any(v).(T)
-	case Set[string]:
-		var v []string
-		v = ComaStringToSlice(input)
-		val = any(SetFromSlice(v)).(T)
+// Parse converts from string to our supported types (it's the beginning of the missing generics strconv.Parse[T]).
+func Parse[T DynValueTypes](input string) (val T, err error) {
+	return parse[T](input)
+}
+
+func parse[T any](input string) (val T, err error) {
+	switch v := any(&val).(type) {
+	case *bool:
+		*v, err = strconv.ParseBool(input)
+	case *int64:
+		*v, err = strconv.ParseInt(strings.TrimSpace(input), 0, 64)
+	case *float64:
+		*v, err = strconv.ParseFloat(strings.TrimSpace(input), 64)
+	case *time.Duration:
+		*v, err = time.ParseDuration(input)
+	case *string:
+		*v = input
+	case *[]string:
+		*v = CommaStringToSlice(input)
+	case *Set[string]:
+		*v = SetFromSlice(CommaStringToSlice(input))
 	default:
 		// JSON Set() and thus Parse() is handled in dynjson.go
 		err = fmt.Errorf("unexpected type %T", val)
 	}
-	return // nolint: nakedret // we return the variables defined in the signature.
+	return
 }
 
 // SetFromSlice constructs a Set from a slice.
@@ -192,7 +186,7 @@ func (d *DynValue[T]) Set(rawInput string) error {
 	if d.inpMutator != nil {
 		input = d.inpMutator(rawInput)
 	}
-	val, err := Parse[T](input)
+	val, err := parse[T](input)
 	if err != nil {
 		return err
 	}
