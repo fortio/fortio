@@ -204,10 +204,22 @@ func (h *HTTPOptions) InitHeaders() {
 // PayloadString returns the payload as a string. If payload is null return empty string
 // This is only needed due to grpc ping proto. It takes string instead of byte array.
 func (h *HTTPOptions) PayloadString() string {
-	if len(h.Payload) == 0 {
+	p := h.Payload
+	pl := len(p)
+	if pl == 0 {
 		return ""
 	}
-	return string(h.Payload)
+	// grpc doesn't like invalid utf-8 strings, get rid of them
+	res := strings.ToValidUTF8(string(p), "")
+	l := len([]byte(res))
+	if l < pl {
+		// but then keep the expected bytes length (though it'll compressed unlike the original)
+		pad := pl - l
+		res += strings.Repeat("X", pad)
+		log.Infof("Padded payload with %d extra Xs to make valid UTF-8 after filtering invalid sequences", pad)
+		log.Debugf("Payload now %d bytes", len(res))
+	}
+	return res
 }
 
 // ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
