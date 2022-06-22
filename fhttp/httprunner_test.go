@@ -487,7 +487,6 @@ func TestMaxConnectionReuse(t *testing.T) {
 		opts.ConnReuseRange = [2]int{i, i}
 		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
 		res, err := RunHTTPTest(&opts)
-
 		if err != nil {
 			t.Error(err)
 		}
