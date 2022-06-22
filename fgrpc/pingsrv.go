@@ -82,6 +82,7 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 	reflection.Register(grpcServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus(healthServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
+	healthServer.SetServingStatus(healthServiceName+"_down", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	RegisterPingServerServer(grpcServer, &pingSrv{})
 	go func() {

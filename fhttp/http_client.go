@@ -202,13 +202,25 @@ func (h *HTTPOptions) InitHeaders() {
 	// before command line option -H are parsed/set.
 }
 
-// PayloadString returns the payload as a string. If payload is null return empty string
+// PayloadUTF8 returns the payload as a string. If payload is null return empty string
 // This is only needed due to grpc ping proto. It takes string instead of byte array.
-func (h *HTTPOptions) PayloadString() string {
-	if len(h.Payload) == 0 {
+func (h *HTTPOptions) PayloadUTF8() string {
+	p := h.Payload
+	pl := len(p)
+	if pl == 0 {
 		return ""
 	}
-	return string(h.Payload)
+	// grpc doesn't like invalid utf-8 strings, get rid of them
+	res := strings.ToValidUTF8(string(p), "")
+	l := len([]byte(res))
+	if l < pl {
+		// but then keep the expected bytes length (though it'll compressed unlike the original)
+		pad := pl - l
+		res += strings.Repeat("X", pad)
+		log.Infof("Padded payload with %d extra Xs to make valid UTF-8 after filtering invalid sequences", pad)
+		log.Debugf("Payload now %d bytes", len(res))
+	}
+	return res
 }
 
 // ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
@@ -302,7 +314,7 @@ type Client struct {
 	url                  string
 	path                 string // original path of the request's url
 	rawQuery             string // original query params
-	body                 string // original body of the request
+	body                 []byte // original body of the request
 	req                  *http.Request
 	client               *http.Client
 	transport            *http.Transport
@@ -357,15 +369,15 @@ func (c *Client) Fetch() (int, []byte, int) {
 		c.req.URL.RawQuery = rawQuery
 	}
 	if c.bodyContainsUUID {
-		body := c.body
+		body := string(c.body)
 		for strings.Contains(body, uuidToken) {
 			body = strings.Replace(body, uuidToken, generateUUID(), 1)
 		}
 		bodyBytes := []byte(body)
 		c.req.ContentLength = int64(len(bodyBytes))
 		c.req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
-	} else if c.body != "" {
-		c.req.Body = ioutil.NopCloser(bytes.NewReader([]byte(c.body)))
+	} else if len(c.body) > 0 {
+		c.req.Body = ioutil.NopCloser(bytes.NewReader(c.body))
 	}
 
 	resp, err := c.client.Do(c.req)
@@ -431,8 +443,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		pathContainsUUID:     strings.Contains(req.URL.Path, uuidToken),
 		rawQuery:             req.URL.RawQuery,
 		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
-		body:                 o.PayloadString(),
-		bodyContainsUUID:     strings.Contains(o.PayloadString(), uuidToken),
+		body:                 o.Payload,
+		bodyContainsUUID:     strings.Contains(string(o.Payload), uuidToken),
 		req:                  req,
 		client: &http.Client{
 			Timeout: o.HTTPReqTimeOut,
@@ -576,14 +588,15 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		uuidStrings = append(uuidStrings, uuidString)
 		urlString = strings.Replace(urlString, uuidToken, uuidString, 1)
 	}
-	payload := o.PayloadString()
+	payload := string(o.Payload)
 	for strings.Contains(payload, uuidToken) {
 		uuidString := generateUUID()
 		uuidStrings = append(uuidStrings, uuidString)
 		payload = strings.Replace(payload, uuidToken, uuidString, 1)
 	}
-	o.Payload = []byte(payload)
-
+	if len(uuidStrings) > 0 {
+		o.Payload = []byte(payload)
+	}
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {

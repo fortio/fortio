@@ -6,8 +6,10 @@
 package dflag
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,17 +27,25 @@ func (d *Testify) ObjectsAreEqualValues(a, b interface{}) bool {
 // Testify is a short replacement for github.com/stretchr/testify/assert.
 type Testify struct{}
 
+// Errorf is a local variant to get the right line numbers.
+func Errorf(t *testing.T, format string, rest ...interface{}) {
+	_, file, line, _ := runtime.Caller(2)
+	file = file[strings.LastIndex(file, "/")+1:]
+	fmt.Printf("%s:%d %s", file, line, fmt.Sprintf(format, rest...))
+	t.Fail()
+}
+
 // NotEqual checks for a not equal b.
 func (d *Testify) NotEqual(t *testing.T, a, b interface{}, msg ...string) {
 	if d.ObjectsAreEqualValues(a, b) {
-		t.Errorf("%v unexpectedly equal: %v", a, msg)
+		Errorf(t, "%v unexpectedly equal: %v", a, msg)
 	}
 }
 
 // EqualValues checks for a equal b.
 func (d *Testify) EqualValues(t *testing.T, a, b interface{}, msg ...string) {
 	if !d.ObjectsAreEqualValues(a, b) {
-		t.Errorf("%v unexpectedly not equal %v: %v", a, b, msg)
+		Errorf(t, "%v unexpectedly not equal %v: %v", a, b, msg)
 	}
 }
 
@@ -47,35 +57,35 @@ func (d *Testify) Equal(t *testing.T, a, b interface{}, msg ...string) {
 // NoError checks for no errors (nil).
 func (d *Testify) NoError(t *testing.T, err error, msg ...string) {
 	if err != nil {
-		t.Errorf("expecting no error, got %v: %v", err, msg)
+		Errorf(t, "expecting no error, got %v: %v", err, msg)
 	}
 }
 
 // Error checks/expects an error.
 func (d *Testify) Error(t *testing.T, err error, msg ...string) {
 	if err == nil {
-		t.Errorf("expecting and error, didn't get it: %v", msg)
+		Errorf(t, "expecting an error, didn't get it: %v", msg)
 	}
 }
 
 // True checks bool is true.
 func (d *Testify) True(t *testing.T, b bool, msg ...string) {
 	if !b {
-		t.Errorf("expecting true, didn't: %v", msg)
+		Errorf(t, "expecting true, didn't: %v", msg)
 	}
 }
 
 // False checks bool is false.
 func (d *Testify) False(t *testing.T, b bool, msg ...string) {
 	if b {
-		t.Errorf("expecting false, didn't: %v", msg)
+		Errorf(t, "expecting false, didn't: %v", msg)
 	}
 }
 
 // Contains checks that needle is in haystack.
 func (d *Testify) Contains(t *testing.T, haystack, needle string, msg ...string) {
 	if !strings.Contains(haystack, needle) {
-		t.Errorf("%v doesn't contain %v: %v", haystack, needle, msg)
+		Errorf(t, "%v doesn't contain %v: %v", haystack, needle, msg)
 	}
 }
 

@@ -216,6 +216,7 @@ func flagToJSON(f *flag.Flag) *flagJSON {
 func prettyPrintJSON(input string) string {
 	out := &bytes.Buffer{}
 	if err := json.Indent(out, []byte(input), "", "  "); err != nil {
+		log.Errf("Error pretty printing json %q: %v", input, err)
 		return "PRETTY_ERROR"
 	}
 	return out.String()

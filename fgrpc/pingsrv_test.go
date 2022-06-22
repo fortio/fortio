@@ -88,6 +88,9 @@ func TestPingServer(t *testing.T) {
 	if r, err := GrpcHealthCheck(sAddr, "foo", 3, TLSSecure); err != nil || (*r)[serving] != 3 {
 		t.Errorf("Unexpected result %+v, %v with health check for same service as started (foo)", r, err)
 	}
+	if r, err := GrpcHealthCheck(sAddr, "foo_down", 3, TLSSecure); err != nil || (*r)["NOT_SERVING"] != 3 {
+		t.Errorf("Unexpected result %+v, %v with health check for _down variant of same service as started (foo/foo_down)", r, err)
+	}
 	if r, err := GrpcHealthCheck(iAddr, "willfail", 1, TLSInsecure); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
 	}

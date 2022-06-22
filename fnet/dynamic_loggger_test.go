@@ -47,7 +47,8 @@ func TestDynamicLogLevel(t *testing.T) {
 	}
 	defer u.Stop()
 	fName := path.Join(pDir, "loglevel")
-	if err = ioutil.WriteFile(fName, []byte("Info"), 0o644); err != nil {
+	// Test also the new normalization (space trimmimg and captitalization)
+	if err = ioutil.WriteFile(fName, []byte(" InFO\n\n"), 0o644); err != nil {
 		t.Fatalf("unable to write %v: %v", fName, err)
 	}
 	time.Sleep(1 * time.Second)
