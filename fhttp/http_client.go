@@ -278,6 +278,39 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	return nil
 }
 
+func (h *HTTPOptions) ValidateConnectionReuseRange(inp string) error {
+	if inp == "" {
+		return nil
+	}
+
+	reuseRangeString := strings.Split(inp, ":")
+	var reuseRangeInt []int
+
+	if len(reuseRangeString) > 2 {
+		return fmt.Errorf("more than two integers were provided in the connection reuse range")
+	}
+
+	for _, input := range reuseRangeString {
+		if val, err := strconv.Atoi(input); err != nil {
+			return fmt.Errorf("invalid value for connection reuse range, err: %v", err)
+		} else {
+			reuseRangeInt = append(reuseRangeInt, val)
+		}
+	}
+
+	if len(reuseRangeInt) == 1 {
+		h.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[0]}
+	} else {
+		if reuseRangeInt[0] < reuseRangeInt[1] {
+			h.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[1]}
+		} else {
+			h.ConnReuseRange = [2]int{reuseRangeInt[1], reuseRangeInt[0]}
+		}
+	}
+
+	return nil
+}
+
 // newHttpRequest makes a new http GET request for url with User-Agent.
 func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	method := o.Method()

@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"fortio.org/fortio/dflag"
@@ -108,11 +107,11 @@ var (
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
-	// MaxConnectionReuse Dynamic string flag to set the max connection reuse range.
-	connectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse-range", "",
+	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.
+	ConnectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse-range", "",
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
 			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
-		WithValidator(maxConnectionReuseValidator)
+		WithValidator(ConnectionReuseRangeValidator(&httpOpts))
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -177,37 +176,16 @@ func TLSInsecure() bool {
 	return TLSInsecure
 }
 
-func maxConnectionReuseValidator(inp string) error {
-	if inp == "" {
+// ConnectionReuseRangeValidator returns a validator function that checks if the connection reuse range is valid
+// and set in httpOpts.
+func ConnectionReuseRangeValidator(httpOpts *fhttp.HTTPOptions) func(string) error {
+	return func(value string) error {
+		if err := httpOpts.ValidateConnectionReuseRange(value); err != nil {
+			return fmt.Errorf("fail to parse connection reuse range, err: %v", err)
+		}
+
 		return nil
 	}
-
-	reuseRangeString := strings.Split(inp, ":")
-	var reuseRangeInt []int
-
-	if len(reuseRangeString) > 2 {
-		return fmt.Errorf("more than two integers were provided in the connection reuse range")
-	}
-
-	for _, input := range reuseRangeString {
-		if val, err := strconv.Atoi(input); err != nil {
-			return fmt.Errorf("invalid value for connection reuse range, err: %v", err)
-		} else {
-			reuseRangeInt = append(reuseRangeInt, val)
-		}
-	}
-
-	if len(reuseRangeInt) == 1 {
-		httpOpts.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[0]}
-	} else {
-		if reuseRangeInt[0] < reuseRangeInt[1] {
-			httpOpts.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[1]}
-		} else {
-			httpOpts.ConnReuseRange = [2]int{reuseRangeInt[1], reuseRangeInt[0]}
-		}
-	}
-
-	return nil
 }
 
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between
