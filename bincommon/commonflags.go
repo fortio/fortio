@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -107,9 +108,11 @@ var (
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
-	maxConnectionReuseFlag = flag.String("max-connection-reuse", "",
+	// MaxConnectionReuse Dynamic string flag to set the max connection reuse range.
+	connectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse-range", "",
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
-			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.")
+			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
+		WithValidator(maxConnectionReuseValidator)
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -174,30 +177,37 @@ func TLSInsecure() bool {
 	return TLSInsecure
 }
 
-func parseMaxConnectionReuse(maxConnectionReuseFlag string) [2]int {
-	if maxConnectionReuseFlag == "" {
-		return [2]int{}
+func maxConnectionReuseValidator(inp string) error {
+	if inp == "" {
+		return nil
 	}
 
-	maxConnectionRange := strings.Split(maxConnectionReuseFlag, ":")
-	if len(maxConnectionRange) != 2 {
-		log.Errf("Fail to parse -max-connection-reuse flag, please follow the 'min:max' pattern")
-		os.Exit(1)
+	reuseRangeString := strings.Split(inp, ":")
+	var reuseRangeInt []int
+
+	if len(reuseRangeString) > 2 {
+		return fmt.Errorf("more than two integers were provided in the connection reuse range")
 	}
 
-	min, err := strconv.Atoi(maxConnectionRange[0])
-	if err != nil {
-		log.Errf("Fail to parse -max-connection-reuse flag, min value is not integer")
-		os.Exit(1)
+	for _, input := range reuseRangeString {
+		if val, err := strconv.Atoi(input); err != nil {
+			return fmt.Errorf("invalid value for connection reuse range, err: %v", err)
+		} else {
+			reuseRangeInt = append(reuseRangeInt, val)
+		}
 	}
 
-	max, err := strconv.Atoi(maxConnectionRange[1])
-	if err != nil {
-		log.Errf("Fail to parse -max-connection-reuse flag, max value is not integer")
-		os.Exit(1)
+	if len(reuseRangeInt) == 1 {
+		httpOpts.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[0]}
+	} else {
+		if reuseRangeInt[0] < reuseRangeInt[1] {
+			httpOpts.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[1]}
+		} else {
+			httpOpts.ConnReuseRange = [2]int{reuseRangeInt[1], reuseRangeInt[0]}
+		}
 	}
 
-	return [2]int{min, max}
+	return nil
 }
 
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between
@@ -226,6 +236,5 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Key = *KeyFlag
 	httpOpts.LogErrors = *LogErrorsFlag
 	httpOpts.SequentialWarmup = *warmupFlag
-	httpOpts.ConnReuseRange = parseMaxConnectionReuse(*maxConnectionReuseFlag)
 	return &httpOpts
 }

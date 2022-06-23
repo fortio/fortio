@@ -472,7 +472,7 @@ func TestAbortOn(t *testing.T) {
 	}
 }
 
-func TestMaxConnectionReuse(t *testing.T) {
+func TestConnectionReuseRange(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", EchoHandler)
 	url := fmt.Sprintf("http://localhost:%d/foo/", addr.Port)
@@ -483,6 +483,17 @@ func TestMaxConnectionReuse(t *testing.T) {
 	opts.NumThreads = 1
 	opts.Exactly = 10
 
+	// Test empty reuse range.
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.SocketCount != 1 {
+		t.Errorf("Expected only 1 socket should be used when the max connection reuse flag is not set.")
+	}
+
+	// Test connection reuse range from 1 to 10.
 	for i := 1; i <= 10; i++ {
 		opts.ConnReuseRange = [2]int{i, i}
 		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
