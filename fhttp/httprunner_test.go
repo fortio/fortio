@@ -506,6 +506,20 @@ func TestConnectionReuseRange(t *testing.T) {
 			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
 		}
 	}
+
+	// Test when connection reuse range min != max
+	for i := 0; i < 5; i++ {
+		opts.ConnReuseRange = [2]int{5, 9}
+		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
+		res, err = RunHTTPTest(&opts)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if res.SocketCount != (int)(expectedSocketReuse) {
+			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+		}
+	}
 }
 
 func getIPUsageCount(ipCountMap map[string]int) (count int) {

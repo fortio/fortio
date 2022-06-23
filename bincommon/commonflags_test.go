@@ -26,4 +26,13 @@ func TestConnectionReuseDynFlag(t *testing.T) {
 	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
 		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
 	}
+
+	err = connectionReuseRange.Set("10:20")
+	if err != nil {
+		t.Errorf("Expect no error when two values are privided, got err: %v", err)
+	}
+
+	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
+		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+	}
 }
