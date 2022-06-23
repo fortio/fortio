@@ -6,7 +6,6 @@ func TestConnectionReuseDynFlag(t *testing.T) {
 	val := connectionReuseRange.Get()
 	if val != "" {
 		t.Errorf("Default value for connection reuse range should be empty.")
-
 	}
 
 	err := connectionReuseRange.Set("1:2:3:4")
