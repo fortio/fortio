@@ -734,16 +734,14 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	c.headerLen = 0
 	// Connect or reuse existing socket:
 	conn := c.socket
-
 	canReuse := conn != nil
-	if canReuse && c.reachedReuseThreshold() {
-		canReuse = false
+	if c.reachedReuseThreshold() {
 		c.connReuse = generateReuseThreshold(c.connReuseRange[0], c.connReuseRange[1])
 		log.LogVf("[%d] Thread reach the threshold for max connection canReuse of %d, force create new connection",
 			c.id, c.connReuse)
 	}
 
-	if !canReuse {
+	if conn == nil {
 		conn = c.connect()
 		c.reuseCount = 1
 		if conn == nil {
