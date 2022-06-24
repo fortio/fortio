@@ -522,6 +522,48 @@ func TestConnectionReuseRange(t *testing.T) {
 	}
 }
 
+func TestValidateConnectionReuse(t *testing.T) {
+	httpOpts := HTTPOptions{}
+
+	err := httpOpts.ValidateConnectionReuseRange("1:2:3:4")
+	if err == nil {
+		t.Errorf("Shoud fail when more than two values are provided for connection reuse range.")
+	}
+
+	err = httpOpts.ValidateConnectionReuseRange("foo")
+	if err == nil {
+		t.Errorf("Shoud fail when non integer value is provided for connection reuse range.")
+	}
+
+	err = httpOpts.ValidateConnectionReuseRange("")
+	if err != nil {
+		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
+	}
+
+	err = httpOpts.ValidateConnectionReuseRange("10")
+	if err != nil {
+		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
+	}
+
+	err = httpOpts.ValidateConnectionReuseRange("20:10")
+	if err != nil {
+		t.Errorf("Expect no error when two values are privided, got err: %v.", err)
+	}
+
+	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
+		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+	}
+
+	err = httpOpts.ValidateConnectionReuseRange("10:20")
+	if err != nil {
+		t.Errorf("Expect no error when two values are privided, got err: %v", err)
+	}
+
+	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
+		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+	}
+}
+
 func getIPUsageCount(ipCountMap map[string]int) (count int) {
 	for _, v := range ipCountMap {
 		count += v

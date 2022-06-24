@@ -8,41 +8,20 @@ func TestConnectionReuseDynFlag(t *testing.T) {
 		t.Errorf("Default value for connection reuse range should be empty.")
 	}
 
-	err := ConnectionReuseRange.Set("1:2:3:4")
+	value := "10:20"
+	err := ConnectionReuseRange.Set(value)
+	if err != nil {
+		t.Errorf("Failed to set connection reuse range, err: %v", err)
+	}
+
+	if ConnectionReuseRange.Get() != value {
+		t.Errorf("Connection reuse range doesn't match the set value, expected %v, got %v",
+			ConnectionReuseRange.Get(), value)
+	}
+
+	value = "foo"
+	err = ConnectionReuseRange.Set(value)
 	if err == nil {
-		t.Errorf("Shoud fail when more than two values are provided for connection reuse range.")
-	}
-
-	err = ConnectionReuseRange.Set("foo")
-	if err == nil {
-		t.Errorf("Shoud fail when non integer value is provided for connection reuse range.")
-	}
-
-	err = ConnectionReuseRange.Set("")
-	if err != nil {
-		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
-	}
-
-	err = ConnectionReuseRange.Set("10")
-	if err != nil {
-		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
-	}
-
-	err = ConnectionReuseRange.Set("20:10")
-	if err != nil {
-		t.Errorf("Expect no error when two values are privided, got err: %v.", err)
-	}
-
-	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
-		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
-	}
-
-	err = ConnectionReuseRange.Set("10:20")
-	if err != nil {
-		t.Errorf("Expect no error when two values are privided, got err: %v", err)
-	}
-
-	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
-		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+		t.Errorf("Should fail when invalid input was given")
 	}
 }
