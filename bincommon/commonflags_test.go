@@ -18,6 +18,11 @@ func TestConnectionReuseDynFlag(t *testing.T) {
 		t.Errorf("Shoud fail when non integer value is provided for connection reuse range.")
 	}
 
+	err = ConnectionReuseRange.Set("")
+	if err != nil {
+		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
+	}
+
 	err = ConnectionReuseRange.Set("10")
 	if err != nil {
 		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
