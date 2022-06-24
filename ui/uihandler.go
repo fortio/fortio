@@ -25,7 +25,6 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
-	"fortio.org/fortio/bincommon"
 	"html"
 	"html/template"
 	"io"
@@ -39,6 +38,7 @@ import (
 	"sync"
 	"time"
 
+	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/dflag/endpoint"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
