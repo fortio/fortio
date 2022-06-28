@@ -342,6 +342,7 @@ linters-settings:
 linters:
   enable:
     - unused
+    - errorlint
 #    - megacheck
 #    - govet
   disable:
