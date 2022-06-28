@@ -278,7 +278,7 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	return nil
 }
 
-func (h *HTTPOptions) ValidateConnectionReuseRange(inp string) error {
+func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 	if inp == "" {
 		return nil
 	}
