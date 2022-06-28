@@ -16,11 +16,8 @@
 package ui // import "fortio.org/fortio/ui"
 
 import (
-	"bytes"
-	"context"
-	"crypto/md5" // nolint: gosec // md5 is mandated, not our choice
+	"context" // nolint: gosec // md5 is mandated, not our choice
 	"embed"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -35,7 +32,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"fortio.org/fortio/dflag/endpoint"
@@ -44,6 +40,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
@@ -73,28 +70,17 @@ var (
 	// Start time of the UI Server (for uptime info).
 	startTime        time.Time
 	extraBrowseLabel string // Extra label for report only
-	// Directory where results are written to/read from.
-	dataDir        string
-	mainTemplate   *template.Template
-	browseTemplate *template.Template
-	syncTemplate   *template.Template
-	uiRunMapMutex  = &sync.Mutex{}
-	id             int64
-	runs           = make(map[int64]*periodic.RunnerOptions)
+	mainTemplate     *template.Template
+	browseTemplate   *template.Template
+	syncTemplate     *template.Template
 	// Base URL used for index - useful when running under an ingress with prefix.
 	baseURL string
-
-	defaultPercentileList []float64
 )
 
 const (
-	fetchURI      = "fetch/"
-	fetch2URI     = "fetch2/"
-	restRunURI    = "rest/run"
-	restStatusURI = "rest/status"
-	restStopURI   = "rest/stop"
-	faviconPath   = "/favicon.ico"
-	modegrpc      = "grpc"
+	fetchURI    = "fetch/"
+	fetch2URI   = "fetch2/"
+	faviconPath = "/favicon.ico"
 )
 
 // TODO: auto map from (Http)RunnerOptions to form generation and/or accept
@@ -175,7 +161,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	out := io.Writer(os.Stderr)
 	if len(percList) == 0 && !strings.Contains(r.URL.RawQuery, "p=") {
-		percList = defaultPercentileList
+		percList = rapi.DefaultPercentileList
 	}
 	if !JSONOnly {
 		out = fhttp.NewHTMLEscapeWriter(w)
@@ -199,13 +185,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if mode == run {
 		ro.Normalize()
-		uiRunMapMutex.Lock()
-		id++ // start at 1 as 0 means interrupt all
-		runid = id
-		runs[runid] = &ro
-		uiRunMapMutex.Unlock()
+		runid := rapi.AddRun(&ro)
 		log.Infof("New run id %d", runid)
-		ro.RunID = id
+		ro.RunID = runid
 	}
 	httpopts := &fhttp.HTTPOptions{}
 	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
@@ -266,7 +248,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case menu:
 		// nothing more to do
 	case stop:
-		StopByRunID(runid)
+		rapi.StopByRunID(runid)
 	case run:
 		// mode == run case:
 		for _, header := range r.Form["H"] {
@@ -285,7 +267,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		var res periodic.HasRunnerResult
 		var err error
-		if runner == modegrpc {
+		if runner == rapi.ModeGRPC {
 			o := fgrpc.GRPCRunnerOptions{
 				RunnerOptions: ro,
 				Destination:   url,
@@ -324,9 +306,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			res, err = fhttp.RunHTTPTest(&o)
 		}
-		uiRunMapMutex.Lock()
-		delete(runs, ro.RunID)
-		uiRunMapMutex.Unlock()
+		rapi.RemoveRun(ro.RunID)
 		if err != nil {
 			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 
@@ -342,7 +322,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		savedAs := ""
 		id := res.Result().ID()
 		if doSave {
-			savedAs = SaveJSON(id, json)
+			savedAs = rapi.SaveJSON(id, json)
 		}
 		if JSONOnly {
 			w.Header().Set("Content-Type", "application/json")
@@ -373,23 +353,6 @@ func ResultToJsData(w io.Writer, json []byte) {
 	_, _ = w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 
-// SaveJSON save Json bytes to give file name (.json) in data-path dir.
-func SaveJSON(name string, json []byte) string {
-	if dataDir == "" {
-		log.Infof("Not saving because data-path is unset")
-		return ""
-	}
-	name += ".json"
-	log.Infof("Saving %s in %s", name, dataDir)
-	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644) // nolint: gosec // we do want 644
-	if err != nil {
-		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
-		return ""
-	}
-	// Return the relative path from the /fortio/ UI
-	return "data/" + name
-}
-
 // SelectableValue represets an entry in the <select> of results.
 type SelectableValue struct {
 	Value    string
@@ -415,27 +378,6 @@ func SelectValues(values []string, selectedValues []string) (selectableValues []
 		selectableValues = append(selectableValues, selectableValue)
 	}
 	return selectableValues, numSelected
-}
-
-// DataList returns the .json files/entries in data dir.
-func DataList() (dataList []string) {
-	files, err := ioutil.ReadDir(dataDir)
-	if err != nil {
-		log.Critf("Can list directory %s: %v", dataDir, err)
-		return
-	}
-	// Newest files at the top:
-	for i := len(files) - 1; i >= 0; i-- {
-		name := files[i].Name()
-		ext := ".json"
-		if !strings.HasSuffix(name, ext) || files[i].IsDir() {
-			log.LogVf("Skipping non %s file: %s", ext, name)
-			continue
-		}
-		dataList = append(dataList, name[:len(name)-len(ext)])
-	}
-	log.LogVf("data list is %v (out of %d files in %s)", dataList, len(files), dataDir)
-	return dataList
 }
 
 // ChartOptions describes the user-configurable options for a chart.
@@ -471,7 +413,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	yMin := r.FormValue("yMin")
 	yMax := r.FormValue("yMax")
 	yLog, _ := strconv.ParseBool(r.FormValue("yLog"))
-	dataList := DataList()
+	dataList := rapi.DataList()
 	selectedValues := r.URL.Query()["sel"]
 	preselectedDataList, numSelected := SelectValues(dataList, selectedValues)
 
@@ -529,7 +471,7 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 func sendHTMLDataIndex(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	_, _ = w.Write([]byte("<html><body><ul>\n"))
-	for _, e := range DataList() {
+	for _, e := range rapi.DataList() {
 		_, _ = w.Write([]byte("<li><a href=\""))
 		_, _ = w.Write([]byte(e))
 		_, _ = w.Write([]byte(".json\">"))
@@ -537,67 +479,6 @@ func sendHTMLDataIndex(w http.ResponseWriter) {
 		_, _ = w.Write([]byte("</a>\n"))
 	}
 	_, _ = w.Write([]byte("</ul></body></html>"))
-}
-
-type tsvCache struct {
-	cachedDirTime time.Time
-	cachedResult  []byte
-}
-
-var (
-	gTSVCache      tsvCache
-	gTSVCacheMutex = &sync.Mutex{}
-)
-
-// format for gcloud transfer
-// https://cloud.google.com/storage/transfer/create-url-list
-func sendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
-	info, err := os.Stat(dataDir)
-	if err != nil {
-		log.Errf("Unable to stat %s: %v", dataDir, err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
-	gTSVCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
-	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
-	if !useCache {
-		var b bytes.Buffer
-		b.Write([]byte("TsvHttpData-1.0\n"))
-		for _, e := range DataList() {
-			fname := e + ".json"
-			f, err := os.Open(path.Join(dataDir, fname))
-			if err != nil {
-				log.Errf("Open error for %s: %v", fname, err)
-				continue
-			}
-			// nolint: gosec // This isn't a crypto hash, more like a checksum - and mandated by the spec above, not our choice
-			h := md5.New()
-			var sz int64
-			if sz, err = io.Copy(h, f); err != nil {
-				f.Close()
-				log.Errf("Copy/read error for %s: %v", fname, err)
-				continue
-			}
-			b.Write([]byte(urlPrefix))
-			b.Write([]byte(fname))
-			b.Write([]byte("\t"))
-			b.Write([]byte(strconv.FormatInt(sz, 10)))
-			b.Write([]byte("\t"))
-			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil))))
-			b.Write([]byte("\n"))
-		}
-		gTSVCache.cachedDirTime = info.ModTime()
-		gTSVCache.cachedResult = b.Bytes()
-	}
-	result := gTSVCache.cachedResult
-	lastModified := gTSVCache.cachedDirTime.Format(http.TimeFormat)
-	gTSVCacheMutex.Unlock()
-	log.Infof("Used cached %v to serve %d bytes TSV", useCache, len(result))
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	// Cloud transfer requires ETag
-	w.Header().Set("ETag", fmt.Sprintf("\"%s\"", lastModified))
-	w.Header().Set("Last-Modified", lastModified)
-	_, _ = w.Write(result)
 }
 
 // LogAndFilterDataRequest logs the data request.
@@ -625,7 +506,7 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
 			}
 			log.Infof("Prefix is '%s'", urlPrefix)
-			sendTSVDataIndex(urlPrefix, w)
+			rapi.SendTSVDataIndex(urlPrefix, w)
 			return
 		}
 		if !strings.HasSuffix(path, ".json") {
@@ -667,7 +548,7 @@ func (o outHTTPWriter) Flush() {
 
 // Sync is the non http equivalent of fortio/sync?url=u.
 func Sync(out io.Writer, u string, datadir string) bool {
-	dataDir = datadir
+	rapi.SetDataDir(datadir)
 	v := url.Values{}
 	v.Set("url", u)
 	// TODO: better context?
@@ -849,7 +730,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 		_, _ = w.Write([]byte("<td>skipped (not json)"))
 		return
 	}
-	localPath := path.Join(dataDir, name)
+	localPath := path.Join(rapi.GetDataDir(), name)
 	_, err := os.Stat(localPath)
 	if err == nil {
 		_, _ = w.Write([]byte("<td>skipped (already exists)"))
@@ -898,7 +779,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	}
 	fhttp.SetupPPROF(mux)
 	uiPath = uipath
-	dataDir = datadir
 	if uiPath[len(uiPath)-1] != '/' {
 		log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
 		uiPath += "/"
@@ -914,12 +794,8 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	// New REST apis.
-	restRunPath := uiPath + restRunURI
-	mux.HandleFunc(restRunPath, RESTRunHandler)
-	restStatusPath := uiPath + restStatusURI
-	mux.HandleFunc(restStatusPath, RESTStatusHandler)
-	restStopPath := uiPath + restStopURI
-	mux.HandleFunc(restStopPath, RESTStopHandler)
+	rapi.AddHandlers(mux, uiPath, datadir)
+	rapi.DefaultPercentileList = percentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
@@ -955,15 +831,14 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
 	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
 
-	if dataDir != "" {
-		fs := http.FileServer(http.Dir(dataDir))
+	if datadir != "" {
+		fs := http.FileServer(http.Dir(datadir))
 		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 		if datadir == "." {
 			var err error
 			datadir, err = os.Getwd()
 			if err != nil {
 				log.Errf("Unable to get current directory: %v", err)
-				datadir = dataDir
 			}
 		}
 		log.Printf("Data directory is %s", datadir)
@@ -979,7 +854,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 		}
 	}
 	fmt.Println(uiMsg)
-	defaultPercentileList = percentileList
 	return true
 }
 
@@ -1001,7 +875,6 @@ func Report(baseurl, port, datadir string) bool {
 	}
 	fmt.Printf(uiMsg + "\n")
 	uiPath = "/"
-	dataDir = datadir
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
 	fs := http.FileServer(http.FS(staticFS))
@@ -1015,7 +888,7 @@ func Report(baseurl, port, datadir string) bool {
 	} else {
 		mux.HandleFunc(uiPath, BrowseHandler)
 	}
-	fsd := http.FileServer(http.Dir(dataDir))
+	fsd := http.FileServer(http.Dir(datadir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	return true
 }
