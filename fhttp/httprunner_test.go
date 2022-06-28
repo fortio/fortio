@@ -517,7 +517,7 @@ func TestConnectionReuseRange(t *testing.T) {
 			t.Error(err)
 		}
 
-		if res.SocketCount != (int)(expectedSocketReuse) {
+		if res.SocketCount != expectedSocketReuse {
 			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
 		}
 	}
