@@ -292,7 +292,7 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 
 	for _, input := range reuseRangeString {
 		if val, err := strconv.Atoi(input); err != nil {
-			return fmt.Errorf("invalid value for connection reuse range, err: %v", err)
+			return fmt.Errorf("invalid value for connection reuse range, err: %w", err)
 		} else {
 			reuseRangeInt = append(reuseRangeInt, val)
 		}
