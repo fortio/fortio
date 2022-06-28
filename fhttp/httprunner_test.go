@@ -509,7 +509,7 @@ func TestConnectionReuseRange(t *testing.T) {
 
 	// Test when connection reuse range min != max.
 	// The actual socket count should always be 2 as the connection reuse range varies between 5 and 9.
-	expectedSocketReuse := 2.0
+	expectedSocketReuse := 2
 	for i := 0; i < 5; i++ {
 		opts.ConnReuseRange = [2]int{5, 9}
 		res, err := RunHTTPTest(&opts)
