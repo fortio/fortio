@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"strings"
 
+	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -106,6 +107,11 @@ var (
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
+	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.
+	ConnectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse-range", "",
+		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
+			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
+		WithValidator(ConnectionReuseRangeValidator(&httpOpts))
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -168,6 +174,18 @@ func TLSInsecure() bool {
 		log.LogVf("Will verify TLS certificates, use -k / -https-insecure to disable")
 	}
 	return TLSInsecure
+}
+
+// ConnectionReuseRangeValidator returns a validator function that checks if the connection reuse range is valid
+// and set in httpOpts.
+func ConnectionReuseRangeValidator(httpOpts *fhttp.HTTPOptions) func(string) error {
+	return func(value string) error {
+		if err := httpOpts.ValidateAndSetConnectionReuseRange(value); err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between

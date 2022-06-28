@@ -46,6 +46,9 @@
     or run until interrupted:<input type="checkbox" name="t" onchange="toggleDuration(this)" />
     or run for exactly <input type="text" name="n" size="6" value="" /> calls. <br />
     Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
+    Connection reuse range: Min <input type="text" name="connection-reuse-range-min" size="6" value="" />
+    Max <input type="text" name="connection-reuse-range-max" size="6" value="" />
+    or Single value: <input type="text" name="connection-reuse-range-value" size="6" value="" /> <br />
     Uniform:<input type="checkbox" name="uniform" /> or Jitter:<input type="checkbox" name="jitter" /> &nbsp;&nbsp;
     No Catch-Up (qps is a ceiling): <input type="checkbox" name="nocatchup" /><br />
     Percentiles: <input type="text" name="p" size="20" value="50, 75, 90, 99, 99.9" /> <br />

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/log"
@@ -192,6 +193,14 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	// Set the connection reuse range.
+	err = bincommon.ConnectionReuseRange.
+		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
+		Set(FormValue(r, jd, "connection-reuse-range"))
+	if err != nil {
+		log.Errf("Fail to validate connection reuse range flag, err: %v", err)
+	}
+
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
