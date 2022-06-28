@@ -507,10 +507,11 @@ func TestConnectionReuseRange(t *testing.T) {
 		}
 	}
 
-	// Test when connection reuse range min != max
+	// Test when connection reuse range min != max.
+	// The actual socket count should always be 2 as the connection reuse range varies between 5 and 9.
+	expectedSocketReuse := 2.0
 	for i := 0; i < 5; i++ {
 		opts.ConnReuseRange = [2]int{5, 9}
-		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
 		res, err := RunHTTPTest(&opts)
 		if err != nil {
 			t.Error(err)
@@ -540,9 +541,17 @@ func TestValidateConnectionReuse(t *testing.T) {
 		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
 	}
 
+	if httpOpts.ConnReuseRange != [2]int{0, 0} {
+		t.Errorf("Expect the connection reuse range to be [0, 0], got : %v.", httpOpts.ConnReuseRange)
+	}
+
 	err = httpOpts.ValidateAndSetConnectionReuseRange("10")
 	if err != nil {
 		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
+	}
+
+	if httpOpts.ConnReuseRange != [2]int{10, 10} {
+		t.Errorf("Expect the connection reuse range to be [10, 10], got : %v.", httpOpts.ConnReuseRange)
 	}
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("20:10")
@@ -550,8 +559,8 @@ func TestValidateConnectionReuse(t *testing.T) {
 		t.Errorf("Expect no error when two values are privided, got err: %v.", err)
 	}
 
-	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
-		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+	if httpOpts.ConnReuseRange != [2]int{10, 20} {
+		t.Errorf("Expect the connection reuse range to be [10, 20], got : %v.", httpOpts.ConnReuseRange)
 	}
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("10:20")
@@ -559,8 +568,8 @@ func TestValidateConnectionReuse(t *testing.T) {
 		t.Errorf("Expect no error when two values are privided, got err: %v", err)
 	}
 
-	if httpOpts.ConnReuseRange[0] > httpOpts.ConnReuseRange[1] {
-		t.Errorf("Connection reuse min value should be smaller or equal to the max value.")
+	if httpOpts.ConnReuseRange != [2]int{10, 20} {
+		t.Errorf("Expect the connection reuse range to be [10, 20], got : %v.", httpOpts.ConnReuseRange)
 	}
 }
 
