@@ -46,7 +46,7 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
-	// GetIPAddress() returns the ip address that DNS resolved to.
+	// GetIPAddress() returns the last ip address used by this client connection.
 	GetIPAddress() string
 }
 
