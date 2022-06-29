@@ -46,7 +46,7 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
 	Close() int
-	// GetIPAddress() returns the pair hostname, ip address that DNS resolved to.
+	// GetIPAddress() returns the ip address that DNS resolved to.
 	GetIPAddress() string
 }
 
@@ -585,7 +585,7 @@ type FastClient struct {
 	reuseCount     int
 }
 
-// GetIPAddress get the hostname and ip address that DNS resolved to when using fast client.
+// GetIPAddress get ip address that DNS resolved to when using fast client.
 func (c *FastClient) GetIPAddress() string {
 	return c.dest.String()
 }
