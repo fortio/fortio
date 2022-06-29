@@ -188,7 +188,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if mode == run {
 		ro.Normalize()
-		runid := rapi.AddRun(&ro)
+		runid = rapi.AddRun(&ro)
 		log.Infof("New run id %d", runid)
 		ro.RunID = runid
 	}

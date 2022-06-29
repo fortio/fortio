@@ -30,13 +30,14 @@ import (
 	"fortio.org/fortio/periodic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 // Dial dials grpc using insecure or tls transport security when serverAddr
 // has prefixHTTPS or cert is provided. If override is set to a non empty string,
 // it will override the virtual host name of authority in requests.
-func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
+func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	if o.CACert != "" || strings.HasPrefix(o.Destination, fnet.PrefixHTTPS) {
 		tlsConfig, err := o.TLSOptions.TLSClientConfig()
@@ -46,7 +47,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 		tlsConfig.ServerName = o.CertOverride
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
-		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 	serverAddr := grpcDestination(o.Destination)
 	if o.UnixDomainSocket != "" {
@@ -55,7 +56,7 @@ func Dial(o *GRPCRunnerOptions) (conn *grpc.ClientConn, err error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
-	conn, err = grpc.Dial(serverAddr, opts...)
+	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
 	}

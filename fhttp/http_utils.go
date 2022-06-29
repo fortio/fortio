@@ -50,9 +50,7 @@ type TLSOptions struct {
 // For https, ServerName is set later (once host is determined after URL parsing
 // and depending on hostOverride).
 func (to *TLSOptions) TLSClientConfig() (*tls.Config, error) {
-	var res *tls.Config
-
-	res = &tls.Config{MinVersion: tls.VersionTLS12}
+	res := &tls.Config{MinVersion: tls.VersionTLS12}
 	if to.Insecure {
 		log.LogVf("Using insecure https")
 		res.InsecureSkipVerify = true
@@ -461,10 +459,7 @@ func generateSingleProbability(value string, name string) bool {
 	}
 	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
 	log.Debugf("%s=%f rolled %f", name, p, res)
-	if res <= float32(p) {
-		return true
-	}
-	return false
+	return res <= float32(p)
 }
 
 // generateClose from string, format: close=true for 100% close

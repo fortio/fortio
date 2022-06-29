@@ -54,7 +54,7 @@ func Error(w http.ResponseWriter, msg ErrorReply) {
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
-	b, _ := json.Marshal(msg)
+	b, _ := json.Marshal(msg) // nolint: errchkjson
 	_, _ = w.Write(b)
 }
 
@@ -168,7 +168,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if durStr == "on" {
 		dur = -1
 	} else {
-		var err error
 		dur, err = time.ParseDuration(durStr)
 		if err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)

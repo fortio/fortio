@@ -63,7 +63,7 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
-	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano())))
+	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano()))) // nolint: gosec // we want fast not crypto
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -284,21 +284,19 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 	}
 
 	reuseRangeString := strings.Split(inp, ":")
-	var reuseRangeInt []int
-
 	if len(reuseRangeString) > 2 {
 		return fmt.Errorf("more than two integers were provided in the connection reuse range")
 	}
-
-	for _, input := range reuseRangeString {
+	reuseRangeInt := make([]int, 2)
+	for i, input := range reuseRangeString {
 		val, err := strconv.Atoi(input)
 		if err != nil {
 			return fmt.Errorf("invalid value for connection reuse range, err: %w", err)
 		}
-		reuseRangeInt = append(reuseRangeInt, val)
+		reuseRangeInt[i] = val
 	}
 
-	if len(reuseRangeInt) == 1 {
+	if len(reuseRangeString) == 1 {
 		h.ConnReuseRange = [2]int{reuseRangeInt[0], reuseRangeInt[0]}
 	} else {
 		if reuseRangeInt[0] < reuseRangeInt[1] {
@@ -318,7 +316,6 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
-	// nolint: noctx // TODO fixme?
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
@@ -497,7 +494,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			if o.Resolve != "" {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
-			conn, err := (&net.Dialer{
+			var conn net.Conn
+			conn, err = (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
 
