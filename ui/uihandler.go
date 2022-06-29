@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/dflag/endpoint"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
@@ -130,6 +131,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
 	qps, _ := strconv.ParseFloat(r.FormValue("qps"), 64)
 	durStr := r.FormValue("t")
+	connectionReuseRange := parseConnectionReuseRange(
+		r.FormValue("connection-reuse-range-min"),
+		r.FormValue("connection-reuse-range-max"),
+		r.FormValue("connection-reuse-range-value"))
 	jitter := (r.FormValue("jitter") == "on")
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
@@ -196,6 +201,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	// Set the connection reuse range.
+	err := bincommon.ConnectionReuseRange.
+		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
+		Set(connectionReuseRange)
+	if err != nil {
+		log.Errf("Fail to validate connection reuse range flag, err: %v", err)
+	}
+
 	if len(payload) > 0 {
 		httpopts.Payload = []byte(payload)
 	}
@@ -887,4 +900,14 @@ func Report(baseurl, port, datadir string) bool {
 	fsd := http.FileServer(http.Dir(datadir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	return true
+}
+
+func parseConnectionReuseRange(min string, max string, value string) string {
+	if min != "" && max != "" {
+		return fmt.Sprintf("%s:%s", min, max)
+	} else if value != "" {
+		return value
+	}
+
+	return ""
 }

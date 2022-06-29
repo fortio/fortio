@@ -90,7 +90,13 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	if o.SequentialWarmup {
 		warmupMode = "sequential"
 	}
-	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup", o.URL, o.NumThreads, o.QPS, warmupMode)
+
+	connReuseMsg := ""
+	if o.ConnReuseRange != [2]int{0, 0} {
+		connReuseMsg = fmt.Sprintf(", with connection reuse [%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
+	}
+	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup%s",
+		o.URL, o.NumThreads, o.QPS, warmupMode, connReuseMsg)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // can change during run for c > 2 n
@@ -186,11 +192,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	keys := []int{}
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
-		host, ip := httpstate[i].client.GetIPAddress()
-		log.Infof("[%d] %s resolved to %s\n", i, host, ip)
+		ip := httpstate[i].client.GetIPAddress()
+		currentSocketUsed := httpstate[i].client.Close()
+		log.Infof("[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
 		total.IPCountMap[ip]++
 
-		total.SocketCount += httpstate[i].client.Close()
+		total.SocketCount += currentSocketUsed
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {

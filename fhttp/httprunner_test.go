@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -468,6 +469,108 @@ func TestAbortOn(t *testing.T) {
 	count = r.Result().DurationHistogram.Count
 	if count > int64(o.NumThreads) {
 		t.Errorf("Abort2 not working, did %d requests expecting ideally 1 and <= %d", count, o.NumThreads)
+	}
+}
+
+func TestConnectionReuseRange(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/foo/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/foo/", addr.Port)
+	opts := HTTPRunnerOptions{}
+	opts.Init(url)
+	opts.QPS = 50
+	opts.URL = url
+	opts.NumThreads = 1
+	opts.Exactly = 10
+
+	// Test empty reuse range.
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if res.SocketCount != 1 {
+		t.Errorf("Expected only 1 socket should be used when the max connection reuse flag is not set.")
+	}
+
+	// Test connection reuse range from 1 to 10.
+	for i := 1; i <= 10; i++ {
+		opts.ConnReuseRange = [2]int{i, i}
+		expectedSocketReuse := math.Ceil(float64(opts.Exactly) / float64(opts.ConnReuseRange[0]))
+		res, err := RunHTTPTest(&opts)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if res.SocketCount != (int)(expectedSocketReuse) {
+			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+		}
+	}
+
+	// Test when connection reuse range min != max.
+	// The actual socket count should always be 2 as the connection reuse range varies between 5 and 9.
+	expectedSocketReuse := 2
+	opts.ConnReuseRange = [2]int{5, 9}
+	// Check a few times that despite the range and random 2-9 we still always get 2 connections
+	for i := 0; i < 5; i++ {
+		res, err := RunHTTPTest(&opts)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if res.SocketCount != expectedSocketReuse {
+			t.Errorf("Expecting %d socket to be used, got %d", expectedSocketReuse, res.SocketCount)
+		}
+	}
+}
+
+func TestValidateConnectionReuse(t *testing.T) {
+	httpOpts := HTTPOptions{}
+
+	err := httpOpts.ValidateAndSetConnectionReuseRange("1:2:3:4")
+	if err == nil {
+		t.Errorf("Shoud fail when more than two values are provided for connection reuse range.")
+	}
+
+	err = httpOpts.ValidateAndSetConnectionReuseRange("foo")
+	if err == nil {
+		t.Errorf("Shoud fail when non integer value is provided for connection reuse range.")
+	}
+
+	err = httpOpts.ValidateAndSetConnectionReuseRange("")
+	if err != nil {
+		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
+	}
+
+	if httpOpts.ConnReuseRange != [2]int{0, 0} {
+		t.Errorf("Expect the connection reuse range to be [0, 0], got : %v.", httpOpts.ConnReuseRange)
+	}
+
+	err = httpOpts.ValidateAndSetConnectionReuseRange("10")
+	if err != nil {
+		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
+	}
+
+	if httpOpts.ConnReuseRange != [2]int{10, 10} {
+		t.Errorf("Expect the connection reuse range to be [10, 10], got : %v.", httpOpts.ConnReuseRange)
+	}
+
+	err = httpOpts.ValidateAndSetConnectionReuseRange("20:10")
+	if err != nil {
+		t.Errorf("Expect no error when two values are privided, got err: %v.", err)
+	}
+
+	if httpOpts.ConnReuseRange != [2]int{10, 20} {
+		t.Errorf("Expect the connection reuse range to be [10, 20], got : %v.", httpOpts.ConnReuseRange)
+	}
+
+	err = httpOpts.ValidateAndSetConnectionReuseRange("10:20")
+	if err != nil {
+		t.Errorf("Expect no error when two values are privided, got err: %v", err)
+	}
+
+	if httpOpts.ConnReuseRange != [2]int{10, 20} {
+		t.Errorf("Expect the connection reuse range to be [10, 20], got : %v.", httpOpts.ConnReuseRange)
 	}
 }
 
