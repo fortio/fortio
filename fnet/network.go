@@ -409,7 +409,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		case "first":
 			log.Debugf("Using first address for %s : %v", host, addrs)
 		case "rnd":
-			idx = uint32(rand.Intn(int(l)))
+			idx = uint32(rand.Intn(int(l))) // nolint: gosec // we want fast not crypto
 			log.Debugf("Using rnd address #%d for %s : %v", idx, host, addrs)
 		}
 	}

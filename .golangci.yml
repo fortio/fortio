@@ -98,6 +98,7 @@ linters:
     - tagliatelle
     - nonamedreturns
     - varnamelen
+    - exhaustruct # seems like a good idea at first but actually a pain and go does have zero values for a reason.
 # TODO consider putting these back, when they stop being bugged (ifshort, wastedassign,...)
     - paralleltest
     - thelper
@@ -126,7 +127,6 @@ issues:
         - gochecknoinits
         - gochecknoglobals
         - forcetypeassert
-        - exhaustruct
 
     # Exclude lll issues for long lines with go:generate
     - linters:

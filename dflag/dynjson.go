@@ -23,7 +23,7 @@ func DynJSON(flagSet *flag.FlagSet, name string, value interface{}, usage string
 		(reflectVal.Elem().Kind() != reflect.Struct && reflectVal.Elem().Kind() != reflect.Slice) {
 		panic("DynJSON value must be a pointer to a struct or to a slice")
 	}
-	dynValue := DynJSONValue{} // nolint: exhaustruct // dynInit is doing the work
+	dynValue := DynJSONValue{}
 	dynInit(&dynValue.DynValue, flagSet, name, value, usage)
 	dynValue.structType = reflectVal.Type().Elem()
 	flagSet.Var(&dynValue, name, usage) // use our Set()
