@@ -383,6 +383,8 @@ func StopByRunID(runid int64) int {
 	return 0
 }
 
+// AddHandlers adds the REST Api handlers for run, status and stop.
+// uiPath must end with a /.
 func AddHandlers(mux *http.ServeMux, uiPath, datadir string) {
 	SetDataDir(datadir)
 	restRunPath := uiPath + restRunURI
@@ -391,6 +393,7 @@ func AddHandlers(mux *http.ServeMux, uiPath, datadir string) {
 	mux.HandleFunc(restStatusPath, RESTStatusHandler)
 	restStopPath := uiPath + restStopURI
 	mux.HandleFunc(restStopPath, RESTStopHandler)
+	log.Printf("REST API on %s, %s, %s", restRunPath, restStatusPath, restStopPath)
 }
 
 // SaveJSON save Json bytes to give file name (.json) in data-path dir.
