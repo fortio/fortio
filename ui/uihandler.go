@@ -265,7 +265,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		var res periodic.HasRunnerResult
 		var err error
-		if runner == rapi.ModeGRPC { // nolint: gocritic // can't actually quite replace by switch unlike told
+		if runner == rapi.ModeGRPC {
 			o := fgrpc.GRPCRunnerOptions{
 				RunnerOptions: ro,
 				Destination:   url,

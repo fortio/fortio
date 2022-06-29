@@ -4,6 +4,9 @@
 
 # all available settings of specific linters
 linters-settings:
+  gocritic:
+    disabled-checks:
+      - ifElseChain
   dupl:
     # tokens count to trigger issue, 150 by default
     threshold: 100
@@ -94,6 +97,7 @@ linters:
     - exhaustivestruct
     - tagliatelle
     - nonamedreturns
+    - varnamelen
 # TODO consider putting these back, when they stop being bugged (ifshort, wastedassign,...)
     - paralleltest
     - thelper
@@ -102,7 +106,7 @@ linters:
     - wastedassign
     - cyclop
     - forcetypeassert
-    - varnamelen
+    - ireturn
   enable-all: true
   disable-all: false
   # Must not use fast: true in newer golangci-lint or it'll just skip a bunch of linter instead of doing caching like before (!)

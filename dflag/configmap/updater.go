@@ -67,6 +67,7 @@ func New(flagSet *flag.FlagSet, dirPath string) (*Updater, error) {
 		dirPath:    path.Clean(dirPath),
 		parentPath: path.Clean(path.Join(dirPath, "..")), // add parent in case the dirPath is a symlink itself
 		watcher:    watcher,
+		started:    false,
 		done:       nil,
 	}, nil
 }

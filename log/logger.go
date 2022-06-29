@@ -272,7 +272,7 @@ func (l *loggerShm) Printf(format string, rest ...interface{}) {
 }
 
 // Logger returns a LoggerI (standard logger compatible) that can be used for simple logging.
-func Logger() LoggerI { //nolint: ireturn
+func Logger() LoggerI {
 	logger := loggerShm{}
 	return &logger
 }

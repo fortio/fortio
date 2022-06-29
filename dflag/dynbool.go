@@ -16,7 +16,7 @@ import (
 
 // DynBool creates a `Flag` that represents `bool` which is safe to change dynamically at runtime.
 func DynBool(flagSet *flag.FlagSet, name string, value bool, usage string) *DynBoolValue {
-	dynValue := DynBoolValue{}
+	dynValue := DynBoolValue{} // nolint: exhaustruct // dynInit is doing the work
 	dynInit(&dynValue.DynValue, flagSet, name, value, usage)
 	flagSet.Var(&dynValue, name, usage)
 	flagSet.Lookup(name).DefValue = fmt.Sprintf("%v", value)

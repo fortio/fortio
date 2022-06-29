@@ -261,7 +261,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
-	if runner == ModeGRPC { // nolint: nestif, gocritic // can't actually quite replace by switch unlike told (or I'm missing something)
+	if runner == ModeGRPC { // nolint: nestif
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
