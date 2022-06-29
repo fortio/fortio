@@ -91,9 +91,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		warmupMode = "sequential"
 	}
 
-	connReuseMsg := fmt.Sprintf("with connection reuse range between %d and %d", o.ConnReuseRange[0], o.ConnReuseRange[1])
-	if o.ConnReuseRange == [2]int{0, 0} {
-		connReuseMsg = ""
+	connReuseMsg := ""
+	if o.ConnReuseRange != [2]int{0, 0} {
+		connReuseMsg = fmt.Sprintf(" with connection reuse [%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
 	}
 	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup %s",
 		o.URL, o.NumThreads, o.QPS, warmupMode, connReuseMsg)
