@@ -108,7 +108,7 @@ var (
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
 	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.
-	ConnectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse-range", "",
+	ConnectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse", "",
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
 			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
 		WithValidator(ConnectionReuseRangeValidator(&httpOpts))

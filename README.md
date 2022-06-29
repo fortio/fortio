@@ -160,9 +160,10 @@ connections, if empty, use https:// prefix for standard internet/system CAs
   -config path
         Config directory path to watch for changes of dynamic flags (empty for
 no watch)
-  -connection-reuse-range min:max
-        Range min:max for the max number of connections to reuse for each thread, 
-default to unlimited. e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.
+  -connection-reuse min:max
+        Range min:max for the max number of connections to reuse for each
+thread, default to unlimited. e.g. 10:30 means randomly choose a max connection
+reuse threshold between 10 and 30 requests.
   -content-type string
         Sets http content type. Setting this value switches the request method
 from GET to POST.

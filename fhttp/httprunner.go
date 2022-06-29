@@ -93,7 +93,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 
 	connReuseMsg := ""
 	if o.ConnReuseRange != [2]int{0, 0} {
-		connReuseMsg = fmt.Sprintf(" with connection reuse [%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
+		connReuseMsg = fmt.Sprintf(", with connection reuse [%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
 	}
 	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup%s",
 		o.URL, o.NumThreads, o.QPS, warmupMode, connReuseMsg)
@@ -194,7 +194,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		// Get the report on the IP address each thread use to send traffic
 		ip := httpstate[i].client.GetIPAddress()
 		currentSocketUsed := httpstate[i].client.Close()
-		log.Infof("[%d] %d socket used, resolved to %s\n", i, currentSocketUsed, ip)
+		log.Infof("[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
 		total.IPCountMap[ip]++
 
 		total.SocketCount += currentSocketUsed

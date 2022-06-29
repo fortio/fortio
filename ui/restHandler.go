@@ -196,7 +196,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	// Set the connection reuse range.
 	err = bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
-		Set(FormValue(r, jd, "connection-reuse-range"))
+		Set(FormValue(r, jd, "connection-reuse"))
 	if err != nil {
 		log.Errf("Fail to validate connection reuse range flag, err: %v", err)
 	}
