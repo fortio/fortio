@@ -76,7 +76,7 @@ func Benchmark_String_Dyn_Get(b *testing.B) {
 	set.Set("some_string_1", "else")
 	for i := 0; i < b.N; i++ {
 		x := value.Get()
-		x = x + "foo" // nolint
+		x += "foo" // nolint: ineffassign
 	}
 }
 
@@ -86,6 +86,6 @@ func Benchmark_String_Normal_get(b *testing.B) {
 	set.Set("some_string_1", "else")
 	for i := 0; i < b.N; i++ {
 		x := *valPtr
-		x = x + "foo" // nolint
+		x += "foo" // nolint: ineffassign
 	}
 }

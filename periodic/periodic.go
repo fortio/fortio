@@ -188,7 +188,7 @@ func (r *RunnerResults) Result() *RunnerResults {
 
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
-type PeriodicRunner interface { // nolint: golint
+type PeriodicRunner interface { // nolint: revive
 	// Starts the run. Returns actual QPS and Histogram of function durations.
 	Run() RunnerResults
 	// Returns the options normalized by constructor - do not mutate
@@ -359,11 +359,9 @@ func (r *periodicRunner) runQPSSetup(extra string) (requestedDuration string, re
 			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] : exactly %d, %d calls each (total %d + %d)%s\n",
 				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Exactly, numCalls, totalCalls, leftOver, extra)
 		}
-	} else {
-		if log.Log(log.Warning) {
-			_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)%s\n",
-				r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls, extra)
-		}
+	} else if log.Log(log.Warning) {
+		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] for %v : %d calls each (total %d)%s\n",
+			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), r.Duration, numCalls, totalCalls, extra)
 	}
 	return requestedDuration, requestedQPS, numCalls, leftOver
 }

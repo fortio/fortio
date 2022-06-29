@@ -1,4 +1,5 @@
-package ui // import "fortio.org/fortio/ui"
+// Remote API to trigger load tests package (REST API).
+package rapi // import "fortio.org/fortio/rapi"
 
 import (
 	"encoding/json"
@@ -7,8 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"fortio.org/fortio/bincommon"
@@ -19,6 +22,23 @@ import (
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
+)
+
+const (
+	restRunURI    = "rest/run"
+	restStatusURI = "rest/status"
+	restStopURI   = "rest/stop"
+	ModeGRPC      = "grpc"
+)
+
+var (
+	uiRunMapMutex = &sync.Mutex{}
+	id            int64
+	runs          = make(map[int64]*periodic.RunnerOptions)
+	// Directory where results are written to/read from.
+	dataDir string
+	// Default percentiles when not otherwise specified.
+	DefaultPercentileList []float64
 )
 
 // ErrorReply is returned on errors.
@@ -34,7 +54,7 @@ func Error(w http.ResponseWriter, msg ErrorReply) {
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
-	b, _ := json.Marshal(msg)
+	b, _ := json.Marshal(msg) // nolint: errchkjson
 	_, _ = w.Write(b)
 }
 
@@ -148,7 +168,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if durStr == "on" {
 		dur = -1
 	} else {
-		var err error
 		dur, err = time.ParseDuration(durStr)
 		if err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
@@ -157,7 +176,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	c, _ := strconv.Atoi(FormValue(r, jd, "c"))
 	out := io.Writer(os.Stderr)
 	if len(percList) == 0 && !strings.Contains(r.URL.RawQuery, "p=") {
-		percList = defaultPercentileList
+		percList = DefaultPercentileList
 	}
 	n, _ := strconv.ParseInt(FormValue(r, jd, "n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
@@ -236,7 +255,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
+		_, _ = w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -250,7 +269,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
-	if runner == modegrpc { // nolint: nestif
+	if runner == ModeGRPC { // nolint: nestif
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
@@ -324,7 +343,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
-	w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
+	_, _ = w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
 }
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
@@ -333,7 +352,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
-	w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
+	_, _ = w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.
@@ -362,4 +381,57 @@ func StopByRunID(runid int64) int {
 	log.Infof("Runid %d not found to interrupt", runid)
 	uiRunMapMutex.Unlock()
 	return 0
+}
+
+// AddHandlers adds the REST Api handlers for run, status and stop.
+// uiPath must end with a /.
+func AddHandlers(mux *http.ServeMux, uiPath, datadir string) {
+	SetDataDir(datadir)
+	restRunPath := uiPath + restRunURI
+	mux.HandleFunc(restRunPath, RESTRunHandler)
+	restStatusPath := uiPath + restStatusURI
+	mux.HandleFunc(restStatusPath, RESTStatusHandler)
+	restStopPath := uiPath + restStopURI
+	mux.HandleFunc(restStopPath, RESTStopHandler)
+	log.Printf("REST API on %s, %s, %s", restRunPath, restStatusPath, restStopPath)
+}
+
+// SaveJSON save Json bytes to give file name (.json) in data-path dir.
+func SaveJSON(name string, json []byte) string {
+	if dataDir == "" {
+		log.Infof("Not saving because data-path is unset")
+		return ""
+	}
+	name += ".json"
+	log.Infof("Saving %s in %s", name, dataDir)
+	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644) // nolint: gosec // we do want 644
+	if err != nil {
+		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
+		return ""
+	}
+	// Return the relative path from the /fortio/ UI
+	return "data/" + name
+}
+
+func AddRun(ro *periodic.RunnerOptions) int64 {
+	uiRunMapMutex.Lock()
+	id++ // start at 1 as 0 means interrupt all
+	runid := id
+	runs[runid] = ro
+	uiRunMapMutex.Unlock()
+	return runid
+}
+
+func RemoveRun(id int64) {
+	uiRunMapMutex.Lock()
+	delete(runs, id)
+	uiRunMapMutex.Unlock()
+}
+
+func SetDataDir(datadir string) {
+	dataDir = datadir
+}
+
+func GetDataDir() string {
+	return dataDir
 }

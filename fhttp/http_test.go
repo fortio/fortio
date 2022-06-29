@@ -630,7 +630,7 @@ func TestEchoBack(t *testing.T) {
 	v := url.Values{}
 	v.Add("foo", "bar")
 	url := fmt.Sprintf("http://localhost:%d/?delay=2s", a.Port) // trigger max delay
-	resp, err := http.PostForm(url, v)                          // nolint: noctx // it's just a test!
+	resp, err := http.PostForm(url, v)
 	if err != nil {
 		t.Fatalf("post form err %v", err)
 	}
@@ -1162,7 +1162,7 @@ func TestEchoHeaders(t *testing.T) {
 	// proper encoding
 	urls = append(urls, fmt.Sprintf("http://localhost:%d/echo?%s", a.Port, v.Encode()))
 	for _, url := range urls {
-		resp, err := http.Get(url) // nolint: noctx // it's just a test!
+		resp, err := http.Get(url)
 		if err != nil {
 			t.Fatalf("Failed get for %s : %v", url, err)
 		}
@@ -1443,7 +1443,7 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 		if err == nil && !test.isCredentialsValid {
 			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
 		}
-		if test.isAuthHeaderAdded && len(h.Get("Authorization")) <= 0 {
+		if test.isAuthHeaderAdded && len(h.Get("Authorization")) == 0 {
 			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
 		}
 	}

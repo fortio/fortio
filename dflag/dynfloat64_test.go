@@ -68,7 +68,7 @@ func Benchmark_Float64_Normal_Get(b *testing.B) {
 	var x float64
 	for i := 0; i < b.N; i++ {
 		x = *valPtr
-		x = x + 0.01
+		x += 0.01
 	}
 	b.Logf("last x %v", x) // to please linters/goreport card
 }

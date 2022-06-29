@@ -36,7 +36,10 @@ type FileReadValue struct {
 //
 // If defaultFilePath is non empty, the dflag.ReadFileFlags will expect the file to be there.
 func FileReadFlag(flagSet *flag.FlagSet, parentFlagName string, defaultFilePath string) *FileReadValue {
-	dynValue := &FileReadValue{parentFlagName: parentFlagName, filePath: defaultFilePath, flagSet: flagSet}
+	dynValue := &FileReadValue{
+		DynamicFlagValueTag: DynamicFlagValueTag{},
+		parentFlagName:      parentFlagName, filePath: defaultFilePath, flagSet: flagSet,
+	}
 	flagSet.Var(dynValue,
 		parentFlagName+"_path",
 		fmt.Sprintf("Path to read contents to a file to read contents of '%v' from.", parentFlagName))

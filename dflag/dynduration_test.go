@@ -73,6 +73,6 @@ func Benchmark_Duration_Normal_get(b *testing.B) {
 	valPtr := set.Duration("some_duration_1", 5*time.Second, "Use it or lose it")
 	set.Set("some_duration_1", "10s")
 	for i := 0; i < b.N; i++ {
-		(*valPtr).Nanoseconds()
+		valPtr.Nanoseconds()
 	}
 }
