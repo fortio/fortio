@@ -212,17 +212,14 @@ func ParseChunkSize(inp []byte) (int, int) {
 			} else {
 				res = 16*res + digit
 			}
-		} else {
-			// After digits, skipping ahead to find \r\n
-			if inp[off] == '\r' {
-				off++
-				if off >= end {
-					return off, -1
-				}
-				if inp[off] == '\n' {
-					// good case
-					return off + 1, res
-				}
+		} else if inp[off] == '\r' { // After digits, skipping ahead to find \r\n
+			off++
+			if off >= end {
+				return off, -1
+			}
+			if inp[off] == '\n' {
+				// good case
+				return off + 1, res
 			}
 		}
 		off++

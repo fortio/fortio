@@ -169,7 +169,7 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 	}
 	expectedLen := len(c.req)
 	n, err := conn.Write(c.req)
-	c.bytesSent = c.bytesSent + int64(n)
+	c.bytesSent += int64(n)
 	if log.LogDebug() {
 		log.Debugf("[%d] wrote %d (%s): %v", c.connID, n, fnet.DebugSummary(c.req, 256), err)
 	}
@@ -194,7 +194,7 @@ func (c *TCPClient) Fetch() ([]byte, error) {
 		if log.LogDebug() {
 			log.Debugf("[%d] read %d (%s): %v", c.connID, n, fnet.DebugSummary(c.buffer[totalRead:totalRead+n], 256), err)
 		}
-		c.bytesReceived = c.bytesReceived + int64(n)
+		c.bytesReceived += int64(n)
 		totalRead += n
 		if totalRead == expectedLen { // break first, assuming no err, so we don't test that for EOF case
 			break

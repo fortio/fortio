@@ -164,7 +164,7 @@ func (c *UDPClient) Fetch() ([]byte, error) {
 		c.req = tcprunner.GeneratePayload(c.connID, c.messageCount)
 	}
 	n, err := conn.Write(c.req)
-	c.bytesSent = c.bytesSent + int64(n)
+	c.bytesSent += int64(n)
 	if log.LogDebug() {
 		log.Debugf("wrote %d (%q): %v", n, string(c.req), err)
 	}
@@ -184,7 +184,7 @@ func (c *UDPClient) Fetch() ([]byte, error) {
 	}
 	// assert that len(c.buffer) == len(c.req)
 	n, err = conn.Read(c.buffer)
-	c.bytesReceived = c.bytesReceived + int64(n)
+	c.bytesReceived += int64(n)
 	if log.LogDebug() {
 		log.Debugf("read %d (%q): %v", n, string(c.buffer[:n]), err)
 	}

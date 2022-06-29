@@ -366,7 +366,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		if *exactlyFlag == 0 || *durationFlag <= 0 {
 			usageErr("Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
 		}
-		qps = float64(*exactlyFlag) / (*durationFlag).Seconds()
+		qps = float64(*exactlyFlag) / durationFlag.Seconds()
 		log.LogVf("Calculated QPS to do %d request in %v: %f", *exactlyFlag, *durationFlag, qps)
 	}
 	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",

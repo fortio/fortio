@@ -226,7 +226,7 @@ func (h *HTTPOptions) PayloadUTF8() string {
 // ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
 // if user credentials are valid.
 func (h *HTTPOptions) ValidateAndAddBasicAuthentication(headers http.Header) error {
-	if len(h.UserCredentials) <= 0 {
+	if len(h.UserCredentials) == 0 {
 		return nil // user credential is not entered
 	}
 	s := strings.SplitN(h.UserCredentials, ":", 2)
@@ -291,11 +291,11 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 	}
 
 	for _, input := range reuseRangeString {
-		if val, err := strconv.Atoi(input); err != nil {
+		val, err := strconv.Atoi(input)
+		if err != nil {
 			return fmt.Errorf("invalid value for connection reuse range, err: %w", err)
-		} else {
-			reuseRangeInt = append(reuseRangeInt, val)
 		}
+		reuseRangeInt = append(reuseRangeInt, val)
 	}
 
 	if len(reuseRangeInt) == 1 {
@@ -1050,5 +1050,5 @@ func generateReuseThreshold(min int, max int) int {
 		return min
 	}
 
-	return min + rand.Intn(max-min+1)
+	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
 }

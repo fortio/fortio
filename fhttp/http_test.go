@@ -1443,7 +1443,7 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 		if err == nil && !test.isCredentialsValid {
 			t.Errorf("Error was not expected for %s", test.o.UserCredentials)
 		}
-		if test.isAuthHeaderAdded && len(h.Get("Authorization")) <= 0 {
+		if test.isAuthHeaderAdded && len(h.Get("Authorization")) == 0 {
 			t.Errorf("Authorization header was expected for %s credentials", test.o.UserCredentials)
 		}
 	}
