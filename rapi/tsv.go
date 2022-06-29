@@ -2,7 +2,7 @@ package rapi // import "fortio.org/fortio/rapi"
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" // nolint: gosec // md5 is mandated by tsv format, not our choice
 	"encoding/base64"
 	"fmt"
 	"io"

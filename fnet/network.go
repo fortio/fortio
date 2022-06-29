@@ -79,7 +79,7 @@ var (
 	// all below are updated under lock.
 	dnsHost       string
 	dnsAddrs      []net.IP
-	dnsRoundRobin uint32 = 0
+	dnsRoundRobin uint32
 )
 
 func dnsValidator(inp string) error {
@@ -242,11 +242,12 @@ func UDPEchoServer(name string, port string, async bool) net.Addr {
 func GetPort(lAddr net.Addr) string {
 	var lPort string
 	// Note: might panic if called with something else than unix or tcp socket addr, it's ok.
-	if lAddr.Network() == UnixDomainSocket {
+	switch lAddr.Network() {
+	case UnixDomainSocket:
 		lPort = lAddr.(*net.UnixAddr).Name
-	} else if lAddr.Network() == "udp" {
+	case "udp":
 		lPort = strconv.Itoa(lAddr.(*net.UDPAddr).Port)
-	} else {
+	default:
 		lPort = strconv.Itoa(lAddr.(*net.TCPAddr).Port)
 	}
 	return lPort
@@ -283,7 +284,7 @@ func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
+	return &net.TCPAddr{IP: addr.IP, Port: addr.Port, Zone: ""}, nil
 }
 
 // ResolveDestinationInternal returns the address of the "host:port" suitable for net.Dial.
@@ -316,7 +317,7 @@ func Resolve(host string, port string) (*net.TCPAddr, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &net.TCPAddr{IP: addr.IP, Port: addr.Port}, nil
+	return &net.TCPAddr{IP: addr.IP, Port: addr.Port, Zone: ""}, nil
 }
 
 // ClearResolveCache clears the DNS cache for cached-rr resolution mode.
@@ -563,10 +564,8 @@ func NormalizeHostPort(inputPort string, addr net.Addr) string {
 	urlHostPort := addr.String()
 	if addr.Network() == UnixDomainSocket {
 		urlHostPort = fmt.Sprintf("-unix-socket=%s", urlHostPort)
-	} else {
-		if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
-			urlHostPort = fmt.Sprintf("localhost:%d", addr.(*net.TCPAddr).Port)
-		}
+	} else if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
+		urlHostPort = fmt.Sprintf("localhost:%d", addr.(*net.TCPAddr).Port)
 	}
 	return urlHostPort
 }

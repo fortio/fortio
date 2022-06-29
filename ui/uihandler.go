@@ -16,7 +16,7 @@
 package ui // import "fortio.org/fortio/ui"
 
 import (
-	"context" // nolint: gosec // md5 is mandated, not our choice
+	"context"
 	"embed"
 	"encoding/json"
 	"encoding/xml"
@@ -118,12 +118,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Infof("Starting %s load request from %v for %s", runner, r.RemoteAddr, url)
 		}
-	} else {
-		if r.FormValue("stop") == "Stop" {
-			runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64)
-			log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
-			mode = stop
-		}
+	} else if r.FormValue("stop") == "Stop" {
+		runid, _ = strconv.ParseInt(r.FormValue("runid"), 10, 64)
+		log.Critf("Stop request from %v for %d", r.RemoteAddr, runid)
+		mode = stop
 	}
 	// Those only exist/make sense on run mode but go variable declaration...
 	payload := r.FormValue("payload")
@@ -267,7 +265,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		var res periodic.HasRunnerResult
 		var err error
-		if runner == rapi.ModeGRPC {
+		if runner == rapi.ModeGRPC { // nolint: gocritic // can't actually quite replace by switch unlike told
 			o := fgrpc.GRPCRunnerOptions{
 				RunnerOptions: ro,
 				Destination:   url,
@@ -604,10 +602,8 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	sdata := strings.TrimSpace(string(data))
 	if strings.HasPrefix(sdata, "TsvHttpData-1.0") {
 		processTSV(w, client, sdata)
-	} else {
-		if !processXML(w, client, data, uStr, 0) {
-			return
-		}
+	} else if !processXML(w, client, data, uStr, 0) {
+		return
 	}
 	_, _ = w.Write([]byte("</table>"))
 	_, _ = w.Write([]byte("\n</body></html>\n"))

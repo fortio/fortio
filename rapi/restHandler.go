@@ -247,7 +247,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
+		_, _ = w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -261,7 +261,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	//	go func() {
 	var res periodic.HasRunnerResult
 	var err error
-	if runner == ModeGRPC { // nolint: nestif
+	if runner == ModeGRPC { // nolint: nestif, gocritic // can't actually quite replace by switch unlike told (or I'm missing something)
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
@@ -335,7 +335,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
-	w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
+	_, _ = w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
 }
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
@@ -344,7 +344,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
-	w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
+	_, _ = w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.

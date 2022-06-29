@@ -63,7 +63,7 @@ func Benchmark_Int64_Dyn_Get(b *testing.B) {
 	set.Set("some_int_1", "77007700")
 	for i := 0; i < b.N; i++ {
 		x := value.Get()
-		x = x + 1 // nolint
+		x++ // nolint: ineffassign
 	}
 }
 
@@ -73,6 +73,6 @@ func Benchmark_Int64_Normal_Get(b *testing.B) {
 	set.Set("some_int_1", "77007700")
 	for i := 0; i < b.N; i++ {
 		x := *valPtr
-		x = x + 1 // nolint
+		x++ // nolint: ineffassign
 	}
 }
