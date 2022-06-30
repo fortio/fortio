@@ -153,4 +153,6 @@ else
 fi
 # base url should serve report only UI in report mode
 $CURL $BASE_URL | grep "report only limited UI"
+# we should get the tsv without error
+$CURL $BASE_URL/data/index.tsv
 # cleanup() will clean everything left even on success
