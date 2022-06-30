@@ -897,6 +897,7 @@ func Report(baseurl, port, datadir string) bool {
 	} else {
 		mux.HandleFunc(uiPath, BrowseHandler)
 	}
+	rapi.SetDataDir(datadir) // needed for serving json and index.tsv
 	fsd := http.FileServer(http.Dir(datadir))
 	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
 	return true
