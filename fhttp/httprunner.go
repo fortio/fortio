@@ -191,12 +191,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	numThreads = total.RunnerResults.NumThreads
 	// But we also must cleanup all the created clients.
 	keys := []int{}
-	fmt.Fprintf(o.Out, "# Socket and IP used for each connection:\n")
+	fmt.Fprintf(out, "# Socket and IP used for each connection:\n")
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
 		ip := httpstate[i].client.GetIPAddress()
 		currentSocketUsed := httpstate[i].client.Close()
-		fmt.Fprintf(o.Out, "[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
+		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
 		total.IPCountMap[ip]++
 
 		total.SocketCount += currentSocketUsed
