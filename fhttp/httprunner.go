@@ -45,6 +45,7 @@ type HTTPRunnerResults struct {
 	HTTPOptions
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
+	Sockets     []int
 	SocketCount int
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
@@ -190,14 +191,16 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	numThreads = total.RunnerResults.NumThreads
 	// But we also must cleanup all the created clients.
 	keys := []int{}
+	fmt.Fprintf(out, "# Socket and IP used for each connection:\n")
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
 		ip := httpstate[i].client.GetIPAddress()
 		currentSocketUsed := httpstate[i].client.Close()
-		log.Infof("[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
+		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, ip)
 		total.IPCountMap[ip]++
 
 		total.SocketCount += currentSocketUsed
+		total.Sockets = append(total.Sockets, currentSocketUsed)
 		// Q: is there some copying each time stats[i] is used?
 		for k := range httpstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {
