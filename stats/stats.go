@@ -516,6 +516,9 @@ func ParsePercentiles(percentiles string) ([]float64, error) {
 		if err != nil {
 			return res, err
 		}
+		if p <= 0 || p >= 100 {
+			return res, fmt.Errorf("percentile %g must be > 0 and < 100", p)
+		}
 		res = append(res, p)
 	}
 	if len(res) == 0 {

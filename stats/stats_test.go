@@ -665,8 +665,12 @@ func TestParsePercentiles(t *testing.T) {
 		// Good cases
 		{str: "99.9", list: []float64{99.9}},
 		{str: "1,2,3", list: []float64{1, 2, 3}},
-		{str: "   17, -5.3,  78  ", list: []float64{17, -5.3, 78}},
+		{str: "   17, 5.3,  78  ", list: []float64{17, 5.3, 78}},
 		// Errors
+		{str: "1024", list: []float64{}, err: true},
+		{str: "0", list: []float64{}, err: true},
+		{str: "100", list: []float64{}, err: true},
+		{str: "-1", list: []float64{}, err: true},
 		{str: "", list: []float64{}, err: true},
 		{str: "   ", list: []float64{}, err: true},
 		{str: "23,a,46", list: []float64{23}, err: true},
