@@ -539,3 +539,31 @@ func RoundToDigits(v float64, digits int) float64 {
 func Round(v float64) float64 {
 	return RoundToDigits(v, 4)
 }
+
+// Map is a type that stores the key value pair which the key is string and value is int.
+type Map struct {
+	kvMap map[string]int
+}
+
+// Record records a key value pair
+func (m *Map) Record(key string, val int) {
+	m.kvMap[key] += val
+}
+
+// Reset clears the map to reset it to no data.
+func (m *Map) Reset() {
+	var empty Map
+	*m = empty
+}
+
+// Transfer merge data from src into this Map and clear src.
+func (m *Map) Transfer(src *Map) {
+	if src.kvMap == nil {
+		return
+	}
+	for k, v := range src.kvMap {
+		m.kvMap[k] += v
+	}
+
+	src.Reset()
+}
