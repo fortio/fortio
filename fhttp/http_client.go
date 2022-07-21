@@ -185,6 +185,8 @@ type HTTPOptions struct {
 	ID               int           // id to use for logging (thread id when used as a runner)
 	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
+	// re-resolve the DNS name when the connection breaks.
+	NoResolveEachConn bool
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -577,6 +579,9 @@ type FastClient struct {
 	id           int
 	https        bool
 	tlsConfig    *tls.Config
+	// Resolve the DNS name for each connection
+	resolve           string
+	noResolveEachConn bool
 	// range of connection reuse threshold that current thread will choose from
 	connReuseRange [2]int
 	connReuse      int
@@ -603,7 +608,7 @@ func (c *FastClient) Close() int {
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) (Fetcher, error) {
+func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
 	method := o.Method()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
@@ -635,6 +640,10 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		return nil, err
 	}
 
+	if o.NoResolveEachConn && o.Resolve != "" {
+		log.Warnf("Both `-resolve` and `-resolve-on-err` flags are defined, will use same ip address on new conn")
+	}
+
 	// Randomly assign a max connection reuse threshold to this thread.
 	var connReuse int
 	if o.ConnReuseRange != [2]int{0, 0} {
@@ -646,6 +655,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
 		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
+		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn,
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -659,18 +669,14 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		log.LogVf("[%d] No port specified, using %s", bc.id, bc.port)
 	}
 	var addr net.Addr
-	if o.UnixDomainSocket != "" { // nolint: nestif
+	if o.UnixDomainSocket != "" {
 		log.Infof("[%d] Using unix domain socket %v instead of %v %v", bc.id, o.UnixDomainSocket, bc.hostname, bc.port)
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		if o.Resolve != "" {
-			tAddr, err = fnet.Resolve(o.Resolve, bc.port)
-		} else {
-			tAddr, err = fnet.Resolve(bc.hostname, bc.port)
-		}
+		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -732,6 +738,17 @@ func (c *FastClient) connect() net.Conn {
 	c.socketCount++
 	var socket net.Conn
 	var err error
+
+	// Resolve the DNS name when making new connections.
+	if !c.noResolveEachConn {
+		c.dest, err = resolve(c.hostname, c.port, c.resolve)
+		log.Debugf("Hostname %v resolve to ip %v", c.hostname, c.dest)
+		if err != nil {
+			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
+			return nil
+		}
+	}
+
 	d := &net.Dialer{Timeout: c.reqTimeout}
 	if c.https {
 		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
@@ -1049,4 +1066,12 @@ func generateReuseThreshold(min int, max int) int {
 	}
 
 	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
+}
+
+func resolve(hostname string, port string, resolve string) (*net.TCPAddr, error) {
+	if resolve != "" {
+		return fnet.Resolve(resolve, port)
+	}
+
+	return fnet.Resolve(hostname, port)
 }
