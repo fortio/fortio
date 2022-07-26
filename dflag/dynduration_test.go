@@ -53,7 +53,7 @@ func TestDynDuration_FiresNotifier(t *testing.T) {
 	DynDuration(set, "some_duration_1", 5*time.Second, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_duration_1", "30s")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
