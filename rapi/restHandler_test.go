@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +82,7 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	uiPath := "/fortio/"
 	AddHandlers(mux, uiPath, "/tmp")
+	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
 
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restRunURI)
 
@@ -116,6 +118,10 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	}
 	if totalReq != 100 {
 		t.Errorf("Precedence error, value in url query arg (n=100) should be used, we got %d", totalReq)
+	}
+	savedID := res.RunID
+	if savedID <= 0 {
+		t.Errorf("Saved id should be >=1: %d", savedID)
 	}
 
 	// Send a bad (missing unit) duration (test error return)
@@ -159,10 +165,10 @@ func TestRestRunnerRESTApi(t *testing.T) {
 		t.Errorf("Should have done expected 23 requests, got %+v - %s", res.RetCodes, fhttp.DebugSummary(bytes, 128))
 	}
 	// Start infinite running run
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=10&t=on&url=%s&save=on&async=on", restURL, echoURL)
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=10&t=on&url=%s&async=on", restURL, echoURL)
 	asyncObj, bytes := GetAsyncResult(t, runURL, jsonData)
 	runID := asyncObj.RunID
-	if asyncObj.Message != "started" || runID < 1 {
+	if asyncObj.Message != "started" || runID <= savedID {
 		t.Errorf("Should started async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 	// And stop it:
@@ -177,7 +183,7 @@ func TestRestRunnerRESTApi(t *testing.T) {
 		t.Errorf("2nd stop should be noop, got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 	// Start 3 async test and stop all
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&save=on&async=on", restURL, echoURL)
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
 	_, _ = GetAsyncResult(t, runURL, jsonData)
 	_, _ = GetAsyncResult(t, runURL, jsonData)
 	_, _ = GetAsyncResult(t, runURL, jsonData)
@@ -185,5 +191,17 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
 	if asyncObj.Message != "stopped" || asyncObj.RunID != 0 || asyncObj.Count != 3 {
 		t.Errorf("Should have stopped 3 async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
+	}
+
+	tsvURL := fmt.Sprintf("http://localhost:%d%s", addr.Port, "/data/index.tsv")
+	code, bytes := fhttp.FetchURL(tsvURL)
+	if code != http.StatusOK {
+		t.Errorf("Error getting tsv index: %d - got %s", code, fhttp.DebugSummary(bytes, 512))
+	}
+	str := string(bytes)
+	// Check that the runid from above made it to the list
+	runStr := fmt.Sprintf("_%d.json\t", savedID)
+	if !strings.Contains(str, runStr) {
+		t.Errorf("Expected to find %q in %q", runStr, str)
 	}
 }
