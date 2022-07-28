@@ -58,7 +58,13 @@ var (
 // ErrorReply is returned on errors.
 type ErrorReply struct {
 	Error     string
-	Exception error
+	Exception string
+}
+
+// AsyncReply is returned when async=on is passed.
+type AsyncReply struct {
+	RunID   int64
+	Message string
 }
 
 // Error writes serialized ErrorReply to the writer.
@@ -69,6 +75,12 @@ func Error(w http.ResponseWriter, msg ErrorReply) {
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	b, _ := json.Marshal(msg) // nolint: errchkjson
+	_, _ = w.Write(b)
+}
+
+// Async writes serialized AsyncReply to the response.
+func Async(w http.ResponseWriter, resp AsyncReply) {
+	b, _ := json.Marshal(resp) // nolint: errchkjson
 	_, _ = w.Write(b)
 }
 
@@ -139,7 +151,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
-		Error(w, ErrorReply{"body read error", err})
+		Error(w, ErrorReply{"body read error", err.Error()})
 		return
 	}
 	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
@@ -147,11 +159,11 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	var jd map[string]interface{}
 	if len(data) > 0 {
 		// Json input and deserialize options from that path, eg. for flagger:
-		// jsonPath=metadata
+		// jsonPath=.metadata
 		jd, err = GetConfigAtPath(jsonPath, data)
 		if err != nil {
 			log.Errf("Error deserializing %v", err)
-			Error(w, ErrorReply{"body json deserialization error: " + err.Error(), err})
+			Error(w, ErrorReply{"body json deserialization error", err.Error()})
 			return
 		}
 		log.Infof("Body: %+v", jd)
@@ -181,10 +193,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	var dur time.Duration
 	if durStr == "on" {
 		dur = -1
-	} else {
+	} else if durStr != "" {
 		dur, err = time.ParseDuration(durStr)
 		if err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
+			Error(w, ErrorReply{fmt.Sprintf("parsing duration '%s'", durStr), err.Error()})
+			return
 		}
 	}
 	c, _ := strconv.Atoi(FormValue(r, jd, "c"))
@@ -194,7 +208,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	n, _ := strconv.ParseInt(FormValue(r, jd, "n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
-		Error(w, ErrorReply{"URL is required", nil})
+		Error(w, ErrorReply{"URL is required", ""})
 		return
 	}
 	ro := periodic.RunnerOptions{
@@ -211,11 +225,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		NoCatchUp:   nocatchup,
 	}
 	ro.Normalize()
-	uiRunMapMutex.Lock()
-	id++ // start at 1 as 0 means interrupt all
-	runid := id
-	runs[runid] = &ro
-	uiRunMapMutex.Unlock()
+	runid := AddRun(&ro)
 	ro.RunID = runid
 	log.Infof("New run id %d", runid)
 	httpopts := &fhttp.HTTPOptions{}
@@ -269,7 +279,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		_, _ = w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
+		Async(w, AsyncReply{runid, "started"})
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -330,7 +340,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	uiRunMapMutex.Unlock()
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-		Error(w, ErrorReply{"Aborting because of error", err})
+		Error(w, ErrorReply{"Aborting because of error", err.Error()})
 		return
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
