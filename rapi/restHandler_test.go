@@ -33,7 +33,7 @@ func Fetch(url string, jsonPayload string) (int, []byte) {
 	return fhttp.Fetch(opts)
 }
 
-// If jsonPayload isn't empty we POST otherwise get the url
+// If jsonPayload isn't empty we POST otherwise get the url.
 func GetResult(t *testing.T, url string, jsonPayload string) (*fhttp.HTTPRunnerResults, []byte) {
 	code, bytes := Fetch(url, jsonPayload)
 	if code != http.StatusOK {
@@ -47,7 +47,7 @@ func GetResult(t *testing.T, url string, jsonPayload string) (*fhttp.HTTPRunnerR
 	return &res, bytes
 }
 
-// Same as above but when expecting to get an error reply
+// Same as above but when expecting to get an error reply.
 func GetErrorResult(t *testing.T, url string, jsonPayload string) (*ErrorReply, []byte) {
 	code, bytes := Fetch(url, jsonPayload)
 	if code == http.StatusOK {
@@ -61,7 +61,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) (*ErrorReply, 
 	return &res, bytes
 }
 
-// Same as above but when expecting to get an error reply
+// Same as above but when expecting to get an Async reply.
 func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, []byte) {
 	code, bytes := Fetch(url, jsonPayload)
 	if code != http.StatusOK {
@@ -107,7 +107,7 @@ func TestRestRunnerRESTApi(t *testing.T) {
 
 	// Check payload is used and that query arg overrides payload
 	jsonData := fmt.Sprintf("{\"metadata\": {\"url\":%q, \"save\":\"on\", \"n\":\"200\"}}", echoURL)
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=100&t=on", restURL) // t=on is infinite but not used with n= just for coverage
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=100", restURL)
 	res, bytes = GetResult(t, runURL, jsonData)
 	totalReq = res.DurationHistogram.Count
 	httpOk = res.RetCodes[http.StatusOK]
@@ -150,7 +150,8 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	if errObj.Exception != "unexpected end of JSON input" {
 		t.Errorf("Didn't get the expected error for truncated/invalid json, got %+v - %s", errObj, fhttp.DebugSummary(bytes, 512))
 	}
-	// Exercise Hearders code (but hard to test the effect, would need to make a single echo query instead of a run... which the API doesn't do)
+	// Exercise Hearders code (but hard to test the effect,
+	// would need to make a single echo query instead of a run... which the API doesn't do)
 	jsonData = `{"metadata": {"headers": ["Foo: Bar", "Blah: BlahV"]}}`
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=90&n=23&url=%s&H=Third:HeaderV", restURL, echoURL)
 	res, bytes = GetResult(t, runURL, jsonData)
@@ -163,5 +164,4 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	if asyncObj.Message != "started" || asyncObj.RunID < 1 {
 		t.Errorf("Should started async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
-
 }
