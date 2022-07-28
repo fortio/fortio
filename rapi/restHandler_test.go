@@ -161,7 +161,29 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	// Start infinite running run
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=10&t=on&url=%s&save=on&async=on", restURL, echoURL)
 	asyncObj, bytes := GetAsyncResult(t, runURL, jsonData)
-	if asyncObj.Message != "started" || asyncObj.RunID < 1 {
+	runID := asyncObj.RunID
+	if asyncObj.Message != "started" || runID < 1 {
 		t.Errorf("Should started async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
+	}
+	// And stop it:
+	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)
+	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
+	if asyncObj.Message != "stopped" || asyncObj.RunID != runID || asyncObj.Count != 1 {
+		t.Errorf("Should have stopped async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
+	}
+	// Stop it again, should be 0 count
+	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
+	if asyncObj.Message != "stopped" || asyncObj.RunID != runID || asyncObj.Count != 0 {
+		t.Errorf("2nd stop should be noop, got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
+	}
+	// Start 3 async test and stop all
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&save=on&async=on", restURL, echoURL)
+	_, _ = GetAsyncResult(t, runURL, jsonData)
+	_, _ = GetAsyncResult(t, runURL, jsonData)
+	_, _ = GetAsyncResult(t, runURL, jsonData)
+	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStopURI)
+	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
+	if asyncObj.Message != "stopped" || asyncObj.RunID != 0 || asyncObj.Count != 3 {
+		t.Errorf("Should have stopped 3 async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 }

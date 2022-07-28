@@ -65,6 +65,7 @@ type ErrorReply struct {
 type AsyncReply struct {
 	RunID   int64
 	Message string
+	Count   int
 }
 
 // Error writes serialized ErrorReply to the writer.
@@ -279,7 +280,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		Async(w, AsyncReply{runid, "started"})
+		Async(w, AsyncReply{runid, "started", 1})
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -335,9 +336,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}
-	uiRunMapMutex.Lock()
-	delete(runs, ro.RunID)
-	uiRunMapMutex.Unlock()
+	RemoveRun(ro.RunID)
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		Error(w, ErrorReply{"Aborting because of error", err.Error()})
@@ -376,7 +375,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
-	_, _ = w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
+	Async(w, AsyncReply{runid, "stopped", i})
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.
