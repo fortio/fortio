@@ -51,7 +51,7 @@ func TestDynInt64_FiresNotifier(t *testing.T) {
 	DynInt64(set, "some_int_1", 13371337, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_int_1", "77007700")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}

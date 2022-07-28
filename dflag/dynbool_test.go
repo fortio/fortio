@@ -52,7 +52,7 @@ func TestDynBool_FiresNotifier(t *testing.T) {
 	DynBool(set, "some_bool_1", true, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_bool_1", "false")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}

@@ -45,7 +45,7 @@ func TestDynStringSlice_FiresNotifier(t *testing.T) {
 	DynStringSlice(set, "some_stringslice_1", []string{"foo", "bar"}, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_stringslice_1", "car,far")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}

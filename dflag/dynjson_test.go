@@ -82,7 +82,7 @@ func TestDynJSON_FiresNotifier(t *testing.T) {
 	assert.NoError(t, err, "setting value must succeed")
 
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
@@ -171,7 +171,7 @@ func TestDynJSONArray_FiresNotifier(t *testing.T) {
 	assert.NoError(t, err, "setting value must succeed")
 
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}

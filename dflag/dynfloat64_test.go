@@ -44,7 +44,7 @@ func TestDynFloat64_FiresNotifier(t *testing.T) {
 	DynFloat64(set, "some_float_1", 13.37, "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_float_1", "7.11")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}

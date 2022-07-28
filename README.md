@@ -96,7 +96,7 @@ Most important flags for http load generation:
 
 | Flag         | Description, example |
 | -------------|----------------------|
-| `-qps rate` | Queries Per Seconds or 0 for no wait/max qps |
+| `-qps rate` | Total Queries Per Seconds across all connections/threads or 0 for no wait/max qps |
 | `-nocatchup` | Do not try to reach the target qps by going faster when the service falls behind and then recovers. Makes QPS an absolute ceiling even if the service has some spikes in latency, fortio will not compensate (but also won't stress the target more than the set qps). Recommended to use jointly with `-uniform`. |
 | `-c connections` | Number of parallel simultaneous connections (and matching go routine) |
 | `-t duration` | How long to run the test  (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |

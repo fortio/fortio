@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const notifierTimeout = 50 * time.Millisecond
+
 func TestDynString_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)
 	dynFlag := DynString(set, "some_string_1", "something", "Use it or lose it")
@@ -64,7 +66,7 @@ func TestDynString_FiresNotifier(t *testing.T) {
 	DynString(set, "some_string_1", "something", "Use it or lose it").WithNotifier(notifier)
 	set.Set("some_string_1", "somethingelse")
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(notifierTimeout):
 		assert.Fail(t, "failed to trigger notifier")
 	case <-waitCh:
 	}
