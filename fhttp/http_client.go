@@ -742,7 +742,7 @@ func (c *FastClient) connect() net.Conn {
 	var err error
 
 	// Resolve the DNS name when making new connections.
-	if !c.noResolveEachConn {
+	if c.socketCount > 1 && !c.noResolveEachConn {
 		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
 		log.Debugf("Hostname %v resolve to ip %v", c.hostname, c.dest)
 		if err != nil {
@@ -1074,7 +1074,6 @@ func generateReuseThreshold(min int, max int) int {
 func resolve(hostname string, port string, overrideIp string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
 	var addr *net.TCPAddr
 	var err error
-	fmt.Println("resolve happen!")
 	if overrideIp != "" {
 		addr, err = fnet.Resolve(overrideIp, port)
 	} else {
