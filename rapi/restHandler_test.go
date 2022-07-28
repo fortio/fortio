@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 	"testing"
@@ -78,7 +79,7 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, 
 	return &res, bytes
 }
 
-// nolint: funlen // it's a test of a lot of things in sequence/context
+// nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
@@ -86,9 +87,14 @@ func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	uiPath := "/fortio/"
 	tmpDir := t.TempDir()
 	os.Create(path.Join(tmpDir, "foo.txt")) // not a json, will be skipped over
-	badJson := path.Join(tmpDir, "bad.json")
-	os.Create(badJson)
-	os.Chmod(badJson, 0) // make the file un readable so it should also be skipped
+	badJSON := path.Join(tmpDir, "bad.json")
+	os.Create(badJSON)
+	// os.Chmod(badJSON, 0) // make the file un readable so it should also be skipped (doesn't work on ci(!))
+	cmd := exec.Command("chmod", "a-r", badJSON)
+	err := cmd.Run()
+	if err != nil {
+		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
+	}
 	AddHandlers(mux, uiPath, tmpDir)
 	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
 
@@ -116,7 +122,7 @@ func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	// Check payload is used and that query arg overrides payload
-	jsonData := fmt.Sprintf("{\"metadata\": {\"url\":%q, \"save\":\"on\", \"n\":\"200\"}}", echoURL)
+	jsonData := fmt.Sprintf("{\"metadata\": {\"url\":%q, \"save\":\"on\", \"n\":\"200\", \"payload\": \"test payload\"}}", echoURL)
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=100", restURL)
 	res, bytes = GetResult(t, runURL, jsonData)
 	totalReq = res.DurationHistogram.Count
@@ -200,6 +206,14 @@ func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
 	if asyncObj.Message != stoppedMsg || asyncObj.RunID != 0 || asyncObj.Count != 3 {
 		t.Errorf("Should have stopped 3 async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
+	}
+
+	// add one more with bad url
+	badURL := fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, "http://doesnotexist.fortio.org/")
+	asyncObj, bytes = GetAsyncResult(t, badURL, jsonData)
+	runID = asyncObj.RunID
+	if asyncObj.Message != "started" || runID <= savedID+5 { // 1+1+3 jobs before this one
+		t.Errorf("Should started async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 
 	tsvURL := fmt.Sprintf("http://localhost:%d%s", addr.Port, "/data/index.tsv")
