@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -77,12 +79,17 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, 
 }
 
 // nolint: funlen // it's a test of a lot of things in sequence/context
-func TestRestRunnerRESTApi(t *testing.T) {
+func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	uiPath := "/fortio/"
-	AddHandlers(mux, uiPath, "/tmp")
+	tmpDir := t.TempDir()
+	os.Create(path.Join(tmpDir, "foo.txt")) // not a json, will be skipped over
+	badJson := path.Join(tmpDir, "bad.json")
+	os.Create(badJson)
+	os.Chmod(badJson, 0) // make the file un readable so it should also be skipped
+	AddHandlers(mux, uiPath, tmpDir)
 	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
 
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restRunURI)
@@ -205,5 +212,24 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	runStr := fmt.Sprintf("_%d.json\t", savedID)
 	if !strings.Contains(str, runStr) {
 		t.Errorf("Expected to find %q in %q", runStr, str)
+	}
+	if strings.Contains(str, "foo.txt") {
+		t.Errorf("Result of index.tsv should not include non .json files: %s", str)
+	}
+	if strings.Contains(str, "bad.json") {
+		t.Errorf("Result of index.tsv should not include unreadble .json files: %s", str)
+	}
+	files := DataList()
+	if len(files) < 1 {
+		t.Error("DataList() should also return files when dir is correct")
+	}
+	SetDataDir("/does/not/exist")
+	code, bytes = fhttp.FetchURL(tsvURL)
+	if code != http.StatusServiceUnavailable {
+		t.Errorf("Setting bad directory should error out, it didn't - got %s", fhttp.DebugSummary(bytes, 512))
+	}
+	none := DataList()
+	if len(none) > 0 {
+		t.Errorf("Setting bad directory should not get any files got %v", none)
 	}
 }
