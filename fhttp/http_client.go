@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"fortio.org/fortio/stats"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -582,6 +583,7 @@ type FastClient struct {
 	// Resolve the DNS name for each connection
 	resolve           string
 	noResolveEachConn bool
+	ipAddrUsage       *stats.Occurrence
 	// range of connection reuse threshold that current thread will choose from
 	connReuseRange [2]int
 	connReuse      int
@@ -655,7 +657,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
 		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
-		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn,
+		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn, ipAddrUsage: stats.NewOccurrence(),
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -676,7 +678,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve)
+		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -741,7 +743,7 @@ func (c *FastClient) connect() net.Conn {
 
 	// Resolve the DNS name when making new connections.
 	if !c.noResolveEachConn {
-		c.dest, err = resolve(c.hostname, c.port, c.resolve)
+		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
 		log.Debugf("Hostname %v resolve to ip %v", c.hostname, c.dest)
 		if err != nil {
 			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
@@ -1068,10 +1070,17 @@ func generateReuseThreshold(min int, max int) int {
 	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
 }
 
-func resolve(hostname string, port string, resolve string) (*net.TCPAddr, error) {
-	if resolve != "" {
-		return fnet.Resolve(resolve, port)
+func resolve(hostname string, port string, override string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+	var addr *net.TCPAddr
+	var err error
+	fmt.Println("resolve happen!")
+	if override != "" {
+		addr, err = fnet.Resolve(override, port)
+	} else {
+		addr, err = fnet.Resolve(hostname, port)
 	}
 
-	return fnet.Resolve(hostname, port)
+	ipAddrUsage.Record(addr.String())
+
+	return addr, err
 }

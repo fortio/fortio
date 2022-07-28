@@ -112,8 +112,9 @@ var (
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
 			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
 		WithValidator(ConnectionReuseRangeValidator(&httpOpts))
-	// NoResolveConnFlag is false if we want to resolve the DNS name for each new connection.
-	NoResolveConnFlag = flag.Bool("no-resolve", true, "Re-resolve the DNS name for each connection")
+	// NoReResolveFlag is false if we want to resolve the DNS name for each new connection.
+	NoReResolveFlag = flag.Bool("no-reresolve", false, "Keep the initial DNS resolution and "+
+		"don't re-resolve when making new connections (because of error or reuse limit reached)")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -216,6 +217,6 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Key = *KeyFlag
 	httpOpts.LogErrors = *LogErrorsFlag
 	httpOpts.SequentialWarmup = *warmupFlag
-	httpOpts.NoResolveEachConn = *NoResolveConnFlag
+	httpOpts.NoResolveEachConn = *NoReResolveFlag
 	return &httpOpts
 }

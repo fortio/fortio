@@ -540,24 +540,32 @@ func Round(v float64) float64 {
 	return RoundToDigits(v, 4)
 }
 
-// Map is a type that stores the key value pair which the key is string and value is int.
-type Map struct {
+// Occurrence is a type that stores the occurrence of the key.
+type Occurrence struct {
 	kvMap map[string]int
 }
 
+// NewOccurrence create a new occurrence map.
+func NewOccurrence() *Occurrence {
+	o := new(Occurrence)
+	o.kvMap = make(map[string]int)
+
+	return o
+}
+
 // Record records a key value pair
-func (m *Map) Record(key string, val int) {
-	m.kvMap[key] += val
+func (m *Occurrence) Record(key string) {
+	m.kvMap[key] += 1
 }
 
 // Reset clears the map to reset it to no data.
-func (m *Map) Reset() {
-	var empty Map
+func (m *Occurrence) Reset() {
+	var empty Occurrence
 	*m = empty
 }
 
 // Transfer merge data from src into this Map and clear src.
-func (m *Map) Transfer(src *Map) {
+func (m *Occurrence) Transfer(src *Occurrence) {
 	if src.kvMap == nil {
 		return
 	}
