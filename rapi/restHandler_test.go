@@ -76,6 +76,7 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, 
 	return &res, bytes
 }
 
+// nolint: funlen // it's a test of a lot of things in sequence/context
 func TestRestRunnerRESTApi(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
@@ -174,12 +175,13 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	// And stop it:
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)
 	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != "stopped" || asyncObj.RunID != runID || asyncObj.Count != 1 {
+	stoppedMsg := "stopped"
+	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 1 {
 		t.Errorf("Should have stopped async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 	// Stop it again, should be 0 count
 	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != "stopped" || asyncObj.RunID != runID || asyncObj.Count != 0 {
+	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 0 {
 		t.Errorf("2nd stop should be noop, got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 	// Start 3 async test and stop all
@@ -189,7 +191,7 @@ func TestRestRunnerRESTApi(t *testing.T) {
 	_, _ = GetAsyncResult(t, runURL, jsonData)
 	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStopURI)
 	asyncObj, bytes = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != "stopped" || asyncObj.RunID != 0 || asyncObj.Count != 3 {
+	if asyncObj.Message != stoppedMsg || asyncObj.RunID != 0 || asyncObj.Count != 3 {
 		t.Errorf("Should have stopped 3 async job got %+v - %s", asyncObj, fhttp.DebugSummary(bytes, 256))
 	}
 
