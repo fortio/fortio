@@ -1070,12 +1070,13 @@ func generateReuseThreshold(min int, max int) int {
 	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
 }
 
-func resolve(hostname string, port string, override string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+// Resolve the DNS hostname to ip address or assign the override IP.
+func resolve(hostname string, port string, overrideIp string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
 	var addr *net.TCPAddr
 	var err error
 	fmt.Println("resolve happen!")
-	if override != "" {
-		addr, err = fnet.Resolve(override, port)
+	if overrideIp != "" {
+		addr, err = fnet.Resolve(overrideIp, port)
 	} else {
 		addr, err = fnet.Resolve(hostname, port)
 	}
