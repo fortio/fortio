@@ -89,24 +89,16 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.Create(path.Join(tmpDir, "foo.txt")) // not a json, will be skipped over
 	badJSON := path.Join(tmpDir, "bad.json")
-	os.Create(badJSON)
+	err := os.WriteFile(badJSON, []byte("foo"), 0o222)
+	if err != nil {
+		t.Errorf("Unable create file %q: %v", badJSON, err)
+	}
+	// os.Create(badJSON)
 	// os.Chmod(badJSON, 0) // make the file un readable so it should also be skipped (doesn't work on ci(!))
 	cmd := exec.Command("chmod", "a-r", badJSON)
-	err := cmd.Run()
-	if err != nil {
-		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
-	}
-	cmd = exec.Command("ls", "-l", badJSON)
 	err = cmd.Run()
 	if err != nil {
-		t.Errorf("Unable to ls file %q, will make test about bad.json fail later: %v", badJSON, err)
-	}
-	st, err := os.Stat(badJSON)
-	if err != nil {
-		t.Errorf("Unable to stat file %q, will make test about bad.json fail later: %v", badJSON, err)
-	}
-	if st.Mode()&0400 != 0 {
-		t.Errorf("File %q is readable despite chmod... %+v", badJSON, st)
+		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
 	}
 	AddHandlers(mux, uiPath, tmpDir)
 	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
@@ -244,7 +236,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Result of index.tsv should not include non .json files: %s", str)
 	}
 	if strings.Contains(str, "bad.json") {
-		t.Errorf("Result of index.tsv should not include unreadble .json files: %s", str)
+		t.Errorf("Result of index.tsv should not include unreadble .json files (%q): %s", badJSON, str)
 	}
 	files := DataList()
 	if len(files) < 1 {
@@ -289,7 +281,8 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	totalReq := res.DurationHistogram.Count
 	httpOk := res.RetCodes["SERVING"]
 	if totalReq != httpOk {
-		t.Errorf("Mismatch between grpc requests %d and ok %v (%+v) - got %s", totalReq, res.RetCodes, res, fhttp.DebugSummary(bytes, 512))
+		t.Errorf("Mismatch between grpc requests %d and ok %v (%+v) - got %s",
+			totalReq, res.RetCodes, res, fhttp.DebugSummary(bytes, 512))
 	}
 
 	tAddr := fnet.TCPEchoServer("test-echo-runner-tcp", ":0")
@@ -309,5 +302,4 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	if uRes.ActualQPS < 4 || uRes.ActualQPS > 5.1 {
 		t.Errorf("Unexpected udp qps %f - got %s", tRes.ActualQPS, fnet.DebugSummary(bytes, 512))
 	}
-
 }
