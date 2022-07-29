@@ -18,6 +18,7 @@ package rapi
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -26,9 +27,14 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/tcprunner"
+	"fortio.org/fortio/udprunner"
 )
 
+// If jsonPayload isn't empty we POST otherwise get the url.
 func Fetch(url string, jsonPayload string) (int, []byte) {
 	opts := fhttp.NewHTTPOptions(url)
 	opts.DisableFastClient = true      // not get raw/chunked results
@@ -37,18 +43,27 @@ func Fetch(url string, jsonPayload string) (int, []byte) {
 	return fhttp.Fetch(opts)
 }
 
-// If jsonPayload isn't empty we POST otherwise get the url.
-func GetResult(t *testing.T, url string, jsonPayload string) (*fhttp.HTTPRunnerResults, []byte) {
+// Generics ftw.
+func FetchResult[T any](t *testing.T, url string, jsonPayload string) (*T, []byte) {
 	code, bytes := Fetch(url, jsonPayload)
 	if code != http.StatusOK {
 		t.Errorf("Got unexpected error code: URL %s: %v - %s", url, code, fhttp.DebugSummary(bytes, 512))
 	}
-	res := fhttp.HTTPRunnerResults{}
+	var res T
 	err := json.Unmarshal(bytes, &res)
 	if err != nil {
 		t.Fatalf("Unable to deserialize results: %q: %v", string(bytes), err)
 	}
 	return &res, bytes
+}
+
+func GetResult(t *testing.T, url string, jsonPayload string) (*fhttp.HTTPRunnerResults, []byte) {
+	return FetchResult[fhttp.HTTPRunnerResults](t, url, jsonPayload)
+}
+
+// Same as above but when expecting to get an Async reply.
+func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, []byte) {
+	return FetchResult[AsyncReply](t, url, jsonPayload)
 }
 
 // Same as above but when expecting to get an error reply.
@@ -65,22 +80,8 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) (*ErrorReply, 
 	return &res, bytes
 }
 
-// Same as above but when expecting to get an Async reply.
-func GetAsyncResult(t *testing.T, url string, jsonPayload string) (*AsyncReply, []byte) {
-	code, bytes := Fetch(url, jsonPayload)
-	if code != http.StatusOK {
-		t.Errorf("Got unexpected error code: URL %s: %v", url, code)
-	}
-	res := AsyncReply{}
-	err := json.Unmarshal(bytes, &res)
-	if err != nil {
-		t.Fatalf("Unable to deserialize async reply: %q: %v", string(bytes), err)
-	}
-	return &res, bytes
-}
-
 // nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
-func TestRestHTTPRunnerRESTApi(t *testing.T) {
+func TestHTTPRunnerRESTApi(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
@@ -94,6 +95,18 @@ func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	err := cmd.Run()
 	if err != nil {
 		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
+	}
+	cmd = exec.Command("ls", "-l", badJSON)
+	err = cmd.Run()
+	if err != nil {
+		t.Errorf("Unable to ls file %q, will make test about bad.json fail later: %v", badJSON, err)
+	}
+	st, err := os.Stat(badJSON)
+	if err != nil {
+		t.Errorf("Unable to stat file %q, will make test about bad.json fail later: %v", badJSON, err)
+	}
+	if st.Mode()&0400 != 0 {
+		t.Errorf("File %q is readable despite chmod... %+v", badJSON, st)
 	}
 	AddHandlers(mux, uiPath, tmpDir)
 	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
@@ -246,4 +259,55 @@ func TestRestHTTPRunnerRESTApi(t *testing.T) {
 	if len(none) > 0 {
 		t.Errorf("Setting bad directory should not get any files got %v", none)
 	}
+}
+
+// If jsonPayload isn't empty we POST otherwise get the url.
+func GetGRPCResult(t *testing.T, url string, jsonPayload string) (*fgrpc.GRPCRunnerResults, []byte) {
+	code, bytes := Fetch(url, jsonPayload)
+	if code != http.StatusOK {
+		t.Errorf("Got unexpected error code: URL %s: %v - %s", url, code, fhttp.DebugSummary(bytes, 512))
+	}
+	res := fgrpc.GRPCRunnerResults{}
+	err := json.Unmarshal(bytes, &res)
+	if err != nil {
+		t.Fatalf("Unable to deserialize results: %q: %v", string(bytes), err)
+	}
+	return &res, bytes
+}
+
+func TestOtherRunnersRESTApi(t *testing.T) {
+	iPort := fgrpc.PingServerTCP("0", "", "", "bar", 0)
+	iDest := fmt.Sprintf("localhost:%d", iPort)
+
+	mux, addr := fhttp.DynamicHTTPServer(false)
+	AddHandlers(mux, "/fortio/", "/tmp")
+	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
+
+	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)
+
+	res, bytes := FetchResult[fgrpc.GRPCRunnerResults](t, runURL, "")
+	totalReq := res.DurationHistogram.Count
+	httpOk := res.RetCodes["SERVING"]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between grpc requests %d and ok %v (%+v) - got %s", totalReq, res.RetCodes, res, fhttp.DebugSummary(bytes, 512))
+	}
+
+	tAddr := fnet.TCPEchoServer("test-echo-runner-tcp", ":0")
+	tDest := fmt.Sprintf("tcp://localhost:%d/", tAddr.(*net.TCPAddr).Port)
+	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=2", restURL, 10, tDest)
+
+	tRes, bytes := FetchResult[tcprunner.RunnerResults](t, runURL, "")
+	if tRes.ActualQPS < 8 || tRes.ActualQPS > 10.1 {
+		t.Errorf("Unexpected tcp qps %f - got %s", tRes.ActualQPS, fnet.DebugSummary(bytes, 512))
+	}
+
+	uAddr := fnet.UDPEchoServer("test-echo-runner-udp", ":0", false)
+	uDest := fmt.Sprintf("udp://localhost:%d/", uAddr.(*net.UDPAddr).Port)
+	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=1", restURL, 5, uDest)
+
+	uRes, bytes := FetchResult[udprunner.RunnerResults](t, runURL, "")
+	if uRes.ActualQPS < 4 || uRes.ActualQPS > 5.1 {
+		t.Errorf("Unexpected udp qps %f - got %s", tRes.ActualQPS, fnet.DebugSummary(bytes, 512))
+	}
+
 }
