@@ -32,10 +32,9 @@ import (
 	"strings"
 	"time"
 
-	"fortio.org/fortio/stats"
-
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
+	"fortio.org/fortio/stats"
 	"fortio.org/fortio/version"
 	"github.com/google/uuid"
 )
