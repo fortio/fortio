@@ -81,7 +81,7 @@ func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 		return &result, err
 	}
 	// 200, 201, 202 are ok
-	ok := code < http.StatusOK || code > http.StatusAccepted
+	ok := (code >= http.StatusOK && code <= http.StatusAccepted)
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
 		if ok {
@@ -91,7 +91,7 @@ func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 	}
 	if !ok {
 		// can still be "ok" for some callers, they can use the result object as it deserialized as expected.
-		return &result, &FetchError{"unexpected http result code", code, err, bytes}
+		return &result, &FetchError{"non ok http result", code, err, bytes}
 	}
 	return &result, nil
 }

@@ -37,7 +37,7 @@ import (
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
 	r, err := rest.CallWithPayload[T](url, []byte(jsonPayload))
 	if err != nil {
-		t.Errorf("Got unexpected error code: URL %s: %v - %v", url, err, r)
+		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
 	return r
 }
@@ -62,7 +62,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *ErrorReply {
 		t.Errorf("Error isn't a FetchError for URL %s: %v", url, err)
 	}
 	// including -1 which would be a low level error, we expect an actual 4xx/5xx
-	if fe.Code < 300 {
+	if fe != nil && fe.Code < 300 {
 		t.Errorf("Got unexpected http code %d: %v", fe.Code, fe)
 	}
 	return r
@@ -236,7 +236,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Unexpected low level error for %s: %v", tsvURL, err)
 	}
 	if code != http.StatusServiceUnavailable {
-		t.Errorf("Setting bad directory should error out, it didn't")
+		t.Errorf("Setting bad directory should error out, it didn't - got %s", rest.DebugSummary(bytes, 256))
 	}
 	none := DataList()
 	if len(none) > 0 {
