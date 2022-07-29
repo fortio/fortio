@@ -643,7 +643,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
 	}
 
 	if o.NoResolveEachConn && o.Resolve != "" {
-		log.Warnf("Both `-resolve` and `-resolve-on-err` flags are defined, will use same ip address on new conn")
+		log.Warnf("Both `-resolve` and `-no-reresolve` flags are defined, will use same ip address on new conn")
 	}
 
 	// Randomly assign a max connection reuse threshold to this thread.
@@ -744,7 +744,7 @@ func (c *FastClient) connect() net.Conn {
 	// Resolve the DNS name when making new connections.
 	if c.socketCount > 1 && !c.noResolveEachConn {
 		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
-		log.Debugf("Hostname %v resolve to ip %v", c.hostname, c.dest)
+		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
 		if err != nil {
 			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
 			return nil
