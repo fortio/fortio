@@ -451,6 +451,13 @@ func RemoveRun(id int64) {
 	uiRunMapMutex.Unlock()
 }
 
+func GetRun(id int64) *periodic.RunnerOptions {
+	uiRunMapMutex.Lock()
+	res := runs[id]
+	uiRunMapMutex.Unlock()
+	return res
+}
+
 func SetDataDir(datadir string) {
 	dataDir = datadir
 }
