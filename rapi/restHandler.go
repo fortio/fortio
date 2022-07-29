@@ -33,6 +33,7 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/rest"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
@@ -55,34 +56,20 @@ var (
 	DefaultPercentileList []float64
 )
 
-// ErrorReply is returned on errors.
-type ErrorReply struct {
-	Error     string
-	Exception string
-}
-
 // AsyncReply is returned when async=on is passed.
 type AsyncReply struct {
-	RunID   int64
-	Message string
-	Count   int
+	rest.ReplyMessage
+	RunID int64
+	Count int
 }
 
 // Error writes serialized ErrorReply to the writer.
-func Error(w http.ResponseWriter, msg ErrorReply) {
+func Error(w http.ResponseWriter, msg string, err error) {
 	if w == nil {
 		// async mode, nothing to do
 		return
 	}
-	w.WriteHeader(http.StatusBadRequest)
-	b, _ := json.Marshal(msg) // nolint: errchkjson
-	_, _ = w.Write(b)
-}
-
-// Async writes serialized AsyncReply to the response.
-func Async(w http.ResponseWriter, resp AsyncReply) {
-	b, _ := json.Marshal(resp) // nolint: errchkjson
-	_, _ = w.Write(b)
+	_ = rest.ReplyClientError(w, rest.NewErrorReply(msg, err))
 }
 
 // GetConfigAtPath deserializes the bytes as JSON and
@@ -152,7 +139,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
-		Error(w, ErrorReply{"body read error", err.Error()})
+		Error(w, "body read error", err)
 		return
 	}
 	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
@@ -164,7 +151,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		jd, err = GetConfigAtPath(jsonPath, data)
 		if err != nil {
 			log.Errf("Error deserializing %v", err)
-			Error(w, ErrorReply{"body json deserialization error", err.Error()})
+			Error(w, "body json deserialization error", err)
 			return
 		}
 		log.Infof("Body: %+v", jd)
@@ -198,7 +185,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		dur, err = time.ParseDuration(durStr)
 		if err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
-			Error(w, ErrorReply{fmt.Sprintf("parsing duration '%s'", durStr), err.Error()})
+			Error(w, "parsing duration", err)
 			return
 		}
 	}
@@ -209,7 +196,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	n, _ := strconv.ParseInt(FormValue(r, jd, "n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
-		Error(w, ErrorReply{"URL is required", ""})
+		Error(w, "URL is required", nil)
 		return
 	}
 	ro := periodic.RunnerOptions{
@@ -280,7 +267,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		Async(w, AsyncReply{runid, "started", 1})
+		reply := AsyncReply{RunID: runid, Count: 1}
+		reply.Message = "started" // nolint: goconst
+		err := rest.ReplyOk(w, &reply)
+		if err != nil {
+			log.Errf("Error replying to start: %v", err)
+		}
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -339,7 +331,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	RemoveRun(ro.RunID)
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-		Error(w, ErrorReply{"Aborting because of error", err.Error()})
+		Error(w, "Aborting because of error", err)
 		return
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
@@ -375,7 +367,12 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
-	Async(w, AsyncReply{runid, "stopped", i})
+	reply := AsyncReply{RunID: runid, Count: i}
+	reply.Message = "stopped"
+	err := rest.ReplyOk(w, &reply)
+	if err != nil {
+		log.Errf("Error replying: %v", err)
+	}
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.

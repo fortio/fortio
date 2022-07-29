@@ -748,6 +748,14 @@ func TestGeneratePayload(t *testing.T) {
 	}
 }
 
+func TestDebugSummary(t *testing.T) {
+	// Tested in new location, rest package but call once for coverage
+	str := fnet.DebugSummary([]byte{0, 1, 2}, 10)
+	if str != `\x00\x01\x02` {
+		t.Errorf("Unexpected escape: %q", str)
+	}
+}
+
 // --- max logging for tests
 
 func init() {

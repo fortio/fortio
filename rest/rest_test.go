@@ -40,3 +40,5 @@ func TestDebugSummary(t *testing.T) {
 		}
 	}
 }
+
+// Rest is tested in rapi/restHandler_tests.go

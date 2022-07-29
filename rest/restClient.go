@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Facilitate REST style - or really just web JSON calls
-// using generics.
+// Facilitate REST style - or really just web JSON calls,
+// using generics to serialize/deserialize any type.
 package rest // import "fortio.org/fortio/rest"
 
 // This package is a true self contained library, doesn't rely on our logger nor other packages in fortio/.
+// Client side and common code.
 import (
 	"bytes"
 	"context"

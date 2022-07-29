@@ -48,14 +48,25 @@ func GetResult(t *testing.T, url string, jsonPayload string) *fhttp.HTTPRunnerRe
 
 // Same as above but when expecting to get an Async reply.
 func GetAsyncResult(t *testing.T, url string, jsonPayload string) *AsyncReply {
-	return FetchResult[AsyncReply](t, url, jsonPayload)
+	r := FetchResult[AsyncReply](t, url, jsonPayload)
+	if r == nil {
+		t.Fatalf("Unexpected nil reply")
+		return r
+	}
+	if r.Failed {
+		t.Errorf("Unexpected false success field: +%v", r)
+	}
+	return r
 }
 
 // Same as above but when expecting to get an error reply.
-func GetErrorResult(t *testing.T, url string, jsonPayload string) *ErrorReply {
-	r, err := rest.CallWithPayload[ErrorReply](url, []byte(jsonPayload))
+func GetErrorResult(t *testing.T, url string, jsonPayload string) *rest.ErrorReply {
+	r, err := rest.CallWithPayload[rest.ErrorReply](url, []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
+	}
+	if !r.Failed {
+		t.Error("Success field should be false for errors")
 	}
 	var fe *rest.FetchError
 	if !errors.As(err, &fe) {
@@ -128,7 +139,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	// Send a bad (missing unit) duration (test error return)
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=10&t=42", restURL)
 	errObj := GetErrorResult(t, runURL, jsonData)
-	if errObj.Error != "parsing duration '42'" || errObj.Exception != "time: missing unit in duration \"42\"" {
+	if errObj.Message != "parsing duration" || errObj.Exception != "time: missing unit in duration \"42\"" {
 		t.Errorf("Didn't get the expected duration parsing error, got %+v", errObj)
 	}
 	// bad json path: doesn't exist
@@ -147,7 +158,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	jsonData = `{"metadata": {"n": 200}}`
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata", restURL)
 	errObj = GetErrorResult(t, runURL, jsonData)
-	if errObj.Error != "URL is required" {
+	if errObj.Message != "URL is required" {
 		t.Errorf("Didn't get the expected url missing error, got %+v", errObj)
 	}
 	// not well formed json
