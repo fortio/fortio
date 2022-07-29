@@ -299,3 +299,18 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 		t.Errorf("Unexpected udp qps %f - got %s", tRes.ActualQPS, fnet.DebugSummary(bytes, 512))
 	}
 }
+
+func TestDataDir(t *testing.T) {
+	oldDir := GetDataDir()
+	SetDataDir("")
+	fname := SaveJSON("foo.json", []byte{})
+	if fname != "" {
+		t.Errorf("expected error on empty/unset dir, got %q", fname)
+	}
+	SetDataDir("/does/not/exist")
+	fname = SaveJSON("bar.json", []byte{})
+	if fname != "" {
+		t.Errorf("expected error on invalid dir, got %q", fname)
+	}
+	SetDataDir(oldDir)
+}
