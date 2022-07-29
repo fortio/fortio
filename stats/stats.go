@@ -553,9 +553,9 @@ func NewOccurrence() *Occurrence {
 	return o
 }
 
-// Record records a key value pair
+// Record records a key value pair.
 func (m *Occurrence) Record(key string) {
-	m.kvMap[key] += 1
+	m.kvMap[key]++
 }
 
 // Reset clears the map to reset it to no data.

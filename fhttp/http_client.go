@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"fortio.org/fortio/stats"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -32,6 +31,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"fortio.org/fortio/stats"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -1071,11 +1072,11 @@ func generateReuseThreshold(min int, max int) int {
 }
 
 // Resolve the DNS hostname to ip address or assign the override IP.
-func resolve(hostname string, port string, overrideIp string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+func resolve(hostname string, port string, overrideIP string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
 	var addr *net.TCPAddr
 	var err error
-	if overrideIp != "" {
-		addr, err = fnet.Resolve(overrideIp, port)
+	if overrideIP != "" {
+		addr, err = fnet.Resolve(overrideIP, port)
 	} else {
 		addr, err = fnet.Resolve(hostname, port)
 	}
