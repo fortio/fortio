@@ -270,7 +270,7 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	AddHandlers(mux, "/fortio/", "/tmp")
-	restURL := fmt.Sprintf("http://localhost:%d/fortio/jrpc/run", addr.Port)
+	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
 
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)
 
