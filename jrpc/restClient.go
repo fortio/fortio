@@ -74,7 +74,12 @@ func Call[T any, Q any](url string, payload *T) (*Q, error) {
 	return CallWithPayload[Q](url, bytes)
 }
 
-// CallWithPayload is for cases where the payload is already serialized.
+// CallNoPayload is for an API call without json payload.
+func CallNoPayload[Q any](url string) (*Q, error) {
+	return CallWithPayload[Q](url, []byte{})
+}
+
+// CallWithPayload is for cases where the payload is already serialized (or empty).
 func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 	var result Q
 	code, bytes, err := Send(url, bytes) // returns -1 on other errors
@@ -92,7 +97,7 @@ func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 	}
 	if !ok {
 		// can still be "ok" for some callers, they can use the result object as it deserialized as expected.
-		return &result, &FetchError{"non ok http result", code, err, bytes}
+		return &result, &FetchError{"non ok http result", code, nil, bytes}
 	}
 	return &result, nil
 }

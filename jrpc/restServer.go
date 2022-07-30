@@ -60,6 +60,10 @@ func Reply[T any](w http.ResponseWriter, code int, data *T) error {
 	return err
 }
 
+func ReplyNoPayload(w http.ResponseWriter, code int) error {
+	return Reply[int](w, code, nil)
+}
+
 func ReplyOk[T any](w http.ResponseWriter, data *T) error {
 	return Reply(w, http.StatusOK, data)
 }
@@ -85,13 +89,7 @@ func Deserialize[Q any](bytes []byte) (*Q, error) {
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
-		_ = ReplyError(w, "request body read error", err)
 		return nil, err
 	}
-	var res *Q
-	res, err = Deserialize[Q](data)
-	if err != nil {
-		_ = ReplyError(w, "request body deserialization error", err)
-	}
-	return res, err
+	return Deserialize[Q](data)
 }

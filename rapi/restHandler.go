@@ -356,9 +356,12 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_, _ = w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
+	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
+	info := GetRun(runid)
+	err := jrpc.ReplyOk(w, info)
+	if err != nil {
+		log.Errf("Error replying to status: %v", err)
+	}
 }
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.

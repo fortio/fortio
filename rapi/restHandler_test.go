@@ -29,6 +29,7 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
+	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 )
@@ -177,11 +178,19 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Should have done expected 23 requests, got %+v", res.RetCodes)
 	}
 	// Start infinite running run
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=10&t=on&url=%s&async=on", restURL, echoURL)
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=4.20&t=on&url=%s&async=on", restURL, echoURL)
 	asyncObj := GetAsyncResult(t, runURL, jsonData)
 	runID := asyncObj.RunID
 	if asyncObj.Message != "started" || runID <= savedID {
 		t.Errorf("Should started async job got %+v", asyncObj)
+	}
+	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStatusURI, runID)
+	status, err := jrpc.CallNoPayload[periodic.RunnerOptions](statusURL)
+	if err != nil {
+		t.Errorf("Error getting status %q: %v", statusURL, err)
+	}
+	if status.QPS != 4.20 {
+		t.Errorf("Expected to see request as sent (4.2), got %d: %+v", status.Exactly, status)
 	}
 	// And stop it:
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)

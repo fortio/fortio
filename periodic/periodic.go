@@ -108,7 +108,7 @@ type RunnerOptions struct {
 	// Type of run (to be copied into results)
 	RunType string
 	// Array of objects to run in each thread (use MakeRunners() to clone the same one)
-	Runners []Runnable
+	Runners []Runnable `json:"-"`
 	// At which (target) rate to run the Runners across NumThreads.
 	QPS float64
 	// How long to run the test for. Unless Exactly is specified.
@@ -120,14 +120,14 @@ type RunnerOptions struct {
 	Percentiles []float64
 	Resolution  float64
 	// Where to write the textual version of the results, defaults to stdout
-	Out io.Writer
+	Out io.Writer `json:"-"`
 	// Extra data to be copied back to the results (to be saved/JSON serialized)
 	Labels string
 	// Aborter to interrupt a run. Will be created if not set/left nil. Or you
 	// can pass your own. It is very important this is a pointer and not a field
 	// as RunnerOptions themselves get copied while the channel and lock must
 	// stay unique (per run).
-	Stop *Aborter
+	Stop *Aborter `json:"-"`
 	// Mode where an exact number of iterations is requested. Default (0) is
 	// to not use that mode. If specified Duration is not used.
 	Exactly int64
@@ -146,7 +146,7 @@ type RunnerOptions struct {
 	// Optional Offset Duration; to offset the histogram function duration
 	Offset time.Duration
 	// Optional AccessLogger to log every request made. See AddAccessLogger.
-	AccessLogger AccessLogger
+	AccessLogger AccessLogger `json:"-"`
 	// No catch-up: if true we will do exactly the requested QPS and not try to catch up if the target is temporarily slow.
 	NoCatchUp bool
 }
