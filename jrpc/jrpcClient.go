@@ -79,27 +79,32 @@ func CallNoPayload[Q any](url string) (*Q, error) {
 	return CallWithPayload[Q](url, []byte{})
 }
 
+func Deserialize[Q any](bytes []byte) (*Q, error) {
+	var result Q
+	err := json.Unmarshal(bytes, &result)
+	return &result, err // Will return zero object, not nil upon error
+}
+
 // CallWithPayload is for cases where the payload is already serialized (or empty).
 func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
-	var result Q
 	code, bytes, err := Send(url, bytes) // returns -1 on other errors
 	if err != nil {
-		return &result, err
+		return nil, err
 	}
 	// 200, 201, 202 are ok
 	ok := (code >= http.StatusOK && code <= http.StatusAccepted)
-	err = json.Unmarshal(bytes, &result)
+	result, err := Deserialize[Q](bytes)
 	if err != nil {
 		if ok {
-			return &result, err
+			return nil, err
 		}
-		return &result, &FetchError{"deserialization error", code, err, bytes}
+		return nil, &FetchError{"deserialization error", code, err, bytes}
 	}
 	if !ok {
 		// can still be "ok" for some callers, they can use the result object as it deserialized as expected.
-		return &result, &FetchError{"non ok http result", code, nil, bytes}
+		return result, &FetchError{"non ok http result", code, nil, bytes}
 	}
-	return &result, nil
+	return result, nil
 }
 
 // Send fetches the result from url and sending optional payload as a POST, GET if missing.

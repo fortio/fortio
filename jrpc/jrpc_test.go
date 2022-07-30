@@ -72,6 +72,13 @@ func TestJPRC(t *testing.T) {
 	mux, addr := fhttp.HTTPServer("test", "0")
 	port := addr.(*net.TCPAddr).Port
 	mux.HandleFunc("/test-api", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			err := jrpc.ReplyError(w, "should be a POST", nil)
+			if err != nil {
+				t.Errorf("Error in replying error: %v", err)
+			}
+			return
+		}
 		req, err := jrpc.HandleCall[Request](w, r)
 		if err != nil {
 			err = jrpc.ReplyError(w, "request error", err)
@@ -136,7 +143,7 @@ func TestJPRC(t *testing.T) {
 	if !res.Failed {
 		t.Errorf("response unexpectedly marked as not failed: %+v", res)
 	}
-	if res.Message != "request error" {
+	if res.Message != "should be a POST" {
 		t.Errorf("response doesn't contain expected message: %+v", res)
 	}
 	// bad url
@@ -173,22 +180,15 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("expected Exception in body to be %q, got %+v", expected, errReply)
 	}
 	// bad json response, using Fetch()
-	code, bytes, err = jrpc.Fetch(url)
-	if err != nil {
-		t.Errorf("failed Fetch: %v - %s", err, jrpc.DebugSummary(bytes, 256))
+	errReply, err = jrpc.CallNoPayload[jrpc.ErrorReply](url)
+	if err == nil {
+		t.Errorf("expected error %v", errReply)
 	}
 	if code != http.StatusBadRequest {
-		t.Errorf("expected status code 400, got %d - %s", code, jrpc.DebugSummary(bytes, 256))
-	}
-	errReply, err = jrpc.Deserialize[jrpc.ErrorReply](bytes)
-	if err != nil {
-		t.Errorf("failed Deserialize: %v - %s", err, jrpc.DebugSummary(bytes, 256))
+		t.Errorf("expected status code 400, got %d - %v - %v", code, err, errReply)
 	}
 	if !errReply.Failed {
 		t.Errorf("response unexpectedly marked as not failed: %+v", res)
-	}
-	if errReply.Exception != "unexpected end of JSON input" {
-		t.Errorf("response doesn't contain expected message: %+v", errReply)
 	}
 	// trigger empty reply
 	req.SomeInt = -7

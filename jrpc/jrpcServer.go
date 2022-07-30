@@ -80,12 +80,6 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 	return ReplyClientError(w, NewErrorReply(extraMsg, err))
 }
 
-func Deserialize[Q any](bytes []byte) (*Q, error) {
-	var result Q
-	err := json.Unmarshal(bytes, &result)
-	return &result, err // Will return zero object, not nil upon error
-}
-
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
