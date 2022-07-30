@@ -22,5 +22,8 @@ RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
     fi
 
 WORKDIR /build
-VOLUME /build
 COPY .golangci.yml .
+VOLUME /build
+RUN useradd -m build -d /build
+RUN chown -R build:build /build
+USER build

@@ -240,11 +240,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if strings.Contains(str, "foo.txt") {
 		t.Errorf("Result of index.tsv should not include non .json files: %s", str)
 	}
-	if os.Getenv("CIRCLECI") == "" {
-		// Somehow this test fails on Circle CI (file is readable despite chmod...)
-		if strings.Contains(str, "bad.json") {
-			t.Errorf("Result of index.tsv should not include unreadble .json files (%q): %s", badJSON, str)
-		}
+	// Note this test fails if running as root.
+	if strings.Contains(str, "bad.json") {
+		t.Errorf("Result of index.tsv should not include unreadble .json files (%q): %s", badJSON, str)
 	}
 	files := DataList()
 	if len(files) < 1 {
