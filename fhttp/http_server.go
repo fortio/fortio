@@ -181,8 +181,9 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
 	h2s := &http2.Server{}
 	s := &http.Server{
-		IdleTimeout: serverIdleTimeout.Get(),
-		Handler:     h2c.NewHandler(hdlr, h2s),
+		ReadHeaderTimeout: serverIdleTimeout.Get(),
+		IdleTimeout:       serverIdleTimeout.Get(),
+		Handler:           h2c.NewHandler(hdlr, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {

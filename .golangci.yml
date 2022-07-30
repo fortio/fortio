@@ -127,6 +127,7 @@ issues:
         - gochecknoinits
         - gochecknoglobals
         - forcetypeassert
+        - nosnakecase
 
     # Exclude lll issues for long lines with go:generate
     - linters:
@@ -141,6 +142,9 @@ issues:
     - linters:
         - godox
       text: "TODO"
+    - linters:
+        - nosnakecase
+      text: "grpc_|_SERVING|O_"
 
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0
