@@ -40,9 +40,9 @@ import (
 )
 
 const (
-	restRunURI    = "jrpc/run"
-	restStatusURI = "jrpc/status"
-	restStopURI   = "jrpc/stop"
+	restRunURI    = "rest/run"
+	restStatusURI = "rest/status"
+	restStopURI   = "rest/stop"
 	ModeGRPC      = "grpc"
 )
 
