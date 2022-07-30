@@ -69,7 +69,7 @@ func Error(w http.ResponseWriter, msg string, err error) {
 		// async mode, nothing to do
 		return
 	}
-	_ = jrpc.ReplyClientError(w, jrpc.NewErrorReply(msg, err))
+	_ = jrpc.ReplyError(w, msg, err)
 }
 
 // GetConfigAtPath deserializes the bytes as JSON and
@@ -94,9 +94,9 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	parts := strings.SplitN(path, ".", 2)
 	log.Debugf("split got us %v", parts)
 	first := parts[0]
-	jrpc := ""
+	rest := ""
 	if len(parts) == 2 {
-		jrpc = parts[1]
+		rest = parts[1]
 	}
 	nm, found := m[first]
 	if !found {
@@ -106,7 +106,7 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	if !ok {
 		return nil, fmt.Errorf("%q path is not a map", first)
 	}
-	return getConfigAtPath(jrpc, mm)
+	return getConfigAtPath(rest, mm)
 }
 
 // FormValue gets the value from the query arguments/url parameter or from the

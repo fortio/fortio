@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,7 +140,7 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("response doesn't contain expected message: %+v", res)
 	}
 	// bad url
-	badURL := "http://doesntexist.fortio.org/"
+	badURL := "http://doesnotexist.fortio.org/"
 	_, err = jrpc.Call[Request, Response](badURL, &req)
 	if err == nil {
 		t.Errorf("expected error for bad url")
@@ -148,9 +149,9 @@ func TestJPRC(t *testing.T) {
 	if !errors.As(err, &de) {
 		t.Errorf("expected dns error, got %v", err)
 	}
-	expected := "lookup doesntexist.fortio.org: no such host"
-	if de != nil && de.Error() != expected {
-		t.Errorf("expected dns error %q, got %v", expected, de.Error())
+	expected := "lookup doesnotexist.fortio.org"
+	if de != nil && !strings.HasPrefix(de.Error(), expected) {
+		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
 	// bad json payload sent
 	errReply, err := jrpc.CallWithPayload[jrpc.ErrorReply](url, []byte(`{foo: missing-quotes}`))
