@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rest // import "fortio.org/fortio/rest"
+package jrpc // import "fortio.org/fortio/jrpc"
 
 // Server side additional code (compared to restClient.go).
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -71,8 +72,26 @@ func ReplyServerError[T any](w http.ResponseWriter, data *T) error {
 	return Reply(w, http.StatusServiceUnavailable, data)
 }
 
-/*
-func HandleCall[Q](w http.ResponseWriter, r http.Request) *Q, error {
-
+func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
+	return ReplyClientError(w, NewErrorReply(extraMsg, err))
 }
-*/
+
+func Deserialize[Q any](bytes []byte) (*Q, error) {
+	var result Q
+	err := json.Unmarshal(bytes, &result)
+	return &result, err // Will return zero object, not nil upon error
+}
+
+func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
+	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	if err != nil {
+		_ = ReplyError(w, "request body read error", err)
+		return nil, err
+	}
+	var res *Q
+	res, err = Deserialize[Q](data)
+	if err != nil {
+		_ = ReplyError(w, "request body deserialization error", err)
+	}
+	return res, err
+}

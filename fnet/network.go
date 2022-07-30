@@ -30,8 +30,8 @@ import (
 	"time"
 
 	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
-	"fortio.org/fortio/rest"
 	"fortio.org/fortio/version"
 )
 
@@ -732,6 +732,6 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
-	// moved to rest package
-	return rest.DebugSummary(buf, max)
+	// moved to jrpc package
+	return jrpc.DebugSummary(buf, max)
 }

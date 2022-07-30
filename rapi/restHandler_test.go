@@ -28,14 +28,14 @@ import (
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/rest"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 )
 
 // Generics ftw.
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
-	r, err := rest.CallWithPayload[T](url, []byte(jsonPayload))
+	r, err := jrpc.CallWithPayload[T](url, []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
@@ -60,15 +60,15 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) *AsyncReply {
 }
 
 // Same as above but when expecting to get an error reply.
-func GetErrorResult(t *testing.T, url string, jsonPayload string) *rest.ErrorReply {
-	r, err := rest.CallWithPayload[rest.ErrorReply](url, []byte(jsonPayload))
+func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ErrorReply {
+	r, err := jrpc.CallWithPayload[jrpc.ErrorReply](url, []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
 	}
 	if !r.Failed {
 		t.Error("Success field should be false for errors")
 	}
-	var fe *rest.FetchError
+	var fe *jrpc.FetchError
 	if !errors.As(err, &fe) {
 		t.Errorf("Error isn't a FetchError for URL %s: %v", url, err)
 	}
@@ -215,7 +215,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	tsvURL := fmt.Sprintf("http://localhost:%d%s", addr.Port, "/data/index.tsv")
-	code, bytes, err := rest.Fetch(tsvURL)
+	code, bytes, err := jrpc.Fetch(tsvURL)
 	if err != nil {
 		t.Errorf("Unexpected error for %s: %v", tsvURL, err)
 	}
@@ -242,12 +242,12 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Error("DataList() should also return files when dir is correct")
 	}
 	SetDataDir("/does/not/exist")
-	code, bytes, err = rest.Fetch(tsvURL)
+	code, bytes, err = jrpc.Fetch(tsvURL)
 	if err != nil {
 		t.Errorf("Unexpected low level error for %s: %v", tsvURL, err)
 	}
 	if code != http.StatusServiceUnavailable {
-		t.Errorf("Setting bad directory should error out, it didn't - got %s", rest.DebugSummary(bytes, 256))
+		t.Errorf("Setting bad directory should error out, it didn't - got %s", jrpc.DebugSummary(bytes, 256))
 	}
 	none := DataList()
 	if len(none) > 0 {
@@ -257,7 +257,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 
 // If jsonPayload isn't empty we POST otherwise get the url.
 func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunnerResults {
-	r, err := rest.CallWithPayload[fgrpc.GRPCRunnerResults](url, []byte(jsonPayload))
+	r, err := jrpc.CallWithPayload[fgrpc.GRPCRunnerResults](url, []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected err for URL %s: %v", url, err)
 	}
@@ -270,7 +270,7 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	AddHandlers(mux, "/fortio/", "/tmp")
-	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
+	restURL := fmt.Sprintf("http://localhost:%d/fortio/jrpc/run", addr.Port)
 
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)
 

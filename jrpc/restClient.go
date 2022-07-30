@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Facilitate REST style - or really just web JSON calls,
+// Opiniated JSON RPC / REST style library. Facilitates web JSON calls,
 // using generics to serialize/deserialize any type.
-package rest // import "fortio.org/fortio/rest"
+package jrpc // import "fortio.org/fortio/jrpc"
 
 // This package is a true self contained library, doesn't rely on our logger nor other packages in fortio/.
 // Client side and common code.

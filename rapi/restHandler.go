@@ -31,18 +31,18 @@ import (
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
-	"fortio.org/fortio/rest"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 )
 
 const (
-	restRunURI    = "rest/run"
-	restStatusURI = "rest/status"
-	restStopURI   = "rest/stop"
+	restRunURI    = "jrpc/run"
+	restStatusURI = "jrpc/status"
+	restStopURI   = "jrpc/stop"
 	ModeGRPC      = "grpc"
 )
 
@@ -58,7 +58,7 @@ var (
 
 // AsyncReply is returned when async=on is passed.
 type AsyncReply struct {
-	rest.ReplyMessage
+	jrpc.ReplyMessage
 	RunID int64
 	Count int
 }
@@ -69,7 +69,7 @@ func Error(w http.ResponseWriter, msg string, err error) {
 		// async mode, nothing to do
 		return
 	}
-	_ = rest.ReplyClientError(w, rest.NewErrorReply(msg, err))
+	_ = jrpc.ReplyClientError(w, jrpc.NewErrorReply(msg, err))
 }
 
 // GetConfigAtPath deserializes the bytes as JSON and
@@ -94,9 +94,9 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	parts := strings.SplitN(path, ".", 2)
 	log.Debugf("split got us %v", parts)
 	first := parts[0]
-	rest := ""
+	jrpc := ""
 	if len(parts) == 2 {
-		rest = parts[1]
+		jrpc = parts[1]
 	}
 	nm, found := m[first]
 	if !found {
@@ -106,7 +106,7 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	if !ok {
 		return nil, fmt.Errorf("%q path is not a map", first)
 	}
-	return getConfigAtPath(rest, mm)
+	return getConfigAtPath(jrpc, mm)
 }
 
 // FormValue gets the value from the query arguments/url parameter or from the
@@ -269,7 +269,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if async {
 		reply := AsyncReply{RunID: runid, Count: 1}
 		reply.Message = "started" // nolint: goconst
-		err := rest.ReplyOk(w, &reply)
+		err := jrpc.ReplyOk(w, &reply)
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
 		}
@@ -369,7 +369,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	i := StopByRunID(runid)
 	reply := AsyncReply{RunID: runid, Count: i}
 	reply.Message = "stopped"
-	err := rest.ReplyOk(w, &reply)
+	err := jrpc.ReplyOk(w, &reply)
 	if err != nil {
 		log.Errf("Error replying: %v", err)
 	}
