@@ -58,12 +58,12 @@ var (
 
 // AsyncReply is returned when async=on is passed.
 type AsyncReply struct {
-	jrpc.ReplyMessage
+	jrpc.ServerReply
 	RunID int64
 	Count int
 }
 
-// Error writes serialized ErrorReply to the writer.
+// Error writes serialized ServerReply marked as error, to the writer.
 func Error(w http.ResponseWriter, msg string, err error) {
 	if w == nil {
 		// async mode, nothing to do

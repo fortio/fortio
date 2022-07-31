@@ -78,6 +78,10 @@ func CallNoPayload[Q any](url string) (*Q, error) {
 	return CallWithPayload[Q](url, []byte{})
 }
 
+func Serialize(obj interface{}) ([]byte, error) {
+	return json.Marshal(obj)
+}
+
 func Deserialize[Q any](bytes []byte) (*Q, error) {
 	var result Q
 	err := json.Unmarshal(bytes, &result)

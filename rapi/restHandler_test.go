@@ -54,19 +54,19 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) *AsyncReply {
 		t.Fatalf("Unexpected nil reply")
 		return r
 	}
-	if r.Failed {
+	if r.Error {
 		t.Errorf("Unexpected false success field: +%v", r)
 	}
 	return r
 }
 
 // Same as above but when expecting to get an error reply.
-func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ErrorReply {
-	r, err := jrpc.CallWithPayload[jrpc.ErrorReply](url, []byte(jsonPayload))
+func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerReply {
+	r, err := jrpc.CallWithPayload[jrpc.ServerReply](url, []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
 	}
-	if !r.Failed {
+	if !r.Error {
 		t.Error("Success field should be false for errors")
 	}
 	var fe *jrpc.FetchError

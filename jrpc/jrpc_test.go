@@ -58,7 +58,7 @@ type Request struct {
 }
 
 type Response struct {
-	jrpc.ReplyMessage
+	jrpc.ServerReply
 	InputInt            int
 	ConcatenatedStrings string
 }
@@ -94,7 +94,7 @@ func TestJPRC(t *testing.T) {
 		}
 		resp := Response{}
 		if req.SomeInt == -8 {
-			resp.Failed = true
+			resp.Error = true
 			resp.Message = "simulated server error"
 			jrpc.ReplyServerError(w, &resp)
 			return
@@ -133,7 +133,7 @@ func TestJPRC(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed Call: %v", err)
 	}
-	if res.Failed {
+	if res.Error {
 		t.Errorf("response unexpectedly marked as failed: %+v", res)
 	}
 	if res.InputInt != 42 {
@@ -155,7 +155,7 @@ func TestJPRC(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed Deserialize: %v - %s", err, jrpc.DebugSummary(bytes, 256))
 	}
-	if !res.Failed {
+	if !res.Error {
 		t.Errorf("response unexpectedly marked as not failed: %+v", res)
 	}
 	if res.Message != "should be a POST" {
@@ -176,7 +176,7 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
 	// bad json payload sent
-	errReply, err := jrpc.CallWithPayload[jrpc.ErrorReply](url, []byte(`{foo: missing-quotes}`))
+	errReply, err := jrpc.CallWithPayload[Response](url, []byte(`{foo: missing-quotes}`))
 	if err == nil {
 		t.Errorf("expected error, got nil and %v", res)
 	}
@@ -195,14 +195,14 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("expected Exception in body to be %q, got %+v", expected, errReply)
 	}
 	// bad json response, using Fetch()
-	errReply, err = jrpc.CallNoPayload[jrpc.ErrorReply](url)
+	errReply, err = jrpc.CallNoPayload[Response](url)
 	if err == nil {
 		t.Errorf("expected error %v", errReply)
 	}
 	if code != http.StatusBadRequest {
 		t.Errorf("expected status code 400, got %d - %v - %v", code, err, errReply)
 	}
-	if !errReply.Failed {
+	if !errReply.Error {
 		t.Errorf("response unexpectedly marked as not failed: %+v", res)
 	}
 	// trigger empty reply
@@ -230,7 +230,7 @@ func TestJPRC(t *testing.T) {
 	if fe != nil && fe.Code != http.StatusServiceUnavailable {
 		t.Errorf("error code expected for -8 to be 503: %v: %v", res, err)
 	}
-	if !res.Failed {
+	if !res.Error {
 		t.Errorf("response supposed to be marked as failed: %+v", res)
 	}
 	if res.Message != "simulated server error" {
@@ -302,7 +302,7 @@ func (ErrReader) Read(p []byte) (n int, err error) {
 
 func TestHandleCallError(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/", ErrReader{})
-	_, err := jrpc.HandleCall[jrpc.ReplyMessage](nil, r)
+	_, err := jrpc.HandleCall[jrpc.ServerReply](nil, r)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -320,5 +320,39 @@ func TestSendBadURL(t *testing.T) {
 	expected := `parse "bad\x01url": net/url: invalid control character in URL`
 	if err.Error() != expected {
 		t.Errorf("expected error %q, got %q", expected, err.Error())
+	}
+}
+
+func TestSerializeServerReply(t *testing.T) {
+	o := &jrpc.ServerReply{}
+	bytes, err := jrpc.Serialize(o)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	str := string(bytes)
+	expected := `{}`
+	if str != expected {
+		t.Errorf("expected %s, got %s", expected, str)
+	}
+	o = jrpc.NewErrorReply("a message", nil)
+	bytes, err = jrpc.Serialize(o)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	str = string(bytes)
+	expected = `{"error":true,"message":"a message"}`
+	if str != expected {
+		t.Errorf("expected %s, got %s", expected, str)
+	}
+	e := errors.New("an error")
+	o = jrpc.NewErrorReply("a message", e)
+	bytes, err = jrpc.Serialize(o)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	str = string(bytes)
+	expected = `{"error":true,"message":"a message","exception":"an error"}`
+	if str != expected {
+		t.Errorf("expected %s, got %s", expected, str)
 	}
 }

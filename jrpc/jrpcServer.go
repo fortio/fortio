@@ -16,25 +16,18 @@ package jrpc // import "fortio.org/fortio/jrpc"
 
 // Server side additional code (compared to restClient.go).
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 )
 
-type ReplyMessage struct {
-	Failed  bool // would be named Success if could default it to true
-	Message string
+type ServerReply struct {
+	Error     bool   `json:"error,omitempty"` // Success if false/omitted, Error/Failure when true
+	Message   string `json:"message,omitempty"`
+	Exception string `json:"exception,omitempty"`
 }
 
-type ErrorReply struct {
-	ReplyMessage
-	Exception string
-}
-
-func NewErrorReply(message string, err error) *ErrorReply {
-	res := ErrorReply{}
-	res.Failed = true
-	res.Message = message
+func NewErrorReply(message string, err error) *ServerReply {
+	res := ServerReply{Error: true, Message: message}
 	if err != nil {
 		res.Exception = err.Error()
 	}
@@ -50,7 +43,7 @@ func Reply[T any](w http.ResponseWriter, code int, data *T) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	bytes, err = json.Marshal(data)
+	bytes, err = Serialize(data)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return err
