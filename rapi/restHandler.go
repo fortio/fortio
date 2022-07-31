@@ -1,3 +1,17 @@
+// Copyright 2022 Fortio Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // Remote API to trigger load tests package (REST API).
 package rapi // import "fortio.org/fortio/rapi"
 
@@ -17,6 +31,7 @@ import (
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
@@ -41,21 +56,20 @@ var (
 	DefaultPercentileList []float64
 )
 
-// ErrorReply is returned on errors.
-type ErrorReply struct {
-	Error     string
-	Exception error
+// AsyncReply is returned when async=on is passed.
+type AsyncReply struct {
+	jrpc.ReplyMessage
+	RunID int64
+	Count int
 }
 
 // Error writes serialized ErrorReply to the writer.
-func Error(w http.ResponseWriter, msg ErrorReply) {
+func Error(w http.ResponseWriter, msg string, err error) {
 	if w == nil {
 		// async mode, nothing to do
 		return
 	}
-	w.WriteHeader(http.StatusBadRequest)
-	b, _ := json.Marshal(msg) // nolint: errchkjson
-	_, _ = w.Write(b)
+	_ = jrpc.ReplyError(w, msg, err)
 }
 
 // GetConfigAtPath deserializes the bytes as JSON and
@@ -125,7 +139,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
-		Error(w, ErrorReply{"body read error", err})
+		Error(w, "body read error", err)
 		return
 	}
 	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
@@ -133,11 +147,11 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	var jd map[string]interface{}
 	if len(data) > 0 {
 		// Json input and deserialize options from that path, eg. for flagger:
-		// jsonPath=metadata
+		// jsonPath=.metadata
 		jd, err = GetConfigAtPath(jsonPath, data)
 		if err != nil {
 			log.Errf("Error deserializing %v", err)
-			Error(w, ErrorReply{"body json deserialization error: " + err.Error(), err})
+			Error(w, "body json deserialization error", err)
 			return
 		}
 		log.Infof("Body: %+v", jd)
@@ -167,10 +181,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	var dur time.Duration
 	if durStr == "on" {
 		dur = -1
-	} else {
+	} else if durStr != "" {
 		dur, err = time.ParseDuration(durStr)
 		if err != nil {
 			log.Errf("Error parsing duration '%s': %v", durStr, err)
+			Error(w, "parsing duration", err)
+			return
 		}
 	}
 	c, _ := strconv.Atoi(FormValue(r, jd, "c"))
@@ -180,7 +196,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	n, _ := strconv.ParseInt(FormValue(r, jd, "n"), 10, 64)
 	if strings.TrimSpace(url) == "" {
-		Error(w, ErrorReply{"URL is required", nil})
+		Error(w, "URL is required", nil)
 		return
 	}
 	ro := periodic.RunnerOptions{
@@ -197,11 +213,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		NoCatchUp:   nocatchup,
 	}
 	ro.Normalize()
-	uiRunMapMutex.Lock()
-	id++ // start at 1 as 0 means interrupt all
-	runid := id
-	runs[runid] = &ro
-	uiRunMapMutex.Unlock()
+	runid := AddRun(&ro)
 	ro.RunID = runid
 	log.Infof("New run id %d", runid)
 	httpopts := &fhttp.HTTPOptions{}
@@ -255,7 +267,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		_, _ = w.Write([]byte(fmt.Sprintf("{\"started\": %d}", runid)))
+		reply := AsyncReply{RunID: runid, Count: 1}
+		reply.Message = "started" // nolint: goconst
+		err := jrpc.ReplyOk(w, &reply)
+		if err != nil {
+			log.Errf("Error replying to start: %v", err)
+		}
 		go Run(nil, r, jd, runner, url, ro, httpopts)
 		return
 	}
@@ -311,12 +328,10 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		}
 		res, err = fhttp.RunHTTPTest(&o)
 	}
-	uiRunMapMutex.Lock()
-	delete(runs, ro.RunID)
-	uiRunMapMutex.Unlock()
+	RemoveRun(ro.RunID)
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-		Error(w, ErrorReply{"Aborting because of error", err})
+		Error(w, "Aborting because of error", err)
 		return
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
@@ -341,9 +356,12 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_, _ = w.Write([]byte("{\"error\":\"status not yet implemented\"}"))
+	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
+	info := GetRun(runid)
+	err := jrpc.ReplyOk(w, info)
+	if err != nil {
+		log.Errf("Error replying to status: %v", err)
+	}
 }
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
@@ -352,7 +370,12 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
-	_, _ = w.Write([]byte(fmt.Sprintf("{\"stopped\": %d}", i)))
+	reply := AsyncReply{RunID: runid, Count: i}
+	reply.Message = "stopped"
+	err := jrpc.ReplyOk(w, &reply)
+	if err != nil {
+		log.Errf("Error replying: %v", err)
+	}
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.
@@ -426,6 +449,13 @@ func RemoveRun(id int64) {
 	uiRunMapMutex.Lock()
 	delete(runs, id)
 	uiRunMapMutex.Unlock()
+}
+
+func GetRun(id int64) *periodic.RunnerOptions {
+	uiRunMapMutex.Lock()
+	res := runs[id]
+	uiRunMapMutex.Unlock()
+	return res
 }
 
 func SetDataDir(datadir string) {

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 )
@@ -728,20 +729,9 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	return err
 }
 
-// EscapeBytes returns printable string. Same as %q format without the
-// surrounding/extra "".
-func EscapeBytes(buf []byte) string {
-	e := fmt.Sprintf("%q", buf)
-	return e[1 : len(e)-1]
-}
-
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
-	l := len(buf)
-	if l <= max+3 { // no point in shortening to add ... if we could return those 3
-		return EscapeBytes(buf)
-	}
-	max /= 2
-	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
+	// moved to jrpc package
+	return jrpc.DebugSummary(buf, max)
 }
