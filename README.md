@@ -28,7 +28,8 @@ Fortio is quite mature and very stable with no known major bugs (lots of possibl
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
 Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
-As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz)
+As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
+Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
 
@@ -370,7 +371,8 @@ You can set a default value for all these by passing `-echo-server-default-param
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
   * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
-  * `/fortio/rest/stop` stops all current run or by run id.
+  * `/fortio/rest/stop` stops all current run or by run id (passing `runid=` query argument).
+  * `/fortio/rest/status` lists the current runs (or the options of a single one if `runid` is passed).
 
 The `report` mode is a readonly subset of the above directly on `/`.
 
