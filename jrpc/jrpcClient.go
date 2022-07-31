@@ -131,9 +131,6 @@ func Send(url string, jsonPayload []byte) (int, []byte, error) {
 	}
 	res, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	if err != nil {
-		return -1, res, err
-	}
 	return resp.StatusCode, res, err
 }
 

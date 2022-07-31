@@ -106,6 +106,12 @@ func TestJPRC(t *testing.T) {
 			return
 		}
 		if req.SomeInt == -10 {
+			// simulate a bad reply, invalid json but ok status
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{notjson}`))
+			return
+		}
+		if req.SomeInt == -11 {
 			// server error using unserializable struct
 			err = jrpc.Reply(w, 200, &bad)
 			if err == nil {
@@ -230,7 +236,7 @@ func TestJPRC(t *testing.T) {
 	if res.Message != "simulated server error" {
 		t.Errorf("didn't get the error message expected for -8: %v: %v", res, err)
 	}
-	// trigger bad json response
+	// trigger bad json response - and non ok code
 	req.SomeInt = -9
 	res, err = jrpc.Call[Response](url, &req)
 	if err == nil {
@@ -255,8 +261,18 @@ func TestJPRC(t *testing.T) {
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q", expected, err.Error())
 	}
-	// trigger reply bad serialization
+	// trigger bad json response - and ok http code
 	req.SomeInt = -10
+	res, err = jrpc.Call[Response](url, &req)
+	if err == nil {
+		t.Errorf("error expected %v: %v", res, err)
+	}
+	expected = "invalid character 'n' looking for beginning of object key string"
+	if err.Error() != expected {
+		t.Errorf("error string expected %q, got %q", expected, err.Error())
+	}
+	// trigger reply bad serialization
+	req.SomeInt = -11
 	res, err = jrpc.Call[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v", res)
@@ -276,8 +292,7 @@ func TestJPRC(t *testing.T) {
 	}
 }
 
-type ErrReader struct {
-}
+type ErrReader struct{}
 
 const ErrReaderMessage = "simulated IO error"
 
@@ -293,5 +308,17 @@ func TestHandleCallError(t *testing.T) {
 	}
 	if err.Error() != ErrReaderMessage {
 		t.Errorf("expected error %q, got %q", ErrReaderMessage, err.Error())
+	}
+}
+
+func TestSendBadURL(t *testing.T) {
+	badURL := "bad\001url" // something caught in NewRequest
+	_, _, err := jrpc.Fetch(badURL)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	expected := `parse "bad\x01url": net/url: invalid control character in URL`
+	if err.Error() != expected {
+		t.Errorf("expected error %q, got %q", expected, err.Error())
 	}
 }
