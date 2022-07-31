@@ -63,6 +63,11 @@ type AsyncReply struct {
 	Count int
 }
 
+type StatusReply struct {
+	AsyncReply
+	Runs []*periodic.RunnerOptions
+}
+
 // Error writes serialized ServerReply marked as error, to the writer.
 func Error(w http.ResponseWriter, msg string, err error) {
 	if w == nil {
@@ -357,8 +362,19 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
-	info := GetRun(runid)
-	err := jrpc.ReplyOk(w, info)
+	statusReply := StatusReply{}
+	statusReply.RunID = runid
+	if runid != 0 {
+		ro := GetRun(runid)
+		if ro != nil {
+			statusReply.Count = 1
+			statusReply.Runs = []*periodic.RunnerOptions{ro}
+		}
+	} else {
+		statusReply.Runs = GetAllRuns()
+		statusReply.Count = len(statusReply.Runs)
+	}
+	err := jrpc.ReplyOk(w, &statusReply)
 	if err != nil {
 		log.Errf("Error replying to status: %v", err)
 	}
@@ -454,6 +470,16 @@ func RemoveRun(id int64) {
 func GetRun(id int64) *periodic.RunnerOptions {
 	uiRunMapMutex.Lock()
 	res := runs[id]
+	uiRunMapMutex.Unlock()
+	return res
+}
+
+func GetAllRuns() []*periodic.RunnerOptions {
+	res := []*periodic.RunnerOptions{}
+	uiRunMapMutex.Lock()
+	for _, v := range runs {
+		res = append(res, v)
+	}
 	uiRunMapMutex.Unlock()
 	return res
 }

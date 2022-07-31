@@ -29,7 +29,6 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 )
@@ -184,13 +183,20 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if asyncObj.Message != "started" || runID <= savedID {
 		t.Errorf("Should started async job got %+v", asyncObj)
 	}
+	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStatusURI, runID)
-	status, err := jrpc.CallNoPayload[periodic.RunnerOptions](statusURL)
+	status, err := jrpc.CallNoPayload[StatusReply](statusURL)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
-	if status.QPS != 4.20 {
-		t.Errorf("Expected to see request as sent (4.2), got %d: %+v", status.Exactly, status)
+	if status.RunID != runID {
+		t.Errorf("Status runid %d != expected %d", status.RunID, runID)
+	}
+	if status.Count != 1 {
+		t.Errorf("Status count %d != expected 1", status.Count)
+	}
+	if status.Runs[0].QPS != 4.20 {
+		t.Errorf("Expected to see request as sent (4.2), got: %+v", status)
 	}
 	// And stop it:
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)
@@ -204,11 +210,24 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 0 {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
-	// Start 3 async test and stop all
+	// Start 3 async test
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
 	_ = GetAsyncResult(t, runURL, jsonData)
 	_ = GetAsyncResult(t, runURL, jsonData)
 	_ = GetAsyncResult(t, runURL, jsonData)
+	// Get all statuses
+	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStatusURI)
+	status, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	if err != nil {
+		t.Errorf("Error getting statuses %q: %v", statusURL, err)
+	}
+	if status.RunID != 0 {
+		t.Errorf("Status runid not expected %+v", status)
+	}
+	if status.Count != 3 {
+		t.Errorf("Status count %d != expected 3", status.Count)
+	}
+	// stop all
 	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStopURI)
 	asyncObj = GetAsyncResult(t, stopURL, "")
 	if asyncObj.Message != stoppedMsg || asyncObj.RunID != 0 || asyncObj.Count != 3 {
