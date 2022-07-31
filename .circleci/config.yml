@@ -4,11 +4,12 @@
 version: 2
 
 # common setup and steps
-defaultEnv: &defaultEnv
-    docker:
-      # specify the version
-      - image: docker.io/fortio/fortio.build:v42
-    working_directory: /go/src/fortio.org/fortio
+defaultEnv:
+  &defaultEnv
+  docker:
+    # specify the version
+    - image: docker.io/fortio/fortio.build:v42
+  working_directory: /go/src/fortio.org/fortio
 
 jobs:
   unit-tests:
@@ -16,6 +17,8 @@ jobs:
     steps:
       - checkout
       - run: make test
+    # The resource_class feature allows configuring CPU and RAM resources for each job. Different resource classes are available for different executors. https://circleci.com/docs/2.0/configuration-reference/#resourceclass
+    resource_class: large
   release-tests:
     <<: *defaultEnv
     steps:
