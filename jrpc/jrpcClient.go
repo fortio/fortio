@@ -60,15 +60,14 @@ func (fe *FetchError) Unwrap() error {
 
 // Call calls the url endpoint, POSTing a serialized as json optional payload
 // (pass nil for a GET http request) and returns the result, deserializing
-// json into type Q.
-func Call[T any, Q any](url string, payload *T) (*Q, error) {
+// json into type Q. T can be inferred so we declare Response Q first.
+func Call[Q any, T any](url string, payload *T) (*Q, error) {
 	var bytes []byte
-	var result Q
 	var err error
 	if payload != nil {
 		bytes, err = json.Marshal(payload)
 		if err != nil {
-			return &result, err
+			return nil, err
 		}
 	}
 	return CallWithPayload[Q](url, bytes)

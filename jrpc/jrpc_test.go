@@ -71,6 +71,7 @@ func TestJPRC(t *testing.T) {
 	}
 	mux, addr := fhttp.HTTPServer("test", "0")
 	port := addr.(*net.TCPAddr).Port
+	var bad chan struct{}
 	mux.HandleFunc("/test-api", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			err := jrpc.ReplyError(w, "should be a POST", nil)
@@ -104,6 +105,14 @@ func TestJPRC(t *testing.T) {
 			w.Write([]byte(`{bad}`))
 			return
 		}
+		if req.SomeInt == -10 {
+			// server error using unserializable struct
+			err = jrpc.Reply(w, 200, &bad)
+			if err == nil {
+				t.Errorf("Expected bad serialization error")
+			}
+			return
+		}
 		resp.Message = "works"
 		resp.InputInt = req.SomeInt
 		// inefficient but this is just to test
@@ -114,7 +123,7 @@ func TestJPRC(t *testing.T) {
 	})
 	url := fmt.Sprintf("http://localhost:%d/test-api", port)
 	req := Request{42, []string{"ab", "cd"}}
-	res, err := jrpc.Call[Request, Response](url, &req)
+	res, err := jrpc.Call[Response](url, &req)
 	if err != nil {
 		t.Errorf("failed Call: %v", err)
 	}
@@ -148,7 +157,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// bad url
 	badURL := "http://doesnotexist.fortio.org/"
-	_, err = jrpc.Call[Request, Response](badURL, &req)
+	_, err = jrpc.Call[Response](badURL, &req)
 	if err == nil {
 		t.Errorf("expected error for bad url")
 	}
@@ -192,7 +201,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger empty reply
 	req.SomeInt = -7
-	res, err = jrpc.Call[Request, Response](url, &req)
+	res, err = jrpc.Call[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -204,7 +213,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger server error
 	req.SomeInt = -8
-	res, err = jrpc.Call[Request, Response](url, &req)
+	res, err = jrpc.Call[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -223,7 +232,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger bad json response
 	req.SomeInt = -9
-	res, err = jrpc.Call[Request, Response](url, &req)
+	res, err = jrpc.Call[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -245,5 +254,44 @@ func TestJPRC(t *testing.T) {
 	expected = "deserialization error, code 747: " + expected + " (raw reply: {bad})"
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q", expected, err.Error())
+	}
+	// trigger reply bad serialization
+	req.SomeInt = -10
+	res, err = jrpc.Call[Response](url, &req)
+	if err == nil {
+		t.Errorf("error expected %v", res)
+	}
+	expected = "deserialization error, code 500: unexpected end of JSON input (raw reply: )"
+	if err.Error() != expected {
+		t.Errorf("error string expected %q, got %q, %+v", expected, err.Error(), res)
+	}
+	// Unserializable client side
+	res, err = jrpc.Call[Response](url, &bad)
+	if err == nil {
+		t.Errorf("error expected %v", res)
+	}
+	expected = "json: unsupported type: chan struct {}"
+	if err.Error() != expected {
+		t.Errorf("error string expected %q, got %q, %+v", expected, err.Error(), res)
+	}
+}
+
+type ErrReader struct {
+}
+
+const ErrReaderMessage = "simulated IO error"
+
+func (ErrReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New(ErrReaderMessage)
+}
+
+func TestHandleCallError(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/", ErrReader{})
+	_, err := jrpc.HandleCall[jrpc.ReplyMessage](nil, r)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if err.Error() != ErrReaderMessage {
+		t.Errorf("expected error %q, got %q", ErrReaderMessage, err.Error())
 	}
 }

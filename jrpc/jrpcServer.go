@@ -81,7 +81,7 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 }
 
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
-	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
