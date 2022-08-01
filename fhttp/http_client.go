@@ -46,9 +46,9 @@ type Fetcher interface {
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	// returns how many sockets have been used (Fastclient only)
-	Close() int
+	Close() error
 	// GetIPAddress() returns the last ip address used by this client connection.
-	GetIPAddress() string
+	GetIPAddress() (*stats.Occurrence, int)
 }
 
 const (
@@ -360,12 +360,13 @@ type Client struct {
 }
 
 // Close cleans up any resources used by NewStdClient.
-func (c *Client) Close() int {
+func (c *Client) Close() error {
 	log.Debugf("[%d] Close() on %+v", c.id, c)
 	if c.req != nil {
 		if c.req.Body != nil {
 			if err := c.req.Body.Close(); err != nil {
 				log.Warnf("[%d] Error closing std client body: %v", c.id, err)
+				return err
 			}
 		}
 		c.req = nil
@@ -373,7 +374,7 @@ func (c *Client) Close() int {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
-	return c.socketCount
+	return nil
 }
 
 // ChangeURL only for standard client, allows fetching a different URL.
@@ -446,8 +447,10 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient.
-func (c *Client) GetIPAddress() string {
-	return c.req.RemoteAddr
+func (c *Client) GetIPAddress() (*stats.Occurrence, int) {
+	occurrence := stats.NewOccurrence()
+	occurrence.Record(c.req.RemoteAddr)
+	return occurrence, 0
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -591,20 +594,21 @@ type FastClient struct {
 }
 
 // GetIPAddress get ip address that DNS resolved to when using fast client.
-func (c *FastClient) GetIPAddress() string {
-	return c.dest.String()
+func (c *FastClient) GetIPAddress() (*stats.Occurrence, int) {
+	return c.ipAddrUsage, c.socketCount
 }
 
 // Close cleans up any resources used by FastClient.
-func (c *FastClient) Close() int {
+func (c *FastClient) Close() error {
 	log.Debugf("[%d] Closing %p %s socket count %d", c.id, c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
 			log.Warnf("[%d] Error closing fast client's socket: %v", c.id, err)
+			return err
 		}
 		c.socket = nil
 	}
-	return c.socketCount
+	return nil
 }
 
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.

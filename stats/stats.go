@@ -542,36 +542,42 @@ func Round(v float64) float64 {
 
 // Occurrence is a type that stores the occurrence of the key.
 type Occurrence struct {
-	kvMap map[string]int
+	ipUsage map[string]int
 }
 
 // NewOccurrence create a new occurrence map.
 func NewOccurrence() *Occurrence {
 	o := new(Occurrence)
-	o.kvMap = make(map[string]int)
+	o.ipUsage = make(map[string]int)
 
 	return o
 }
 
 // Record records a key value pair.
 func (m *Occurrence) Record(key string) {
-	m.kvMap[key]++
+	m.ipUsage[key]++
 }
 
-// Reset clears the map to reset it to no data.
-func (m *Occurrence) Reset() {
-	var empty Occurrence
-	*m = empty
-}
+// PrintAndAggregate print the ip usage and aggregate to the total count map.
+func (m *Occurrence) PrintAndAggregate(ipCountMap map[string]int) string {
+	var count strings.Builder
+	_, _ = fmt.Fprintf(&count, "[")
 
-// Transfer merge data from src into this Map and clear src.
-func (m *Occurrence) Transfer(src *Occurrence) {
-	if src.kvMap == nil {
-		return
-	}
-	for k, v := range src.kvMap {
-		m.kvMap[k] += v
-	}
+	size := len(m.ipUsage)
 
-	src.Reset()
+	for k, v := range m.ipUsage {
+		ipCountMap[k] += v
+		_, _ = fmt.Fprintf(&count, "%s", k)
+		if v != 1 {
+			_, _ = fmt.Fprintf(&count, " (%d)", v)
+		}
+
+		size--
+		if size != 0 {
+			_, _ = fmt.Fprintf(&count, ", ")
+		}
+	}
+	_, _ = fmt.Fprintf(&count, "]")
+
+	return count.String()
 }
