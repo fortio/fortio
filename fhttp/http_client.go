@@ -450,7 +450,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 func (c *Client) GetIPAddress() (*stats.Occurrence, int) {
 	occurrence := stats.NewOccurrence()
 	occurrence.Record(c.req.RemoteAddr)
-	return occurrence, 0
+	return occurrence, c.socketCount
 }
 
 // NewClient creates either a standard or fast client (depending on
