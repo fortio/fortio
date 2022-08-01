@@ -29,6 +29,11 @@ import (
 	"fortio.org/fortio/log"
 )
 
+const (
+	ipOne = "127.0.0.1"
+	ipTwo = "127.0.0.2"
+)
+
 func TestCounter(t *testing.T) {
 	c := NewHistogram(22, 0.1)
 	var b bytes.Buffer
@@ -795,6 +800,65 @@ func TestAllBucketBoundaries(t *testing.T) {
 		if hData.Data[2-firstInterval].Start != v || hData.Data[2-firstInterval].Count != 1003+lastInterval {
 			t.Errorf("> Boundary, got %+v unexpectedly for %d %g", hData, value, v)
 		}
+	}
+}
+
+// Unit tests for Occurrence.
+func TestSingleIPOccurrence(t *testing.T) {
+	singleIP := NewOccurrence()
+	totalMap := make(map[string]int)
+	expected := "[127.0.0.1]"
+
+	singleIP.Record(ipOne)
+	singleIP.Record(ipOne)
+
+	actual := singleIP.PrintAndAggregate(totalMap)
+
+	if expected != actual {
+		t.Errorf("Incorrect IP Usage Result. Expected: %s, got: %s", expected, actual)
+	}
+}
+
+func TestMultipleIPOccurrence(t *testing.T) {
+	multiIP := NewOccurrence()
+	totalMap := make(map[string]int)
+	expected := [2]string{"[127.0.0.1 (2), 127.0.0.2 (1)]", "[127.0.0.2 (1), 127.0.0.1 (2)]"}
+
+	multiIP.Record(ipOne)
+	multiIP.Record(ipOne)
+
+	multiIP.Record(ipTwo)
+
+	actual := multiIP.PrintAndAggregate(totalMap)
+
+	if actual != expected[0] && actual != expected[1] {
+		t.Errorf("Incorrect IP Usage Result. Expected: %s, got: %s", expected, actual)
+	}
+}
+
+func TestMultipleConnIPOccurrence(t *testing.T) {
+	occurrenceOne := NewOccurrence()
+	occurrenceTwo := NewOccurrence()
+	totalMap := make(map[string]int)
+
+	// IP usage for first connection.
+	occurrenceOne.Record(ipOne)
+	occurrenceOne.Record(ipOne)
+	occurrenceOne.Record(ipOne)
+	occurrenceOne.Record(ipTwo)
+
+	// IP usage for second connection.
+	occurrenceTwo.Record(ipOne)
+	occurrenceTwo.Record(ipOne)
+	occurrenceTwo.Record(ipTwo)
+	occurrenceTwo.Record(ipTwo)
+
+	_ = occurrenceOne.PrintAndAggregate(totalMap)
+	_ = occurrenceTwo.PrintAndAggregate(totalMap)
+
+	// The occurrence of ip one should be 5 and the occurrence of ip two should be 3.
+	if totalMap[ipOne] != 5 || totalMap[ipTwo] != 3 {
+		t.Errorf("Incorrect total IP usage count.")
 	}
 }
 
