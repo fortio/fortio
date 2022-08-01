@@ -560,24 +560,25 @@ func (m *Occurrence) Record(key string) {
 
 // PrintAndAggregate print the ip usage and aggregate to the total count map.
 func (m *Occurrence) PrintAndAggregate(ipCountMap map[string]int) string {
-	var count strings.Builder
-	_, _ = fmt.Fprintf(&count, "[")
+	var sb strings.Builder
+	_, _ = fmt.Fprintf(&sb, "[")
 
 	size := len(m.ipUsage)
+	count := 0
 
 	for k, v := range m.ipUsage {
 		ipCountMap[k] += v
-		_, _ = fmt.Fprintf(&count, "%s", k)
-		if v != 1 {
-			_, _ = fmt.Fprintf(&count, " (%d)", v)
+		_, _ = fmt.Fprintf(&sb, "%s", k)
+		if size != 1 {
+			_, _ = fmt.Fprintf(&sb, " (%d)", v)
 		}
 
-		size--
-		if size != 0 {
-			_, _ = fmt.Fprintf(&count, ", ")
+		count++
+		if count != size {
+			_, _ = fmt.Fprintf(&sb, ", ")
 		}
 	}
-	_, _ = fmt.Fprintf(&count, "]")
+	_, _ = fmt.Fprintf(&sb, "]")
 
-	return count.String()
+	return sb.String()
 }
