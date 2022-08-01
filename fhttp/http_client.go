@@ -316,6 +316,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
+	// nolint: noctx // todo: confirm timeout set later replaces need for a context
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
