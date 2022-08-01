@@ -8,7 +8,7 @@ defaultEnv:
   &defaultEnv
   docker:
     # specify the version
-    - image: docker.io/fortio/fortio.build:v43
+    - image: docker.io/fortio/fortio.build:v44
   working_directory: /go/src/fortio.org/fortio
 
 jobs:
