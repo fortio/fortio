@@ -574,6 +574,46 @@ func TestValidateConnectionReuse(t *testing.T) {
 	}
 }
 
+func TestReresolveDNS(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("ltest.fortio.org:%d", addr.Port)
+
+	ipAddressOne := fmt.Sprintf("127.0.0.1:%d", addr.Port)
+	ipAddressTwo := fmt.Sprintf("127.0.0.2:%d", addr.Port)
+	ipAddressThree := fmt.Sprintf("127.0.0.3:%d", addr.Port)
+	ipAddrMap := map[string]bool{
+		ipAddressOne:   true,
+		ipAddressTwo:   true,
+		ipAddressThree: true,
+	}
+
+	opts := HTTPRunnerOptions{}
+	opts.Init(url)
+	opts.QPS = 50
+	opts.URL = url
+	opts.NumThreads = 1
+	opts.Exactly = 3
+	opts.ConnReuseRange = [2]int{1, 1}
+
+	// Test empty reuse range.
+	res, err := RunHTTPTest(&opts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for k, v := range res.IPCountMap {
+		_, exist := ipAddrMap[k]
+		if !exist {
+			t.Errorf("Incorrect ip address, got: %s", k)
+		}
+
+		if v != 1 {
+			t.Errorf("Incorrect ip count, expected: %d, got: %d", 1, v)
+		}
+	}
+}
+
 func getIPUsageCount(ipCountMap map[string]int) (count int) {
 	for _, v := range ipCountMap {
 		count += v
