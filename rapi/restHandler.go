@@ -46,10 +46,41 @@ const (
 	ModeGRPC      = "grpc"
 )
 
+type StateEnum int
+
+const (
+	StateUnknown StateEnum = iota
+	StatePending
+	StateRunning
+	StateStopped
+)
+
+func (se *StateEnum) String() string {
+	switch *se {
+	case StateUnknown:
+		return "unknown"
+	case StatePending:
+		return "pending"
+	case StateRunning:
+		return "running"
+	case StateStopped:
+		return "stopped"
+	}
+	panic("unknown state")
+}
+
+type Status struct {
+	RunID         int64
+	State         StateEnum
+	RunnerOptions *periodic.RunnerOptions
+}
+
+type StatusMap map[int64]*Status
+
 var (
 	uiRunMapMutex = &sync.Mutex{}
 	id            int64
-	runs          = make(map[int64]*periodic.RunnerOptions)
+	runs          = make(StatusMap)
 	// Directory where results are written to/read from.
 	dataDir string
 	// Default percentiles when not otherwise specified.
@@ -64,14 +95,14 @@ type AsyncReply struct {
 }
 
 type StatusReply struct {
-	AsyncReply
-	Runs []*periodic.RunnerOptions
+	jrpc.ServerReply
+	Statuses StatusMap
 }
 
 // Error writes serialized ServerReply marked as error, to the writer.
 func Error(w http.ResponseWriter, msg string, err error) {
 	if w == nil {
-		// async mode, nothing to do
+		// async mode: nothing to reply
 		return
 	}
 	_ = jrpc.ReplyError(w, msg, err)
@@ -122,6 +153,10 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 	if res != "" {
 		log.Debugf("key %q in query args so using that value %q", key, res)
 		return res
+	}
+	if json == nil { // When called from uihandler we don't have a json map.
+		log.Debugf("no json data so returning empty string for key %q", key)
+		return ""
 	}
 	res2, found := json[key]
 	if !found {
@@ -217,8 +252,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		Uniform:     uniform,
 		NoCatchUp:   nocatchup,
 	}
-	ro.Normalize()
-	runid := AddRun(&ro)
+	runid := NextRunID()
 	ro.RunID = runid
 	log.Infof("New run id %d", runid)
 	httpopts := &fhttp.HTTPOptions{}
@@ -278,17 +312,18 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
 		}
-		go Run(nil, r, jd, runner, url, ro, httpopts)
+		go Run(nil, r, jd, runner, url, &ro, httpopts, false)
 		return
 	}
-	Run(w, r, jd, runner, url, ro, httpopts)
+	Run(w, r, jd, runner, url, &ro, httpopts, false)
 }
 
 // Run executes the run (can be called async or not, writer is nil for async mode).
+// Api is a bit awkward to be compatible with both this new now main REST code but
+// also the old one in ui/uihandler.go.
 func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
-	runner, url string, ro periodic.RunnerOptions, httpopts *fhttp.HTTPOptions,
-) {
-	//	go func() {
+	runner, url string, ro *periodic.RunnerOptions, httpopts *fhttp.HTTPOptions, htmlMode bool,
+) (periodic.HasRunnerResult, string, []byte, error) {
 	var res periodic.HasRunnerResult
 	var err error
 	if runner == ModeGRPC { // nolint: nestif
@@ -296,7 +331,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
 		o := fgrpc.GRPCRunnerOptions{
-			RunnerOptions: ro,
+			RunnerOptions: *ro,
 			Destination:   url,
 			UsePing:       grpcPing,
 			Delay:         grpcPingDelay,
@@ -305,39 +340,47 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		if grpcSecure {
 			o.Destination = fhttp.AddHTTPS(url)
 		}
+		UpdateRun(&o.RunnerOptions)
 		// TODO: ReqTimeout: timeout
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
 		// TODO: copy pasta from fortio_main
 		o := tcprunner.RunnerOptions{
-			RunnerOptions: ro,
+			RunnerOptions: *ro,
 		}
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
+		UpdateRun(&o.RunnerOptions)
 		res, err = tcprunner.RunTCPTest(&o)
 	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
 		// TODO: copy pasta from fortio_main
 		o := udprunner.RunnerOptions{
-			RunnerOptions: ro,
+			RunnerOptions: *ro,
 		}
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
+		UpdateRun(&o.RunnerOptions)
 		res, err = udprunner.RunUDPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpopts,
-			RunnerOptions:      ro,
+			RunnerOptions:      *ro,
 			AllowInitialErrors: true,
 		}
+		log.Infof("XXXX before: %+v", o.RunnerOptions)
+		UpdateRun(&(o.RunnerOptions))
+		log.Infof("XXXX after: %+v %p", o.RunnerOptions, &(o.RunnerOptions))
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	RemoveRun(ro.RunID)
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-		Error(w, "Aborting because of error", err)
-		return
+		if !htmlMode {
+			Error(w, "Aborting because of error", err)
+		}
+		return res, "", nil, err
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
@@ -345,17 +388,23 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	}
 	id := res.Result().ID()
 	doSave := (FormValue(r, jd, "save") == "on")
+	savedAs := ""
 	if doSave {
-		SaveJSON(id, json)
+		savedAs = SaveJSON(id, json)
 	}
 	if w == nil {
-		// async, no result to output
-		return
+		// async or html but nil w (no json output): no result to output
+		return res, savedAs, json, nil
+	}
+	if htmlMode {
+		// Already set in api mode but not in html mode
+		w.Header().Set("Content-Type", "application/json")
 	}
 	_, err = w.Write(json)
 	if err != nil {
 		log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 	}
+	return res, savedAs, json, nil
 }
 
 // RESTStatusHandler will print the state of the runs.
@@ -363,16 +412,13 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Status Api call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	statusReply := StatusReply{}
-	statusReply.RunID = runid
 	if runid != 0 {
 		ro := GetRun(runid)
 		if ro != nil {
-			statusReply.Count = 1
-			statusReply.Runs = []*periodic.RunnerOptions{ro}
+			statusReply.Statuses = StatusMap{runid: ro}
 		}
 	} else {
-		statusReply.Runs = GetAllRuns()
-		statusReply.Count = len(statusReply.Runs)
+		statusReply.Statuses = GetAllRuns()
 	}
 	err := jrpc.ReplyOk(w, &statusReply)
 	if err != nil {
@@ -400,7 +446,11 @@ func StopByRunID(runid int64) int {
 	if runid <= 0 { // Stop all
 		i := 0
 		for k, v := range runs {
-			v.Abort()
+			if v.State != StateRunning {
+				continue
+			}
+			v.State = StateStopped // more for debugger state or if we kept it or released the lock
+			v.RunnerOptions.Abort()
 			delete(runs, k)
 			i++
 		}
@@ -410,16 +460,22 @@ func StopByRunID(runid int64) int {
 	}
 	// else: Stop one
 	v, found := runs[runid]
-	if found {
-		delete(runs, runid)
+	if !found {
 		uiRunMapMutex.Unlock()
-		v.Abort()
-		log.Infof("Interrupted run id %d", runid)
-		return 1
+		log.Infof("Runid %d not found to interrupt", runid)
+		return 0
 	}
-	log.Infof("Runid %d not found to interrupt", runid)
+	if v.State != StateRunning {
+		uiRunMapMutex.Unlock()
+		log.Infof("Run %d is not running", runid)
+		return 0
+	}
+	delete(runs, runid)
 	uiRunMapMutex.Unlock()
-	return 0
+	log.Infof("XXXX abort/stop: %+v %p", v.RunnerOptions, v.RunnerOptions)
+	v.RunnerOptions.Abort()
+	log.Infof("Interrupted run id %d", runid)
+	return 1
 }
 
 // AddHandlers adds the REST Api handlers for run, status and stop.
@@ -452,13 +508,31 @@ func SaveJSON(name string, json []byte) string {
 	return "data/" + name
 }
 
-func AddRun(ro *periodic.RunnerOptions) int64 {
+func NextRunID() int64 {
 	uiRunMapMutex.Lock()
 	id++ // start at 1 as 0 means interrupt all
 	runid := id
-	runs[runid] = ro
+	runs[runid] = &Status{State: StatePending, RunID: runid}
 	uiRunMapMutex.Unlock()
 	return runid
+}
+
+// Must be called exactly once for each runner. Responsible for normalization (abort channel setup)
+// and making sure the options object returned in status is same as the actual one.
+func UpdateRun(ro *periodic.RunnerOptions) {
+	uiRunMapMutex.Lock()
+	status, found := runs[ro.RunID]
+	if !found || status.State != StatePending || status.RunnerOptions != nil || status.RunID != ro.RunID {
+		uiRunMapMutex.Unlock()
+		// This would be a bug so we crash:
+		log.Fatalf("Logic bug: updating unexpected state for rid %d: %v", ro.RunID, status)
+	}
+	status.State = StateRunning
+	status.RunnerOptions = ro
+	log.Infof("XXXX update run before: %+v %p", *ro, ro)
+	status.RunnerOptions.Normalize()
+	log.Infof("XXXX update run after: %+v %p", *ro, ro)
+	uiRunMapMutex.Unlock()
 }
 
 func RemoveRun(id int64) {
@@ -467,18 +541,21 @@ func RemoveRun(id int64) {
 	uiRunMapMutex.Unlock()
 }
 
-func GetRun(id int64) *periodic.RunnerOptions {
+func GetRun(id int64) *Status {
 	uiRunMapMutex.Lock()
 	res := runs[id]
 	uiRunMapMutex.Unlock()
 	return res
 }
 
-func GetAllRuns() []*periodic.RunnerOptions {
-	res := []*periodic.RunnerOptions{}
+// GetAllRuns returns a copy of the status map.
+// (note maps are always reference types so no copy is done when returning the map value)
+func GetAllRuns() StatusMap {
+	// make a copy - we could use the hint of the size but that would require locking
+	res := make(StatusMap)
 	uiRunMapMutex.Lock()
-	for _, v := range runs {
-		res = append(res, v)
+	for k, v := range runs {
+		res[k] = v
 	}
 	uiRunMapMutex.Unlock()
 	return res

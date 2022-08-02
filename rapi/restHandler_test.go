@@ -185,18 +185,25 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStatusURI, runID)
-	status, err := jrpc.CallNoPayload[StatusReply](statusURL)
+	statuses, err := jrpc.CallNoPayload[StatusReply](statusURL)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
+	}
+	if len(statuses.Statuses) != 1 {
+		t.Errorf("Status count %d != expected 1", len(statuses.Statuses))
+	}
+	status, found := statuses.Statuses[runID]
+	if !found {
+		t.Errorf("Status not found in reply, for runid %d: %+v", runID, statuses)
 	}
 	if status.RunID != runID {
 		t.Errorf("Status runid %d != expected %d", status.RunID, runID)
 	}
-	if status.Count != 1 {
-		t.Errorf("Status count %d != expected 1", status.Count)
-	}
-	if status.Runs[0].QPS != 4.20 {
+	if status.RunnerOptions.QPS != 4.20 {
 		t.Errorf("Expected to see request as sent (4.2), got: %+v", status)
+	}
+	if status.RunnerOptions.RunType != "HTTP" {
+		t.Errorf("RunType mismatch, got: %+v", status.RunnerOptions)
 	}
 	// And stop it:
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)
@@ -217,15 +224,12 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	_ = GetAsyncResult(t, runURL, jsonData)
 	// Get all statuses
 	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStatusURI)
-	status, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
 	if err != nil {
-		t.Errorf("Error getting statuses %q: %v", statusURL, err)
+		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
-	if status.RunID != 0 {
-		t.Errorf("Status runid not expected %+v", status)
-	}
-	if status.Count != 3 {
-		t.Errorf("Status count %d != expected 3", status.Count)
+	if len(statuses.Statuses) != 3 {
+		t.Errorf("Status count not the expected 3: %+v", statuses)
 	}
 	// stop all
 	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStopURI)
@@ -324,6 +328,24 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	uRes := FetchResult[udprunner.RunnerResults](t, runURL, "")
 	if uRes.ActualQPS < 4 || uRes.ActualQPS > 5.1 {
 		t.Errorf("Unexpected udp qps %f", tRes.ActualQPS)
+	}
+}
+
+func TestNextGet(t *testing.T) {
+	id := NextRunID()
+	ro := GetRun(id)
+	bytes, err := jrpc.Serialize(ro)
+	if err != nil {
+		t.Errorf("Unexpected error serializing %+v: %v", ro, err)
+	}
+	str := string(bytes)
+	expected := fmt.Sprintf("{\"RunID\":%d,\"State\":%d,\"RunnerOptions\":null}", id, StatePending)
+	if str != expected {
+		t.Errorf("Expected json %s got %s", expected, str)
+	}
+	list := GetAllRuns()
+	if len(list) != 1 {
+		t.Errorf("Expected 1 run got %d", len(list))
 	}
 }
 

@@ -18,7 +18,6 @@ package ui // import "fortio.org/fortio/ui"
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -36,15 +35,12 @@ import (
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/dflag/endpoint"
-	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
-	"fortio.org/fortio/tcprunner"
-	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/version"
 )
 
@@ -107,7 +103,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
-	doSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	runid := int64(0)
 	runner := r.FormValue("runner")
@@ -138,9 +133,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	jitter := (r.FormValue("jitter") == "on")
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
-	grpcSecure := (r.FormValue("grpc-secure") == "on")
-	grpcPing := (r.FormValue("ping") == "on")
-	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
 	stdClient := (r.FormValue("stdclient") == "on")
 	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
@@ -187,8 +179,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		NoCatchUp:   nocatchup,
 	}
 	if mode == run {
-		ro.Normalize()
-		runid = rapi.AddRun(&ro)
+		// must not normalize, done in rapi.UpdateRun when actually starting the run
+		runid = rapi.NextRunID()
 		log.Infof("New run id %d", runid)
 		ro.RunID = runid
 	}
@@ -273,77 +265,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		fhttp.OnBehalfOf(httpopts, r)
+		runWriter := w
 		if !JSONOnly {
 			flusher.Flush()
+			runWriter = nil // we don't want run to write json
 		}
-		var res periodic.HasRunnerResult
-		var err error
-		if runner == rapi.ModeGRPC {
-			o := fgrpc.GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   url,
-				UsePing:       grpcPing,
-				Delay:         grpcPingDelay,
-			}
-			o.TLSOptions = httpopts.TLSOptions
-			if grpcSecure {
-				o.Destination = fhttp.AddHTTPS(url)
-			}
-			// TODO: ReqTimeout: timeout
-			res, err = fgrpc.RunGRPCTest(&o)
-		} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
-			// TODO: copy pasta from fortio_main
-			o := tcprunner.RunnerOptions{
-				RunnerOptions: ro,
-			}
-			o.ReqTimeout = timeout
-			o.Destination = url
-			o.Payload = httpopts.Payload
-			res, err = tcprunner.RunTCPTest(&o)
-		} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
-			// TODO: copy pasta from fortio_main
-			o := udprunner.RunnerOptions{
-				RunnerOptions: ro,
-			}
-			o.ReqTimeout = timeout
-			o.Destination = url
-			o.Payload = httpopts.Payload
-			res, err = udprunner.RunUDPTest(&o)
-		} else {
-			o := fhttp.HTTPRunnerOptions{
-				HTTPOptions:        *httpopts,
-				RunnerOptions:      ro,
-				AllowInitialErrors: true,
-			}
-			res, err = fhttp.RunHTTPTest(&o)
-		}
-		rapi.RemoveRun(ro.RunID)
+		// A bit awkward api because of trying to reuse yet be compatible from old UI code with
+		// new `rapi` code.
+		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*html mode*/)
 		if err != nil {
-			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-
 			_, _ = w.Write([]byte(fmt.Sprintf(
 				"❌ Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
 			return
 		}
-		json, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		savedAs := ""
-		id := res.Result().ID()
-		if doSave {
-			savedAs = rapi.SaveJSON(id, json)
-		}
 		if JSONOnly {
-			w.Header().Set("Content-Type", "application/json")
-			_, err = w.Write(json)
-			if err != nil {
-				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
-			}
+			// all done in rapi.Run() above
 			return
 		}
 		if savedAs != "" {
+			id := res.Result().ID()
 			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}
