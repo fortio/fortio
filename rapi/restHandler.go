@@ -55,8 +55,8 @@ const (
 	StateStopped
 )
 
-func (se *StateEnum) String() string {
-	switch *se {
+func (se StateEnum) String() string {
+	switch se {
 	case StateUnknown:
 		return "unknown"
 	case StatePending:
@@ -312,9 +312,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
 		}
+		// nolint: errcheck // all cases handled inside for rapi callers
+		// returned values are for the ui/uihandler.go caller.
 		go Run(nil, r, jd, runner, url, &ro, httpopts, false)
 		return
 	}
+	// nolint: errcheck // all cases handled inside for rapi callers
 	Run(w, r, jd, runner, url, &ro, httpopts, false)
 }
 
@@ -433,7 +436,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	i := StopByRunID(runid)
 	reply := AsyncReply{RunID: runid, Count: i}
-	reply.Message = "stopped"
+	reply.Message = StateStopped.String()
 	err := jrpc.ReplyOk(w, &reply)
 	if err != nil {
 		log.Errf("Error replying: %v", err)
@@ -548,8 +551,8 @@ func GetRun(id int64) *Status {
 	return res
 }
 
-// GetAllRuns returns a copy of the status map.
-// (note maps are always reference types so no copy is done when returning the map value)
+// GetAllRuns returns a copy of the status map
+// (note maps are always reference types so no copy is done when returning the map value).
 func GetAllRuns() StatusMap {
 	// make a copy - we could use the hint of the size but that would require locking
 	res := make(StatusMap)
