@@ -45,9 +45,9 @@ type Fetcher interface {
 	// headers)
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
-	// returns how many sockets have been used (Fastclient only)
 	Close()
-	// GetIPAddress() returns the last ip address used by this client connection.
+	// GetIPAddress() returns the occurrence of ip address used by this client connection.
+	// and how many sockets have been used
 	GetIPAddress() (*stats.Occurrence, int)
 }
 
@@ -186,7 +186,7 @@ type HTTPOptions struct {
 	ID               int           // id to use for logging (thread id when used as a runner)
 	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
-	// re-resolve the DNS name when the connection breaks.
+	// When false, re-resolve the DNS name when the connection breaks.
 	NoResolveEachConn bool
 }
 
