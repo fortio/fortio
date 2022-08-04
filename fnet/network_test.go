@@ -537,7 +537,7 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error in rnd mode for resolve of google: %v", err)
 	}
-	fnet.FlagResolveMethod.Set("rr")
+	err = fnet.FlagResolveMethod.Set("rr")
 	if err != nil {
 		t.Errorf("unexpected error setting method to rr: %v", err)
 	}

@@ -539,3 +539,45 @@ func RoundToDigits(v float64, digits int) float64 {
 func Round(v float64) float64 {
 	return RoundToDigits(v, 4)
 }
+
+// Occurrence is a type that stores the occurrence of the key.
+type Occurrence struct {
+	ipUsage map[string]int
+}
+
+// NewOccurrence create a new occurrence map.
+func NewOccurrence() *Occurrence {
+	o := new(Occurrence)
+	o.ipUsage = make(map[string]int)
+
+	return o
+}
+
+// Record records a key value pair.
+func (m *Occurrence) Record(key string) {
+	m.ipUsage[key]++
+}
+
+// PrintAndAggregate print the ip usage and aggregate to the total count map.
+func (m *Occurrence) PrintAndAggregate(ipCountMap map[string]int) string {
+	var sb strings.Builder
+	sb.WriteString("[")
+
+	size := len(m.ipUsage)
+	count := 0
+
+	for k, v := range m.ipUsage {
+		ipCountMap[k] += v
+		sb.WriteString(k)
+		if size == 1 {
+			break
+		}
+		sb.WriteString(fmt.Sprintf(" (%d)", v))
+		count++
+		if count != size {
+			sb.WriteString(", ")
+		}
+	}
+	sb.WriteString("]")
+	return sb.String()
+}
