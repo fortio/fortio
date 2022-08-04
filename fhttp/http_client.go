@@ -34,6 +34,7 @@ import (
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
+	"fortio.org/fortio/stats"
 	"fortio.org/fortio/version"
 	"github.com/google/uuid"
 )
@@ -44,10 +45,10 @@ type Fetcher interface {
 	// headers)
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
-	// returns how many sockets have been used (Fastclient only)
-	Close() int
-	// GetIPAddress() returns the last ip address used by this client connection.
-	GetIPAddress() string
+	Close()
+	// GetIPAddress() returns the occurrence of ip address used by this client connection.
+	// and how many sockets have been used
+	GetIPAddress() (*stats.Occurrence, int)
 }
 
 const (
@@ -185,6 +186,8 @@ type HTTPOptions struct {
 	ID               int           // id to use for logging (thread id when used as a runner)
 	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
+	// When false, re-resolve the DNS name when the connection breaks.
+	NoResolveEachConn bool
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -354,10 +357,11 @@ type Client struct {
 	logErrors            bool
 	id                   int
 	socketCount          int
+	ipAddrUsage          *stats.Occurrence
 }
 
 // Close cleans up any resources used by NewStdClient.
-func (c *Client) Close() int {
+func (c *Client) Close() {
 	log.Debugf("[%d] Close() on %+v", c.id, c)
 	if c.req != nil {
 		if c.req.Body != nil {
@@ -370,7 +374,6 @@ func (c *Client) Close() int {
 	if c.transport != nil {
 		c.transport.CloseIdleConnections()
 	}
-	return c.socketCount
 }
 
 // ChangeURL only for standard client, allows fetching a different URL.
@@ -443,8 +446,8 @@ func (c *Client) Fetch() (int, []byte, int) {
 }
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient.
-func (c *Client) GetIPAddress() string {
-	return c.req.RemoteAddr
+func (c *Client) GetIPAddress() (*stats.Occurrence, int) {
+	return c.ipAddrUsage, c.socketCount
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -479,8 +482,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		client: &http.Client{
 			Timeout: o.HTTPReqTimeOut,
 		},
-		id:        o.ID,
-		logErrors: o.LogErrors,
+		id:          o.ID,
+		logErrors:   o.LogErrors,
+		ipAddrUsage: stats.NewOccurrence(),
 	}
 
 	tr := http.Transport{
@@ -507,6 +511,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				}
 				req.RemoteAddr = newRemoteAddress
 				client.socketCount++
+				client.ipAddrUsage.Record(req.RemoteAddr)
 			}
 
 			return conn, err
@@ -577,6 +582,10 @@ type FastClient struct {
 	id           int
 	https        bool
 	tlsConfig    *tls.Config
+	// Resolve the DNS name for each connection
+	resolve           string
+	noResolveEachConn bool
+	ipAddrUsage       *stats.Occurrence
 	// range of connection reuse threshold that current thread will choose from
 	connReuseRange [2]int
 	connReuse      int
@@ -584,12 +593,12 @@ type FastClient struct {
 }
 
 // GetIPAddress get ip address that DNS resolved to when using fast client.
-func (c *FastClient) GetIPAddress() string {
-	return c.dest.String()
+func (c *FastClient) GetIPAddress() (*stats.Occurrence, int) {
+	return c.ipAddrUsage, c.socketCount
 }
 
 // Close cleans up any resources used by FastClient.
-func (c *FastClient) Close() int {
+func (c *FastClient) Close() {
 	log.Debugf("[%d] Closing %p %s socket count %d", c.id, c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
@@ -597,13 +606,12 @@ func (c *FastClient) Close() int {
 		}
 		c.socket = nil
 	}
-	return c.socketCount
 }
 
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) (Fetcher, error) {
+func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
 	method := o.Method()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
@@ -635,6 +643,10 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		return nil, err
 	}
 
+	if o.NoResolveEachConn && o.Resolve != "" {
+		log.Warnf("Both `-resolve` and `-no-reresolve` flags are defined, will use same ip address on new conn")
+	}
+
 	// Randomly assign a max connection reuse threshold to this thread.
 	var connReuse int
 	if o.ConnReuseRange != [2]int{0, 0} {
@@ -646,6 +658,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
 		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
+		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn, ipAddrUsage: stats.NewOccurrence(),
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -659,18 +672,14 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) {
 		log.LogVf("[%d] No port specified, using %s", bc.id, bc.port)
 	}
 	var addr net.Addr
-	if o.UnixDomainSocket != "" { // nolint: nestif
+	if o.UnixDomainSocket != "" {
 		log.Infof("[%d] Using unix domain socket %v instead of %v %v", bc.id, o.UnixDomainSocket, bc.hostname, bc.port)
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		if o.Resolve != "" {
-			tAddr, err = fnet.Resolve(o.Resolve, bc.port)
-		} else {
-			tAddr, err = fnet.Resolve(bc.hostname, bc.port)
-		}
+		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -732,6 +741,17 @@ func (c *FastClient) connect() net.Conn {
 	c.socketCount++
 	var socket net.Conn
 	var err error
+
+	// Resolve the DNS name when making new connections.
+	if c.socketCount > 1 && !c.noResolveEachConn {
+		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
+		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
+		if err != nil {
+			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
+			return nil
+		}
+	}
+
 	d := &net.Dialer{Timeout: c.reqTimeout}
 	if c.https {
 		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
@@ -1049,4 +1069,19 @@ func generateReuseThreshold(min int, max int) int {
 	}
 
 	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
+}
+
+// Resolve the DNS hostname to ip address or assign the override IP.
+func resolve(hostname string, port string, overrideIP string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+	var addr *net.TCPAddr
+	var err error
+	if overrideIP != "" {
+		addr, err = fnet.Resolve(overrideIP, port)
+	} else {
+		addr, err = fnet.Resolve(hostname, port)
+	}
+
+	ipAddrUsage.Record(addr.String())
+
+	return addr, err
 }
