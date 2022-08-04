@@ -357,6 +357,7 @@ type Client struct {
 	logErrors            bool
 	id                   int
 	socketCount          int
+	ipAddrUsage          *stats.Occurrence
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -446,9 +447,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient.
 func (c *Client) GetIPAddress() (*stats.Occurrence, int) {
-	occurrence := stats.NewOccurrence()
-	occurrence.Record(c.req.RemoteAddr)
-	return occurrence, c.socketCount
+	return c.ipAddrUsage, c.socketCount
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -483,8 +482,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		client: &http.Client{
 			Timeout: o.HTTPReqTimeOut,
 		},
-		id:        o.ID,
-		logErrors: o.LogErrors,
+		id:          o.ID,
+		logErrors:   o.LogErrors,
+		ipAddrUsage: stats.NewOccurrence(),
 	}
 
 	tr := http.Transport{
@@ -511,6 +511,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				}
 				req.RemoteAddr = newRemoteAddress
 				client.socketCount++
+				client.ipAddrUsage.Record(req.RemoteAddr)
 			}
 
 			return conn, err
