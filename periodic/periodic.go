@@ -100,7 +100,9 @@ func (a *Aborter) Abort() {
 // NewAborter makes a new Aborter and initialize its StopChan.
 // The pointer should be shared. The structure is NoCopy.
 func NewAborter() *Aborter {
-	return &Aborter{StopChan: make(chan struct{}, 1)}
+	res := &Aborter{StopChan: make(chan struct{}, 1)}
+	log.Debugf("NewAborter called %p %+v", res, res)
+	return res
 }
 
 // RunnerOptions are the parameters to the PeriodicRunner.
@@ -312,6 +314,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 // The options will be moved and normalized to the returned object, do
 // not use the original options after this call, call Options() instead.
 // Abort() must be called if Run() is not called.
+// You can also keep a pointer to the original Aborter and use it, if needed.
 func NewPeriodicRunner(params *RunnerOptions) PeriodicRunner {
 	return newPeriodicRunner(params)
 }

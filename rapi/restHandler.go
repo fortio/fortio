@@ -73,6 +73,7 @@ type Status struct {
 	RunID         int64
 	State         StateEnum
 	RunnerOptions *periodic.RunnerOptions
+	aborter       *periodic.Aborter
 }
 
 type StatusMap map[int64]*Status
@@ -453,7 +454,7 @@ func StopByRunID(runid int64) int {
 				continue
 			}
 			v.State = StateStopped // more for debugger state or if we kept it or released the lock
-			v.RunnerOptions.Abort()
+			v.aborter.Abort()
 			delete(runs, k)
 			i++
 		}
@@ -475,9 +476,7 @@ func StopByRunID(runid int64) int {
 	}
 	delete(runs, runid)
 	uiRunMapMutex.Unlock()
-	log.Infof("XXXX abort/stop: %+v %p", v.RunnerOptions, v.RunnerOptions)
-	v.RunnerOptions.Abort()
-	log.Infof("Interrupted run id %d", runid)
+	v.aborter.Abort()
 	return 1
 }
 
@@ -522,6 +521,9 @@ func NextRunID() int64 {
 
 // Must be called exactly once for each runner. Responsible for normalization (abort channel setup)
 // and making sure the options object returned in status is same as the actual one.
+// Note that the Aborter/Stop field is being "moved" into the runner when making the concrete runner
+// and cleared from the original options object so we need to keep our own copy of the aborter pointer.
+// See newPeriodicRunner. Note this is arguably not the best behavior design/could be changed.
 func UpdateRun(ro *periodic.RunnerOptions) {
 	uiRunMapMutex.Lock()
 	status, found := runs[ro.RunID]
@@ -532,9 +534,8 @@ func UpdateRun(ro *periodic.RunnerOptions) {
 	}
 	status.State = StateRunning
 	status.RunnerOptions = ro
-	log.Infof("XXXX update run before: %+v %p", *ro, ro)
 	status.RunnerOptions.Normalize()
-	log.Infof("XXXX update run after: %+v %p", *ro, ro)
+	status.aborter = status.RunnerOptions.Stop // save the aborter before it gets cleared in newPeriodicRunner.
 	uiRunMapMutex.Unlock()
 }
 
