@@ -29,11 +29,9 @@ import (
 	"sync"
 	"time"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/log"
 )
-
-// TODO: The breakdown of what is in this package vs rest of the code
-// in original ui/uihandler.go is not clean/move isn't complete
 
 // DataList returns the .json files/entries in data dir.
 func DataList() (dataList []string) {
@@ -64,6 +62,10 @@ type tsvCache struct {
 var (
 	gTSVCache      tsvCache
 	gTSVCacheMutex = &sync.Mutex{}
+	// Starts and end with / where the UI is running from, prefix to data etc.
+	uiPath string
+	// Base URL used for index - useful when running under an ingress with prefix. can be empty otherwise.
+	baseURL string
 )
 
 // format for gcloud transfer
@@ -115,4 +117,77 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	w.Header().Set("ETag", fmt.Sprintf("\"%s\"", lastModified))
 	w.Header().Set("Last-Modified", lastModified)
 	_, _ = w.Write(result)
+}
+
+func sendHTMLDataIndex(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	_, _ = w.Write([]byte("<html><body><ul>\n"))
+	for _, e := range DataList() {
+		_, _ = w.Write([]byte("<li><a href=\""))
+		_, _ = w.Write([]byte(e))
+		_, _ = w.Write([]byte(".json\">"))
+		_, _ = w.Write([]byte(e))
+		_, _ = w.Write([]byte("</a>\n"))
+	}
+	_, _ = w.Write([]byte("</ul></body></html>"))
+}
+
+// LogAndFilterDataRequest logs the data request.
+func LogAndFilterDataRequest(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fhttp.LogRequest(r, "Data")
+		path := r.URL.Path
+		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
+			sendHTMLDataIndex(w)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		ext := "/index.tsv"
+		if strings.HasSuffix(path, ext) { // nolint: nestif
+			// Ingress effect:
+			urlPrefix := baseURL
+			if len(urlPrefix) == 0 {
+				// The Host header includes original host/port, only missing is the proto:
+				proto := r.Header.Get("X-Forwarded-Proto")
+				if len(proto) == 0 {
+					proto = "http"
+				}
+				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
+			} else {
+				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
+			}
+			log.Infof("Prefix is '%s'", urlPrefix)
+			SendTSVDataIndex(urlPrefix, w)
+			return
+		}
+		if !strings.HasSuffix(path, ".json") {
+			log.Warnf("Filtering request for non .json '%s'", path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		fhttp.CacheOn(w)
+		h.ServeHTTP(w, r)
+	})
+}
+
+func AddDataHandler(mux *http.ServeMux, baseurl, uipath, datadir string) {
+	gTSVCacheMutex.Lock()
+	gTSVCache.cachedResult = []byte{}
+	baseURL = baseurl
+	uiPath = uipath
+	SetDataDir(datadir)
+	gTSVCacheMutex.Unlock()
+	if datadir == "" {
+		log.Infof("No data dir so no handler for data")
+	}
+	fs := http.FileServer(http.Dir(datadir))
+	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
+	if datadir == "." {
+		var err error
+		datadir, err = os.Getwd()
+		if err != nil {
+			log.Errf("Unable to get current directory: %v", err)
+		}
+	}
+	log.Printf("Data directory is %s", datadir)
 }

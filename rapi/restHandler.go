@@ -537,8 +537,8 @@ func RemoveRun(id int64) {
 
 // AddHandlers adds the REST Api handlers for run, status and stop.
 // uiPath must end with a /.
-func AddHandlers(mux *http.ServeMux, uiPath, datadir string) {
-	SetDataDir(datadir)
+func AddHandlers(mux *http.ServeMux, baseurl, uiPath, datadir string) {
+	AddDataHandler(mux, baseurl, uiPath, datadir)
 	restRunPath := uiPath + RestRunURI
 	mux.HandleFunc(restRunPath, RESTRunHandler)
 	restStatusPath := uiPath + RestStatusURI

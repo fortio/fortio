@@ -70,8 +70,6 @@ var (
 	mainTemplate     *template.Template
 	browseTemplate   *template.Template
 	syncTemplate     *template.Template
-	// Base URL used for index - useful when running under an ingress with prefix.
-	baseURL string
 )
 
 const (
@@ -420,59 +418,6 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 	})
 }
 
-func sendHTMLDataIndex(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	_, _ = w.Write([]byte("<html><body><ul>\n"))
-	for _, e := range rapi.DataList() {
-		_, _ = w.Write([]byte("<li><a href=\""))
-		_, _ = w.Write([]byte(e))
-		_, _ = w.Write([]byte(".json\">"))
-		_, _ = w.Write([]byte(e))
-		_, _ = w.Write([]byte("</a>\n"))
-	}
-	_, _ = w.Write([]byte("</ul></body></html>"))
-}
-
-// LogAndFilterDataRequest logs the data request.
-func LogAndFilterDataRequest(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fhttp.LogRequest(r, "Data")
-		path := r.URL.Path
-		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
-			sendHTMLDataIndex(w)
-			return
-		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		ext := "/index.tsv"
-		if strings.HasSuffix(path, ext) { // nolint: nestif
-			// Ingress effect:
-			urlPrefix := baseURL
-			if len(urlPrefix) == 0 {
-				// The Host header includes original host/port, only missing is the proto:
-				proto := r.Header.Get("X-Forwarded-Proto")
-				if len(proto) == 0 {
-					proto = "http"
-				}
-				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
-			} else {
-				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
-			}
-			log.Infof("Prefix is '%s'", urlPrefix)
-			rapi.SendTSVDataIndex(urlPrefix, w)
-			return
-		}
-		if !strings.HasSuffix(path, ".json") {
-			log.Warnf("Filtering request for non .json '%s'", path)
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		fhttp.CacheOn(w)
-		h.ServeHTTP(w, r)
-	})
-}
-
-// TODO: move tsv/xml sync handling to their own file (and possibly package)
-
 // http.ResponseWriter + Flusher emulator - if we refactor the code this should
 // not be needed. on the other hand it's useful and could be reused.
 type outHTTPWriter struct {
@@ -718,7 +663,6 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
 func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
-	baseURL = baseurl
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
 	if addr == nil {
@@ -743,8 +687,8 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+fetch2URI, fhttp.FetcherHandler2)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	// New REST apis.
-	rapi.AddHandlers(mux, uiPath, datadir)
+	// New REST apis (includes the data/ handler)
+	rapi.AddHandlers(mux, baseurl, uiPath, datadir)
 	rapi.DefaultPercentileList = percentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
@@ -781,18 +725,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
 	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
 
-	if datadir != "" {
-		fs := http.FileServer(http.Dir(datadir))
-		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
-		if datadir == "." {
-			var err error
-			datadir, err = os.Getwd()
-			if err != nil {
-				log.Errf("Unable to get current directory: %v", err)
-			}
-		}
-		log.Printf("Data directory is %s", datadir)
-	}
 	urlHostPort = fnet.NormalizeHostPort(port, addr)
 	uiMsg := "\t UI started - visit:\n\t\t"
 	if strings.Contains(urlHostPort, "-unix-socket=") {
@@ -812,7 +744,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 func Report(baseurl, port, datadir string) bool {
 	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
 	http.DefaultServeMux = http.NewServeMux()
-	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	mux, addr := fhttp.HTTPServer("report", port)
 	if addr == nil {
@@ -838,9 +769,7 @@ func Report(baseurl, port, datadir string) bool {
 	} else {
 		mux.HandleFunc(uiPath, BrowseHandler)
 	}
-	rapi.SetDataDir(datadir) // needed for serving json and index.tsv
-	fsd := http.FileServer(http.Dir(datadir))
-	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	rapi.AddDataHandler(mux, baseurl, uiPath, datadir)
 	return true
 }
 
