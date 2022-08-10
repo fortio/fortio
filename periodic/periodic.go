@@ -101,7 +101,7 @@ func (a *Aborter) Abort() {
 // The pointer should be shared. The structure is NoCopy.
 func NewAborter() *Aborter {
 	res := &Aborter{StopChan: make(chan struct{}, 1)}
-	log.Debugf("NewAborter called %p %+v", res, res)
+	log.LogVf("NewAborter called %p %+v", res, res)
 	return res
 }
 
@@ -151,6 +151,10 @@ type RunnerOptions struct {
 	AccessLogger AccessLogger `json:"-"`
 	// No catch-up: if true we will do exactly the requested QPS and not try to catch up if the target is temporarily slow.
 	NoCatchUp bool
+	// Unique 96 character ID used as reference to saved json file. Created during Normalize().
+	ID string
+	// Time the object got first normalized, used to generate the unique ID above.
+	genTime *time.Time
 }
 
 // RunnerResults encapsulates the actual QPS observed and duration histogram.
@@ -174,6 +178,8 @@ type RunnerResults struct {
 	NoCatchUp               bool
 	RunID                   int64 // Echo back the optional run id
 	AccessLoggerInfo        string
+	// Same as RunnerOptions ID:  Unique 96 character ID used as reference to saved json file. Created during Normalize().
+	ID string
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -242,6 +248,9 @@ func (r *RunnerOptions) Normalize() {
 	if r.Runners == nil {
 		r.Runners = make([]Runnable, r.NumThreads)
 	}
+	if r.ID == "" {
+		r.GenID()
+	}
 	if r.Stop != nil {
 		return
 	}
@@ -306,6 +315,7 @@ func newPeriodicRunner(opts *RunnerOptions) *periodicRunner {
 	r := &periodicRunner{*opts} // by default just copy the input params
 	opts.ReleaseRunners()
 	opts.Stop = nil
+	opts.genTime = nil
 	r.Normalize()
 	return r
 }
@@ -501,7 +511,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
 		errorsDuration.Export().CalcPercentiles(r.Percentiles),
-		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo,
+		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
@@ -747,17 +757,22 @@ func getJitter(t time.Duration) time.Duration {
 	return time.Duration(j)
 }
 
-// ID Returns an id for the result: 96 bytes YYYY-MM-DD-HHmmSS_{RunID}_{alpha_labels}
+// GenID creates and set the ID for the result: 96 bytes YYYY-MM-DD-HHmmSS_{RunID}_{alpha_labels}
 // where RunID is the RunID if not 0.
 // where alpha_labels is the filtered labels with only alphanumeric characters
 // and all non alpha num replaced by _; truncated to 96 bytes.
-func (r *RunnerResults) ID() string {
-	base := formatDate(&r.StartTime)
+func (r *RunnerOptions) GenID() {
+	if r.genTime == nil {
+		now := time.Now()
+		r.genTime = &now
+	}
+	base := formatDate(r.genTime)
 	if r.RunID != 0 {
 		base += fmt.Sprintf("_%d", r.RunID)
 	}
 	if r.Labels == "" {
-		return base
+		r.ID = base
+		return
 	}
 	last := '_'
 	base += string(last)
@@ -776,7 +791,8 @@ func (r *RunnerResults) ID() string {
 		base = base[:len(base)-1]
 	}
 	if len(base) > 96 {
-		return base[:96]
+		r.ID = base[:96]
+		return
 	}
-	return base
+	r.ID = base
 }

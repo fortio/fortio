@@ -24,6 +24,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
@@ -81,10 +82,11 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 
 // nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestHTTPRunnerRESTApi(t *testing.T) {
+	// log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
-	uiPath := "/fortio/"
+	uiPath := "/fortioCustom/"
 	tmpDir := t.TempDir()
 	os.Create(path.Join(tmpDir, "foo.txt")) // not a json, will be skipped over
 	badJSON := path.Join(tmpDir, "bad.json")
@@ -96,7 +98,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	AddHandlers(mux, uiPath, tmpDir)
 	mux.HandleFunc("/data/index.tsv", func(w http.ResponseWriter, r *http.Request) { SendTSVDataIndex("/data/", w) })
 
-	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restRunURI)
+	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, baseURL)
 
@@ -177,14 +179,18 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Should have done expected 23 requests, got %+v", res.RetCodes)
 	}
 	// Start infinite running run
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=4.20&t=on&url=%s&async=on", restURL, echoURL)
+	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=4.20&t=on&url=%s&async=on&save=on", restURL, echoURL)
 	asyncObj := GetAsyncResult(t, runURL, jsonData)
 	runID := asyncObj.RunID
 	if asyncObj.Message != "started" || runID <= savedID {
 		t.Errorf("Should started async job got %+v", asyncObj)
 	}
+	fileID := asyncObj.ResultID
+	if fileID == "" {
+		t.Errorf("unexpected empty resultid")
+	}
 	// Get status
-	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStatusURI, runID)
+	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
 	statuses, err := jrpc.CallNoPayload[StatusReply](statusURL)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
@@ -196,6 +202,10 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if !found {
 		t.Errorf("Status not found in reply, for runid %d: %+v", runID, statuses)
 	}
+	// Could in theory be pending if really fast
+	if status.State != StateRunning {
+		t.Errorf("Expected status to be running, got %q", status.State.String())
+	}
 	if status.RunID != runID {
 		t.Errorf("Status runid %d != expected %d", status.RunID, runID)
 	}
@@ -205,17 +215,47 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if status.RunnerOptions.RunType != "HTTP" {
 		t.Errorf("RunType mismatch, got: %+v", status.RunnerOptions)
 	}
-	// And stop it:
-	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, restStopURI, runID)
+	if status.RunnerOptions.ID != fileID {
+		t.Errorf("Mismatch between ids from start %q vs status %q", fileID, status.RunnerOptions.ID)
+	}
+	// And stop it (with wait so data is there when it returns):
+	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=false", addr.Port, uiPath, RestStopURI, runID)
 	asyncObj = GetAsyncResult(t, stopURL, "")
 	stoppedMsg := "stopped"
-	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 1 {
-		t.Errorf("Should have stopped async job got %+v", asyncObj)
+	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 1 || asyncObj.ResultID != fileID {
+		t.Errorf("Should have stopped matching async job got %+v", asyncObj)
 	}
 	// Stop it again, should be 0 count
 	asyncObj = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != stoppedMsg || asyncObj.RunID != runID || asyncObj.Count != 0 {
+	if asyncObj.Message != "stopping" || asyncObj.RunID != runID || asyncObj.Count != 0 {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
+	}
+	// Wait
+	time.Sleep(15 * time.Second)
+	// Status should be empty (nothing running)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	if err != nil {
+		t.Errorf("Error getting status %q: %v", statusURL, err)
+	}
+	if len(statuses.Statuses) != 0 {
+		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
+	}
+	// Fetch the result:
+	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
+	res = GetResult(t, fetchURL, "")
+	if res.RequestedQPS != "4.2" {
+		t.Errorf("Not the expected requested qps %q", res.RequestedQPS)
+	}
+	if res.RequestedDuration != "xxx" {
+		t.Errorf("Not the expected requested duration %q", res.RequestedDuration)
+	}
+	totalReq = res.DurationHistogram.Count
+	httpOk = res.RetCodes[http.StatusOK]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between requests %d and ok %v (%+v)", totalReq, res.RetCodes, res)
+	}
+	if res.Result().ID != fileID {
+		t.Errorf("Mismatch between ids %q vs result %q", fileID, res.Result().ID)
 	}
 	// Start 3 async test
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
@@ -223,7 +263,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	_ = GetAsyncResult(t, runURL, jsonData)
 	_ = GetAsyncResult(t, runURL, jsonData)
 	// Get all statuses
-	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStatusURI)
+	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStatusURI)
 	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
@@ -232,7 +272,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Status count not the expected 3: %+v", statuses)
 	}
 	// stop all
-	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, restStopURI)
+	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStopURI)
 	asyncObj = GetAsyncResult(t, stopURL, "")
 	if asyncObj.Message != stoppedMsg || asyncObj.RunID != 0 || asyncObj.Count != 3 {
 		t.Errorf("Should have stopped 3 async job got %+v", asyncObj)

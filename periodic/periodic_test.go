@@ -397,11 +397,12 @@ func TestID(t *testing.T) {
 	startTime := time.Date(2001, time.January, 2, 3, 4, 5, 0, time.Local)
 	prefix := "2001-01-02-030405"
 	for _, tst := range tests {
-		o := RunnerResults{
-			StartTime: startTime,
-			Labels:    tst.labels,
+		o := RunnerOptions{
+			genTime: &startTime,
+			Labels:  tst.labels,
 		}
-		id := o.ID()
+		o.GenID()
+		id := o.ID
 		expected := prefix + tst.id
 		if id != expected {
 			t.Errorf("id: got %s, not as expected %s", id, expected)

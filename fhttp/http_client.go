@@ -183,7 +183,7 @@ type HTTPOptions struct {
 	ContentType      string        // indicates request body type, implies POST instead of GET
 	Payload          []byte        // body for http request, implies POST if not empty.
 	LogErrors        bool          // whether to log non 2xx code as they occur or not
-	ID               int           // id to use for logging (thread id when used as a runner)
+	ID               int           `json:"-"` // thread/connect id to use for logging (thread id when used as a runner)
 	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
 	// When false, re-resolve the DNS name when the connection breaks.

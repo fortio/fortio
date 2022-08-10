@@ -40,9 +40,9 @@ import (
 )
 
 const (
-	restRunURI    = "rest/run"
-	restStatusURI = "rest/status"
-	restStopURI   = "rest/stop"
+	RestRunURI    = "rest/run"
+	RestStatusURI = "rest/status"
+	RestStopURI   = "rest/stop"
 	ModeGRPC      = "grpc"
 )
 
@@ -52,6 +52,7 @@ const (
 	StateUnknown StateEnum = iota
 	StatePending
 	StateRunning
+	StateStopping
 	StateStopped
 )
 
@@ -63,6 +64,8 @@ func (se StateEnum) String() string {
 		return "pending"
 	case StateRunning:
 		return "running"
+	case StateStopping:
+		return "stopping"
 	case StateStopped:
 		return "stopped"
 	}
@@ -74,6 +77,7 @@ type Status struct {
 	State         StateEnum
 	RunnerOptions *periodic.RunnerOptions
 	aborter       *periodic.Aborter
+	c             *sync.Cond
 }
 
 type StatusMap map[int64]*Status
@@ -93,6 +97,9 @@ type AsyncReply struct {
 	jrpc.ServerReply
 	RunID int64
 	Count int
+	// Object id to retrieve results (only usable if save=on).
+	// Also returned when using stop as long as exactly 1 run is stopped.
+	ResultID string
 }
 
 type StatusReply struct {
@@ -307,7 +314,8 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	}
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
-		reply := AsyncReply{RunID: runid, Count: 1}
+		ro.GenID() // Needed to reply the id, will be reused in Normalize() later as already set
+		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID}
 		reply.Message = "started" // nolint: goconst
 		err := jrpc.ReplyOk(w, &reply)
 		if err != nil {
@@ -373,9 +381,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 			RunnerOptions:      *ro,
 			AllowInitialErrors: true,
 		}
-		log.Infof("XXXX before: %+v", o.RunnerOptions)
 		UpdateRun(&(o.RunnerOptions))
-		log.Infof("XXXX after: %+v %p", o.RunnerOptions, &(o.RunnerOptions))
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	RemoveRun(ro.RunID)
@@ -390,7 +396,9 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	if err != nil {
 		log.Fatalf("Unable to json serialize result: %v", err)
 	}
-	id := res.Result().ID()
+	jsonStr := string(json)
+	log.LogVf("Serialized to %s", jsonStr)
+	id := res.Result().ID
 	doSave := (FormValue(r, jd, "save") == "on")
 	savedAs := ""
 	if doSave {
@@ -435,9 +443,15 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "REST Stop Api call")
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
-	i := StopByRunID(runid)
-	reply := AsyncReply{RunID: runid, Count: i}
-	reply.Message = StateStopped.String()
+	waitStr := strings.ToLower(r.FormValue("wait"))
+	wait := (waitStr != "" && waitStr != "off" && waitStr != "false")
+	i, rid := StopByRunID(runid, wait)
+	reply := AsyncReply{RunID: runid, Count: i, ResultID: rid}
+	if wait && i == 1 {
+		reply.Message = StateStopped.String()
+	} else {
+		reply.Message = StateStopping.String()
+	}
 	err := jrpc.ReplyOk(w, &reply)
 	if err != nil {
 		log.Errf("Error replying: %v", err)
@@ -445,50 +459,91 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // StopByRunID stops all the runs if passed 0 or the runid provided.
-func StopByRunID(runid int64) int {
+// if wait is true, waits for the run to actually end (single only).
+func StopByRunID(runid int64, wait bool) (int, string) {
 	uiRunMapMutex.Lock()
+	rid := ""
 	if runid <= 0 { // Stop all
 		i := 0
-		for k, v := range runs {
+		for _, v := range runs {
 			if v.State != StateRunning {
 				continue
 			}
-			v.State = StateStopped // more for debugger state or if we kept it or released the lock
+			v.State = StateStopping // We'll let Run() do the actual removal
 			v.aborter.Abort()
-			delete(runs, k)
+			rid = v.RunnerOptions.ID
 			i++
 		}
 		uiRunMapMutex.Unlock()
 		log.Infof("Interrupted all %d runs", i)
-		return i
+		if i > 1 {
+			// if we stopped more than 1 don't mislead that we have the file IDs
+			rid = ""
+		}
+		return i, rid
 	}
 	// else: Stop one
 	v, found := runs[runid]
 	if !found {
 		uiRunMapMutex.Unlock()
 		log.Infof("Runid %d not found to interrupt", runid)
-		return 0
+		return 0, rid
 	}
 	if v.State != StateRunning {
 		uiRunMapMutex.Unlock()
-		log.Infof("Run %d is not running", runid)
-		return 0
+		log.Infof("Runid %d is not running it's %s", runid, v.State.String())
+		return 0, rid
 	}
-	delete(runs, runid)
+	rid = v.RunnerOptions.ID
+	v.State = StateStopping
+	// We leave it in the map and let the original Run() remove itself once it actually ends
+	if wait {
+		// Only make the fine grain lock if needed
+		if v.c != nil {
+			log.Fatalf("Unexpected state where cond var already exist for %v", *v)
+		}
+		v.c = sync.NewCond(&sync.Mutex{})
+		v.c.L.Lock()
+	}
 	uiRunMapMutex.Unlock()
 	v.aborter.Abort()
-	return 1
+	if wait {
+		for v.State == StateStopping {
+			v.c.Wait()
+		}
+		v.c.L.Unlock()
+	}
+	return 1, rid
+}
+
+func RemoveRun(id int64) {
+	uiRunMapMutex.Lock()
+	// If we kept the entries we'd set it to StateStopped
+	v, found := runs[id]
+	if !found {
+		uiRunMapMutex.Unlock()
+		log.Errf("Bug? Runid %d not found to remove!", id)
+		return
+	}
+	if v.c != nil {
+		v.c.L.Lock()
+		v.State = StateStopped
+		log.Infof("Runid %d completed, notifying", id)
+		v.c.Broadcast()
+	}
+	delete(runs, id)
+	uiRunMapMutex.Unlock()
 }
 
 // AddHandlers adds the REST Api handlers for run, status and stop.
 // uiPath must end with a /.
 func AddHandlers(mux *http.ServeMux, uiPath, datadir string) {
 	SetDataDir(datadir)
-	restRunPath := uiPath + restRunURI
+	restRunPath := uiPath + RestRunURI
 	mux.HandleFunc(restRunPath, RESTRunHandler)
-	restStatusPath := uiPath + restStatusURI
+	restStatusPath := uiPath + RestStatusURI
 	mux.HandleFunc(restStatusPath, RESTStatusHandler)
-	restStopPath := uiPath + restStopURI
+	restStopPath := uiPath + RestStopURI
 	mux.HandleFunc(restStopPath, RESTStopHandler)
 	log.Printf("REST API on %s, %s, %s", restRunPath, restStatusPath, restStopPath)
 }
@@ -536,12 +591,6 @@ func UpdateRun(ro *periodic.RunnerOptions) {
 	status.RunnerOptions = ro
 	status.RunnerOptions.Normalize()
 	status.aborter = status.RunnerOptions.Stop // save the aborter before it gets cleared in newPeriodicRunner.
-	uiRunMapMutex.Unlock()
-}
-
-func RemoveRun(id int64) {
-	uiRunMapMutex.Lock()
-	delete(runs, id)
 	uiRunMapMutex.Unlock()
 }
 

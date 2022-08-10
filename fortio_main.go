@@ -485,7 +485,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			jsonFileName = "stdout"
 		} else {
 			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
+				jsonFileName = path.Join(*dataDirFlag, rr.ID+".json")
 			}
 			f, err = os.Create(jsonFileName)
 			if err != nil {

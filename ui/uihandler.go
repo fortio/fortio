@@ -251,7 +251,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case menu:
 		// nothing more to do
 	case stop:
-		rapi.StopByRunID(runid)
+		rapi.StopByRunID(runid, false)
 	case run:
 		// mode == run case:
 		for _, header := range r.Form["H"] {
@@ -284,7 +284,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if savedAs != "" {
-			id := res.Result().ID()
+			id := res.Result().ID
 			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}

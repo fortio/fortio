@@ -110,7 +110,7 @@ func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 	return result, nil
 }
 
-// Send fetches the result from url and sending optional payload as a POST, GET if missing.
+// Send fetches the result from url and sends optional payload as a POST, GET if missing.
 // Returns the http code (if no other error before then, -1 if there are errors),
 // the bytes from the reply and error if any.
 func Send(url string, jsonPayload []byte) (int, []byte, error) {
