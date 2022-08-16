@@ -81,26 +81,76 @@ func (r *RunnerOptions) ReleaseRunners() {
 // Aborter is the object controlling Abort() of the runs.
 type Aborter struct {
 	sync.Mutex
-	StopChan chan struct{}
+	StopChan      chan struct{}
+	StartChan     chan bool
+	hasStarted    bool
+	stopRequested bool
+}
+
+func (a *Aborter) String() string {
+	return fmt.Sprintf("{Aborter %p stopChan %v startChan %v hasStarted %v stopRequested %v}",
+		a, a.StopChan, a.StartChan, a.hasStarted, a.stopRequested)
 }
 
 // Abort signals all the go routine of this run to stop.
 // Implemented by closing the shared channel. The lock is to make sure
 // we close it exactly once to avoid go panic.
-func (a *Aborter) Abort() {
+// If wait is true, waits for the run to be started before closing.
+func (a *Aborter) Abort(wait bool) {
+	a.Lock()
+	if a.StopChan == nil {
+		// Already done
+		log.LogVf("ABORT already aborted %v", a)
+		a.Unlock()
+		return
+	}
+	a.stopRequested = true
+	if a.hasStarted || !wait {
+		log.LogVf("ABORT Closing %v", a)
+		close(a.StopChan)
+		a.StopChan = nil
+		a.Unlock()
+		if a.hasStarted {
+			log.LogVf("ABORT reading start channel")
+			// shouldn't block/hang, just purging/resetting
+			<-a.StartChan
+			a.hasStarted = false
+		}
+		return
+	}
+	a.Unlock()
+	log.LogVf("ABORT Waiting for start")
+	<-a.StartChan
+	a.hasStarted = false
+	log.LogVf("ABORT Done waiting for start")
 	a.Lock()
 	if a.StopChan != nil {
-		log.LogVf("Closing %v", a.StopChan)
+		log.LogVf("ABORT Closing %+v", a)
 		close(a.StopChan)
 		a.StopChan = nil
 	}
 	a.Unlock()
 }
 
+// Reset returns the aborter to original state, for reuse.
+func (a *Aborter) Reset() {
+	a.Lock()
+	// Also clear the "started" if we would get reused
+	select {
+	case <-a.StartChan:
+		log.LogVf("RUNNER reset: Started chan flushed for reuse")
+	default:
+		log.LogVf("RUNNER reset: we were Abort()ed already, start chan empty")
+	}
+	a.hasStarted = false
+	a.stopRequested = false
+	a.Unlock()
+}
+
 // NewAborter makes a new Aborter and initialize its StopChan.
 // The pointer should be shared. The structure is NoCopy.
 func NewAborter() *Aborter {
-	res := &Aborter{StopChan: make(chan struct{}, 1)}
+	res := &Aborter{StopChan: make(chan struct{}, 1), StartChan: make(chan bool, 1)}
 	log.LogVf("NewAborter called %p %+v", res, res)
 	return res
 }
@@ -306,7 +356,7 @@ func (r *RunnerOptions) Normalize() {
 func (r *RunnerOptions) Abort() {
 	log.LogVf("Abort called for %p %+v", r, r)
 	if r.Stop != nil {
-		r.Stop.Abort()
+		r.Stop.Abort(false)
 	}
 }
 
@@ -415,7 +465,12 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 func (r *periodicRunner) Run() RunnerResults {
 	r.Stop.Lock()
 	runnerChan := r.Stop.StopChan // need a copy to not race with assignment to nil
+	startedChan := r.Stop.StartChan
+	r.Stop.hasStarted = true
+	shouldAbort := r.Stop.stopRequested
 	r.Stop.Unlock()
+	log.LogVf("RUNNER starting... can now be Abort()ed, telling %v - %v", r.Stop, startedChan)
+	startedChan <- true
 	useQPS := (r.QPS > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
 	useExactly := (r.Exactly > 0)
@@ -447,6 +502,19 @@ func (r *periodicRunner) Run() RunnerResults {
 	errorsDuration := stats.NewHistogram(r.Offset.Seconds(), r.Resolution)
 	// Histogram and stats for Sleep time (negative offset to capture <0 sleep in their own bucket):
 	sleepTime := stats.NewHistogram(-0.001, 0.001)
+	var loggerInfo string
+	if r.AccessLogger != nil {
+		loggerInfo = r.AccessLogger.Info()
+	}
+	if shouldAbort {
+		log.Warnf("Run requested to stop before even starting")
+		return RunnerResults{ // A bit ugly this is almost the same as the big init below in the normal not early abort case.
+			r.RunType, r.Labels, start, requestedQPS, requestedDuration,
+			0, 0, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
+			errorsDuration.Export().CalcPercentiles(r.Percentiles),
+			r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
+		}
+	}
 	if r.NumThreads <= 1 {
 		log.LogVf("Running single threaded")
 		runOne(0, runnerChan, functionDuration, errorsDuration, sleepTime, numCalls+leftOver, start, r)
@@ -503,10 +571,6 @@ func (r *periodicRunner) Run() RunnerResults {
 	if useExactly && actualCount != r.Exactly {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
-	var loggerInfo string
-	if r.AccessLogger != nil {
-		loggerInfo = r.AccessLogger.Info()
-	}
 	result := RunnerResults{
 		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
@@ -530,6 +594,8 @@ func (r *periodicRunner) Run() RunnerResults {
 		log.LogVf("RUNNER r.Stop not already closed, closing")
 		r.Abort()
 	}
+	// Setup for reuse even if only unit tests are reusing runners
+	r.Stop.Reset()
 	return result
 }
 

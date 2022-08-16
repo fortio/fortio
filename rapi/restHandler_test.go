@@ -218,8 +218,6 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if status.RunnerOptions.ID != fileID {
 		t.Errorf("Mismatch between ids from start %q vs status %q", fileID, status.RunnerOptions.ID)
 	}
-	// TODO [bug/race] wait that it really is started or it doesn't stop(!)
-	time.Sleep(5 * time.Second)
 	// And stop it (with wait so data is there when it returns):
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=false", addr.Port, uiPath, RestStopURI, runID)
 	asyncObj = GetAsyncResult(t, stopURL, "")
@@ -232,35 +230,33 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if asyncObj.Message != StateStopping.String() || asyncObj.RunID != runID || asyncObj.Count != 0 {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
-	/*
-		// Wait
-		time.Sleep(15 * time.Second)
-		// Status should be empty (nothing running)
-		statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
-		if err != nil {
-			t.Errorf("Error getting status %q: %v", statusURL, err)
-		}
-		if len(statuses.Statuses) != 0 {
-			t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
-		}
-		// Fetch the result:
-		fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
-		res = GetResult(t, fetchURL, "")
-		if res.RequestedQPS != "4.2" {
-			t.Errorf("Not the expected requested qps %q", res.RequestedQPS)
-		}
-		if res.RequestedDuration != "xxx" {
-			t.Errorf("Not the expected requested duration %q", res.RequestedDuration)
-		}
-		totalReq = res.DurationHistogram.Count
-		httpOk = res.RetCodes[http.StatusOK]
-		if totalReq != httpOk {
-			t.Errorf("Mismatch between requests %d and ok %v (%+v)", totalReq, res.RetCodes, res)
-		}
-		if res.Result().ID != fileID {
-			t.Errorf("Mismatch between ids %q vs result %q", fileID, res.Result().ID)
-		}
-	*/
+	// Wait - todo use/fix wait=true instead
+	time.Sleep(5 * time.Second)
+	// Status should be empty (nothing running)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	if err != nil {
+		t.Errorf("Error getting status %q: %v", statusURL, err)
+	}
+	if len(statuses.Statuses) != 0 {
+		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
+	}
+	// Fetch the result:
+	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
+	res = GetResult(t, fetchURL, "")
+	if res.RequestedQPS != "4.2" {
+		t.Errorf("Not the expected requested qps %q", res.RequestedQPS)
+	}
+	if res.RequestedDuration != "until stop" {
+		t.Errorf("Not the expected requested duration %q", res.RequestedDuration)
+	}
+	totalReq = res.DurationHistogram.Count
+	httpOk = res.RetCodes[http.StatusOK]
+	if totalReq != httpOk {
+		t.Errorf("Mismatch between requests %d and ok %v (%+v)", totalReq, res.RetCodes, res)
+	}
+	if res.Result().ID != fileID {
+		t.Errorf("Mismatch between ids %q vs result %q", fileID, res.Result().ID)
+	}
 	// Start 3 async test
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
 	_ = GetAsyncResult(t, runURL, jsonData)
@@ -391,8 +387,6 @@ func TestRESTStopTimeBased(t *testing.T) {
 	if status.RunnerOptions.ID != fileID {
 		t.Errorf("Mismatch between ids from start %q vs status %q", fileID, status.RunnerOptions.ID)
 	}
-	// Give it time to really start [race/bug to be fixed]
-	time.Sleep(5 * time.Second)
 	// And stop it (with wait so data is there when it returns):
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=false", addr.Port, uiPath, RestStopURI, runID)
 	stopping := StateStopping.String()

@@ -470,7 +470,7 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 				continue
 			}
 			v.State = StateStopping // We'll let Run() do the actual removal
-			v.aborter.Abort()
+			v.aborter.Abort(wait)
 			rid = v.RunnerOptions.ID
 			i++
 		}
@@ -506,7 +506,7 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 		v.c.L.Lock()
 	}
 	uiRunMapMutex.Unlock()
-	v.aborter.Abort()
+	v.aborter.Abort(wait)
 	if wait {
 		for v.State == StateStopping {
 			v.c.Wait()

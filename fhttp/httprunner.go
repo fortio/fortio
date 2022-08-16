@@ -63,7 +63,7 @@ func (httpstate *HTTPRunnerResults) Run(t int) (bool, string) {
 	httpstate.sizes.Record(float64(size))
 	httpstate.headerSizes.Record(float64(headerSize))
 	if httpstate.AbortOn == code {
-		httpstate.aborter.Abort()
+		httpstate.aborter.Abort(false)
 		log.Infof("Aborted run because of code %d - data %s", code, DebugSummary(body, 1024))
 	}
 	if code == http.StatusOK {

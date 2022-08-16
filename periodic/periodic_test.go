@@ -88,6 +88,7 @@ func (c *TestCount) Run(i int) (bool, string) {
 }
 
 func TestStart(t *testing.T) {
+	log.SetLogLevel(log.Verbose)
 	var count int64
 	var lock sync.Mutex
 	c := TestCount{&count, &lock}
