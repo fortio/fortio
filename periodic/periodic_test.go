@@ -548,3 +548,33 @@ func TestGetJitter(t *testing.T) {
 		t.Errorf("getJitter 6 got %v sum of abs value instead of expected > 60 at -1/+1", sum)
 	}
 }
+
+func TestEarlyAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	c := TestCount{&count, &lock}
+	dur := 3 * time.Second
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   dur,
+	}
+	o.Normalize()
+	aborter := o.Stop
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	// Early abort
+	aborter.Abort(false)
+	res := r.Run()
+	if count != 0 {
+		t.Errorf("Run did run despite pre abort: %d", count)
+	}
+	if res.ActualDuration != 0 {
+		t.Errorf("Run did run despite pre abort: %d", count)
+	}
+	if res.RequestedDuration != dur.String() {
+		t.Errorf("Run result input should be copied even when aborted %q vs %v", res.RequestedDuration, dur)
+	}
+}

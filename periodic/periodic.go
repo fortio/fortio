@@ -114,7 +114,9 @@ func (a *Aborter) Abort(wait bool) {
 			log.LogVf("ABORT reading start channel")
 			// shouldn't block/hang, just purging/resetting
 			<-a.StartChan
+			a.Lock()
 			a.hasStarted = false
+			a.Unlock()
 		}
 		return
 	}
@@ -463,13 +465,14 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
-	r.Stop.Lock()
-	runnerChan := r.Stop.StopChan // need a copy to not race with assignment to nil
-	startedChan := r.Stop.StartChan
-	r.Stop.hasStarted = true
-	shouldAbort := r.Stop.stopRequested
-	r.Stop.Unlock()
-	log.LogVf("RUNNER starting... can now be Abort()ed, telling %v - %v", r.Stop, startedChan)
+	aborter := r.Stop
+	aborter.Lock()
+	runnerChan := aborter.StopChan // need a copy to not race with assignment to nil
+	startedChan := aborter.StartChan
+	aborter.hasStarted = true
+	shouldAbort := aborter.stopRequested
+	aborter.Unlock()
+	log.LogVf("RUNNER starting... can now be Abort()ed, telling %v - %v", aborter, startedChan)
 	startedChan <- true
 	useQPS := (r.QPS > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
@@ -589,13 +592,13 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	select {
 	case <-runnerChan: // nothing
-		log.LogVf("RUNNER r.Stop already closed")
+		log.LogVf("RUNNER aborter already closed")
 	default:
-		log.LogVf("RUNNER r.Stop not already closed, closing")
+		log.LogVf("RUNNER aborter not already closed, closing")
 		r.Abort()
 	}
 	// Setup for reuse even if only unit tests are reusing runners
-	r.Stop.Reset()
+	aborter.Reset()
 	return result
 }
 
