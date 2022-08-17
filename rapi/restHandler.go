@@ -99,6 +99,8 @@ type AsyncReply struct {
 	// Object id to retrieve results (only usable if save=on).
 	// Also returned when using stop as long as exactly 1 run is stopped.
 	ResultID string
+	// Result url, constructed from the ResultID and the incoming request URL, if available.
+	ResultURL string
 }
 
 type StatusReply struct {
@@ -314,7 +316,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	fhttp.OnBehalfOf(httpopts, r)
 	if async {
 		ro.GenID() // Needed to reply the id, will be reused in Normalize() later as already set
-		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID}
+		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID, ResultURL: ID2URL(r, ro.ID)}
 		reply.Message = "started" // nolint: goconst
 		err := jrpc.ReplyOk(w, &reply)
 		if err != nil {
@@ -451,7 +453,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	waitStr := strings.ToLower(r.FormValue("wait"))
 	wait := (waitStr != "" && waitStr != "off" && waitStr != "false")
 	i, rid := StopByRunID(runid, wait)
-	reply := AsyncReply{RunID: runid, Count: i, ResultID: rid}
+	reply := AsyncReply{RunID: runid, Count: i, ResultID: rid, ResultURL: ID2URL(r, rid)}
 	if wait && i == 1 {
 		reply.Message = StateStopped.String()
 	} else {

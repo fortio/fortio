@@ -189,6 +189,10 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if fileID == "" {
 		t.Errorf("unexpected empty resultid")
 	}
+	fileURL := asyncObj.ResultURL
+	if fileURL == "" {
+		t.Errorf("unexpected empty file URL")
+	}
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
 	statuses, err := jrpc.CallNoPayload[StatusReply](statusURL)
@@ -227,6 +231,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	// Fetch the result: (right away, racing with stop above which thus must be synchronous)
 	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
+	if fetchURL != fileURL {
+		t.Errorf("Unexpected mismatch between calculated fetchURL %q and returned one %q", fetchURL, fileURL)
+	}
 	res = GetResult(t, fetchURL, "")
 	if res.RequestedQPS != "4.2" {
 		t.Errorf("Not the expected requested qps %q", res.RequestedQPS)
@@ -338,7 +345,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
-	uiPath := "/fortio/"
+	uiPath := "/fortio3/"
 	tmpDir := t.TempDir()
 	AddHandlers(mux, "https://foo.fortio.org", uiPath, tmpDir)
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
@@ -353,6 +360,13 @@ func TestRESTStopTimeBased(t *testing.T) {
 	fileID := asyncObj.ResultID
 	if fileID == "" {
 		t.Errorf("unexpected empty resultid")
+	}
+	fileURL := asyncObj.ResultURL
+	if fileURL == "" {
+		t.Errorf("unexpected empty file URL")
+	}
+	if !strings.HasPrefix(fileURL, "https://foo.fortio.org/fortio3/data/") {
+		t.Errorf("Fetch URL when there is a baseURL should start with it, got %q", fileURL)
 	}
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
@@ -432,7 +446,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("Error getting tsv index: %d", code)
 	}
 	dataStr := string(bytes)
-	if !strings.Contains(dataStr, "https://foo.fortio.org/fortio/data/") {
+	if !strings.Contains(dataStr, "https://foo.fortio.org/fortio3/data/") {
 		t.Errorf("Base url not found in result %s", dataStr)
 	}
 	indexURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, "data/index.html")

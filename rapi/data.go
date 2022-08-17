@@ -132,6 +132,29 @@ func sendHTMLDataIndex(w http.ResponseWriter) {
 	_, _ = w.Write([]byte("</ul></body></html>"))
 }
 
+// GetDataURL gives the url of the data/ dir either using configured `-base-url` and ui path
+// from from the incoming Host header.
+func GetDataURL(r *http.Request) string {
+	// Ingress effect / baseURL support:
+	url := baseURL
+	if len(url) == 0 {
+		// The Host header includes original host/port, only missing is the proto:
+		proto := r.Header.Get("X-Forwarded-Proto")
+		if len(proto) == 0 {
+			proto = "http"
+		}
+		url = proto + "://" + r.Host
+	}
+	return url + uiPath + "data/" // base has been cleaned of trailing / in fortio_main
+}
+
+func ID2URL(r *http.Request, id string) string {
+	if id == "" {
+		return ""
+	}
+	return GetDataURL(r) + id + ".json"
+}
+
 // LogAndFilterDataRequest logs the data request.
 func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,19 +166,8 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		ext := "/index.tsv"
-		if strings.HasSuffix(path, ext) { // nolint: nestif
-			// Ingress effect:
-			urlPrefix := baseURL
-			if len(urlPrefix) == 0 {
-				// The Host header includes original host/port, only missing is the proto:
-				proto := r.Header.Get("X-Forwarded-Proto")
-				if len(proto) == 0 {
-					proto = "http"
-				}
-				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
-			} else {
-				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
-			}
+		if strings.HasSuffix(path, ext) {
+			urlPrefix := GetDataURL(r)
 			log.Infof("Prefix is '%s'", urlPrefix)
 			SendTSVDataIndex(urlPrefix, w)
 			return
