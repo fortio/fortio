@@ -578,3 +578,43 @@ func TestEarlyAbort(t *testing.T) {
 		t.Errorf("Run result input should be copied even when aborted %q vs %v", res.RequestedDuration, dur)
 	}
 }
+
+func TestWAbortWait(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	c := TestCount{&count, &lock}
+	dur := 3 * time.Second
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   dur,
+	}
+	o.Normalize()
+	aborter := o.Stop
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	var afterAbortCount int64
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort with wait true after 1 sec")
+		aborter.Abort(true)
+		lock.Lock()
+		afterAbortCount = count
+		lock.Unlock()
+		wg.Done()
+	}()
+	res := r.Run()
+	wg.Wait()
+	if count == 0 {
+		t.Error("Run didn't run at all despite deferred count")
+	}
+	if count != afterAbortCount {
+		t.Errorf("mismatch between just after abort and final count %d %d", count, afterAbortCount)
+	}
+	if res.DurationHistogram.Count != count {
+		t.Errorf("mismatch between result object and internal count %d %d", count, res.DurationHistogram.Count)
+	}
+}
