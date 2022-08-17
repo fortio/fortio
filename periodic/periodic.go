@@ -123,9 +123,9 @@ func (a *Aborter) Abort(wait bool) {
 	a.Unlock()
 	log.LogVf("ABORT Waiting for start")
 	<-a.StartChan
-	a.hasStarted = false
 	log.LogVf("ABORT Done waiting for start")
 	a.Lock()
+	a.hasStarted = false
 	if a.StopChan != nil {
 		log.LogVf("ABORT Closing %+v", a)
 		close(a.StopChan)
