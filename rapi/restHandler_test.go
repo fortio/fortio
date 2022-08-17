@@ -83,7 +83,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 
 // nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestHTTPRunnerRESTApi(t *testing.T) {
-	//log.SetLogLevel(log.Verbose)
+	// log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
@@ -226,8 +226,6 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Should have stopped matching async job got %+v", asyncObj)
 	}
 	// Fetch the result: (right away, racing with stop above which thus must be synchronous)
-	// TODO: remove this - now we need to give it time to save the result even if it already got the stop signal
-	time.Sleep(3 * time.Second)
 	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
 	res = GetResult(t, fetchURL, "")
 	if res.RequestedQPS != "4.2" {
@@ -405,7 +403,8 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
 	if len(statuses.Statuses) != 0 {
-		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
+		bytes, _ := jrpc.Serialize(statuses.Statuses)
+		t.Errorf("Status count %d != expected 0 - %s", len(statuses.Statuses), string(bytes))
 	}
 	// Fetch the result:
 	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)

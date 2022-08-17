@@ -82,7 +82,7 @@ func (r *RunnerOptions) ReleaseRunners() {
 type Aborter struct {
 	sync.Mutex
 	StopChan      chan struct{}
-	StartChan     chan bool
+	StartChan     chan bool // Used to signal actual start of the run. Also (re)used in rapi/ to signal completion of the Run().
 	hasStarted    bool
 	stopRequested bool
 }
@@ -134,10 +134,11 @@ func (a *Aborter) Abort(wait bool) {
 	a.Unlock()
 }
 
-// Reset returns the aborter to original state, for reuse.
+// Reset returns the aborter to original state, for (unit test) reuse.
+// Note that it doesn't recreate the closed stop chan.
 func (a *Aborter) Reset() {
 	a.Lock()
-	// Also clear the "started" if we would get reused
+	// Clear the "started" if we would get reused
 	select {
 	case <-a.StartChan:
 		log.LogVf("RUNNER reset: Started chan flushed for reuse")
@@ -511,6 +512,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	}
 	if shouldAbort {
 		log.Warnf("Run requested to stop before even starting")
+		aborter.Reset()
 		return RunnerResults{ // A bit ugly this is almost the same as the big init below in the normal not early abort case.
 			r.RunType, r.Labels, start, requestedQPS, requestedDuration,
 			0, 0, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),

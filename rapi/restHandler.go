@@ -337,6 +337,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 ) (periodic.HasRunnerResult, string, []byte, error) {
 	var res periodic.HasRunnerResult
 	var err error
+	var aborter *periodic.Aborter
 	if runner == ModeGRPC { // nolint: nestif
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
@@ -351,7 +352,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		if grpcSecure {
 			o.Destination = fhttp.AddHTTPS(url)
 		}
-		UpdateRun(&o.RunnerOptions)
+		aborter = UpdateRun(&o.RunnerOptions)
 		// TODO: ReqTimeout: timeout
 		res, err = fgrpc.RunGRPCTest(&o)
 	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
@@ -362,7 +363,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
-		UpdateRun(&o.RunnerOptions)
+		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = tcprunner.RunTCPTest(&o)
 	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
 		// TODO: copy pasta from fortio_main
@@ -372,7 +373,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
-		UpdateRun(&o.RunnerOptions)
+		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = udprunner.RunUDPTest(&o)
 	} else {
 		o := fhttp.HTTPRunnerOptions{
@@ -380,10 +381,15 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 			RunnerOptions:      *ro,
 			AllowInitialErrors: true,
 		}
-		UpdateRun(&(o.RunnerOptions))
+		aborter = UpdateRun(&(o.RunnerOptions))
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	defer RemoveRun(ro.RunID)
+	defer func() {
+		log.LogVf("REST run %d really done - before channel write", ro.RunID)
+		aborter.StartChan <- false
+		log.LogVf("REST run %d really done - after channel write", ro.RunID)
+	}()
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		if !htmlMode {
@@ -498,6 +504,11 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	// We leave it in the map and let the original Run() remove itself once it actually ends
 	uiRunMapMutex.Unlock()
 	v.aborter.Abort(wait)
+	if wait {
+		log.LogVf("REST stop, wait requested, reading additional channel signal")
+		<-v.aborter.StartChan
+		log.LogVf("REST stop, received all done signal")
+	}
 	log.LogVf("Returning from Abort %d call with wait %v", runid, wait)
 	return 1, rid
 }
@@ -507,6 +518,7 @@ func RemoveRun(id int64) {
 	// If we kept the entries we'd set it to StateStopped
 	delete(runs, id)
 	uiRunMapMutex.Unlock()
+	log.LogVf("REST Removed run %d", id)
 }
 
 // AddHandlers adds the REST Api handlers for run, status and stop.
@@ -553,7 +565,7 @@ func NextRunID() int64 {
 // Note that the Aborter/Stop field is being "moved" into the runner when making the concrete runner
 // and cleared from the original options object so we need to keep our own copy of the aborter pointer.
 // See newPeriodicRunner. Note this is arguably not the best behavior design/could be changed.
-func UpdateRun(ro *periodic.RunnerOptions) {
+func UpdateRun(ro *periodic.RunnerOptions) *periodic.Aborter {
 	uiRunMapMutex.Lock()
 	status, found := runs[ro.RunID]
 	if !found || status.State != StatePending || status.RunnerOptions != nil || status.RunID != ro.RunID {
@@ -566,6 +578,7 @@ func UpdateRun(ro *periodic.RunnerOptions) {
 	status.RunnerOptions.Normalize()
 	status.aborter = status.RunnerOptions.Stop // save the aborter before it gets cleared in newPeriodicRunner.
 	uiRunMapMutex.Unlock()
+	return status.aborter
 }
 
 func GetRun(id int64) *Status {
