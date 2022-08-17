@@ -77,7 +77,6 @@ type Status struct {
 	State         StateEnum
 	RunnerOptions *periodic.RunnerOptions
 	aborter       *periodic.Aborter
-	c             *sync.Cond
 }
 
 type StatusMap map[int64]*Status
@@ -384,7 +383,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		UpdateRun(&(o.RunnerOptions))
 		res, err = fhttp.RunHTTPTest(&o)
 	}
-	RemoveRun(ro.RunID)
+	defer RemoveRun(ro.RunID)
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		if !htmlMode {
@@ -394,7 +393,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err)
+		log.Fatalf("Unable to json serialize result: %v", err) //nolint: gocritic // gocritic doesn't know fortio's log.Fatalf does pani
 	}
 	jsonStr := string(json)
 	log.LogVf("Serialized to %s", jsonStr)
@@ -497,40 +496,15 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	rid = v.RunnerOptions.ID
 	v.State = StateStopping
 	// We leave it in the map and let the original Run() remove itself once it actually ends
-	if wait {
-		// Only make the fine grain lock if needed
-		if v.c != nil {
-			log.Fatalf("Unexpected state where cond var already exist for %v", *v)
-		}
-		v.c = sync.NewCond(&sync.Mutex{})
-		v.c.L.Lock()
-	}
 	uiRunMapMutex.Unlock()
 	v.aborter.Abort(wait)
-	if wait {
-		for v.State == StateStopping {
-			v.c.Wait()
-		}
-		v.c.L.Unlock()
-	}
+	log.LogVf("Returning from Abort %d call with wait %v", runid, wait)
 	return 1, rid
 }
 
 func RemoveRun(id int64) {
 	uiRunMapMutex.Lock()
 	// If we kept the entries we'd set it to StateStopped
-	v, found := runs[id]
-	if !found {
-		uiRunMapMutex.Unlock()
-		log.Errf("Bug? Runid %d not found to remove!", id)
-		return
-	}
-	if v.c != nil {
-		v.c.L.Lock()
-		v.State = StateStopped
-		log.Infof("Runid %d completed, notifying", id)
-		v.c.Broadcast()
-	}
 	delete(runs, id)
 	uiRunMapMutex.Unlock()
 }

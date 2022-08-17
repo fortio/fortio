@@ -83,7 +83,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 
 // nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestHTTPRunnerRESTApi(t *testing.T) {
-	// log.SetLogLevel(log.Verbose)
+	//log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	mux.HandleFunc("/foo/", fhttp.EchoHandler)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
@@ -219,28 +219,15 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("Mismatch between ids from start %q vs status %q", fileID, status.RunnerOptions.ID)
 	}
 	// And stop it (with wait so data is there when it returns):
-	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=false", addr.Port, uiPath, RestStopURI, runID)
+	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
 	asyncObj = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != StateStopping.String() /* StateStopped.String()*/ ||
+	if asyncObj.Message != StateStopped.String() ||
 		asyncObj.RunID != runID || asyncObj.Count != 1 || asyncObj.ResultID != fileID {
 		t.Errorf("Should have stopped matching async job got %+v", asyncObj)
 	}
-	// Stop it again, should be 0 count
-	asyncObj = GetAsyncResult(t, stopURL, "")
-	if asyncObj.Message != StateStopping.String() || asyncObj.RunID != runID || asyncObj.Count != 0 {
-		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
-	}
-	// Wait - todo use/fix wait=true instead
-	time.Sleep(5 * time.Second)
-	// Status should be empty (nothing running)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
-	if err != nil {
-		t.Errorf("Error getting status %q: %v", statusURL, err)
-	}
-	if len(statuses.Statuses) != 0 {
-		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
-	}
-	// Fetch the result:
+	// Fetch the result: (right away, racing with stop above which thus must be synchronous)
+	// TODO: remove this - now we need to give it time to save the result even if it already got the stop signal
+	time.Sleep(3 * time.Second)
 	fetchURL := fmt.Sprintf("http://localhost:%d%sdata/%s.json", addr.Port, uiPath, fileID)
 	res = GetResult(t, fetchURL, "")
 	if res.RequestedQPS != "4.2" {
@@ -257,6 +244,19 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if res.Result().ID != fileID {
 		t.Errorf("Mismatch between ids %q vs result %q", fileID, res.Result().ID)
 	}
+	// (Also for that run:) Stop it again, should be 0 count
+	asyncObj = GetAsyncResult(t, stopURL, "")
+	if asyncObj.Message != StateStopping.String() || asyncObj.RunID != runID || asyncObj.Count != 0 {
+		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
+	}
+	// Status should be empty (nothing running)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	if err != nil {
+		t.Errorf("Error getting status %q: %v", statusURL, err)
+	}
+	if len(statuses.Statuses) != 0 {
+		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
+	}
 	// Start 3 async test
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
 	_ = GetAsyncResult(t, runURL, jsonData)
@@ -271,8 +271,6 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if len(statuses.Statuses) != 3 {
 		t.Errorf("Status count not the expected 3: %+v", statuses)
 	}
-	// TODO [bug/race] wait that it really is started or it doesn't stop(!)
-	time.Sleep(5 * time.Second)
 	// stop all
 	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStopURI)
 	asyncObj = GetAsyncResult(t, stopURL, "")

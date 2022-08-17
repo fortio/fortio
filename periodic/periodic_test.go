@@ -565,10 +565,22 @@ func TestEarlyAbort(t *testing.T) {
 	r := NewPeriodicRunner(&o)
 	r.Options().MakeRunners(&c)
 	count = 0
-	// Early abort
-	aborter.Abort(false)
+	// Early abort, with wait
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		aborter.Abort(true)
+		lock.Lock()
+		count -= 42
+		lock.Unlock()
+		wg.Done()
+	}()
+	// Let the above go routine run
+	time.Sleep(1 * time.Second)
+	// we don't want to see 42 yet
 	res := r.Run()
-	if count != 0 {
+	wg.Wait()
+	if count != -42 {
 		t.Errorf("Run did run despite pre abort: %d", count)
 	}
 	if res.ActualDuration != 0 {
