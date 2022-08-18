@@ -117,12 +117,13 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 Φορτίο 1.35.0 usage:
-where command is one of: load (load testing), server (starts ui, http-echo,
- redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
- server), report (report only UI server), redirect (only the redirect server),
- proxies (only the -M and -P configured proxies), grpcping (grpc client),
- or curl (single URL debug), or nc (single tcp or udp:// connection),
- or version (prints the version).
+    fortio command [flags] target
+where command is one of: load (load testing), server (starts ui, rest api,
+ http-echo, redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only
+ the tcp-echo server), report (report only UI server), redirect (only the
+ redirect server), proxies (only the -M and -P configured proxies), grpcping
+ (grpc client), or curl (single URL debug), or nc (single tcp or udp://
+ connection), or version (prints the full version and build details).
 where target is a url (http load tests) or host:port (grpc health test).
 flags are:
   -H header
@@ -393,11 +394,12 @@ Fortio X.Y.Z grpc 'ping' server listening on tcp [::]:8079
 Fortio X.Y.Z https redirector server listening on tcp [::]:8081
 Fortio X.Y.Z http-echo server listening on tcp [::]:8080
 Data directory is /Users/ldemailly/dev/fortio
-UI started - visit:
-http://localhost:8080/fortio/
-(or any host/ip reachable on this server)
-14:11:05 I fortio_main.go:285> Note: not using dynamic flag watching (use -config to set watch directory)
-14:11:05 I fortio_main.go:293> All fortio X.Y.Z unknown goM.m.p servers started!
+REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop
+	 UI started - visit:
+		http://localhost:8080/fortio/
+	 (or any host/ip reachable on this server)
+I fortio_main.go:285> Note: not using dynamic flag watching (use -config to set watch directory)
+I fortio_main.go:293> All fortio X.Y.Z  goM.m.p arm64 darwin servers started!
 ```
 
 ### Sample of the graphing UI

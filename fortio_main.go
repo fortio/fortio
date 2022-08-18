@@ -74,12 +74,12 @@ func usage(w io.Writer, msgs ...interface{}) {
 	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts ui, http-echo,",
-		" redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
-		" server), report (report only UI server), redirect (only the redirect server),",
-		" proxies (only the -M and -P configured proxies), grpcping (grpc client),",
-		" or curl (single URL debug), or nc (single tcp or udp:// connection),",
-		" or version (prints the version).",
+		"where command is one of: load (load testing), server (starts ui, rest api,",
+		" http-echo, redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only",
+		" the tcp-echo server), report (report only UI server), redirect (only the",
+		" redirect server), proxies (only the -M and -P configured proxies), grpcping",
+		" (grpc client), or curl (single URL debug), or nc (single tcp or udp://",
+		" connection), or version (prints the full version and build details).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
