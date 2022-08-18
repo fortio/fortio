@@ -64,7 +64,7 @@ func SetFlagDefaultsForClientTools() {
 	_ = lpf.Value.Set("")
 }
 
-// nolint: gochecknoinits // needed
+//nolint:gochecknoinits // needed
 func init() {
 	setLevel(Info) // starting value
 	levelToStrA = []string{
@@ -221,7 +221,7 @@ func Debugf(format string, rest ...interface{}) {
 }
 
 // LogVf logs if Verbose level is on.
-func LogVf(format string, rest ...interface{}) { //nolint: revive
+func LogVf(format string, rest ...interface{}) { //nolint:revive
 	logPrintf(Verbose, format, rest...)
 }
 
@@ -251,12 +251,12 @@ func Fatalf(format string, rest ...interface{}) {
 }
 
 // LogDebug shortcut for fortio.Log(fortio.Debug).
-func LogDebug() bool { //nolint: revive
+func LogDebug() bool { //nolint:revive
 	return Log(Debug)
 }
 
 // LogVerbose shortcut for fortio.Log(fortio.Verbose).
-func LogVerbose() bool { //nolint: revive
+func LogVerbose() bool { //nolint:revive
 	return Log(Verbose)
 }
 

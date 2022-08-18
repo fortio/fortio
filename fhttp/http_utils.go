@@ -22,9 +22,9 @@ import (
 	"flag"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -65,7 +65,7 @@ func (to *TLSOptions) TLSClientConfig() (*tls.Config, error) {
 	}
 	if len(to.CACert) > 0 {
 		// Load CA cert
-		caCert, err := ioutil.ReadFile(to.CACert)
+		caCert, err := os.ReadFile(to.CACert)
 		if err != nil {
 			log.Errf("Unable to read CA from %v: %v", to.CACert, err)
 			return nil, err
@@ -190,7 +190,7 @@ func ParseChunkSize(inp []byte) (int, int) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits { // nolint: nestif
+		if inDigits { //nolint:nestif
 			b := toUpper(inp[off])
 			var digit int
 			if b >= 'A' && b <= 'F' {
@@ -287,7 +287,7 @@ func generateStatus(status string) int {
 		codes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", status, res, i, codes[i])
@@ -356,7 +356,7 @@ func generateSize(sizeInput string) (size int) {
 		sizes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", sizeInput, res, i, sizes[i])
@@ -429,7 +429,7 @@ func generateDelay(delay string) time.Duration {
 		delays[i] = d
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", delay, res, i, delays[i])
@@ -457,7 +457,7 @@ func generateSingleProbability(value string, name string) bool {
 		log.Debugf("error %v parsing %s=%q treating as true", err, name, value)
 		return true
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	log.Debugf("%s=%f rolled %f", name, p, res)
 	return res <= float32(p)
 }
@@ -485,7 +485,7 @@ func RoundDuration(d time.Duration) time.Duration {
 var gzPool = sync.Pool{
 	New: func() interface{} {
 		log.LogVf("Pool new gzip")
-		w := gzip.NewWriter(ioutil.Discard)
+		w := gzip.NewWriter(io.Discard)
 		return w
 	},
 }

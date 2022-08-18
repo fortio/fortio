@@ -9,7 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -110,7 +110,7 @@ func (u *Updater) Stop() error {
 }
 
 func (u *Updater) readAll(dynamicOnly bool) error {
-	files, err := ioutil.ReadDir(u.dirPath)
+	files, err := os.ReadDir(u.dirPath)
 	if err != nil {
 		return fmt.Errorf("dflag: updater initialization: %w", err)
 	}
@@ -145,7 +145,7 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 	if dynamicOnly && !dflag.IsFlagDynamic(flag) {
 		return errFlagNotDynamic
 	}
-	content, err := ioutil.ReadFile(fullPath)
+	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (u *Updater) watchForUpdates() {
 		select {
 		case event := <-u.watcher.Events:
 			log.LogVf("ConfigMap got fsnotify %v ", event)
-			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) { // nolint: nestif
+			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) { //nolint:nestif
 				// case of the whole directory being re-symlinked
 				switch event.Op {
 				case fsnotify.Create:

@@ -98,6 +98,6 @@ func FromBuildInfoPath(path string) (short, long, full string) {
 
 // This "burns in" the fortio version. we need to get the "right" versions though.
 // depending if we are a module or main.
-func init() { // nolint:gochecknoinits //we do need an init for this
+func init() { //nolint:gochecknoinits // we do need an init for this
 	version, longVersion, fullVersion = FromBuildInfoPath("fortio.org/fortio")
 }

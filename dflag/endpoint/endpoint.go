@@ -113,7 +113,7 @@ func requestIsBrowser(req *http.Request) bool {
 	return strings.Contains(req.Header.Get("Accept"), "html")
 }
 
-// nolint: lll
+//nolint:lll
 var dflagListTemplate = template.Must(template.New("dflag_list").Parse(
 	`
 <html><head>

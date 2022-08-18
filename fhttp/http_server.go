@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -74,7 +74,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			r = &nr
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -181,8 +181,9 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
 	h2s := &http2.Server{}
 	s := &http.Server{
-		IdleTimeout: serverIdleTimeout.Get(),
-		Handler:     h2c.NewHandler(hdlr, h2s),
+		ReadHeaderTimeout: serverIdleTimeout.Get(),
+		IdleTimeout:       serverIdleTimeout.Get(),
+		Handler:           h2c.NewHandler(hdlr, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
@@ -227,7 +228,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 func DebugHandlerTemplate(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	hostname, _ := os.Hostname()
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -290,7 +291,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string // nolint: prealloc // header is multi valued map,...
+	var keys []string //nolint:prealloc // header is multi valued map,...
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
@@ -309,7 +310,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			first = false
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		/*
 			expected := r.ContentLength

@@ -6,7 +6,7 @@ package dflag
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 // ReadFileFlags parses the flagset to discover all "fileread" flags and evaluates them.
@@ -60,7 +60,7 @@ func (f *FileReadValue) readFile() error {
 	if f.filePath == "" {
 		return nil
 	}
-	data, err := ioutil.ReadFile(f.filePath)
+	data, err := os.ReadFile(f.filePath)
 	if err != nil {
 		return err
 	}

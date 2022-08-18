@@ -5,7 +5,6 @@ package configmap_test
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -43,7 +42,7 @@ type updaterTestSuite struct {
 
 func (s *updaterTestSuite) SetupTest() {
 	var err error
-	s.tempDir, err = ioutil.TempDir("/tmp", "updater_test")
+	s.tempDir, err = os.MkdirTemp("/tmp", "updater_test")
 	require.NoError(s.T(), err, "failed creating temp directory for testing")
 	s.copyTestDataToDir()
 	s.linkDataDirTo(firstGoodDir)

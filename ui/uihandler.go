@@ -18,14 +18,12 @@ package ui // import "fortio.org/fortio/ui"
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
 	"html"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,15 +34,12 @@ import (
 
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/dflag/endpoint"
-	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
-	"fortio.org/fortio/tcprunner"
-	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/version"
 )
 
@@ -74,8 +69,6 @@ var (
 	mainTemplate     *template.Template
 	browseTemplate   *template.Template
 	syncTemplate     *template.Template
-	// Base URL used for index - useful when running under an ingress with prefix.
-	baseURL string
 )
 
 const (
@@ -102,12 +95,12 @@ const (
 )
 
 // Handler is the main UI handler creating the web forms and processing them.
-// nolint: funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
+//
+//nolint:funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
-	doSave := (r.FormValue("save") == "on")
 	url := r.FormValue("url")
 	runid := int64(0)
 	runner := r.FormValue("runner")
@@ -138,9 +131,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	jitter := (r.FormValue("jitter") == "on")
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
-	grpcSecure := (r.FormValue("grpc-secure") == "on")
-	grpcPing := (r.FormValue("ping") == "on")
-	grpcPingDelay, _ := time.ParseDuration(r.FormValue("grpc-ping-delay"))
 	stdClient := (r.FormValue("stdclient") == "on")
 	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
@@ -187,8 +177,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		NoCatchUp:   nocatchup,
 	}
 	if mode == run {
-		ro.Normalize()
-		runid = rapi.AddRun(&ro)
+		// must not normalize, done in rapi.UpdateRun when actually starting the run
+		runid = rapi.NextRunID()
 		log.Infof("New run id %d", runid)
 		ro.RunID = runid
 	}
@@ -259,7 +249,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case menu:
 		// nothing more to do
 	case stop:
-		rapi.StopByRunID(runid)
+		rapi.StopByRunID(runid, false)
 	case run:
 		// mode == run case:
 		for _, header := range r.Form["H"] {
@@ -273,77 +263,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		fhttp.OnBehalfOf(httpopts, r)
+		runWriter := w
 		if !JSONOnly {
 			flusher.Flush()
+			runWriter = nil // we don't want run to write json
 		}
-		var res periodic.HasRunnerResult
-		var err error
-		if runner == rapi.ModeGRPC {
-			o := fgrpc.GRPCRunnerOptions{
-				RunnerOptions: ro,
-				Destination:   url,
-				UsePing:       grpcPing,
-				Delay:         grpcPingDelay,
-			}
-			o.TLSOptions = httpopts.TLSOptions
-			if grpcSecure {
-				o.Destination = fhttp.AddHTTPS(url)
-			}
-			// TODO: ReqTimeout: timeout
-			res, err = fgrpc.RunGRPCTest(&o)
-		} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
-			// TODO: copy pasta from fortio_main
-			o := tcprunner.RunnerOptions{
-				RunnerOptions: ro,
-			}
-			o.ReqTimeout = timeout
-			o.Destination = url
-			o.Payload = httpopts.Payload
-			res, err = tcprunner.RunTCPTest(&o)
-		} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
-			// TODO: copy pasta from fortio_main
-			o := udprunner.RunnerOptions{
-				RunnerOptions: ro,
-			}
-			o.ReqTimeout = timeout
-			o.Destination = url
-			o.Payload = httpopts.Payload
-			res, err = udprunner.RunUDPTest(&o)
-		} else {
-			o := fhttp.HTTPRunnerOptions{
-				HTTPOptions:        *httpopts,
-				RunnerOptions:      ro,
-				AllowInitialErrors: true,
-			}
-			res, err = fhttp.RunHTTPTest(&o)
-		}
-		rapi.RemoveRun(ro.RunID)
+		// A bit awkward api because of trying to reuse yet be compatible from old UI code with
+		// new `rapi` code.
+		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*html mode*/)
 		if err != nil {
-			log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
-
 			_, _ = w.Write([]byte(fmt.Sprintf(
 				"❌ Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
 				html.EscapeString(err.Error()))))
 			return
 		}
-		json, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
-			log.Fatalf("Unable to json serialize result: %v", err)
-		}
-		savedAs := ""
-		id := res.Result().ID()
-		if doSave {
-			savedAs = rapi.SaveJSON(id, json)
-		}
 		if JSONOnly {
-			w.Header().Set("Content-Type", "application/json")
-			_, err = w.Write(json)
-			if err != nil {
-				log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
-			}
+			// all done in rapi.Run() above
 			return
 		}
 		if savedAs != "" {
+			id := res.Result().ID
 			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
 		}
@@ -479,59 +418,6 @@ func LogAndAddCacheControl(h http.Handler) http.Handler {
 	})
 }
 
-func sendHTMLDataIndex(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	_, _ = w.Write([]byte("<html><body><ul>\n"))
-	for _, e := range rapi.DataList() {
-		_, _ = w.Write([]byte("<li><a href=\""))
-		_, _ = w.Write([]byte(e))
-		_, _ = w.Write([]byte(".json\">"))
-		_, _ = w.Write([]byte(e))
-		_, _ = w.Write([]byte("</a>\n"))
-	}
-	_, _ = w.Write([]byte("</ul></body></html>"))
-}
-
-// LogAndFilterDataRequest logs the data request.
-func LogAndFilterDataRequest(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fhttp.LogRequest(r, "Data")
-		path := r.URL.Path
-		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
-			sendHTMLDataIndex(w)
-			return
-		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		ext := "/index.tsv"
-		if strings.HasSuffix(path, ext) { // nolint: nestif
-			// Ingress effect:
-			urlPrefix := baseURL
-			if len(urlPrefix) == 0 {
-				// The Host header includes original host/port, only missing is the proto:
-				proto := r.Header.Get("X-Forwarded-Proto")
-				if len(proto) == 0 {
-					proto = "http"
-				}
-				urlPrefix = proto + "://" + r.Host + path[:len(path)-len(ext)+1]
-			} else {
-				urlPrefix += uiPath + "data/" // base has been cleaned of trailing / in fortio_main
-			}
-			log.Infof("Prefix is '%s'", urlPrefix)
-			rapi.SendTSVDataIndex(urlPrefix, w)
-			return
-		}
-		if !strings.HasSuffix(path, ".json") {
-			log.Warnf("Filtering request for non .json '%s'", path)
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		fhttp.CacheOn(w)
-		h.ServeHTTP(w, r)
-	})
-}
-
-// TODO: move tsv/xml sync handling to their own file (and possibly package)
-
 // http.ResponseWriter + Flusher emulator - if we refactor the code this should
 // not be needed. on the other hand it's useful and could be reused.
 type outHTTPWriter struct {
@@ -563,7 +449,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 	v := url.Values{}
 	v.Set("url", u)
 	// TODO: better context?
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/sync-function?"+v.Encode(), nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/sync-function?"+v.Encode(), nil)
 	code := http.StatusOK // default
 	w := outHTTPWriter{Out: out, CodePtr: &code}
 	SyncHandler(w, req)
@@ -711,7 +597,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	q := bu.Query()
 	if q.Get("marker") == l.NextMarker {
 		log.Errf("Loop with same marker %+v", bu)
-		w.WriteHeader(508 /* Loop Detected */)
+		w.WriteHeader(http.StatusLoopDetected)
 		return true
 	}
 	q.Set("marker", l.NextMarker)
@@ -727,7 +613,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
 		_, _ = w.Write([]byte(fmt.Sprintf("❌ http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
-		w.WriteHeader(424 /*Failed Dependency*/)
+		w.WriteHeader(http.StatusFailedDependency)
 		return false
 	}
 	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
@@ -757,10 +643,10 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
-		w.WriteHeader(424 /*Failed Dependency*/)
+		w.WriteHeader(http.StatusFailedDependency)
 		return
 	}
-	err = ioutil.WriteFile(localPath, data1, 0o644) // nolint: gosec // we do want 644
+	err = os.WriteFile(localPath, data1, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		_, _ = w.Write([]byte("<td>❌ skipped (write error)"))
@@ -777,7 +663,6 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
 func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
-	baseURL = baseurl
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
 	if addr == nil {
@@ -802,8 +687,8 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+fetch2URI, fhttp.FetcherHandler2)
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
-	// New REST apis.
-	rapi.AddHandlers(mux, uiPath, datadir)
+	// New REST apis (includes the data/ handler)
+	rapi.AddHandlers(mux, baseurl, uiPath, datadir)
 	rapi.DefaultPercentileList = percentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
@@ -840,18 +725,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
 	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
 
-	if datadir != "" {
-		fs := http.FileServer(http.Dir(datadir))
-		mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
-		if datadir == "." {
-			var err error
-			datadir, err = os.Getwd()
-			if err != nil {
-				log.Errf("Unable to get current directory: %v", err)
-			}
-		}
-		log.Printf("Data directory is %s", datadir)
-	}
 	urlHostPort = fnet.NormalizeHostPort(port, addr)
 	uiMsg := "\t UI started - visit:\n\t\t"
 	if strings.Contains(urlHostPort, "-unix-socket=") {
@@ -871,7 +744,6 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 func Report(baseurl, port, datadir string) bool {
 	// drop the pprof default handlers [shouldn't be needed with custom mux but better safe than sorry]
 	http.DefaultServeMux = http.NewServeMux()
-	baseURL = baseurl
 	extraBrowseLabel = ", report only limited UI"
 	mux, addr := fhttp.HTTPServer("report", port)
 	if addr == nil {
@@ -897,9 +769,7 @@ func Report(baseurl, port, datadir string) bool {
 	} else {
 		mux.HandleFunc(uiPath, BrowseHandler)
 	}
-	rapi.SetDataDir(datadir) // needed for serving json and index.tsv
-	fsd := http.FileServer(http.Dir(datadir))
-	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fsd)))
+	rapi.AddDataHandler(mux, baseurl, uiPath, datadir)
 	return true
 }
 

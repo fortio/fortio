@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -30,6 +29,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/dflag"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 )
@@ -95,7 +95,7 @@ func dnsValidator(inp string) error {
 	return fmt.Errorf("invalid value for -dns-method, should be one of cached-rr, first, rnd or rr")
 }
 
-// nolint: gochecknoinits // needed here (unit change)
+//nolint:gochecknoinits // needed here (unit change)
 func init() {
 	ChangeMaxPayloadSize(MaxPayloadSize)
 	rand.Seed(time.Now().UnixNano())
@@ -111,7 +111,7 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	Payload = make([]byte, MaxPayloadSize)
 	// One shared and 'constant' (over time) but pseudo random content for payload
 	// (to defeat compression).
-	_, err := rand.Read(Payload) // nolint: gosec // We don't need crypto strength here, just low cpu and speed
+	_, err := rand.Read(Payload) //nolint:gosec // We don't need crypto strength here, just low cpu and speed
 	if err != nil {
 		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
@@ -409,7 +409,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		case "first":
 			log.Debugf("Using first address for %s : %v", host, addrs)
 		case "rnd":
-			idx = uint32(rand.Intn(int(l))) // nolint: gosec // we want fast not crypto
+			idx = uint32(rand.Intn(int(l))) //nolint:gosec // we want fast not crypto
 			log.Debugf("Using rnd address #%d for %s : %v", idx, host, addrs)
 		}
 	}
@@ -591,7 +591,7 @@ func GenerateRandomPayload(payloadSize int) []byte {
 
 // ReadFileForPayload reads the file from given input path.
 func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
-	data, err := ioutil.ReadFile(payloadFilePath)
+	data, err := os.ReadFile(payloadFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +620,7 @@ func GetUniqueUnixDomainPath(prefix string) string {
 	if prefix == "" {
 		prefix = "fortio-uds"
 	}
-	f, err := ioutil.TempFile(os.TempDir(), prefix)
+	f, err := os.CreateTemp(os.TempDir(), prefix)
 	if err != nil {
 		log.Errf("Unable to generate temp file with prefix %s: %v", prefix, err)
 		return "/tmp/fortio-default-uds"
@@ -728,20 +728,9 @@ func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	return err
 }
 
-// EscapeBytes returns printable string. Same as %q format without the
-// surrounding/extra "".
-func EscapeBytes(buf []byte) string {
-	e := fmt.Sprintf("%q", buf)
-	return e[1 : len(e)-1]
-}
-
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
 func DebugSummary(buf []byte, max int) string {
-	l := len(buf)
-	if l <= max+3 { // no point in shortening to add ... if we could return those 3
-		return EscapeBytes(buf)
-	}
-	max /= 2
-	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
+	// moved to jrpc package
+	return jrpc.DebugSummary(buf, max)
 }

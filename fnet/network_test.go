@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -229,7 +228,7 @@ func TestUdpEcho(t *testing.T) {
 		async := (i == 0)
 		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
 		port := addr.(*net.UDPAddr).Port
-		in := ioutil.NopCloser(strings.NewReader("ABCDEF"))
+		in := io.NopCloser(strings.NewReader("ABCDEF"))
 		var buf bytes.Buffer
 		dest := fmt.Sprintf("udp://localhost:%d", port)
 		out := bufio.NewWriter(&buf)
@@ -273,7 +272,7 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	// with these timings (!)
 	eofStopFlag := false
 	for i := 0; i < 2; i++ {
-		in := ioutil.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
 		var out ErroringWriter
 		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
 		eofStopFlag = true
@@ -749,24 +748,10 @@ func TestGeneratePayload(t *testing.T) {
 }
 
 func TestDebugSummary(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"12345678", "12345678"},
-		{"123456789", "123456789"},
-		{"1234567890", "1234567890"},
-		{"12345678901", "12345678901"},
-		{"123456789012", "12: 1234...9012"},
-		{"1234567890123", "13: 1234...0123"},
-		{"12345678901234", "14: 1234...1234"},
-		{"A\r\000\001\x80\nB", `A\r\x00\x01\x80\nB`},                   // escaping
-		{"A\r\000Xyyyyyyyyy\001\x80\nB", `17: A\r\x00X...\x01\x80\nB`}, // escaping
-	}
-	for _, tst := range tests {
-		if actual := fnet.DebugSummary([]byte(tst.input), 8); actual != tst.expected {
-			t.Errorf("Got '%s', expected '%s' for DebugSummary(%q)", actual, tst.expected, tst.input)
-		}
+	// Tested in new location, rest package but call once for coverage
+	str := fnet.DebugSummary([]byte{0, 1, 2}, 10)
+	if str != `\x00\x01\x02` {
+		t.Errorf("Unexpected escape: %q", str)
 	}
 }
 

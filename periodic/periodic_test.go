@@ -88,6 +88,7 @@ func (c *TestCount) Run(i int) (bool, string) {
 }
 
 func TestStart(t *testing.T) {
+	log.SetLogLevel(log.Verbose)
 	var count int64
 	var lock sync.Mutex
 	c := TestCount{&count, &lock}
@@ -397,11 +398,12 @@ func TestID(t *testing.T) {
 	startTime := time.Date(2001, time.January, 2, 3, 4, 5, 0, time.Local)
 	prefix := "2001-01-02-030405"
 	for _, tst := range tests {
-		o := RunnerResults{
-			StartTime: startTime,
-			Labels:    tst.labels,
+		o := RunnerOptions{
+			genTime: &startTime,
+			Labels:  tst.labels,
 		}
-		id := o.ID()
+		o.GenID()
+		id := o.ID
 		expected := prefix + tst.id
 		if id != expected {
 			t.Errorf("id: got %s, not as expected %s", id, expected)
@@ -544,5 +546,87 @@ func TestGetJitter(t *testing.T) {
 	}
 	if sum <= 60 {
 		t.Errorf("getJitter 6 got %v sum of abs value instead of expected > 60 at -1/+1", sum)
+	}
+}
+
+func TestEarlyAbort(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	c := TestCount{&count, &lock}
+	dur := 3 * time.Second
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   dur,
+	}
+	o.Normalize()
+	aborter := o.Stop
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	count = 0
+	// Early abort, with wait
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		aborter.Abort(true)
+		lock.Lock()
+		count -= 42
+		lock.Unlock()
+		wg.Done()
+	}()
+	// Let the above go routine run
+	time.Sleep(1 * time.Second)
+	// we don't want to see 42 yet
+	res := r.Run()
+	wg.Wait()
+	if count != -42 {
+		t.Errorf("Run did run despite pre abort: %d", count)
+	}
+	if res.ActualDuration != 0 {
+		t.Errorf("Run did run despite pre abort: %d", count)
+	}
+	if res.RequestedDuration != dur.String() {
+		t.Errorf("Run result input should be copied even when aborted %q vs %v", res.RequestedDuration, dur)
+	}
+}
+
+func TestWAbortWait(t *testing.T) {
+	var count int64
+	var lock sync.Mutex
+
+	c := TestCount{&count, &lock}
+	dur := 3 * time.Second
+	o := RunnerOptions{
+		QPS:        -1, // max qps
+		NumThreads: 4,
+		Duration:   dur,
+	}
+	o.Normalize()
+	aborter := o.Stop
+	r := NewPeriodicRunner(&o)
+	r.Options().MakeRunners(&c)
+	var afterAbortCount int64
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.LogVf("Calling abort with wait true after 1 sec")
+		aborter.Abort(true)
+		lock.Lock()
+		afterAbortCount = count
+		lock.Unlock()
+		wg.Done()
+	}()
+	res := r.Run()
+	wg.Wait()
+	if count == 0 {
+		t.Error("Run didn't run at all despite deferred count")
+	}
+	if count != afterAbortCount {
+		t.Errorf("mismatch between just after abort and final count %d %d", count, afterAbortCount)
+	}
+	if res.DurationHistogram.Count != count {
+		t.Errorf("mismatch between result object and internal count %d %d", count, res.DurationHistogram.Count)
 	}
 }

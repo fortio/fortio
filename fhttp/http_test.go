@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -635,7 +635,7 @@ func TestEchoBack(t *testing.T) {
 		t.Fatalf("post form err %v", err)
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("readall err %v", err)
 	}
@@ -1540,8 +1540,8 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ValidateManyUUID is an http server handler validating /{uuid}?uuid={uuid},
-//   including payload in JSON following the format: ["{uuid}","{uuid}"]
+// ValidateManyUUID is an http server handler validating `/{uuid}?uuid={uuid}`,
+// including payload in JSON following the format: ["{uuid}","{uuid}"].
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, "ValidateManyUUID")

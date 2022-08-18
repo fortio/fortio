@@ -74,12 +74,12 @@ func usage(w io.Writer, msgs ...interface{}) {
 	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
-		"where command is one of: load (load testing), server (starts ui, http-echo,",
-		" redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo",
-		" server), report (report only UI server), redirect (only the redirect server),",
-		" proxies (only the -M and -P configured proxies), grpcping (grpc client),",
-		" or curl (single URL debug), or nc (single tcp or udp:// connection),",
-		" or version (prints the version).",
+		"where command is one of: load (load testing), server (starts ui, rest api,",
+		" http-echo, redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only",
+		" the tcp-echo server), report (report only UI server), redirect (only the",
+		" redirect server), proxies (only the -M and -P configured proxies), grpcping",
+		" (grpc client), or curl (single URL debug), or nc (single tcp or udp://",
+		" connection), or version (prints the full version and build details).",
 		"where target is a url (http load tests) or host:port (grpc health test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
@@ -183,7 +183,7 @@ var (
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
-// nolint: funlen,gocyclo // well yes it's fairly big and lotsa ifs.
+//nolint:funlen,gocyclo // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
@@ -348,7 +348,7 @@ func fortioNC() {
 	}
 }
 
-// nolint: funlen, gocognit // maybe refactor/shorten later.
+//nolint:funlen, gocognit // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
@@ -473,7 +473,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
-	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint: nestif // but probably should breakup this function
+	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint:nestif // but probably should breakup this function
 		var j []byte
 		j, err = json.MarshalIndent(res, "", "  ")
 		if err != nil {
@@ -485,7 +485,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			jsonFileName = "stdout"
 		} else {
 			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID()+".json")
+				jsonFileName = path.Join(*dataDirFlag, rr.ID+".json")
 			}
 			f, err = os.Create(jsonFileName)
 			if err != nil {

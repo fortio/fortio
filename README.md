@@ -28,7 +28,8 @@ Fortio is quite mature and very stable with no known major bugs (lots of possibl
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
 Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
-As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz)
+As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
+Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
 
@@ -51,13 +52,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.34.1/fortio-linux_amd64-1.34.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.35.0/fortio-linux_amd64-1.35.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.34.1/fortio_1.34.1_amd64.deb
-dpkg -i fortio_1.34.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.35.0/fortio_1.35.0_amd64.deb
+dpkg -i fortio_1.35.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.34.1/fortio-1.34.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.35.0/fortio-1.35.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -67,7 +68,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.34.1/fortio_win_1.34.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.35.0/fortio_win_1.35.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -115,13 +116,14 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.34.1 usage:
-where command is one of: load (load testing), server (starts ui, http-echo,
- redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only the tcp-echo
- server), report (report only UI server), redirect (only the redirect server),
- proxies (only the -M and -P configured proxies), grpcping (grpc client),
- or curl (single URL debug), or nc (single tcp or udp:// connection),
- or version (prints the version).
+Φορτίο 1.35.0 usage:
+    fortio command [flags] target
+where command is one of: load (load testing), server (starts ui, rest api,
+ http-echo, redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only
+ the tcp-echo server), report (report only UI server), redirect (only the
+ redirect server), proxies (only the -M and -P configured proxies), grpcping
+ (grpc client), or curl (single URL debug), or nc (single tcp or udp://
+ connection), or version (prints the full version and build details).
 where target is a url (http load tests) or host:port (grpc health test).
 flags are:
   -H header
@@ -254,6 +256,9 @@ true)
 is to use duration (-t). Default is 1 when used as grpc ping count.
   -nc-dont-stop-on-eof
         in netcat (nc) mode, don't abort as soon as remote side closes
+  -no-reresolve
+        Keep the initial DNS resolution and don't re-resolve when making new
+connections (because of error or reuse limit reached)
   -nocatchup
         set to exact fixed qps and prevent fortio from trying to catchup when
 the target fails to keep up temporarily
@@ -370,7 +375,8 @@ You can set a default value for all these by passing `-echo-server-default-param
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
   * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
-  * `/fortio/rest/stop` stops all current run or by run id.
+  * `/fortio/rest/stop` stops all current run or by run id (passing `runid=` query argument).
+  * `/fortio/rest/status` lists the current runs (or the options of a single one if `runid` is passed).
 
 The `report` mode is a readonly subset of the above directly on `/`.
 
@@ -388,11 +394,12 @@ Fortio X.Y.Z grpc 'ping' server listening on tcp [::]:8079
 Fortio X.Y.Z https redirector server listening on tcp [::]:8081
 Fortio X.Y.Z http-echo server listening on tcp [::]:8080
 Data directory is /Users/ldemailly/dev/fortio
-UI started - visit:
-http://localhost:8080/fortio/
-(or any host/ip reachable on this server)
-14:11:05 I fortio_main.go:285> Note: not using dynamic flag watching (use -config to set watch directory)
-14:11:05 I fortio_main.go:293> All fortio X.Y.Z unknown goM.m.p servers started!
+REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop
+	 UI started - visit:
+		http://localhost:8080/fortio/
+	 (or any host/ip reachable on this server)
+I fortio_main.go:285> Note: not using dynamic flag watching (use -config to set watch directory)
+I fortio_main.go:293> All fortio X.Y.Z  goM.m.p arm64 darwin servers started!
 ```
 
 ### Sample of the graphing UI

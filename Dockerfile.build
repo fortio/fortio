@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.18.4
+FROM golang:1.18.5
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -22,5 +22,8 @@ RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
     fi
 
 WORKDIR /build
-VOLUME /build
 COPY .golangci.yml .
+VOLUME /build
+RUN useradd -m build -d /build
+RUN chown -R build:build /build
+USER build
