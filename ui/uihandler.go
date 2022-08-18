@@ -96,7 +96,8 @@ const (
 )
 
 // Handler is the main UI handler creating the web forms and processing them.
-// nolint: funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
+//
+//nolint:funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	fhttp.LogRequest(r, "UI")
 	mode := menu
@@ -449,7 +450,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 	v := url.Values{}
 	v.Set("url", u)
 	// TODO: better context?
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/sync-function?"+v.Encode(), nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/sync-function?"+v.Encode(), nil)
 	code := http.StatusOK // default
 	w := outHTTPWriter{Out: out, CodePtr: &code}
 	SyncHandler(w, req)
@@ -597,7 +598,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	q := bu.Query()
 	if q.Get("marker") == l.NextMarker {
 		log.Errf("Loop with same marker %+v", bu)
-		w.WriteHeader(508 /* Loop Detected */)
+		w.WriteHeader(http.StatusLoopDetected)
 		return true
 	}
 	q.Set("marker", l.NextMarker)
@@ -613,7 +614,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
 		_, _ = w.Write([]byte(fmt.Sprintf("❌ http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
-		w.WriteHeader(424 /*Failed Dependency*/)
+		w.WriteHeader(http.StatusFailedDependency)
 		return false
 	}
 	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
@@ -643,10 +644,10 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	code1, data1, _ := client.Fetch()
 	if code1 != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
-		w.WriteHeader(424 /*Failed Dependency*/)
+		w.WriteHeader(http.StatusFailedDependency)
 		return
 	}
-	err = ioutil.WriteFile(localPath, data1, 0o644) // nolint: gosec // we do want 644
+	err = ioutil.WriteFile(localPath, data1, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		_, _ = w.Write([]byte("<td>❌ skipped (write error)"))

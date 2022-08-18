@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -182,7 +182,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 }
 
 // RESTRunHandler is api version of UI submit handler.
-func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
+func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	fhttp.LogRequest(r, "REST Run Api call")
 	w.Header().Set("Content-Type", "application/json")
 	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
@@ -317,17 +317,17 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { // nolint: funlen
 	if async {
 		ro.GenID() // Needed to reply the id, will be reused in Normalize() later as already set
 		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID, ResultURL: ID2URL(r, ro.ID)}
-		reply.Message = "started" // nolint: goconst
+		reply.Message = "started" //nolint:goconst
 		err := jrpc.ReplyOk(w, &reply)
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
 		}
-		// nolint: errcheck // all cases handled inside for rapi callers
+		//nolint:errcheck // all cases handled inside for rapi callers
 		// returned values are for the ui/uihandler.go caller.
 		go Run(nil, r, jd, runner, url, &ro, httpopts, false)
 		return
 	}
-	// nolint: errcheck // all cases handled inside for rapi callers
+	//nolint:errcheck // all cases handled inside for rapi callers
 	Run(w, r, jd, runner, url, &ro, httpopts, false)
 }
 
@@ -340,7 +340,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	var res periodic.HasRunnerResult
 	var err error
 	var aborter *periodic.Aborter
-	if runner == ModeGRPC { // nolint: nestif
+	if runner == ModeGRPC { //nolint:nestif
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
@@ -401,7 +401,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	}
 	json, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err) //nolint: gocritic // gocritic doesn't know fortio's log.Fatalf does pani
+		log.Fatalf("Unable to json serialize result: %v", err) //nolint:gocritic // gocritic doesn't know fortio's log.Fatalf does pani
 	}
 	jsonStr := string(json)
 	log.LogVf("Serialized to %s", jsonStr)
@@ -544,7 +544,7 @@ func SaveJSON(name string, json []byte) string {
 	}
 	name += ".json"
 	log.Infof("Saving %s in %s", name, dataDir)
-	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644) // nolint: gosec // we do want 644
+	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
 		return ""

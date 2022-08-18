@@ -90,7 +90,7 @@ func CopyHeaders(req, r *http.Request, all bool) {
 // MakeSimpleRequest makes a new request for url but copies trace headers from input request r.
 // or all the headers if copyAllHeaders is true.
 func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.Request {
-	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, nil)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
 		return nil

@@ -47,43 +47,43 @@ func (s *endpointTestSuite) SetupTest() {
 }
 
 func (s *endpointTestSuite) TestReturnsAll() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_static_float", "some_dyn_stringslice", "some_dyn_json"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyChanged() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag?only_changed=true", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag?only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_dyn_stringslice"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyStatic() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag?type=static", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag?type=static", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string", "some_static_float"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyDynamic() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag?type=dynamic", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag?type=dynamic", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_dyn_stringslice", "some_dyn_json"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyDynamicAndChanged() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag?type=dynamic&only_changed=true", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag?type=dynamic&only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_dyn_stringslice"}, list)
 }
 
 func (s *endpointTestSuite) TestReturnsOnlyStaticAndChanged() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag?type=static&only_changed=true", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag?type=static&only_changed=true", nil)
 	list := s.processFlagSetJSONResponse(req)
 	s.assertListContainsOnly([]string{"some_static_string"}, list)
 }
 
 func (s *endpointTestSuite) TestCorrectlyRepresentsResources() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag", nil)
 	list := s.processFlagSetJSONResponse(req)
 
 	assert.Equal(s.T(),
@@ -113,7 +113,7 @@ func (s *endpointTestSuite) TestCorrectlyRepresentsResources() {
 }
 
 func (s *endpointTestSuite) TestServesHTML() {
-	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/debug/dflag", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/dflag", nil)
 	req.Header.Add("Accept", "application/xhtml+xml")
 	resp := httptest.NewRecorder()
 	s.endpoint.ListFlags(resp, req)

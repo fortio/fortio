@@ -96,7 +96,7 @@ func dnsValidator(inp string) error {
 	return fmt.Errorf("invalid value for -dns-method, should be one of cached-rr, first, rnd or rr")
 }
 
-// nolint: gochecknoinits // needed here (unit change)
+//nolint:gochecknoinits // needed here (unit change)
 func init() {
 	ChangeMaxPayloadSize(MaxPayloadSize)
 	rand.Seed(time.Now().UnixNano())
@@ -112,7 +112,7 @@ func ChangeMaxPayloadSize(newMaxPayloadSize int) {
 	Payload = make([]byte, MaxPayloadSize)
 	// One shared and 'constant' (over time) but pseudo random content for payload
 	// (to defeat compression).
-	_, err := rand.Read(Payload) // nolint: gosec // We don't need crypto strength here, just low cpu and speed
+	_, err := rand.Read(Payload) //nolint:gosec // We don't need crypto strength here, just low cpu and speed
 	if err != nil {
 		log.Errf("Error changing payload size, read for %d random payload failed: %v", newMaxPayloadSize, err)
 	}
@@ -410,7 +410,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		case "first":
 			log.Debugf("Using first address for %s : %v", host, addrs)
 		case "rnd":
-			idx = uint32(rand.Intn(int(l))) // nolint: gosec // we want fast not crypto
+			idx = uint32(rand.Intn(int(l))) //nolint:gosec // we want fast not crypto
 			log.Debugf("Using rnd address #%d for %s : %v", idx, host, addrs)
 		}
 	}

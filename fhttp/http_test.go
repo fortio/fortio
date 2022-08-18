@@ -1540,8 +1540,8 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ValidateManyUUID is an http server handler validating /{uuid}?uuid={uuid},
-//   including payload in JSON following the format: ["{uuid}","{uuid}"]
+// ValidateManyUUID is an http server handler validating `/{uuid}?uuid={uuid}`,
+// including payload in JSON following the format: ["{uuid}","{uuid}"].
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, "ValidateManyUUID")

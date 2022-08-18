@@ -23,7 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -133,7 +133,7 @@ func Send(url string, jsonPayload []byte) (int, []byte, error) {
 	if err != nil {
 		return -1, res, err
 	}
-	res, err = ioutil.ReadAll(resp.Body)
+	res, err = io.ReadAll(resp.Body)
 	resp.Body.Close()
 	return resp.StatusCode, res, err
 }

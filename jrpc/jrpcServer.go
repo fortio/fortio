@@ -16,7 +16,7 @@ package jrpc // import "fortio.org/fortio/jrpc"
 
 // Server side additional code (compared to restClient.go).
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -74,7 +74,7 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 }
 
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}

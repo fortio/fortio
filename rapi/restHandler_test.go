@@ -81,7 +81,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 	return r
 }
 
-// nolint: funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
+//nolint:funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestHTTPRunnerRESTApi(t *testing.T) {
 	// log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)
@@ -339,7 +339,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 }
 
-// nolint: funlen
+//nolint:funlen
 func TestRESTStopTimeBased(t *testing.T) {
 	log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)

@@ -136,7 +136,7 @@ func (d *Testify) Run(t *testing.T, suite hasT) {
 	}
 	for i := 0; i < methodFinder.NumMethod(); i++ {
 		method := methodFinder.Method(i)
-		// nolint: staticcheck // consider fixing later for perf but this is just to run a few tests.
+		//nolint:staticcheck // consider fixing later for perf but this is just to run a few tests.
 		if ok, _ := regexp.MatchString("^Test", method.Name); !ok {
 			continue
 		}

@@ -183,7 +183,7 @@ var (
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
-// nolint: funlen,gocyclo // well yes it's fairly big and lotsa ifs.
+//nolint:funlen,gocyclo // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
@@ -348,7 +348,7 @@ func fortioNC() {
 	}
 }
 
-// nolint: funlen, gocognit // maybe refactor/shorten later.
+//nolint:funlen, gocognit // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
@@ -473,7 +473,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		1000.*rr.DurationHistogram.Avg,
 		rr.ActualQPS)
 	jsonFileName := *jsonFlag
-	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint: nestif // but probably should breakup this function
+	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint:nestif // but probably should breakup this function
 		var j []byte
 		j, err = json.MarshalIndent(res, "", "  ")
 		if err != nil {

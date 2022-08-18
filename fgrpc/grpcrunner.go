@@ -126,7 +126,8 @@ type GRPCRunnerOptions struct {
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
-// nolint: funlen, gocognit
+//
+//nolint:funlen, gocognit
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Streams < 1 {
 		o.Streams = 1
@@ -176,7 +177,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 		grpcstate[i].Ping = o.UsePing
 		var err error
-		if o.UsePing { // nolint: nestif
+		if o.UsePing { //nolint:nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)

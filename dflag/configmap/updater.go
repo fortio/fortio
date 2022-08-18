@@ -161,7 +161,7 @@ func (u *Updater) watchForUpdates() {
 		select {
 		case event := <-u.watcher.Events:
 			log.LogVf("ConfigMap got fsnotify %v ", event)
-			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) { // nolint: nestif
+			if event.Name == u.dirPath || event.Name == path.Join(u.dirPath, k8sDataSymlink) { //nolint:nestif
 				// case of the whole directory being re-symlinked
 				switch event.Op {
 				case fsnotify.Create:

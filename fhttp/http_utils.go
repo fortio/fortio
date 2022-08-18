@@ -190,7 +190,7 @@ func ParseChunkSize(inp []byte) (int, int) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits { // nolint: nestif
+		if inDigits { //nolint:nestif
 			b := toUpper(inp[off])
 			var digit int
 			if b >= 'A' && b <= 'F' {
@@ -287,7 +287,7 @@ func generateStatus(status string) int {
 		codes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", status, res, i, codes[i])
@@ -356,7 +356,7 @@ func generateSize(sizeInput string) (size int) {
 		sizes[i] = s
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", sizeInput, res, i, sizes[i])
@@ -429,7 +429,7 @@ func generateDelay(delay string) time.Duration {
 		delays[i] = d
 		i++
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	for i, v := range weights {
 		if res <= v {
 			log.Debugf("[0.-100.[ for %s roll %f got #%d -> %d", delay, res, i, delays[i])
@@ -457,7 +457,7 @@ func generateSingleProbability(value string, name string) bool {
 		log.Debugf("error %v parsing %s=%q treating as true", err, name, value)
 		return true
 	}
-	res := 100. * rand.Float32() // nolint: gosec // we want fast not crypto
+	res := 100. * rand.Float32() //nolint:gosec // we want fast not crypto
 	log.Debugf("%s=%f rolled %f", name, p, res)
 	return res <= float32(p)
 }

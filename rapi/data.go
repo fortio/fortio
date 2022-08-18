@@ -16,7 +16,7 @@ package rapi // import "fortio.org/fortio/rapi"
 
 import (
 	"bytes"
-	"crypto/md5" // nolint: gosec // md5 is mandated by tsv format, not our choice
+	"crypto/md5" //nolint:gosec // md5 is mandated by tsv format, not our choice
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -89,7 +89,7 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 				log.Errf("Open error for %s: %v", fname, err)
 				continue
 			}
-			// nolint: gosec // This isn't a crypto hash, more like a checksum - and mandated by the spec above, not our choice
+			//nolint:gosec // This isn't a crypto hash, more like a checksum - and mandated by the spec above, not our choice
 			h := md5.New()
 			var sz int64
 			if sz, err = io.Copy(h, f); err != nil {

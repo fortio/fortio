@@ -249,7 +249,7 @@ func (r *RunnerResults) Result() *RunnerResults {
 
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
-type PeriodicRunner interface { // nolint: revive
+type PeriodicRunner interface { //nolint:revive
 	// Starts the run. Returns actual QPS and Histogram of function durations.
 	Run() RunnerResults
 	// Returns the options normalized by constructor - do not mutate
@@ -556,7 +556,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	if log.Log(log.Warning) {
 		_, _ = fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
 	}
-	if useQPS { // nolint: nestif
+	if useQPS { //nolint:nestif
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
@@ -697,7 +697,8 @@ func (a *fileAccessLogger) Info() string {
 }
 
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
-// nolint: gocognit, gocyclo // we should try to simplify it though.
+//
+//nolint:gocognit, gocyclo // we should try to simplify it though.
 func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *stats.Histogram,
 	numCalls int64, start time.Time, r *periodicRunner,
 ) {
@@ -751,7 +752,7 @@ MainLoop:
 			errTimes.Record(latency)
 		}
 		// if using QPS / pre calc expected call # mode:
-		if useQPS { // nolint: nestif
+		if useQPS { //nolint:nestif
 			for {
 				i++
 				if (useExactly || hasDuration) && i >= numCalls {
@@ -824,7 +825,7 @@ func getJitter(t time.Duration) time.Duration {
 	if i <= 0 {
 		return time.Duration(0)
 	}
-	j := rand.Int63n(2*i+1) - i // nolint:gosec // trying to be fast not crypto secure here
+	j := rand.Int63n(2*i+1) - i //nolint:gosec // trying to be fast not crypto secure here
 	return time.Duration(j)
 }
 

@@ -64,7 +64,7 @@ var (
 	contentLengthHeader   = []byte("\r\ncontent-length:")
 	connectionCloseHeader = []byte("\r\nconnection: close")
 	chunkedHeader         = []byte("\r\nTransfer-Encoding: chunked")
-	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano()))) // nolint: gosec // we want fast not crypto
+	rander                = NewSyncReader(rand.New(rand.NewSource(time.Now().UnixNano()))) //nolint:gosec // we want fast not crypto
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
@@ -319,7 +319,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
-	// nolint: noctx // todo: confirm timeout set later replaces need for a context
+	//nolint:noctx // todo: confirm timeout set later replaces need for a context
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
@@ -612,7 +612,7 @@ func (c *FastClient) Close() {
 // NewFastClient makes a basic, efficient http 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) (Fetcher, error) { // nolint: funlen
+func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	method := o.Method()
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
@@ -828,7 +828,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 		log.Errf("[%d] Short write to %v : %d instead of %d", c.id, c.dest, n, len(c.req))
 		return c.returnRes()
 	}
-	if !c.keepAlive && c.halfClose { // nolint: nestif
+	if !c.keepAlive && c.halfClose { //nolint:nestif
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {
@@ -856,7 +856,8 @@ func codeIsOK(code int) bool {
 }
 
 // Response reading:
-// nolint: nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
+//
+//nolint:nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := len(c.buffer)
 	parsedHeaders := false
@@ -1069,7 +1070,7 @@ func generateReuseThreshold(min int, max int) int {
 		return min
 	}
 
-	return min + rand.Intn(max-min+1) // nolint: gosec // we want fast not crypto
+	return min + rand.Intn(max-min+1) //nolint:gosec // we want fast not crypto
 }
 
 // Resolve the DNS hostname to ip address or assign the override IP.

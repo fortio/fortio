@@ -63,7 +63,7 @@ type Response struct {
 	ConcatenatedStrings string
 }
 
-// nolint: funlen,gocognit,maintidx // lots of tests using same server setup
+//nolint:funlen,gocognit,maintidx // lots of tests using same server setup
 func TestJPRC(t *testing.T) {
 	prev := jrpc.SetCallTimeout(5 * time.Second)
 	if prev != 60*time.Second {
@@ -301,7 +301,7 @@ func (ErrReader) Read(p []byte) (n int, err error) {
 }
 
 func TestHandleCallError(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/", ErrReader{})
+	r, _ := http.NewRequest(http.MethodGet, "/", ErrReader{})
 	_, err := jrpc.HandleCall[jrpc.ServerReply](nil, r)
 	if err == nil {
 		t.Errorf("expected error, got nil")

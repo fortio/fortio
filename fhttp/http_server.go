@@ -291,7 +291,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string // nolint: prealloc // header is multi valued map,...
+	var keys []string //nolint:prealloc // header is multi valued map,...
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
