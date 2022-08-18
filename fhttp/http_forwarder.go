@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/textproto"
@@ -60,7 +59,7 @@ type MultiServerConfig struct {
 
 func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Request {
 	url := baseURL + r.RequestURI
-	bodyReader := ioutil.NopCloser(bytes.NewReader(data))
+	bodyReader := io.NopCloser(bytes.NewReader(data))
 	req, err := http.NewRequestWithContext(r.Context(), r.Method, url, bodyReader)
 	if err != nil {
 		log.Warnf("new mirror request error for %q: %v", url, err)
@@ -110,7 +109,7 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 	if log.LogVerbose() {
 		LogRequest(r, mcfg.Name)
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Errf("Error reading on %v: %v", r, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

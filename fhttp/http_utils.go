@@ -22,9 +22,9 @@ import (
 	"flag"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -65,7 +65,7 @@ func (to *TLSOptions) TLSClientConfig() (*tls.Config, error) {
 	}
 	if len(to.CACert) > 0 {
 		// Load CA cert
-		caCert, err := ioutil.ReadFile(to.CACert)
+		caCert, err := os.ReadFile(to.CACert)
 		if err != nil {
 			log.Errf("Unable to read CA from %v: %v", to.CACert, err)
 			return nil, err
@@ -485,7 +485,7 @@ func RoundDuration(d time.Duration) time.Duration {
 var gzPool = sync.Pool{
 	New: func() interface{} {
 		log.LogVf("Pool new gzip")
-		w := gzip.NewWriter(ioutil.Discard)
+		w := gzip.NewWriter(io.Discard)
 		return w
 	},
 }

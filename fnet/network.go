@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -592,7 +591,7 @@ func GenerateRandomPayload(payloadSize int) []byte {
 
 // ReadFileForPayload reads the file from given input path.
 func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
-	data, err := ioutil.ReadFile(payloadFilePath)
+	data, err := os.ReadFile(payloadFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +620,7 @@ func GetUniqueUnixDomainPath(prefix string) string {
 	if prefix == "" {
 		prefix = "fortio-uds"
 	}
-	f, err := ioutil.TempFile(os.TempDir(), prefix)
+	f, err := os.CreateTemp(os.TempDir(), prefix)
 	if err != nil {
 		log.Errf("Unable to generate temp file with prefix %s: %v", prefix, err)
 		return "/tmp/fortio-default-uds"

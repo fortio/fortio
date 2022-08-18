@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -74,7 +74,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			r = &nr
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -228,7 +228,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 func DebugHandlerTemplate(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
 	hostname, _ := os.Hostname()
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Errf("Error reading %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -310,7 +310,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			first = false
 		}
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		/*
 			expected := r.ContentLength

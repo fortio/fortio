@@ -9,7 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -110,7 +110,7 @@ func (u *Updater) Stop() error {
 }
 
 func (u *Updater) readAll(dynamicOnly bool) error {
-	files, err := ioutil.ReadDir(u.dirPath)
+	files, err := os.ReadDir(u.dirPath)
 	if err != nil {
 		return fmt.Errorf("dflag: updater initialization: %w", err)
 	}
@@ -145,7 +145,7 @@ func (u *Updater) readFlagFile(fullPath string, dynamicOnly bool) error {
 	if dynamicOnly && !dflag.IsFlagDynamic(flag) {
 		return errFlagNotDynamic
 	}
-	content, err := ioutil.ReadFile(fullPath)
+	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}

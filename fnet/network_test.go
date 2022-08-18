@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -229,7 +228,7 @@ func TestUdpEcho(t *testing.T) {
 		async := (i == 0)
 		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
 		port := addr.(*net.UDPAddr).Port
-		in := ioutil.NopCloser(strings.NewReader("ABCDEF"))
+		in := io.NopCloser(strings.NewReader("ABCDEF"))
 		var buf bytes.Buffer
 		dest := fmt.Sprintf("udp://localhost:%d", port)
 		out := bufio.NewWriter(&buf)
@@ -273,7 +272,7 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	// with these timings (!)
 	eofStopFlag := false
 	for i := 0; i < 2; i++ {
-		in := ioutil.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
 		var out ErroringWriter
 		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
 		eofStopFlag = true

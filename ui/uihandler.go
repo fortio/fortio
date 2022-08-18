@@ -24,7 +24,6 @@ import (
 	"html"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -647,7 +646,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 		w.WriteHeader(http.StatusFailedDependency)
 		return
 	}
-	err = ioutil.WriteFile(localPath, data1, 0o644) //nolint:gosec // we do want 644
+	err = os.WriteFile(localPath, data1, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s: %v", localPath, err)
 		_, _ = w.Write([]byte("<td>❌ skipped (write error)"))

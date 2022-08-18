@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -35,7 +34,7 @@ import (
 
 // DataList returns the .json files/entries in data dir.
 func DataList() (dataList []string) {
-	files, err := ioutil.ReadDir(dataDir)
+	files, err := os.ReadDir(dataDir)
 	if err != nil {
 		log.Critf("Can list directory %s: %v", dataDir, err)
 		return

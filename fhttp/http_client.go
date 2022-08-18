@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -409,9 +408,9 @@ func (c *Client) Fetch() (int, []byte, int) {
 		}
 		bodyBytes := []byte(body)
 		c.req.ContentLength = int64(len(bodyBytes))
-		c.req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+		c.req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	} else if len(c.body) > 0 {
-		c.req.Body = ioutil.NopCloser(bytes.NewReader(c.body))
+		c.req.Body = io.NopCloser(bytes.NewReader(c.body))
 	}
 
 	resp, err := c.client.Do(c.req)
@@ -427,7 +426,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 			log.Debugf("[%d] For URL %s, received:\n%s", c.id, c.url, data)
 		}
 	}
-	data, err = ioutil.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		log.Errf("[%d] Unable to read response for %s : %v", c.id, c.url, err)

@@ -16,7 +16,6 @@ package fnet_test // really is a logger test but need to avoid circular dependen
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -31,7 +30,7 @@ func init() {
 }
 
 func TestDynamicLogLevel(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "fortio-logger-test")
+	tmpDir, err := os.MkdirTemp("", "fortio-logger-test")
 	if err != nil {
 		t.Fatalf("unexpected error getting tempdir %v", err)
 	}
@@ -48,7 +47,7 @@ func TestDynamicLogLevel(t *testing.T) {
 	defer u.Stop()
 	fName := path.Join(pDir, "loglevel")
 	// Test also the new normalization (space trimmimg and captitalization)
-	if err = ioutil.WriteFile(fName, []byte(" InFO\n\n"), 0o644); err != nil {
+	if err = os.WriteFile(fName, []byte(" InFO\n\n"), 0o644); err != nil {
 		t.Fatalf("unable to write %v: %v", fName, err)
 	}
 	time.Sleep(1 * time.Second)

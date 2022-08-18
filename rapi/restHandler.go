@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -185,7 +184,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	fhttp.LogRequest(r, "REST Run Api call")
 	w.Header().Set("Content-Type", "application/json")
-	data, err := ioutil.ReadAll(r.Body) // must be done before calling FormValue
+	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
 		log.Errf("Error reading %v", err)
 		Error(w, "body read error", err)
@@ -544,7 +543,7 @@ func SaveJSON(name string, json []byte) string {
 	}
 	name += ".json"
 	log.Infof("Saving %s in %s", name, dataDir)
-	err := ioutil.WriteFile(path.Join(dataDir, name), json, 0o644) //nolint:gosec // we do want 644
+	err := os.WriteFile(path.Join(dataDir, name), json, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
 		log.Errf("Unable to save %s in %s: %v", name, dataDir, err)
 		return ""
