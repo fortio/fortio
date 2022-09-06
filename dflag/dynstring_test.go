@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"fortio.org/assert"
 )
 
 const notifierTimeout = 50 * time.Millisecond

@@ -3,6 +3,7 @@ module fortio.org/fortio
 go 1.18
 
 require (
+	fortio.org/assert v1.1.0
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"fortio.org/assert"
 )
 
 func TestDynBool_SetAndGet(t *testing.T) {

@@ -6,6 +6,8 @@ package dflag
 import (
 	"flag"
 	"testing"
+
+	"fortio.org/assert"
 )
 
 func TestFileFlag_ReadsWithADefault(t *testing.T) {
