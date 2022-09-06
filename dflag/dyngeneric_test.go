@@ -6,6 +6,8 @@ package dflag
 import (
 	"flag"
 	"testing"
+
+	"fortio.org/assert"
 )
 
 // Additional generic tests, most tests are covered by the old per type tests.

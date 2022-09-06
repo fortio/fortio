@@ -12,23 +12,18 @@ import (
 	"sort"
 	"testing"
 
+	"fortio.org/assert"
 	"fortio.org/fortio/dflag"
 )
 
 type endpointTestSuite struct {
-	dflag.TestSuite
+	assert.TestSuite
 	flagSet  *flag.FlagSet
 	endpoint *FlagsEndpoint
 }
 
-var (
-	assert  = dflag.Testify{}
-	require = assert
-	suite   = assert
-)
-
 func TestEndpointTestSuite(t *testing.T) {
-	suite.Run(t, &endpointTestSuite{})
+	assert.Run(t, &endpointTestSuite{})
 }
 
 func (s *endpointTestSuite) SetupTest() {
@@ -117,8 +112,8 @@ func (s *endpointTestSuite) TestServesHTML() {
 	req.Header.Add("Accept", "application/xhtml+xml")
 	resp := httptest.NewRecorder()
 	s.endpoint.ListFlags(resp, req)
-	require.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
-	require.Contains(s.T(), resp.Header().Get("Content-Type"), "html", "must indicate html in content type")
+	assert.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
+	assert.Contains(s.T(), resp.Header().Get("Content-Type"), "html", "must indicate html in content type")
 
 	out := resp.Body.String()
 	assert.Contains(s.T(), out, "<html>")
@@ -128,10 +123,10 @@ func (s *endpointTestSuite) TestServesHTML() {
 func (s *endpointTestSuite) processFlagSetJSONResponse(req *http.Request) *flagSetJSON {
 	resp := httptest.NewRecorder()
 	s.endpoint.ListFlags(resp, req)
-	require.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
-	require.Equal(s.T(), "application/json", resp.Header().Get("Content-Type"), "type must be indicated")
+	assert.Equal(s.T(), http.StatusOK, resp.Code, "dflag list request must return 200 OK")
+	assert.Equal(s.T(), "application/json", resp.Header().Get("Content-Type"), "type must be indicated")
 	ret := &flagSetJSON{}
-	require.NoError(s.T(), json.Unmarshal(resp.Body.Bytes(), ret), "unmarshaling JSON response must succeed")
+	assert.NoError(s.T(), json.Unmarshal(resp.Body.Bytes(), ret), "unmarshaling JSON response must succeed")
 	return ret
 }
 
@@ -141,7 +136,7 @@ func (s *endpointTestSuite) assertListContainsOnly(flagList []string, list *flag
 		existing = append(existing, f.Name)
 	}
 	sort.Strings(flagList)
-	require.EqualValues(s.T(), flagList, existing, "expected set of listed flags must match")
+	assert.EqualValues(s.T(), flagList, existing, "expected set of listed flags must match")
 }
 
 func findFlagInFlagSetJSON(flagName string, list *flagSetJSON) *flagJSON {

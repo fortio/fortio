@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"fortio.org/assert"
 )
 
 var defaultJSON = &outerJSON{

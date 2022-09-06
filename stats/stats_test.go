@@ -22,10 +22,9 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
-	"runtime"
-	"strings"
 	"testing"
 
+	"fortio.org/assert"
 	"fortio.org/fortio/log"
 )
 
@@ -236,41 +235,21 @@ func TestHistogramData(t *testing.T) {
 	percs := []float64{0, 1, 10, 25, 40, 50, 60, 70, 80, 90, 99, 100}
 	e := h.Export().CalcPercentiles(percs)
 	e.Print(os.Stdout, "TestHistogramData")
-	CheckEquals(t, int64(10), e.Count, "10 data points")
-	CheckEquals(t, 1.9, e.Avg, "avg should be 2")
-	CheckEquals(t, e.Percentiles[0], Percentile{0, -1}, "p0 should be -1 (min)")
-	CheckEquals(t, e.Percentiles[1], Percentile{1, -1}, "p1 should be -1 (min)")
-	CheckEquals(t, e.Percentiles[2], Percentile{10, -1}, "p10 should be 1 (1/10 at min)")
-	CheckEquals(t, e.Percentiles[3], Percentile{25, -0.5}, "p25 should be half between -1 and 0")
-	CheckEquals(t, e.Percentiles[4], Percentile{40, 0}, "p40 should still be 0 (4/10 data pts at 0)")
-	CheckEquals(t, e.Percentiles[5], Percentile{50, 1}, "p50 should 1 (5th/10 point is 1)")
-	CheckEquals(t, e.Percentiles[6], Percentile{60, 2}, "p60 should 2 (6th/10 point is 2)")
-	CheckEquals(t, e.Percentiles[7], Percentile{70, 3}, "p70 should 3 (7th/10 point is 3)")
-	CheckEquals(t, e.Percentiles[8], Percentile{80, 4}, "p80 should 4 (8th/10 point is 4)")
-	CheckEquals(t, e.Percentiles[9], Percentile{90, 4.5}, "p90 should between 4 and 5 (2 points in bucket)")
-	CheckEquals(t, e.Percentiles[10], Percentile{99, 4.95}, "p99")
-	CheckEquals(t, e.Percentiles[11], Percentile{100, 5}, "p100 should 5 (10th/10 point is 5 and max is 5)")
+	assert.CheckEquals(t, int64(10), e.Count, "10 data points")
+	assert.CheckEquals(t, 1.9, e.Avg, "avg should be 2")
+	assert.CheckEquals(t, e.Percentiles[0], Percentile{0, -1}, "p0 should be -1 (min)")
+	assert.CheckEquals(t, e.Percentiles[1], Percentile{1, -1}, "p1 should be -1 (min)")
+	assert.CheckEquals(t, e.Percentiles[2], Percentile{10, -1}, "p10 should be 1 (1/10 at min)")
+	assert.CheckEquals(t, e.Percentiles[3], Percentile{25, -0.5}, "p25 should be half between -1 and 0")
+	assert.CheckEquals(t, e.Percentiles[4], Percentile{40, 0}, "p40 should still be 0 (4/10 data pts at 0)")
+	assert.CheckEquals(t, e.Percentiles[5], Percentile{50, 1}, "p50 should 1 (5th/10 point is 1)")
+	assert.CheckEquals(t, e.Percentiles[6], Percentile{60, 2}, "p60 should 2 (6th/10 point is 2)")
+	assert.CheckEquals(t, e.Percentiles[7], Percentile{70, 3}, "p70 should 3 (7th/10 point is 3)")
+	assert.CheckEquals(t, e.Percentiles[8], Percentile{80, 4}, "p80 should 4 (8th/10 point is 4)")
+	assert.CheckEquals(t, e.Percentiles[9], Percentile{90, 4.5}, "p90 should between 4 and 5 (2 points in bucket)")
+	assert.CheckEquals(t, e.Percentiles[10], Percentile{99, 4.95}, "p99")
+	assert.CheckEquals(t, e.Percentiles[11], Percentile{100, 5}, "p100 should 5 (10th/10 point is 5 and max is 5)")
 	h.Log("test multi count", percs)
-}
-
-// CheckEquals checks if actual == expect and fails the test and logs
-// failure (including filename:linenum if they are not equal).
-func CheckEquals(t *testing.T, actual interface{}, expected interface{}, msg interface{}) {
-	if expected != actual {
-		_, file, line, _ := runtime.Caller(1)
-		file = file[strings.LastIndex(file, "/")+1:]
-		fmt.Printf("%s:%d mismatch!\nactual:\n%+v\nexpected:\n%+v\nfor %+v\n", file, line, actual, expected, msg)
-		t.Fail()
-	}
-}
-
-func Assert(t *testing.T, cond bool, msg interface{}) {
-	if !cond {
-		_, file, line, _ := runtime.Caller(1)
-		file = file[strings.LastIndex(file, "/")+1:]
-		fmt.Printf("%s:%d assert failure: %+v\n", file, line, msg)
-		t.Fail()
-	}
 }
 
 // Checks properties that should be true for all non empty histograms.
@@ -281,49 +260,49 @@ func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 
 		return
 	}
-	CheckEquals(t, e.Data[0].Start, e.Min, "first bucket starts at min")
-	CheckEquals(t, e.Data[n-1].End, e.Max, "end of last bucket is max")
-	CheckEquals(t, e.Data[n-1].Percent, 100., "last bucket is 100%")
+	assert.CheckEquals(t, e.Data[0].Start, e.Min, "first bucket starts at min")
+	assert.CheckEquals(t, e.Data[n-1].End, e.Max, "end of last bucket is max")
+	assert.CheckEquals(t, e.Data[n-1].Percent, 100., "last bucket is 100%")
 	// All buckets in order
 	var prev Bucket
 	var sum int64
 	for i := 0; i < n; i++ {
 		b := e.Data[i]
-		Assert(t, b.Start <= b.End, "End should always be after Start")
-		Assert(t, b.Count > 0, "Every exported bucket should have data")
-		Assert(t, b.Percent > 0, "Percentage should always be positive")
+		assert.Assert(t, b.Start <= b.End, "End should always be after Start")
+		assert.Assert(t, b.Count > 0, "Every exported bucket should have data")
+		assert.Assert(t, b.Percent > 0, "Percentage should always be positive")
 		sum += b.Count
 		if i > 0 {
-			Assert(t, b.Start >= prev.End, "Start of next bucket >= end of previous")
-			Assert(t, b.Percent > prev.Percent, "Percentage should be ever increasing")
+			assert.Assert(t, b.Start >= prev.End, "Start of next bucket >= end of previous")
+			assert.Assert(t, b.Percent > prev.Percent, "Percentage should be ever increasing")
 		}
 		prev = b
 	}
-	CheckEquals(t, sum, e.Count, "Sum in buckets should add up to Counter's count")
+	assert.CheckEquals(t, sum, e.Count, "Sum in buckets should add up to Counter's count")
 }
 
 func TestHistogramExport1(t *testing.T) {
 	h := NewHistogram(0, 10)
 	e := h.Export()
-	CheckEquals(t, e.Count, int64(0), "empty is 0 count")
-	CheckEquals(t, len(e.Data), 0, "empty is no bucket data")
+	assert.CheckEquals(t, e.Count, int64(0), "empty is 0 count")
+	assert.CheckEquals(t, len(e.Data), 0, "empty is no bucket data")
 	h.Record(-137.4)
 	h.Record(251)
 	h.Record(501)
 	h.Record(751)
 	h.Record(1001.67)
 	e = h.Export().CalcPercentiles([]float64{50, 99, 99.9})
-	CheckEquals(t, e.Count, int64(5), "count")
-	CheckEquals(t, e.Min, -137.4, "min")
-	CheckEquals(t, e.Max, 1001.67, "max")
+	assert.CheckEquals(t, e.Count, int64(5), "count")
+	assert.CheckEquals(t, e.Min, -137.4, "min")
+	assert.CheckEquals(t, e.Max, 1001.67, "max")
 	n := len(e.Data)
-	CheckEquals(t, n, 5, "number of buckets")
+	assert.CheckEquals(t, n, 5, "number of buckets")
 	CheckGenericHistogramDataProperties(t, e)
 	data, err := json.MarshalIndent(e, "", " ")
 	if err != nil {
 		t.Error(err)
 	}
-	CheckEquals(t, string(data), `{
+	assert.CheckEquals(t, string(data), `{
  "Count": 5,
  "Min": -137.4,
  "Max": 1001.67,
@@ -410,11 +389,11 @@ func TestHistogramExportRandom(t *testing.T) {
 		}
 		e := h.Export().CalcPercentiles([]float64{0, 50, 100})
 		CheckGenericHistogramDataProperties(t, e)
-		CheckEquals(t, h.Count, int64(numEntries), "num entries should match")
-		CheckEquals(t, h.Min, min, "Min should match")
-		CheckEquals(t, h.Max, max, "Max should match")
-		CheckEquals(t, e.Percentiles[0].Value, min, "p0 should be min")
-		CheckEquals(t, e.Percentiles[2].Value, max, "p100 should be max")
+		assert.CheckEquals(t, h.Count, int64(numEntries), "num entries should match")
+		assert.CheckEquals(t, h.Min, min, "Min should match")
+		assert.CheckEquals(t, h.Max, max, "Max should match")
+		assert.CheckEquals(t, e.Percentiles[0].Value, min, "p0 should be min")
+		assert.CheckEquals(t, e.Percentiles[2].Value, max, "p100 should be max")
 	}
 }
 

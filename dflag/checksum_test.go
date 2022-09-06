@@ -8,12 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/assert"
 	"fortio.org/fortio/dflag"
-)
-
-var (
-	assert  = dflag.Testify{}
-	require = assert
 )
 
 func TestChecksumFlagSet_Differs(t *testing.T) {
@@ -30,17 +26,17 @@ func TestChecksumFlagSet_Differs(t *testing.T) {
 	t.Logf("post init checksum: %x", postInitChecksum)
 	assert.NotEqual(t, preInitChecksum, postInitChecksum, "checksum must be different init changed 2 flags")
 
-	require.NoError(t, set.Set("some_int_1", "1337"))
+	assert.NoError(t, set.Set("some_int_1", "1337"))
 	postSet1Checksum := dflag.ChecksumFlagSet(set, nil)
 	t.Logf("post set1 checksum: %x", postSet1Checksum)
 	assert.NotEqual(t, postInitChecksum, postSet1Checksum, "checksum must be different after a internal flag change")
 
-	require.NoError(t, set.Set("some_duration_1", "4s"))
+	assert.NoError(t, set.Set("some_duration_1", "4s"))
 	postSet2Checksum := dflag.ChecksumFlagSet(set, nil)
 	t.Logf("post set2 checksum: %x", postSet2Checksum)
 	assert.NotEqual(t, postSet1Checksum, postSet2Checksum, "checksum must be different after a internal flag change")
 
-	require.NoError(t, set.Set("some_duration_1", "3s"))
+	assert.NoError(t, set.Set("some_duration_1", "3s"))
 	postSet3Checksum := dflag.ChecksumFlagSet(set, nil)
 	t.Logf("post set3 checksum: %x", postSet3Checksum)
 	assert.EqualValues(t, postSet1Checksum, postSet3Checksum, "flipping back duration flag to state at set1 should make it equal")
@@ -56,12 +52,12 @@ func TestChecksumFlagSet_Filters(t *testing.T) {
 	postInitChecksum := dflag.ChecksumFlagSet(set, filterOnlyDuration)
 	t.Logf("post init checksum: %x", postInitChecksum)
 
-	require.NoError(t, set.Set("some_int_1", "1337"))
+	assert.NoError(t, set.Set("some_int_1", "1337"))
 	postSet1Checksum := dflag.ChecksumFlagSet(set, filterOnlyDuration)
 	t.Logf("post set1 checksum: %x", postSet1Checksum)
 	assert.EqualValues(t, postInitChecksum, postSet1Checksum, "checksum should not include some_int_1 change")
 
-	require.NoError(t, set.Set("some_duration_1", "10s"))
+	assert.NoError(t, set.Set("some_duration_1", "10s"))
 	postSet2Checksum := dflag.ChecksumFlagSet(set, filterOnlyDuration)
 	t.Logf("post set2 checksum: %x", postSet2Checksum)
 	assert.NotEqual(t, postSet1Checksum, postSet2Checksum, "checksum change when some_duration_1 changes")

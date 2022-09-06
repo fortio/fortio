@@ -7,6 +7,8 @@ import (
 	"flag"
 	"testing"
 	"time"
+
+	"fortio.org/assert"
 )
 
 func TestDynStringSlice_SetAndGet(t *testing.T) {

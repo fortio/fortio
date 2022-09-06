@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/assert"
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/dflag/configmap"
 )
@@ -23,14 +24,8 @@ const (
 	badStaticDir  = "..1289_09_10_03_32_32.039823124"
 )
 
-var (
-	assert  = dflag.Testify{}
-	require = assert
-	suite   = assert
-)
-
 type updaterTestSuite struct {
-	dflag.TestSuite
+	assert.TestSuite
 	tempDir string
 
 	flagSet   *flag.FlagSet
@@ -43,7 +38,7 @@ type updaterTestSuite struct {
 func (s *updaterTestSuite) SetupTest() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("/tmp", "updater_test")
-	require.NoError(s.T(), err, "failed creating temp directory for testing")
+	assert.NoError(s.T(), err, "failed creating temp directory for testing")
 	s.copyTestDataToDir()
 	s.linkDataDirTo(firstGoodDir)
 
@@ -52,25 +47,25 @@ func (s *updaterTestSuite) SetupTest() {
 	s.staticInt = s.flagSet.Int("some_int", 1, "static int for testing")
 
 	s.updater, err = configmap.New(s.flagSet, path.Join(s.tempDir, "testdata"))
-	require.NoError(s.T(), err, "creating a config map must not fail")
+	assert.NoError(s.T(), err, "creating a config map must not fail")
 }
 
 // Tear down the updater.
 func (s *updaterTestSuite) TearDownTest() {
-	require.NoError(s.T(), os.RemoveAll(s.tempDir), "clearing up the test dir must not fail")
+	assert.NoError(s.T(), os.RemoveAll(s.tempDir), "clearing up the test dir must not fail")
 	_ = s.updater.Stop()
 	time.Sleep(100 * time.Millisecond)
 }
 
 func (s *updaterTestSuite) copyTestDataToDir() {
 	copyCmd := exec.Command("cp", "-a", "testdata", s.tempDir)
-	require.NoError(s.T(), copyCmd.Run(), "copying testdata directory to tempdir must not fail")
+	assert.NoError(s.T(), copyCmd.Run(), "copying testdata directory to tempdir must not fail")
 	// We are storing file testdata/9989_09_09_07_32_32.099817316 and renaming it to testdata/..9989_09_09_07_32_32.099817316,
 	// because go modules don't allow repos with files with .. in their filename. See https://github.com/golang/go/issues/27299.
 	for _, p := range []string{firstGoodDir, secondGoodDir, badStaticDir} {
 		pOld := filepath.Join(s.tempDir, "testdata", strings.TrimPrefix(p, ".."))
 		pNew := filepath.Join(s.tempDir, "testdata", p)
-		require.NoError(s.T(), os.Rename(pOld, pNew), "renaming %q to %q failed", pOld, pNew)
+		assert.NoError(s.T(), os.Rename(pOld, pNew), "renaming %q to %q failed", pOld, pNew)
 	}
 }
 
@@ -78,31 +73,31 @@ func (s *updaterTestSuite) linkDataDirTo(newDataDir string) {
 	copyCmd := exec.Command("ln", "-s", "-n", "-f",
 		path.Join(s.tempDir, "testdata", newDataDir),
 		path.Join(s.tempDir, "testdata", "..data"))
-	require.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir tempdir must not fail")
+	assert.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir tempdir must not fail")
 }
 
 func (s *updaterTestSuite) TestInitializeFailsOnBadFormedFlag() {
 	s.linkDataDirTo(badStaticDir)
-	require.Error(s.T(), s.updater.Initialize(), "the updater initialize should return error on bad flags")
+	assert.Error(s.T(), s.updater.Initialize(), "the updater initialize should return error on bad flags")
 }
 
 func (s *updaterTestSuite) TestSetupFunction() {
 	tmpU, err := configmap.Setup(s.flagSet, path.Join(s.tempDir, "testdata"))
-	require.NoError(s.T(), err, "setup for a config map must not fail")
-	require.Error(s.T(), tmpU.Initialize(), "should error with already started")
-	require.Error(s.T(), tmpU.Start(), "should error with already started")
-	require.NoError(s.T(), tmpU.Stop(), "stopping the watcher should succeed")
+	assert.NoError(s.T(), err, "setup for a config map must not fail")
+	assert.Error(s.T(), tmpU.Initialize(), "should error with already started")
+	assert.Error(s.T(), tmpU.Start(), "should error with already started")
+	assert.NoError(s.T(), tmpU.Stop(), "stopping the watcher should succeed")
 }
 
 func (s *updaterTestSuite) TestInitializeSetsValues() {
-	require.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
+	assert.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
 	assert.EqualValues(s.T(), *s.staticInt, 1234, "staticInt should be some_int from first directory")
 	assert.EqualValues(s.T(), s.dynInt.Get(), int64(10001), "staticInt should be some_int from first directory")
 }
 
 func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
-	require.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
-	require.NoError(s.T(), s.updater.Start(), "updater start should not return an error")
+	assert.NoError(s.T(), s.updater.Initialize(), "the updater initialize should not return errors on good flags")
+	assert.NoError(s.T(), s.updater.Start(), "updater start should not return an error")
 	s.linkDataDirTo(secondGoodDir)
 	eventually(s.T(), 1*time.Second,
 		assert.ObjectsAreEqualValues, int64(20002),
@@ -111,7 +106,7 @@ func (s *updaterTestSuite) TestDynamicUpdatesPropagate() {
 }
 
 func TestUpdaterSuite(t *testing.T) {
-	suite.Run(t, &updaterTestSuite{})
+	assert.Run(t, &updaterTestSuite{})
 }
 
 type (
