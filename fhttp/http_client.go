@@ -32,9 +32,9 @@ import (
 	"time"
 
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
-	"fortio.org/fortio/version"
 	"github.com/google/uuid"
 )
 
@@ -151,8 +151,6 @@ func (h *HTTPOptions) URLSchemeCheck() {
 	}
 }
 
-var userAgent = "fortio.org/fortio-" + version.Short()
-
 const (
 	retcodeOffset = len("HTTP/1.X ")
 	// HTTPReqTimeOutDefaultValue is the default timeout value. 3s.
@@ -199,7 +197,7 @@ func (h *HTTPOptions) ResetHeaders() {
 // InitHeaders initialize and/or resets the default headers (ie just User-Agent).
 func (h *HTTPOptions) InitHeaders() {
 	h.ResetHeaders()
-	h.extraHeaders.Add("User-Agent", userAgent)
+	h.extraHeaders.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	// No other headers should be added here based on options content as this is called only once
 	// before command line option -H are parsed/set.
 }

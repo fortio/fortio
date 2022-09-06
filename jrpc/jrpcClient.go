@@ -26,13 +26,25 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"fortio.org/fortio/version"
+)
+
+const (
+	UserAgentHeader = "User-Agent"
 )
 
 // Default timeout for Call.
 var timeout = 60 * time.Second
 
+// UserAgent is the User-Agent header used by client calls (also used in fhttp/).
+var UserAgent = "fortio.org/fortio-" + version.Short()
+
 // SetCallTimeout changes the timeout for further Call calls, returns
-// the previous value (default in 60s).
+// the previous value (default in 60s). Value is used when a timeout
+// isn't passed in the options. Note this is not thread safe,
+// use Destination.Timeout for changing values outside of main/single
+// thread.
 func SetCallTimeout(t time.Duration) time.Duration {
 	previous := timeout
 	timeout = t
@@ -50,6 +62,13 @@ type FetchError struct {
 	Bytes []byte
 }
 
+// Destination is the URL and optional additional headers
+type Destination struct {
+	URL     string
+	Headers *http.Header
+	Timeout time.Duration
+}
+
 func (fe *FetchError) Error() string {
 	return fmt.Sprintf("%s, code %d: %v (raw reply: %s)", fe.Message, fe.Code, fe.Err, DebugSummary(fe.Bytes, 256))
 }
@@ -61,7 +80,7 @@ func (fe *FetchError) Unwrap() error {
 // Call calls the url endpoint, POSTing a serialized as json optional payload
 // (pass nil for a GET http request) and returns the result, deserializing
 // json into type Q. T can be inferred so we declare Response Q first.
-func Call[Q any, T any](url string, payload *T) (*Q, error) {
+func Call[Q any, T any](url *Destination, payload *T) (*Q, error) {
 	var bytes []byte
 	var err error
 	if payload != nil {
@@ -73,9 +92,18 @@ func Call[Q any, T any](url string, payload *T) (*Q, error) {
 	return CallWithPayload[Q](url, bytes)
 }
 
+// CallURL is Call without any options/non default headers, timeout etc and just the URL.
+func CallURL[Q any, T any](url string, payload *T) (*Q, error) {
+	return Call[Q](NewDestination(url), payload)
+}
+
 // CallNoPayload is for an API call without json payload.
-func CallNoPayload[Q any](url string) (*Q, error) {
+func CallNoPayload[Q any](url *Destination) (*Q, error) {
 	return CallWithPayload[Q](url, []byte{})
+}
+
+func CallNoPayloadURL[Q any](url string) (*Q, error) {
+	return CallWithPayload[Q](NewDestination(url), []byte{})
 }
 
 func Serialize(obj interface{}) ([]byte, error) {
@@ -89,7 +117,7 @@ func Deserialize[Q any](bytes []byte) (*Q, error) {
 }
 
 // CallWithPayload is for cases where the payload is already serialized (or empty).
-func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
+func CallWithPayload[Q any](url *Destination, bytes []byte) (*Q, error) {
 	code, bytes, err := Send(url, bytes) // returns -1 on other errors
 	if err != nil {
 		return nil, err
@@ -110,24 +138,42 @@ func CallWithPayload[Q any](url string, bytes []byte) (*Q, error) {
 	return result, nil
 }
 
+func SetHeaderIfMissing(headers http.Header, name, value string) {
+	if headers.Get(name) != "" {
+		return
+	}
+	headers.Set(name, value)
+}
+
 // Send fetches the result from url and sends optional payload as a POST, GET if missing.
 // Returns the http code (if no other error before then, -1 if there are errors),
 // the bytes from the reply and error if any.
-func Send(url string, jsonPayload []byte) (int, []byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
+	curTimeout := dest.Timeout
+	if curTimeout == 0 {
+		curTimeout = timeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), curTimeout)
 	defer cancel()
 	var req *http.Request
 	var err error
 	var res []byte
 	if len(jsonPayload) > 0 {
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonPayload))
-		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		req, err = http.NewRequestWithContext(ctx, http.MethodPost, dest.URL, bytes.NewReader(jsonPayload))
 	} else {
-		req, err = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, dest.URL, nil)
 	}
 	if err != nil {
 		return -1, res, err
 	}
+	if dest.Headers != nil {
+		req.Header = dest.Headers.Clone()
+	}
+	if len(jsonPayload) > 0 {
+		SetHeaderIfMissing(req.Header, "Content-Type", "application/json; charset=utf-8")
+	}
+	SetHeaderIfMissing(req.Header, "Accept", "application/json")
+	SetHeaderIfMissing(req.Header, UserAgentHeader, UserAgent)
 	var resp *http.Response
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
@@ -138,8 +184,18 @@ func Send(url string, jsonPayload []byte) (int, []byte, error) {
 	return resp.StatusCode, res, err
 }
 
-// Fetch is Send without a payload.
-func Fetch(url string) (int, []byte, error) {
+// NewDestination returns a Destination object set for the given url
+// (and default/nil replacement headers and default global timeout).
+func NewDestination(url string) *Destination {
+	return &Destination{URL: url}
+}
+
+// FetchURL is Send without a payload and no additional options (default timeout and headers).
+func FetchURL(url string) (int, []byte, error) {
+	return Send(NewDestination(url), []byte{})
+}
+
+func Fetch(url *Destination) (int, []byte, error) {
 	return Send(url, []byte{})
 }
 

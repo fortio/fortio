@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 )
 
@@ -97,9 +98,9 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.R
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
 	if copyAllHeaders {
-		req.Header.Add("X-Proxy-Agent", userAgent)
+		req.Header.Add("X-Proxy-Agent", jrpc.UserAgent)
 	} else {
-		req.Header.Add("User-Agent", userAgent)
+		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
 	return req
 }

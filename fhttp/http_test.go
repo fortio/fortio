@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"github.com/google/uuid"
 )
@@ -889,18 +890,18 @@ func TestPayloadForFastClient(t *testing.T) {
 			"application/json",
 			[]byte("{\"test\" : \"test\"}"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 17\r\nContent-Type: "+
-				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", userAgent),
+				"application/json\r\nUser-Agent: %s\r\n\r\n{\"test\" : \"test\"}", jrpc.UserAgent),
 		},
 		{
 			"application/xml",
 			[]byte("<test test=\"test\">"),
 			fmt.Sprintf("POST / HTTP/1.1\r\nHost: www.google.com\r\nContent-Length: 18\r\nContent-Type: "+
-				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", userAgent),
+				"application/xml\r\nUser-Agent: %s\r\n\r\n<test test=\"test\">", jrpc.UserAgent),
 		},
 		{
 			"",
 			nil,
-			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", userAgent),
+			fmt.Sprintf("GET / HTTP/1.1\r\nHost: www.google.com\r\nUser-Agent: %s\r\n\r\n", jrpc.UserAgent),
 		},
 	}
 	for _, test := range tests {
@@ -1133,7 +1134,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 		"Ccc: ccc\n"+
 		"User-Agent: %s\n"+
 		"Zzz: zzz\n\n"+
-		"body:\n\n\n", a.Port, userAgent)
+		"body:\n\n\n", a.Port, jrpc.UserAgent)
 	if body != expected {
 		t.Errorf("Get body: %s not as expected: %s", body, expected)
 	}

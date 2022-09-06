@@ -37,7 +37,7 @@ import (
 
 // Generics ftw.
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
-	r, err := jrpc.CallWithPayload[T](url, []byte(jsonPayload))
+	r, err := jrpc.CallWithPayload[T](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
@@ -63,7 +63,7 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) *AsyncReply {
 
 // Same as above but when expecting to get an error reply.
 func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerReply {
-	r, err := jrpc.CallWithPayload[jrpc.ServerReply](url, []byte(jsonPayload))
+	r, err := jrpc.CallWithPayload[jrpc.ServerReply](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
 	}
@@ -195,7 +195,11 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
-	statuses, err := jrpc.CallNoPayload[StatusReply](statusURL)
+	statusDest := &jrpc.Destination{
+		URL:     statusURL,
+		Timeout: 3 * time.Second,
+	}
+	statuses, err := jrpc.CallNoPayload[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -255,7 +259,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
 	// Status should be empty (nothing running)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -269,7 +273,8 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	_ = GetAsyncResult(t, runURL, jsonData)
 	// Get all statuses
 	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStatusURI)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	statusDest.URL = statusURL
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -292,7 +297,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	tsvURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, "data/index.tsv")
-	code, bytes, err := jrpc.Fetch(tsvURL)
+	code, bytes, err := jrpc.FetchURL(tsvURL)
 	if err != nil {
 		t.Errorf("Unexpected error for %s: %v", tsvURL, err)
 	}
@@ -318,7 +323,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	// Check we can't fetch the foo.txt
 	fetchTxt := fmt.Sprintf("http://localhost:%d%sdata/foo.txt", addr.Port, uiPath)
-	code, bytes, err = jrpc.Fetch(fetchTxt)
+	code, bytes, err = jrpc.FetchURL(fetchTxt)
 	if err != nil {
 		t.Errorf("Unexpected error in fetch %q: %v", fetchTxt, err)
 	}
@@ -326,7 +331,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("foo.txt should have been not found, got %d %s", code, fnet.DebugSummary(bytes, 256))
 	}
 	SetDataDir("/does/not/exist")
-	code, bytes, err = jrpc.Fetch(tsvURL)
+	code, bytes, err = jrpc.FetchURL(tsvURL)
 	if err != nil {
 		t.Errorf("Unexpected low level error for %s: %v", tsvURL, err)
 	}
@@ -370,7 +375,8 @@ func TestRESTStopTimeBased(t *testing.T) {
 	}
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
-	statuses, err := jrpc.CallNoPayload[StatusReply](statusURL)
+	statusDest := jrpc.NewDestination(statusURL)
+	statuses, err := jrpc.CallNoPayload[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -412,7 +418,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
 	// Status should be empty (nothing running)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusURL)
+	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -438,7 +444,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("Mismatch between ids %q vs result %q", fileID, res.Result().ID)
 	}
 	tsvURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, "data/index.tsv")
-	code, bytes, err := jrpc.Fetch(tsvURL)
+	code, bytes, err := jrpc.FetchURL(tsvURL)
 	if err != nil {
 		t.Errorf("Unexpected error for %s: %v", tsvURL, err)
 	}
@@ -450,7 +456,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("Base url not found in result %s", dataStr)
 	}
 	indexURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, "data/index.html")
-	code, bytes, err = jrpc.Fetch(indexURL)
+	code, bytes, err = jrpc.FetchURL(indexURL)
 	if err != nil {
 		t.Errorf("Unexpected error for %s: %v", indexURL, err)
 	}
@@ -469,7 +475,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 
 // If jsonPayload isn't empty we POST otherwise get the url.
 func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunnerResults {
-	r, err := jrpc.CallWithPayload[fgrpc.GRPCRunnerResults](url, []byte(jsonPayload))
+	r, err := jrpc.CallWithPayload[fgrpc.GRPCRunnerResults](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected err for URL %s: %v", url, err)
 	}
