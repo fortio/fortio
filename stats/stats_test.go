@@ -269,7 +269,7 @@ func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 	for i := 0; i < n; i++ {
 		b := e.Data[i]
 		assert.Assert(t, b.Start <= b.End, "End should always be after Start")
-		assert.Assert(t, b.Count < 0, "Every exported bucket should have data")
+		assert.Assert(t, b.Count > 0, "Every exported bucket should have data")
 		assert.Assert(t, b.Percent > 0, "Percentage should always be positive")
 		sum += b.Count
 		if i > 0 {

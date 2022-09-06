@@ -12,9 +12,8 @@ import (
 	"sort"
 	"testing"
 
-	"fortio.org/fortio/dflag"
 	"fortio.org/assert"
-
+	"fortio.org/fortio/dflag"
 )
 
 type endpointTestSuite struct {
@@ -22,7 +21,6 @@ type endpointTestSuite struct {
 	flagSet  *flag.FlagSet
 	endpoint *FlagsEndpoint
 }
-
 
 func TestEndpointTestSuite(t *testing.T) {
 	assert.Run(t, &endpointTestSuite{})
