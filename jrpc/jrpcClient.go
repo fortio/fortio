@@ -62,7 +62,7 @@ type FetchError struct {
 	Bytes []byte
 }
 
-// Destination is the URL and optional additional headers
+// Destination is the URL and optional additional headers.
 type Destination struct {
 	URL     string
 	Headers *http.Header
