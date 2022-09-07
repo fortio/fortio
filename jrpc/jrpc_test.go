@@ -74,7 +74,7 @@ func TestJPRC(t *testing.T) {
 	port := addr.(*net.TCPAddr).Port
 	var bad chan struct{}
 	mux.HandleFunc("/test-api", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			err := jrpc.ReplyError(w, "should be a POST", nil)
 			if err != nil {
 				t.Errorf("Error in replying error: %v", err)

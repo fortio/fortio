@@ -321,12 +321,12 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
 		}
-		//nolint:errcheck // all cases handled inside for rapi callers
+		//nolint:errcheck,contextcheck // all cases handled inside for rapi callers. async code with our own aborter
 		// returned values are for the ui/uihandler.go caller.
 		go Run(nil, r, jd, runner, url, &ro, httpopts, false)
 		return
 	}
-	//nolint:errcheck // all cases handled inside for rapi callers
+	//nolint:errcheck,contextcheck // all cases handled inside for rapi callers. aborter handles context.
 	Run(w, r, jd, runner, url, &ro, httpopts, false)
 }
 
