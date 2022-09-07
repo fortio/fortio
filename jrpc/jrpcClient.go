@@ -16,8 +16,8 @@
 // using generics to serialize/deserialize any type.
 package jrpc // import "fortio.org/fortio/jrpc"
 
-// This package is a true self contained library, doesn't rely on our logger nor other packages in fortio/.
-// Client side and common code.
+// This package is a true self contained library, doesn't rely on our logger nor other packages
+// in fortio/ outside of version/ (which now also doesn't rely on logger or any other package).
 import (
 	"bytes"
 	"context"
@@ -29,6 +29,8 @@ import (
 
 	"fortio.org/fortio/version"
 )
+
+// Client side and common code.
 
 const (
 	UserAgentHeader = "User-Agent"
@@ -102,14 +104,17 @@ func CallNoPayload[Q any](url *Destination) (*Q, error) {
 	return CallWithPayload[Q](url, []byte{})
 }
 
+// CallNoPayloadURL short cut for CallNoPayload with url as a string (default Send()/Destination options).
 func CallNoPayloadURL[Q any](url string) (*Q, error) {
 	return CallWithPayload[Q](NewDestination(url), []byte{})
 }
 
+// Serialize serializes the object as json.
 func Serialize(obj interface{}) ([]byte, error) {
 	return json.Marshal(obj)
 }
 
+// Deserialize deserializes json as a new object of desired type.
 func Deserialize[Q any](bytes []byte) (*Q, error) {
 	var result Q
 	err := json.Unmarshal(bytes, &result)
@@ -138,6 +143,7 @@ func CallWithPayload[Q any](url *Destination, bytes []byte) (*Q, error) {
 	return result, nil
 }
 
+// SetHeaderIfMissing utility function to not overwrite nor append to existing headers.
 func SetHeaderIfMissing(headers http.Header, name, value string) {
 	if headers.Get(name) != "" {
 		return
@@ -195,6 +201,7 @@ func FetchURL(url string) (int, []byte, error) {
 	return Send(NewDestination(url), []byte{})
 }
 
+// Fetch is Send without a payload (so will be a GET request).
 func Fetch(url *Destination) (int, []byte, error) {
 	return Send(url, []byte{})
 }
