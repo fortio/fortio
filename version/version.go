@@ -84,7 +84,7 @@ func getVersion(binfo *debug.BuildInfo, path string) (short, sum string) {
 // Used by Fortio library version init to remember it's own version.
 func FromBuildInfoPath(path string) (short, long, full string) {
 	binfo, ok := debug.ReadBuildInfo()
-	if ok {
+	if !ok {
 		full = "fortio version module error, no build info"
 		log.Print("Error calling debug.ReadBuildInfo() for fortio version module")
 		return
