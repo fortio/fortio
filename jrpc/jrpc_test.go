@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"fortio.org/assert"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/jrpc"
 )
@@ -69,11 +70,11 @@ func TestJPRC(t *testing.T) {
 	if prev != 60*time.Second {
 		t.Errorf("Expected default call timeout to be 60 seconds, got %v", prev)
 	}
-	mux, addr := fhttp.HTTPServer("test", "0")
+	mux, addr := fhttp.HTTPServer("test1", "0")
 	port := addr.(*net.TCPAddr).Port
 	var bad chan struct{}
 	mux.HandleFunc("/test-api", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			err := jrpc.ReplyError(w, "should be a POST", nil)
 			if err != nil {
 				t.Errorf("Error in replying error: %v", err)
@@ -129,7 +130,7 @@ func TestJPRC(t *testing.T) {
 	})
 	url := fmt.Sprintf("http://localhost:%d/test-api", port)
 	req := Request{42, []string{"ab", "cd"}}
-	res, err := jrpc.Call[Response](url, &req)
+	res, err := jrpc.CallURL[Response](url, &req)
 	if err != nil {
 		t.Errorf("failed Call: %v", err)
 	}
@@ -144,7 +145,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// Error cases
 	// Empty request, using Fetch()
-	code, bytes, err := jrpc.Fetch(url)
+	code, bytes, err := jrpc.Fetch(jrpc.NewDestination(url))
 	if err != nil {
 		t.Errorf("failed Fetch: %v - %s", err, jrpc.DebugSummary(bytes, 256))
 	}
@@ -163,7 +164,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// bad url
 	badURL := "http://doesnotexist.fortio.org/"
-	_, err = jrpc.Call[Response](badURL, &req)
+	_, err = jrpc.CallURL[Response](badURL, &req)
 	if err == nil {
 		t.Errorf("expected error for bad url")
 	}
@@ -176,7 +177,7 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
 	// bad json payload sent
-	errReply, err := jrpc.CallWithPayload[Response](url, []byte(`{foo: missing-quotes}`))
+	errReply, err := jrpc.CallWithPayload[Response](jrpc.NewDestination(url), []byte(`{foo: missing-quotes}`))
 	if err == nil {
 		t.Errorf("expected error, got nil and %v", res)
 	}
@@ -195,7 +196,7 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("expected Exception in body to be %q, got %+v", expected, errReply)
 	}
 	// bad json response, using Fetch()
-	errReply, err = jrpc.CallNoPayload[Response](url)
+	errReply, err = jrpc.CallNoPayloadURL[Response](url)
 	if err == nil {
 		t.Errorf("expected error %v", errReply)
 	}
@@ -207,7 +208,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger empty reply
 	req.SomeInt = -7
-	res, err = jrpc.Call[Response](url, &req)
+	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -219,7 +220,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger server error
 	req.SomeInt = -8
-	res, err = jrpc.Call[Response](url, &req)
+	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -238,7 +239,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger bad json response - and non ok code
 	req.SomeInt = -9
-	res, err = jrpc.Call[Response](url, &req)
+	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -263,7 +264,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger bad json response - and ok http code
 	req.SomeInt = -10
-	res, err = jrpc.Call[Response](url, &req)
+	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v: %v", res, err)
 	}
@@ -273,7 +274,7 @@ func TestJPRC(t *testing.T) {
 	}
 	// trigger reply bad serialization
 	req.SomeInt = -11
-	res, err = jrpc.Call[Response](url, &req)
+	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
 		t.Errorf("error expected %v", res)
 	}
@@ -282,7 +283,7 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("error string expected %q, got %q, %+v", expected, err.Error(), res)
 	}
 	// Unserializable client side
-	res, err = jrpc.Call[Response](url, &bad)
+	res, err = jrpc.CallURL[Response](url, &bad)
 	if err == nil {
 		t.Errorf("error expected %v", res)
 	}
@@ -290,6 +291,32 @@ func TestJPRC(t *testing.T) {
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q, %+v", expected, err.Error(), res)
 	}
+}
+
+func TestJPRCHeaders(t *testing.T) {
+	mux, addr := fhttp.HTTPServer("test2", "0")
+	port := addr.(*net.TCPAddr).Port
+	mux.HandleFunc("/test-headers", func(w http.ResponseWriter, r *http.Request) {
+		// Send back the headers
+		jrpc.ReplyOk(w, &r.Header)
+	})
+	url := fmt.Sprintf("http://localhost:%d/test-headers", port)
+	inp := make(http.Header)
+	inp.Set("Test1", "ValT1.1")
+	inp.Add("Test1", "ValT1.2")
+	inp.Set("Test2", "ValT2")
+	jrpc.SetHeaderIfMissing(inp, "Test2", "ShouldNotSet") // test along the way
+	dest := &jrpc.Destination{
+		URL:     url,
+		Headers: &inp,
+	}
+	res, err := jrpc.CallNoPayload[http.Header](dest)
+	if err != nil {
+		t.Errorf("failed Call: %v", err)
+	}
+	// order etc is preserved, keys are not case sensitive (kinda tests go http api too)
+	assert.Equal(t, res.Values("test1"), []string{"ValT1.1", "ValT1.2"}, "Expecting echoed back Test1 multi valued header")
+	assert.CheckEquals(t, res.Get("test2"), "ValT2", "Expecting echoed back Test2 header")
 }
 
 type ErrReader struct{}
@@ -313,7 +340,7 @@ func TestHandleCallError(t *testing.T) {
 
 func TestSendBadURL(t *testing.T) {
 	badURL := "bad\001url" // something caught in NewRequest
-	_, _, err := jrpc.Fetch(badURL)
+	_, _, err := jrpc.FetchURL(badURL)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}

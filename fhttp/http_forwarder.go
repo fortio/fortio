@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 )
 
@@ -97,9 +98,9 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.R
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
 	if copyAllHeaders {
-		req.Header.Add("X-Proxy-Agent", userAgent)
+		req.Header.Add("X-Proxy-Agent", jrpc.UserAgent)
 	} else {
-		req.Header.Add("User-Agent", userAgent)
+		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
 	return req
 }
@@ -117,8 +118,10 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 	}
 	r.Body.Close()
 	if mcfg.Serial {
+		//nolint:contextcheck // bug I think as we transfer the context - asked in https://github.com/kkHAIKE/contextcheck/issues/3
 		mcfg.TeeSerialHandler(w, r, data)
 	} else {
+		//nolint:contextcheck // bug I think as we transfer the context - asked in https://github.com/kkHAIKE/contextcheck/issues/3
 		mcfg.TeeParallelHandler(w, r, data)
 	}
 }

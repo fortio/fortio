@@ -14,18 +14,21 @@
 
 package jrpc // import "fortio.org/fortio/jrpc"
 
-// Server side additional code (compared to restClient.go).
+// Server side additional code (compared to jrpcClient.go).
 import (
 	"io"
 	"net/http"
 )
 
+// ServerReply is used to reply errors but can also be the base for Ok replies,
+// see the unit tests `Response` and ../rapi for examples of use.
 type ServerReply struct {
 	Error     bool   `json:"error,omitempty"` // Success if false/omitted, Error/Failure when true
 	Message   string `json:"message,omitempty"`
 	Exception string `json:"exception,omitempty"`
 }
 
+// NewErrorReply creates a new error reply with the message and err error.
 func NewErrorReply(message string, err error) *ServerReply {
 	res := ServerReply{Error: true, Message: message}
 	if err != nil {
@@ -53,26 +56,41 @@ func Reply[T any](w http.ResponseWriter, code int, data *T) error {
 	return err
 }
 
+// ReplyNoPayload is a short cut for Reply() with empty (nil) payload.
 func ReplyNoPayload(w http.ResponseWriter, code int) error {
 	return Reply[int](w, code, nil)
 }
 
+// ReplyOk is a short cut for Reply() with http.StatusOK as the result code.
 func ReplyOk[T any](w http.ResponseWriter, data *T) error {
 	return Reply(w, http.StatusOK, data)
 }
 
+// ReplyClientError is a short cut for Reply() with http.StatusBadRequest as the result code.
 func ReplyClientError[T any](w http.ResponseWriter, data *T) error {
 	return Reply(w, http.StatusBadRequest, data)
 }
 
+// ReplyServerError is a short cut for Reply() with http.StatusServiceUnavailable as the result code.
 func ReplyServerError[T any](w http.ResponseWriter, data *T) error {
 	return Reply(w, http.StatusServiceUnavailable, data)
 }
 
+// ReplyError is to send back a client error with exception details.
 func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 	return ReplyClientError(w, NewErrorReply(extraMsg, err))
 }
 
+// HandleCall deserializes the expected type from the request body.
+// Sample usage code:
+// ```
+//
+//	 req, err := jrpc.HandleCall[Request](w, r)
+//		if err != nil {
+//		    _ = jrpc.ReplyError(w, "request error", err)
+//		}
+//
+// ```.
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
