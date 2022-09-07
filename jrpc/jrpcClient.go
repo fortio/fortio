@@ -16,7 +16,7 @@
 // using generics to serialize/deserialize any type.
 package jrpc // import "fortio.org/fortio/jrpc"
 
-// This package is a true self contained library, doesn't rely on our logger nor other packages
+// This package is a true self contained library, that doesn't rely on our logger nor other packages
 // in fortio/ outside of version/ (which now also doesn't rely on logger or any other package).
 import (
 	"bytes"
