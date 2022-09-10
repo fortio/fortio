@@ -216,17 +216,17 @@ func NewDestination(url string) *Destination {
 	return &Destination{URL: url}
 }
 
+// FetchURL is Send without a payload and no additional options (default timeout and headers).
+// Technically this should be called FetchBytesURL().
+func FetchURL(url string) (int, []byte, error) {
+	return Send(NewDestination(url), []byte{})
+}
+
 // Fetch is Send without a payload (so will be a GET request).
 // Used to be called Fetch() but we needed that shorter name to
 // simplify the former CallWithPayload function name.
 func FetchBytes(url *Destination) (int, []byte, error) {
 	return Send(url, []byte{})
-}
-
-// FetchURL is Send without a payload and no additional options (default timeout and headers).
-// Technically this should be called FetchBytesURL().
-func FetchURL(url string) (int, []byte, error) {
-	return Send(NewDestination(url), []byte{})
 }
 
 // EscapeBytes returns printable string. Same as %q format without the

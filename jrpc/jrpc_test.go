@@ -176,7 +176,7 @@ func TestJPRC(t *testing.T) {
 	if de != nil && !strings.HasPrefix(de.Error(), expected) {
 		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
-	// bad json payload sent - call deprecated one for coverage for now, replace with Retrieve() when it's gone:
+	// bad json payload sent - call deprecated one for coverage for now, replace with Fetch() when it's gone:
 	errReply, err := jrpc.CallWithPayload[Response](jrpc.NewDestination(url), []byte(`{foo: missing-quotes}`))
 	if err == nil {
 		t.Errorf("expected error, got nil and %v", res)
