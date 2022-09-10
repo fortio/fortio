@@ -18,6 +18,11 @@ package jrpc // import "fortio.org/fortio/jrpc"
 
 // This package is a true self contained library, that doesn't rely on our logger nor other packages
 // in fortio/ outside of version/ (which now also doesn't rely on logger or any other package).
+// Naming is hard, we have Call, Send, Get, Fetch and FetchBytes pretty much all meaning retrieving data
+// from a URL with the variants depending on whether we have something to serialize and if it's bytes
+// or struct based in and out. Additionally *URL() variants are for when no additional headers or options
+// are needed and the url is just a plain string. If golang supported multiple signatures it would be a single
+// method name instead of 8.
 import (
 	"bytes"
 	"context"
@@ -91,7 +96,7 @@ func Call[Q any, T any](url *Destination, payload *T) (*Q, error) {
 			return nil, err
 		}
 	}
-	return CallWithPayload[Q](url, bytes)
+	return Fetch[Q](url, bytes)
 }
 
 // CallURL is Call without any options/non default headers, timeout etc and just the URL.
@@ -99,14 +104,21 @@ func CallURL[Q any, T any](url string, payload *T) (*Q, error) {
 	return Call[Q](NewDestination(url), payload)
 }
 
-// CallNoPayload is for an API call without json payload.
+// Deprecated: CallNoPayload is for an API call without json payload.
+// Use  Get() instead.
 func CallNoPayload[Q any](url *Destination) (*Q, error) {
-	return CallWithPayload[Q](url, []byte{})
+	return Get[Q](url)
 }
 
-// CallNoPayloadURL short cut for CallNoPayload with url as a string (default Send()/Destination options).
-func CallNoPayloadURL[Q any](url string) (*Q, error) {
-	return CallWithPayload[Q](NewDestination(url), []byte{})
+// Get fetches and deseializes the JSON returned by the Destination into a Q struct.
+// Used when there is no json payload to send.
+func Get[Q any](url *Destination) (*Q, error) {
+	return Fetch[Q](url, []byte{})
+}
+
+// GetURL is Get without additional options (default timeout and headers).
+func GetURL[Q any](url string) (*Q, error) {
+	return Get[Q](NewDestination(url))
 }
 
 // Serialize serializes the object as json.
@@ -121,8 +133,16 @@ func Deserialize[Q any](bytes []byte) (*Q, error) {
 	return &result, err // Will return zero object, not nil upon error
 }
 
-// CallWithPayload is for cases where the payload is already serialized (or empty).
+// Deprecated: CallWithPayload use Fetch() instead.
 func CallWithPayload[Q any](url *Destination, bytes []byte) (*Q, error) {
+	return Fetch[Q](url, bytes)
+}
+
+// Fetch is for cases where the payload is already serialized (or empty
+// but call Get() when empty for clarity).
+// Note that if you're looking for the []byte version instead of this
+// generics version, it's now called FetchBytes().
+func Fetch[Q any](url *Destination, bytes []byte) (*Q, error) {
 	code, bytes, err := Send(url, bytes) // returns -1 on other errors
 	if err != nil {
 		return nil, err
@@ -196,14 +216,17 @@ func NewDestination(url string) *Destination {
 	return &Destination{URL: url}
 }
 
-// FetchURL is Send without a payload and no additional options (default timeout and headers).
-func FetchURL(url string) (int, []byte, error) {
-	return Send(NewDestination(url), []byte{})
+// Fetch is Send without a payload (so will be a GET request).
+// Used to be called Fetch() but we needed that shorter name to
+// simplify the former CallWithPayload function name.
+func FetchBytes(url *Destination) (int, []byte, error) {
+	return Send(url, []byte{})
 }
 
-// Fetch is Send without a payload (so will be a GET request).
-func Fetch(url *Destination) (int, []byte, error) {
-	return Send(url, []byte{})
+// FetchURL is Send without a payload and no additional options (default timeout and headers).
+// Technically this should be called FetchBytesURL().
+func FetchURL(url string) (int, []byte, error) {
+	return Send(NewDestination(url), []byte{})
 }
 
 // EscapeBytes returns printable string. Same as %q format without the

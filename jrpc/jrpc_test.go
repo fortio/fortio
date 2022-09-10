@@ -144,8 +144,8 @@ func TestJPRC(t *testing.T) {
 		t.Errorf("response doesn't contain expected string: %+v", res)
 	}
 	// Error cases
-	// Empty request, using Fetch()
-	code, bytes, err := jrpc.Fetch(jrpc.NewDestination(url))
+	// Empty request, using FetchBytes()
+	code, bytes, err := jrpc.FetchBytes(jrpc.NewDestination(url))
 	if err != nil {
 		t.Errorf("failed Fetch: %v - %s", err, jrpc.DebugSummary(bytes, 256))
 	}
@@ -176,7 +176,7 @@ func TestJPRC(t *testing.T) {
 	if de != nil && !strings.HasPrefix(de.Error(), expected) {
 		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
-	// bad json payload sent
+	// bad json payload sent - call deprecated one for coverage for now, replace with Retrieve() when it's gone:
 	errReply, err := jrpc.CallWithPayload[Response](jrpc.NewDestination(url), []byte(`{foo: missing-quotes}`))
 	if err == nil {
 		t.Errorf("expected error, got nil and %v", res)
@@ -195,8 +195,8 @@ func TestJPRC(t *testing.T) {
 	if errReply.Exception != expected {
 		t.Errorf("expected Exception in body to be %q, got %+v", expected, errReply)
 	}
-	// bad json response, using Fetch()
-	errReply, err = jrpc.CallNoPayloadURL[Response](url)
+	// bad json response, using GetURL()
+	errReply, err = jrpc.GetURL[Response](url)
 	if err == nil {
 		t.Errorf("expected error %v", errReply)
 	}
@@ -310,6 +310,7 @@ func TestJPRCHeaders(t *testing.T) {
 		URL:     url,
 		Headers: &inp,
 	}
+	// use the deprecated for coverage. switch to jrpc.Get() in next version
 	res, err := jrpc.CallNoPayload[http.Header](dest)
 	if err != nil {
 		t.Errorf("failed Call: %v", err)

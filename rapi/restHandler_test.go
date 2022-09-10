@@ -37,7 +37,7 @@ import (
 
 // Generics ftw.
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
-	r, err := jrpc.CallWithPayload[T](jrpc.NewDestination(url), []byte(jsonPayload))
+	r, err := jrpc.Fetch[T](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
@@ -63,7 +63,7 @@ func GetAsyncResult(t *testing.T, url string, jsonPayload string) *AsyncReply {
 
 // Same as above but when expecting to get an error reply.
 func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerReply {
-	r, err := jrpc.CallWithPayload[jrpc.ServerReply](jrpc.NewDestination(url), []byte(jsonPayload))
+	r, err := jrpc.Fetch[jrpc.ServerReply](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
 	}
@@ -199,7 +199,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		URL:     statusURL,
 		Timeout: 3 * time.Second,
 	}
-	statuses, err := jrpc.CallNoPayload[StatusReply](statusDest)
+	statuses, err := jrpc.Get[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -259,7 +259,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
 	// Status should be empty (nothing running)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
+	statuses, err = jrpc.Get[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -274,7 +274,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	// Get all statuses
 	statusURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStatusURI)
 	statusDest.URL = statusURL
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
+	statuses, err = jrpc.Get[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -376,7 +376,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 	// Get status
 	statusURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d", addr.Port, uiPath, RestStatusURI, runID)
 	statusDest := jrpc.NewDestination(statusURL)
-	statuses, err := jrpc.CallNoPayload[StatusReply](statusDest)
+	statuses, err := jrpc.Get[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -418,7 +418,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 		t.Errorf("2nd stop should be noop, got %+v", asyncObj)
 	}
 	// Status should be empty (nothing running)
-	statuses, err = jrpc.CallNoPayload[StatusReply](statusDest)
+	statuses, err = jrpc.Get[StatusReply](statusDest)
 	if err != nil {
 		t.Errorf("Error getting status %q: %v", statusURL, err)
 	}
@@ -475,7 +475,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 
 // If jsonPayload isn't empty we POST otherwise get the url.
 func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunnerResults {
-	r, err := jrpc.CallWithPayload[fgrpc.GRPCRunnerResults](jrpc.NewDestination(url), []byte(jsonPayload))
+	r, err := jrpc.Fetch[fgrpc.GRPCRunnerResults](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err != nil {
 		t.Errorf("Got unexpected err for URL %s: %v", url, err)
 	}
