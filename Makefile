@@ -58,7 +58,7 @@ test: dependencies
 
 local-lint:
 	golangci-lint version
-	golangci-lint $(DEBUG_LINTERS) run $(LINT_PACKAGES)
+	golangci-lint --timeout 120s $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
