@@ -83,14 +83,11 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 
 // HandleCall deserializes the expected type from the request body.
 // Sample usage code:
-// ```
 //
-//	 req, err := jrpc.HandleCall[Request](w, r)
-//		if err != nil {
-//		    _ = jrpc.ReplyError(w, "request error", err)
-//		}
-//
-// ```.
+//	req, err := jrpc.HandleCall[Request](w, r)
+//	if err != nil {
+//	    _ = jrpc.ReplyError(w, "request error", err)
+//	}
 func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {

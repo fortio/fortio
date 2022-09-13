@@ -143,6 +143,18 @@ func TestJPRC(t *testing.T) {
 	if res.ConcatenatedStrings != "abcd" {
 		t.Errorf("response doesn't contain expected string: %+v", res)
 	}
+	// OK case: empty POST
+	dest := &jrpc.Destination{
+		URL:    url,
+		Method: http.MethodPost, // force post (default is get when no payload)
+	}
+	res, err = jrpc.Fetch[Response](dest, []byte{})
+	if err != nil {
+		t.Errorf("failed Fetch with POST and empty body: %v", err)
+	}
+	if res.Error {
+		t.Errorf("response unexpectedly marked as failed: %+v", res)
+	}
 	// Error cases
 	// Empty request, using FetchBytes()
 	code, bytes, err := jrpc.FetchBytes(jrpc.NewDestination(url))
@@ -278,7 +290,7 @@ func TestJPRC(t *testing.T) {
 	if err == nil {
 		t.Errorf("error expected %v", res)
 	}
-	expected = "deserialization error, code 500: unexpected end of JSON input (raw reply: )"
+	expected = "non ok http result, code 500: <nil> (raw reply: )"
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q, %+v", expected, err.Error(), res)
 	}

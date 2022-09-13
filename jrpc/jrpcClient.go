@@ -71,9 +71,13 @@ type FetchError struct {
 
 // Destination is the URL and optional additional headers.
 type Destination struct {
-	URL     string
+	URL string
+	// Default is nil, which means no additional headers.
 	Headers *http.Header
+	// Default is 0 which means use global timeout.
 	Timeout time.Duration
+	// Default is "" which will use POST if there is a payload and GET otherwise.
+	Method string
 }
 
 func (fe *FetchError) Error() string {
@@ -129,6 +133,10 @@ func Serialize(obj interface{}) ([]byte, error) {
 // Deserialize deserializes json as a new object of desired type.
 func Deserialize[Q any](bytes []byte) (*Q, error) {
 	var result Q
+	if len(bytes) == 0 {
+		// Allow empty body to be deserialized as empty object.
+		return &result, nil
+	}
 	err := json.Unmarshal(bytes, &result)
 	return &result, err // Will return zero object, not nil upon error
 }
@@ -184,10 +192,17 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	var req *http.Request
 	var err error
 	var res []byte
+	method := dest.Method
 	if len(jsonPayload) > 0 {
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, dest.URL, bytes.NewReader(jsonPayload))
+		if method == "" {
+			method = http.MethodPost
+		}
+		req, err = http.NewRequestWithContext(ctx, method, dest.URL, bytes.NewReader(jsonPayload))
 	} else {
-		req, err = http.NewRequestWithContext(ctx, http.MethodGet, dest.URL, nil)
+		if method == "" {
+			method = http.MethodGet
+		}
+		req, err = http.NewRequestWithContext(ctx, method, dest.URL, nil)
 	}
 	if err != nil {
 		return -1, res, err
