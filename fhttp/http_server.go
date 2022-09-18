@@ -114,6 +114,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCommonArgs common flags for debug and echo handlers.
+// Must be called after body is read.
 func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
 	dur := generateDelay(r.FormValue("delay"))
 	if dur > 0 {
@@ -274,7 +275,6 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	handleCommonArgs(w, r)
 	LogRequest(r, "Debug")
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
@@ -343,6 +343,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			buf.WriteByte('\n')
 		}
 	}
+	handleCommonArgs(w, r)
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
