@@ -87,7 +87,7 @@ type HTTPRunnerOptions struct {
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo
+//nolint:funlen, gocognit, gocyclo, maintidx
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	warmupMode := "parallel"
@@ -207,12 +207,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		// Get the report on the IP address each thread use to send traffic
 		occurrence, connStats, currentSocketUsed := httpstate[i].client.GetIPAddress()
 		httpstate[i].client.Close()
-		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
-		if o.HTTPOptions.DisableFastClient {
-			out.Write([]byte("\n"))
-		} else {
-			connStats.Counter.Print(out, " connection timing")
-		}
+		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s ", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
+		connStats.Counter.Print(out, "connection timing")
 		total.SocketCount += currentSocketUsed
 		total.Sockets = append(total.Sockets, currentSocketUsed)
 		// Q: is there some copying each time stats[i] is used?
