@@ -1112,7 +1112,8 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	m.HandleFunc("/debug", DebugHandler)
 	// Debug handler does respect the delay arg but not status, status is always 200
 	url := fmt.Sprintf("http://localhost:%d/debug?delay=500ms&status=555", a.Port)
-	o := HTTPOptions{URL: url, DisableFastClient: true}
+	// Trigger transparent compression (which will add Accept-Encoding: gzip header)
+	o := HTTPOptions{URL: url, DisableFastClient: true, Compression: true}
 	o.AddAndValidateExtraHeader("BBB: bbb")
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
@@ -1136,6 +1137,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 		"headers:\n\n"+
 		"Host: localhost:%d\n"+
 		"Aaa: aaa\n"+
+		"Accept-Encoding: gzip\n"+
 		"Bbb: bbb\n"+
 		"Ccc: ccc\n"+
 		"User-Agent: %s\n"+
