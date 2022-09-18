@@ -33,6 +33,7 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 	"golang.org/x/net/http2"
@@ -104,7 +105,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	// echo back the Content-Type and Content-Length in the response
 	for _, k := range []string{"Content-Type", "Content-Length"} {
 		if v := r.Header.Get(k); v != "" {
-			w.Header().Set(k, v)
+			jrpc.SetHeaderIfMissing(w.Header(), k, v)
 		}
 	}
 	w.WriteHeader(status)
@@ -146,7 +147,7 @@ func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
 }
 
 func writePayload(w http.ResponseWriter, status int, size int) {
-	w.Header().Set("Content-Type", "application/octet-stream")
+	jrpc.SetHeaderIfMissing(w.Header(), "Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.Itoa(size))
 	w.WriteHeader(status)
 	n, err := w.Write(fnet.Payload[:size])
@@ -344,7 +345,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	handleCommonArgs(w, r)
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	jrpc.SetHeaderIfMissing(w.Header(), "Content-Type", "text/plain; charset=UTF-8")
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
 	}
