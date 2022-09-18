@@ -1107,13 +1107,15 @@ func TestBadQueryUUIDClient(t *testing.T) {
 	}
 }
 
+// TestDebugHandlerSortedHeaders tests the headers are sorted but
+// also tests post echo back and gzip handling.
 func TestDebugHandlerSortedHeaders(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
-	m.HandleFunc("/debug", DebugHandler)
+	m.Handle("/debug", Gzip(http.HandlerFunc(DebugHandler))) // same as in Serve()
 	// Debug handler does respect the delay arg but not status, status is always 200
 	url := fmt.Sprintf("http://localhost:%d/debug?delay=500ms&status=555", a.Port)
 	// Trigger transparent compression (which will add Accept-Encoding: gzip header)
-	o := HTTPOptions{URL: url, DisableFastClient: true, Compression: true}
+	o := HTTPOptions{URL: url, DisableFastClient: true, Compression: true, Payload: []byte("abcd")}
 	o.AddAndValidateExtraHeader("BBB: bbb")
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
@@ -1133,16 +1135,18 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	body := string(data)
 	i := strings.Index(body, "\n")
 	body = body[i+1:]
-	expected := fmt.Sprintf("\nGET /debug?delay=500ms&status=555 HTTP/1.1\n\n"+
+	expected := fmt.Sprintf("\nPOST /debug?delay=500ms&status=555 HTTP/1.1\n\n"+
 		"headers:\n\n"+
 		"Host: localhost:%d\n"+
 		"Aaa: aaa\n"+
 		"Accept-Encoding: gzip\n"+
 		"Bbb: bbb\n"+
 		"Ccc: ccc\n"+
+		"Content-Length: 4\n"+
+		"Content-Type: application/octet-stream\n"+
 		"User-Agent: %s\n"+
 		"Zzz: zzz\n\n"+
-		"body:\n\n\n", a.Port, jrpc.UserAgent)
+		"body:\n\nabcd\n", a.Port, jrpc.UserAgent)
 	if body != expected {
 		t.Errorf("Get body: %s not as expected: %s", body, expected)
 	}
