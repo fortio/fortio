@@ -1110,23 +1110,29 @@ func TestBadQueryUUIDClient(t *testing.T) {
 func TestDebugHandlerSortedHeaders(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/debug", DebugHandler)
-	url := fmt.Sprintf("http://localhost:%d/debug", a.Port)
+	// Debug handler does respect the delay arg but not status, status is always 200
+	url := fmt.Sprintf("http://localhost:%d/debug?delay=500ms&status=555", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	o.AddAndValidateExtraHeader("BBB: bbb")
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
 	o.AddAndValidateExtraHeader("AAA: aaa")
 	client, _ := NewClient(&o)
+	now := time.Now()
 	code, data, header := client.Fetch() // used to panic/bug #127
+	duration := time.Since(now)
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
 		t.Errorf("Got %d instead of 200", code)
+	}
+	if duration < 500*time.Millisecond {
+		t.Errorf("Got %s instead of 500ms", duration)
 	}
 	// remove the first line ('Φορτίο version...') from the body
 	body := string(data)
 	i := strings.Index(body, "\n")
 	body = body[i+1:]
-	expected := fmt.Sprintf("\nGET /debug HTTP/1.1\n\n"+
+	expected := fmt.Sprintf("\nGET /debug?delay=500ms&status=555 HTTP/1.1\n\n"+
 		"headers:\n\n"+
 		"Host: localhost:%d\n"+
 		"Aaa: aaa\n"+

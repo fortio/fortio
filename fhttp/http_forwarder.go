@@ -247,6 +247,9 @@ func CreateProxyClient() *http.Client {
 			// TODO make configurable, should be fine for now for most but extreme -c values
 			MaxIdleConnsPerHost: 128, // must be more than incoming parallelization; divided by number of fan out if using parallel mode
 			MaxIdleConns:        256,
+			// This avoids Accept-Encoding: gzip being added to outgoing requests when no encoding accept is specified
+			// yet if passed by request, it will do gzip end to end. Issue #624.
+			DisableCompression: true,
 		},
 	}
 	return client

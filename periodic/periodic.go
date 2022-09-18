@@ -105,12 +105,13 @@ func (a *Aborter) Abort(wait bool) {
 		return
 	}
 	a.stopRequested = true
-	if a.hasStarted || !wait {
+	started := a.hasStarted
+	if started || !wait {
 		log.LogVf("ABORT Closing %v", a)
 		close(a.StopChan)
 		a.StopChan = nil
 		a.Unlock()
-		if a.hasStarted {
+		if started {
 			log.LogVf("ABORT reading start channel")
 			// shouldn't block/hang, just purging/resetting
 			<-a.StartChan

@@ -81,11 +81,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debugf("Read %d", len(data))
-	dur := generateDelay(r.FormValue("delay"))
-	if dur > 0 {
-		log.LogVf("Sleeping for %v", dur)
-		time.Sleep(dur)
-	}
+	handleCommonArgs(w, r)
 	statusStr := r.FormValue("status")
 	var status int
 	if statusStr != "" {
@@ -93,33 +89,11 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		status = http.StatusOK
 	}
-	if log.LogDebug() {
-		// TODO: this easily lead to contention - use 'thread local'
-		rqNum := atomic.AddInt64(&EchoRequests, 1)
-		log.Debugf("Request # %v", rqNum)
-	}
-	if generateClose(r.FormValue("close")) {
-		log.Debugf("Adding Connection:close / will close socket")
-		w.Header().Set("Connection", "close")
-	}
 	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
 	if gzip {
 		gwz := NewGzipHTTPResponseWriter(w)
 		defer gwz.Close()
 		w = gwz
-	}
-	// process header(s) args, must be before size to compose properly
-	for _, hdr := range r.Form["header"] {
-		log.LogVf("Adding requested header %s", hdr)
-		if len(hdr) == 0 {
-			continue
-		}
-		s := strings.SplitN(hdr, ":", 2)
-		if len(s) != 2 {
-			log.Errf("invalid extra header '%s', expecting Key: Value", hdr)
-			continue
-		}
-		w.Header().Add(s[0], s[1])
 	}
 	size := generateSize(r.FormValue("size"))
 	if size >= 0 {
@@ -136,6 +110,37 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(status)
 	if _, err = w.Write(data); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
+	}
+}
+
+// handleCommonArgs common flags for debug and echo handlers.
+func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
+	dur := generateDelay(r.FormValue("delay"))
+	if dur > 0 {
+		log.LogVf("Sleeping for %v", dur)
+		time.Sleep(dur)
+	}
+	if log.LogDebug() {
+		// Note this easily lead to contention, debug mode only (or low qps).
+		rqNum := atomic.AddInt64(&EchoRequests, 1)
+		log.Debugf("Request # %v", rqNum)
+	}
+	if generateClose(r.FormValue("close")) {
+		log.Debugf("Adding Connection:close / will close socket")
+		w.Header().Set("Connection", "close")
+	}
+	// process header(s) args, must be before size to compose properly
+	for _, hdr := range r.Form["header"] {
+		log.LogVf("Adding requested header %s", hdr)
+		if len(hdr) == 0 {
+			continue
+		}
+		s := strings.SplitN(hdr, ":", 2)
+		if len(s) != 2 {
+			log.Errf("invalid extra header '%s', expecting Key: Value", hdr)
+			continue
+		}
+		w.Header().Add(s[0], s[1])
 	}
 }
 
@@ -269,6 +274,7 @@ environment:
 
 // DebugHandler returns debug/useful info to http client.
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
+	handleCommonArgs(w, r)
 	LogRequest(r, "Debug")
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
@@ -291,7 +297,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string //nolint:prealloc // header is multi valued map,...
+	keys := make([]string, 0, len(r.Header))
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
