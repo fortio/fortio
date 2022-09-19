@@ -118,10 +118,8 @@ func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request
 	}
 	r.Body.Close()
 	if mcfg.Serial {
-		//nolint:contextcheck // bug I think as we transfer the context - asked in https://github.com/kkHAIKE/contextcheck/issues/3
 		mcfg.TeeSerialHandler(w, r, data)
 	} else {
-		//nolint:contextcheck // bug I think as we transfer the context - asked in https://github.com/kkHAIKE/contextcheck/issues/3
 		mcfg.TeeParallelHandler(w, r, data)
 	}
 }

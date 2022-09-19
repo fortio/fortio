@@ -351,6 +351,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
 // If the same host is requested, and it has more than 1 IP, returned value will first,
 // random or roundrobin or cached roundrobin over the ips depending on the -dns-method flag value.
+// nolint: contextcheck
 func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
