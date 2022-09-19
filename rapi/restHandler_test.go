@@ -117,7 +117,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v (%+v)", totalReq, res.RetCodes, res)
 	}
-	if res.SocketCount != res.RunnerResults.NumThreads {
+	if res.SocketCount != int64(res.RunnerResults.NumThreads) {
 		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
 

@@ -213,7 +213,7 @@ func testClosingAndSocketCount(t *testing.T, o *HTTPRunnerOptions) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
-	if int64(res.SocketCount) != numReq {
+	if res.SocketCount != numReq {
 		t.Errorf("When closing, got %d while expected as many sockets as requests %d", res.SocketCount, numReq)
 	}
 }
