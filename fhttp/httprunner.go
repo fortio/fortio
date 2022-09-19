@@ -45,8 +45,10 @@ type HTTPRunnerResults struct {
 	HTTPOptions
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
-	Sockets     []int
-	SocketCount int
+	Sockets     []int64
+	SocketCount int64
+	// Connection Time stats
+	ConnectionStats *stats.HistogramData
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
 	aborter *periodic.Aborter
@@ -85,7 +87,7 @@ type HTTPRunnerOptions struct {
 
 // RunHTTPTest runs an http test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo
+//nolint:funlen, gocognit, gocyclo, maintidx
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	warmupMode := "parallel"
@@ -100,6 +102,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup%s",
 		o.URL, o.NumThreads, o.QPS, warmupMode, connReuseMsg)
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
+	if o.HTTPOptions.Resolution <= 0 {
+		// Set both connect histogram params when Resolution isn't set explicitly on the HTTP options
+		// (that way you can set the offet to 0 in connect and to something else for the call)
+		o.HTTPOptions.Resolution = r.Options().Resolution
+		o.HTTPOptions.Offset = r.Options().Offset
+	}
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // can change during run for c > 2 n
 	o.HTTPOptions.Init(o.URL)
@@ -188,6 +196,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		fm.Close()
 		_, _ = fmt.Fprintf(out, "Wrote profile data to %s.{cpu|mem}\n", o.Profiler)
 	}
+	// Connection stats, aggregated
+	connectionStats := stats.NewHistogram(o.HTTPOptions.Offset.Seconds(), o.HTTPOptions.Resolution)
 	// Numthreads may have reduced:
 	numThreads = total.RunnerResults.NumThreads
 	// But we also must cleanup all the created clients.
@@ -195,10 +205,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	fmt.Fprintf(out, "# Socket and IP used for each connection:\n")
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
-		occurrence, currentSocketUsed := httpstate[i].client.GetIPAddress()
+		occurrence, connStats := httpstate[i].client.GetIPAddress()
+		currentSocketUsed := connStats.Count
 		httpstate[i].client.Close()
-		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s\n", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
-
+		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s ", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
+		connStats.Counter.Print(out, "connection timing")
 		total.SocketCount += currentSocketUsed
 		total.Sockets = append(total.Sockets, currentSocketUsed)
 		// Q: is there some copying each time stats[i] is used?
@@ -210,6 +221,13 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		}
 		total.sizes.Transfer(httpstate[i].sizes)
 		total.headerSizes.Transfer(httpstate[i].headerSizes)
+		connectionStats.Transfer(connStats)
+	}
+	total.ConnectionStats = connectionStats.Export().CalcPercentiles(o.Percentiles)
+	if log.Log(log.Info) {
+		total.ConnectionStats.Print(out, "Connection time histogram (s)")
+	} else if log.Log(log.Warning) {
+		connectionStats.Counter.Print(out, "Connection time (s)")
 	}
 
 	// Sort the ip address form largest to smallest based on its usage count

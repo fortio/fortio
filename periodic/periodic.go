@@ -172,9 +172,11 @@ type RunnerOptions struct {
 	// Note that this actually maps to gorountines and not actual threads
 	// but threads seems like a more familiar name to use for non go users
 	// and in a benchmarking context
-	NumThreads  int
+	NumThreads int
+	// List of percentiles to calculate.
 	Percentiles []float64
-	Resolution  float64
+	// Divider to apply to duration data in seconds. Defaults to 0.001 or 1 millisecond.
+	Resolution float64
 	// Where to write the textual version of the results, defaults to stdout
 	Out io.Writer `json:"-"`
 	// Extra data to be copied back to the results (to be saved/JSON serialized)

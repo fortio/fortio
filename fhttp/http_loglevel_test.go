@@ -32,3 +32,8 @@ func TestDebugMode(t *testing.T) {
 	TestNoFirstChunkSizeInitially(t)
 	TestFetchAndOnBehalfOf(t)
 }
+
+func TesWarningMode(t *testing.T) {
+	log.SetLogLevel(log.Warning)
+	TestHTTPRunner(t)
+}
