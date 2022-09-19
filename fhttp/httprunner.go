@@ -45,8 +45,8 @@ type HTTPRunnerResults struct {
 	HTTPOptions
 	Sizes       *stats.HistogramData
 	HeaderSizes *stats.HistogramData
-	Sockets     []int
-	SocketCount int
+	Sockets     []int64
+	SocketCount int64
 	// Connection Time stats (fast client only atm)
 	ConnectionStats *stats.HistogramData
 	// http code to abort the run on (-1 for connection or other socket error)
@@ -205,7 +205,8 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	fmt.Fprintf(out, "# Socket and IP used for each connection:\n")
 	for i := 0; i < numThreads; i++ {
 		// Get the report on the IP address each thread use to send traffic
-		occurrence, connStats, currentSocketUsed := httpstate[i].client.GetIPAddress()
+		occurrence, connStats := httpstate[i].client.GetIPAddress()
+		currentSocketUsed := connStats.Count
 		httpstate[i].client.Close()
 		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s ", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
 		connStats.Counter.Print(out, "connection timing")

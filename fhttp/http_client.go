@@ -46,8 +46,8 @@ type Fetcher interface {
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
 	// GetIPAddress() returns the occurrence of ip address used by this client connection,
-	// the connection time histogram and the total number of sockets used.
-	GetIPAddress() (*stats.Occurrence, *stats.Histogram, int)
+	// and the connection time histogram (which includes the count).
+	GetIPAddress() (*stats.Occurrence, *stats.Histogram)
 }
 
 const (
@@ -361,7 +361,6 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
-	socketCount          int
 	ipAddrUsage          *stats.Occurrence
 	connectStats         *stats.Histogram
 }
@@ -451,9 +450,9 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using stdClient.
-func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram, int) {
-	return c.ipAddrUsage, c.connectStats, c.socketCount
+// GetIPAddress get the ip address that DNS resolves to when using stdClient and connection stats.
+func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
+	return c.ipAddrUsage, c.connectStats
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -519,7 +518,6 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 					log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
 				}
 				req.RemoteAddr = newRemoteAddress
-				client.socketCount++
 				client.ipAddrUsage.Record(req.RemoteAddr)
 			}
 			return conn, err
@@ -571,7 +569,7 @@ type FastClient struct {
 	req          []byte
 	dest         net.Addr
 	socket       net.Conn
-	socketCount  int
+	socketCount  int // number of sockets attempts, same as the new connectStats.Count() + DNS errors if any.
 	size         int
 	code         int
 	errorCount   int
@@ -601,9 +599,9 @@ type FastClient struct {
 	connectStats   *stats.Histogram
 }
 
-// GetIPAddress get ip address that DNS resolved to when using fast client.
-func (c *FastClient) GetIPAddress() (*stats.Occurrence, *stats.Histogram, int) {
-	return c.ipAddrUsage, c.connectStats, c.socketCount
+// GetIPAddress get ip address that DNS resolved to when using fast client and connection stats.
+func (c *FastClient) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
+	return c.ipAddrUsage, c.connectStats
 }
 
 // Close cleans up any resources used by FastClient.
