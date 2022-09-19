@@ -360,6 +360,8 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 | header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
 | gzip      | If `Accept-Encoding: gzip` is passed in headers by the caller/client; and `gzip=true` is in the query args, all response will be gzipped; or if `gzip=42.7` is passed, approximately 42.7% will|
 
+`delay`, `close` and `header` query arguments are also supported for the `debug` endpoint which echoes back the request (gzip is always done if `Accept-Encoding: gzip` is present, status is always 200, and the payload is the echo back debug information).
+
 You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
 `fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
 

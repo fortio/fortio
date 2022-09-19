@@ -43,6 +43,10 @@ func TestMultiProxy(t *testing.T) {
 		if !bytes.Contains(data, []byte(payload)) {
 			t.Errorf("Result %s doesn't contain expected payload echo back %q", DebugSummary(data, 1024), payload)
 		}
+		// Issue #624
+		if bytes.Contains(data, []byte("gzip")) {
+			t.Errorf("Result %s contains unexpected gzip (accept encoding)", DebugSummary(data, 1024))
+		}
 		if !bytes.Contains(data, []byte("X-Fortio-Multi-Id: 1")) {
 			t.Errorf("Result %s doesn't contain expected X-Fortio-Multi-Id: 1", DebugSummary(data, 1024))
 		}

@@ -33,6 +33,7 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
 	"golang.org/x/net/http2"
@@ -81,11 +82,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debugf("Read %d", len(data))
-	dur := generateDelay(r.FormValue("delay"))
-	if dur > 0 {
-		log.LogVf("Sleeping for %v", dur)
-		time.Sleep(dur)
-	}
+	handleCommonArgs(w, r)
 	statusStr := r.FormValue("status")
 	var status int
 	if statusStr != "" {
@@ -93,20 +90,46 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		status = http.StatusOK
 	}
+	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
+	if gzip {
+		gwz := NewGzipHTTPResponseWriter(w)
+		defer gwz.Close()
+		w = gwz
+	}
+	size := generateSize(r.FormValue("size"))
+	if size >= 0 {
+		log.LogVf("Writing %d size with %d status", size, status)
+		writePayload(w, status, size)
+		return
+	}
+	// echo back the Content-Type and Content-Length in the response
+	for _, k := range []string{"Content-Type", "Content-Length"} {
+		if v := r.Header.Get(k); v != "" {
+			jrpc.SetHeaderIfMissing(w.Header(), k, v)
+		}
+	}
+	w.WriteHeader(status)
+	if _, err = w.Write(data); err != nil {
+		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
+	}
+}
+
+// handleCommonArgs common flags for debug and echo handlers.
+// Must be called after body is read.
+func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
+	dur := generateDelay(r.FormValue("delay"))
+	if dur > 0 {
+		log.LogVf("Sleeping for %v", dur)
+		time.Sleep(dur)
+	}
 	if log.LogDebug() {
-		// TODO: this easily lead to contention - use 'thread local'
+		// Note this easily lead to contention, debug mode only (or low qps).
 		rqNum := atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
 	}
 	if generateClose(r.FormValue("close")) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
-	}
-	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
-	if gzip {
-		gwz := NewGzipHTTPResponseWriter(w)
-		defer gwz.Close()
-		w = gwz
 	}
 	// process header(s) args, must be before size to compose properly
 	for _, hdr := range r.Form["header"] {
@@ -121,26 +144,10 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Add(s[0], s[1])
 	}
-	size := generateSize(r.FormValue("size"))
-	if size >= 0 {
-		log.LogVf("Writing %d size with %d status", size, status)
-		writePayload(w, status, size)
-		return
-	}
-	// echo back the Content-Type and Content-Length in the response
-	for _, k := range []string{"Content-Type", "Content-Length"} {
-		if v := r.Header.Get(k); v != "" {
-			w.Header().Set(k, v)
-		}
-	}
-	w.WriteHeader(status)
-	if _, err = w.Write(data); err != nil {
-		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
-	}
 }
 
 func writePayload(w http.ResponseWriter, status int, size int) {
-	w.Header().Set("Content-Type", "application/octet-stream")
+	jrpc.SetHeaderIfMissing(w.Header(), "Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.Itoa(size))
 	w.WriteHeader(status)
 	n, err := w.Write(fnet.Payload[:size])
@@ -291,7 +298,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Host: ")
 	buf.WriteString(r.Host)
 
-	var keys []string //nolint:prealloc // header is multi valued map,...
+	keys := make([]string, 0, len(r.Header))
 	for k := range r.Header {
 		keys = append(keys, k)
 	}
@@ -337,7 +344,8 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 			buf.WriteByte('\n')
 		}
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	handleCommonArgs(w, r)
+	jrpc.SetHeaderIfMissing(w.Header(), "Content-Type", "text/plain; charset=UTF-8")
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
 	}
