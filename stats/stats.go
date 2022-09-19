@@ -196,7 +196,7 @@ type HistogramData struct {
 	Avg         float64
 	StdDev      float64
 	Data        []Bucket
-	Percentiles []Percentile
+	Percentiles []Percentile `json:"Percentiles,omitempty"`
 }
 
 // NewHistogram creates a new histogram (sets up the buckets).

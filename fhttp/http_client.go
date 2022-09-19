@@ -45,9 +45,9 @@ type Fetcher interface {
 	Fetch() (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
-	// GetIPAddress() returns the occurrence of ip address used by this client connection.
-	// and how many sockets have been used
-	GetIPAddress() (*stats.Occurrence, int)
+	// GetIPAddress() returns the occurrence of ip address used by this client connection,
+	// and the connection time histogram (which includes the count).
+	GetIPAddress() (*stats.Occurrence, *stats.Histogram)
 }
 
 const (
@@ -89,6 +89,9 @@ func (h *HTTPOptions) Init(url string) *HTTPOptions {
 	if h.HTTPReqTimeOut < 0 {
 		log.Warnf("Invalid timeout %v, setting to %v", h.HTTPReqTimeOut, HTTPReqTimeOutDefaultValue)
 		h.HTTPReqTimeOut = HTTPReqTimeOutDefaultValue
+	}
+	if h.Resolution <= 0 {
+		h.Resolution = 0.001
 	}
 	h.URLSchemeCheck()
 	return h
@@ -185,6 +188,10 @@ type HTTPOptions struct {
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
 	// When false, re-resolve the DNS name when the connection breaks.
 	NoResolveEachConn bool
+	// Optional Offset Duration; to offset the histogram of the Connection duration
+	Offset time.Duration
+	// Optional resolution divider for the Connection duration histogram. In seconds. Defaults to 0.001 or 1 millisecond.
+	Resolution float64
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -354,8 +361,8 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
-	socketCount          int
 	ipAddrUsage          *stats.Occurrence
+	connectStats         *stats.Histogram
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -443,9 +450,9 @@ func (c *Client) Fetch() (int, []byte, int) {
 	return code, data, 0
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using stdClient.
-func (c *Client) GetIPAddress() (*stats.Occurrence, int) {
-	return c.ipAddrUsage, c.socketCount
+// GetIPAddress get the ip address that DNS resolves to when using stdClient and connection stats.
+func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
+	return c.ipAddrUsage, c.connectStats
 }
 
 // NewClient creates either a standard or fast client (depending on
@@ -483,6 +490,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		id:          o.ID,
 		logErrors:   o.LogErrors,
 		ipAddrUsage: stats.NewOccurrence(),
+		// Keep track of timing for connection (re)establishment.
+		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 	}
 
 	tr := http.Transport{
@@ -497,10 +506,11 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 			}
 			var conn net.Conn
+			now := time.Now()
 			conn, err = (&net.Dialer{
 				Timeout: o.HTTPReqTimeOut,
 			}).DialContext(ctx, network, addr)
-
+			client.connectStats.Record(time.Since(now).Seconds())
 			if conn != nil {
 				newRemoteAddress := conn.RemoteAddr().String()
 				// No change when it wasn't set before (first time) and when the value isn't actually changing either.
@@ -508,10 +518,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 					log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
 				}
 				req.RemoteAddr = newRemoteAddress
-				client.socketCount++
 				client.ipAddrUsage.Record(req.RemoteAddr)
 			}
-
 			return conn, err
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
@@ -561,7 +569,7 @@ type FastClient struct {
 	req          []byte
 	dest         net.Addr
 	socket       net.Conn
-	socketCount  int
+	socketCount  int // number of sockets attempts, same as the new connectStats.Count() + DNS errors if any.
 	size         int
 	code         int
 	errorCount   int
@@ -588,11 +596,12 @@ type FastClient struct {
 	connReuseRange [2]int
 	connReuse      int
 	reuseCount     int
+	connectStats   *stats.Histogram
 }
 
-// GetIPAddress get ip address that DNS resolved to when using fast client.
-func (c *FastClient) GetIPAddress() (*stats.Occurrence, int) {
-	return c.ipAddrUsage, c.socketCount
+// GetIPAddress get ip address that DNS resolved to when using fast client and connection stats.
+func (c *FastClient) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
+	return c.ipAddrUsage, c.connectStats
 }
 
 // Close cleans up any resources used by FastClient.
@@ -657,6 +666,8 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
 		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
 		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn, ipAddrUsage: stats.NewOccurrence(),
+		// Keep track of timing for connection (re)establishment.
+		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
@@ -751,14 +762,17 @@ func (c *FastClient) connect() net.Conn {
 	}
 
 	d := &net.Dialer{Timeout: c.reqTimeout}
+	now := time.Now()
 	if c.https {
 		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
+		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
 			log.Errf("[%d] Unable to TLS connect to %v : %v", c.id, c.dest, err)
 			return nil
 		}
 	} else {
 		socket, err = d.Dial(c.dest.Network(), c.dest.String())
+		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
 			log.Errf("[%d] Unable to connect to %v : %v", c.id, c.dest, err)
 			return nil
