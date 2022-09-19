@@ -47,7 +47,7 @@ type HTTPRunnerResults struct {
 	HeaderSizes *stats.HistogramData
 	Sockets     []int64
 	SocketCount int64
-	// Connection Time stats (fast client only atm)
+	// Connection Time stats
 	ConnectionStats *stats.HistogramData
 	// http code to abort the run on (-1 for connection or other socket error)
 	AbortOn int

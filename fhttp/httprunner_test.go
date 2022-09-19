@@ -58,7 +58,7 @@ func TestHTTPRunner(t *testing.T) {
 	if totalReq != httpOk {
 		t.Errorf("Mismatch between requests %d and ok %v", totalReq, res.RetCodes)
 	}
-	if res.SocketCount != res.RunnerResults.NumThreads {
+	if res.SocketCount != int64(res.RunnerResults.NumThreads) {
 		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
 	count := getIPUsageCount(res.IPCountMap)
@@ -126,7 +126,7 @@ func testHTTPNotLeaking(t *testing.T, opts *HTTPRunnerOptions) {
 	if ngAfter > ngBefore2+8 {
 		t.Errorf("Goroutines after test %d, expected it to stay near %d", ngAfter, ngBefore2)
 	}
-	if res.SocketCount != res.RunnerResults.NumThreads {
+	if res.SocketCount != int64(res.RunnerResults.NumThreads) {
 		t.Errorf("%d socket used, expected same as thread# %d", res.SocketCount, res.RunnerResults.NumThreads)
 	}
 }
@@ -502,14 +502,14 @@ func TestConnectionReuseRange(t *testing.T) {
 			t.Error(err)
 		}
 
-		if res.SocketCount != (int)(expectedSocketReuse) {
+		if res.SocketCount != (int64)(expectedSocketReuse) {
 			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
 		}
 	}
 
 	// Test when connection reuse range min != max.
 	// The actual socket count should always be 2 as the connection reuse range varies between 5 and 9.
-	expectedSocketReuse := 2
+	expectedSocketReuse := int64(2)
 	opts.ConnReuseRange = [2]int{5, 9}
 	// Check a few times that despite the range and random 2-9 we still always get 2 connections
 	for i := 0; i < 5; i++ {
