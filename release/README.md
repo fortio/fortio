@@ -43,7 +43,7 @@ Make sure it gets successfully pushed to the fortio registry (requires org acces
 run
 
 ```Shell
-make update-build-image-tag
+make update-build-image-tag SED=gsed
 ```
 
 Check the diff and make lint, webtest, etc and PR

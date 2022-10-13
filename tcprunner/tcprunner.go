@@ -103,6 +103,7 @@ var (
 // GeneratePayload generates a default 24 bytes unique payload for each runner thread and message sent
 // when no other payload is set.
 func GeneratePayload(t int, i int64) []byte {
+	//nolint:dupword
 	// up to 9999 connections and 999 999 999 999 (999B) request
 	s := fmt.Sprintf("Fortio\n%04d\n%012d", t, i) // 6+2+4+12 = 24 bytes
 	return []byte(s)
