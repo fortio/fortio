@@ -132,7 +132,7 @@ func sendHTMLDataIndex(w http.ResponseWriter) {
 }
 
 // GetDataURL gives the url of the data/ dir either using configured `-base-url` and ui path
-// from from the incoming Host header.
+// from the incoming Host header.
 func GetDataURL(r *http.Request) string {
 	// Ingress effect / baseURL support:
 	url := baseURL

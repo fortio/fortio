@@ -86,6 +86,10 @@ linters:
     - golint
     - interfacer
     - maligned
+    - varcheck
+    - structcheck
+    - nosnakecase
+    - deadcode
     # Weird/bad ones:
     - wsl
     - nlreturn

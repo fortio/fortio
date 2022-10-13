@@ -428,7 +428,6 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
-	//nolint:contextcheck // bug(?) we transfer the context from the http request https://github.com/kkHAIKE/contextcheck/issues/3
 	req := MakeSimpleRequest(url, r, fetch2CopiesAllHeader.Get())
 	if req == nil {
 		http.Error(w, "parsing url failed, invalid url", http.StatusBadRequest)
@@ -478,6 +477,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	opts := NewHTTPOptions("http://" + url)
 	opts.HTTPReqTimeOut = 5 * time.Minute
 	OnBehalfOf(opts, r)
+	//nolint:contextcheck // TODO: yes we should plug an aborter in the http options that's based on this request's context.
 	client, _ := NewClient(opts)
 	if client == nil {
 		return // error logged already

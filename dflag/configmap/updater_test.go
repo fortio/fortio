@@ -73,7 +73,7 @@ func (s *updaterTestSuite) linkDataDirTo(newDataDir string) {
 	copyCmd := exec.Command("ln", "-s", "-n", "-f",
 		path.Join(s.tempDir, "testdata", newDataDir),
 		path.Join(s.tempDir, "testdata", "..data"))
-	assert.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir tempdir must not fail")
+	assert.NoError(s.T(), copyCmd.Run(), "relinking ..data in tempdir must not fail")
 }
 
 func (s *updaterTestSuite) TestInitializeFailsOnBadFormedFlag() {
