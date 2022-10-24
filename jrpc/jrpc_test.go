@@ -396,3 +396,84 @@ func TestSerializeServerReply(t *testing.T) {
 		t.Errorf("expected %s, got %s", expected, str)
 	}
 }
+
+// Testing slices
+
+type SliceRequest struct {
+	HowMany int
+}
+
+type SliceOneResponse struct {
+	Index int
+	Data  string
+}
+
+func TestJPRCSlices(t *testing.T) {
+	mux, addr := fhttp.HTTPServer("test3", "0")
+	port := addr.(*net.TCPAddr).Port
+	mux.HandleFunc("/test-api-array", func(w http.ResponseWriter, r *http.Request) {
+		req, err := jrpc.HandleCall[SliceRequest](w, r)
+		if err != nil {
+			err = jrpc.ReplyError(w, "request error", err)
+			if err != nil {
+				t.Errorf("Error in replying error: %v", err)
+			}
+			return
+		}
+		n := req.HowMany
+		if n < 0 {
+			jrpc.ReplyError(w, "invalid negative count", nil)
+			return
+		}
+		if n == 0 {
+			n = 42 // for testing of GetArray
+		}
+		resp := make([]SliceOneResponse, n)
+		for i := 0; i < n; i++ {
+			resp[i] = SliceOneResponse{
+				Index: i,
+				Data:  fmt.Sprintf("data %d", i),
+			}
+		}
+		jrpc.ReplyOk(w, &resp)
+	})
+	url := fmt.Sprintf("http://localhost:%d/test-api-array", port)
+	req := SliceRequest{10}
+	res, err := jrpc.CallURL[[]SliceOneResponse](url, &req)
+	if err != nil {
+		t.Errorf("failed Call: %v", err)
+	}
+	if res == nil {
+		t.Errorf("nil response")
+		return
+	}
+	slice := *res
+	if len(slice) != 10 {
+		t.Errorf("expected 10 results, got %d", len(slice))
+	}
+	for i := 0; i < len(slice); i++ {
+		el := slice[i]
+		if el.Index != i {
+			t.Errorf("expected index %d, got %d", i, el.Index)
+		}
+		if el.Data != fmt.Sprintf("data %d", i) {
+			t.Errorf("expected data %d, got %s", i, el.Data)
+		}
+	}
+	slice, err = jrpc.GetArray[SliceOneResponse](jrpc.NewDestination(url))
+	if err != nil {
+		t.Errorf("failed GetArray: %v", err)
+	}
+	if len(slice) != 42 {
+		t.Errorf("expected 42 results, got %d", len(slice))
+	}
+	for i := 0; i < len(slice); i++ {
+		el := slice[i]
+		if el.Index != i {
+			t.Errorf("expected index %d, got %d", i, el.Index)
+		}
+		if el.Data != fmt.Sprintf("data %d", i) {
+			t.Errorf("expected data %d, got %s", i, el.Data)
+		}
+	}
+}
