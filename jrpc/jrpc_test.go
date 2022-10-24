@@ -270,7 +270,7 @@ func TestJPRC(t *testing.T) {
 	if unwrap.Error() != expected {
 		t.Errorf("unwrapped error expected to be %q, got %v", expected, unwrap.Error())
 	}
-	expected = "deserialization error, code 747: " + expected + " (raw reply: {bad})"
+	expected = "non ok http result and deserialization error, code 747: " + expected + " (raw reply: {bad})"
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q", expected, err.Error())
 	}
