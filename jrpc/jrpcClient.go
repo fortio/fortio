@@ -120,6 +120,16 @@ func Get[Q any](url *Destination) (*Q, error) {
 	return Fetch[Q](url, []byte{})
 }
 
+// GetArray fetches and deseializes the JSON returned by the Destination into a slice of
+// Q struct (ie the response is a json array).
+func GetArray[Q any](url *Destination) ([]Q, error) {
+	slicePtr, err := Fetch[[]Q](url, []byte{})
+	if slicePtr == nil {
+		return nil, err
+	}
+	return *slicePtr, err
+}
+
 // GetURL is Get without additional options (default timeout and headers).
 func GetURL[Q any](url string) (*Q, error) {
 	return Get[Q](NewDestination(url))
@@ -162,7 +172,7 @@ func Fetch[Q any](url *Destination, bytes []byte) (*Q, error) {
 		if ok {
 			return nil, err
 		}
-		return nil, &FetchError{"deserialization error", code, err, bytes}
+		return nil, &FetchError{"non ok http result and deserialization error", code, err, bytes}
 	}
 	if !ok {
 		// can still be "ok" for some callers, they can use the result object as it deserialized as expected.

@@ -270,7 +270,7 @@ func TestJPRC(t *testing.T) {
 	if unwrap.Error() != expected {
 		t.Errorf("unwrapped error expected to be %q, got %v", expected, unwrap.Error())
 	}
-	expected = "deserialization error, code 747: " + expected + " (raw reply: {bad})"
+	expected = "non ok http result and deserialization error, code 747: " + expected + " (raw reply: {bad})"
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q", expected, err.Error())
 	}
@@ -394,5 +394,98 @@ func TestSerializeServerReply(t *testing.T) {
 	expected = `{"error":true,"message":"a message","exception":"an error"}`
 	if str != expected {
 		t.Errorf("expected %s, got %s", expected, str)
+	}
+}
+
+// Testing slices
+
+type SliceRequest struct {
+	HowMany int
+}
+
+type SliceOneResponse struct {
+	Index int
+	Data  string
+}
+
+func TestJPRCSlices(t *testing.T) {
+	mux, addr := fhttp.HTTPServer("test3", "0")
+	port := addr.(*net.TCPAddr).Port
+	mux.HandleFunc("/test-api-array", func(w http.ResponseWriter, r *http.Request) {
+		req, err := jrpc.HandleCall[SliceRequest](w, r)
+		if err != nil {
+			err = jrpc.ReplyError(w, "request error", err)
+			if err != nil {
+				t.Errorf("Error in replying error: %v", err)
+			}
+			return
+		}
+		n := req.HowMany
+		if n < 0 {
+			jrpc.ReplyError(w, "invalid negative count", nil)
+			return
+		}
+		if r.FormValue("errror") != "" {
+			jrpc.ReplyError(w, "error requested", nil)
+			return
+		}
+		if n == 0 {
+			n = 42 // for testing of GetArray
+		}
+		resp := make([]SliceOneResponse, n)
+		for i := 0; i < n; i++ {
+			resp[i] = SliceOneResponse{
+				Index: i,
+				Data:  fmt.Sprintf("data %d", i),
+			}
+		}
+		jrpc.ReplyOk(w, &resp)
+	})
+	url := fmt.Sprintf("http://localhost:%d/test-api-array", port)
+	req := SliceRequest{10}
+	res, err := jrpc.CallURL[[]SliceOneResponse](url, &req)
+	if err != nil {
+		t.Errorf("failed Call: %v", err)
+	}
+	if res == nil {
+		t.Errorf("nil response")
+		return
+	}
+	slice := *res
+	if len(slice) != 10 {
+		t.Errorf("expected 10 results, got %d", len(slice))
+	}
+	for i := 0; i < len(slice); i++ {
+		el := slice[i]
+		if el.Index != i {
+			t.Errorf("expected index %d, got %d", i, el.Index)
+		}
+		if el.Data != fmt.Sprintf("data %d", i) {
+			t.Errorf("expected data %d, got %s", i, el.Data)
+		}
+	}
+	slice, err = jrpc.GetArray[SliceOneResponse](jrpc.NewDestination(url))
+	if err != nil {
+		t.Errorf("failed GetArray: %v", err)
+	}
+	if len(slice) != 42 {
+		t.Errorf("expected 42 results, got %d", len(slice))
+	}
+	for i := 0; i < len(slice); i++ {
+		el := slice[i]
+		if el.Index != i {
+			t.Errorf("expected index %d, got %d", i, el.Index)
+		}
+		if el.Data != fmt.Sprintf("data %d", i) {
+			t.Errorf("expected data %d, got %s", i, el.Data)
+		}
+	}
+	// Empty slice/error
+	slice, err = jrpc.GetArray[SliceOneResponse](jrpc.NewDestination(url + "?errror=true"))
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if slice != nil {
+		t.Errorf("expected nil slice, got %v", slice)
 	}
 }
