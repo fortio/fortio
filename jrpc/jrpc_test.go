@@ -425,6 +425,10 @@ func TestJPRCSlices(t *testing.T) {
 			jrpc.ReplyError(w, "invalid negative count", nil)
 			return
 		}
+		if r.FormValue("errror") != "" {
+			jrpc.ReplyError(w, "error requested", nil)
+			return
+		}
 		if n == 0 {
 			n = 42 // for testing of GetArray
 		}
@@ -475,5 +479,13 @@ func TestJPRCSlices(t *testing.T) {
 		if el.Data != fmt.Sprintf("data %d", i) {
 			t.Errorf("expected data %d, got %s", i, el.Data)
 		}
+	}
+	// Empty slice/error
+	slice, err = jrpc.GetArray[SliceOneResponse](jrpc.NewDestination(url + "?errror=true"))
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	if slice != nil {
+		t.Errorf("expected nil slice, got %v", slice)
 	}
 }
