@@ -655,10 +655,10 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ### Remote triggered load test (server mode rest API)
 
 New since 1.18 the server has a `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` to start a run.
-  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result)
-  - plus read all the run configuration from either query args or jsonPath POSTed info
-  - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks
-  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args)
+  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result);
+  - plus read all the run configuration from either query args or jsonPath POSTed info;
+  - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks;
+  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args).
 
 Examples:
 
@@ -828,7 +828,7 @@ and you get in result.json:
 }
 ```
 
-- There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified
+- There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified.
 
 
 ### GRPC load test
@@ -1121,7 +1121,7 @@ Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/S
 
 ### Web/Graphical UI
 
-Or graphically (through the [http://localhost:8080/fortio/](http://localhost:8080/fortio/) web UI):
+Or graphically (through the [http://localhost:8080/fortio](http://localhost:8080/fortio/) web UI):
 
 Simple form/UI:
 
