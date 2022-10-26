@@ -11,7 +11,7 @@
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
-Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators)
+Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
 
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
@@ -31,11 +31,11 @@ Fortio components can be used a library even for unrelated projects, for instanc
 As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
 Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
 
-If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
+If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
 ## Installation
 
-We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`
+We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
 
 For instance:
 ```shell
@@ -49,7 +49,7 @@ You can install from source:
 2. `go install fortio.org/fortio@latest`
 3. you can now run `fortio` (from your gopath bin/ directory, usually `~/go/bin`)
 
-The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
+The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
 curl -L https://github.com/fortio/fortio/releases/download/v1.38.2/fortio-linux_amd64-1.38.2.tgz \
@@ -74,7 +74,7 @@ fortio.exe server
 ```
 (at the prompt, allow the windows firewall to let connections in)
 
-Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
+Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/).
 
 You can get a preview of the reporting/graphing UI at [https://demo.fortio.org/](https://demo.fortio.org/).
 <!--
@@ -341,7 +341,7 @@ should be user:password
 </pre>
 </details>
 
-See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
+See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass).
 
 ## Server URLs and features
 
@@ -370,10 +370,10 @@ You can set a default value for all these by passing `-echo-server-default-param
 * `/fortio/` A UI to
   * Run/Trigger tests and graph the results.
   * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
-  * Proxy/fetch other URLs
+  * Proxy/fetch other URLs.
   * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
-  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
-  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
+  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs).
+  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html).
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
   * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
@@ -406,7 +406,7 @@ I fortio_main.go:293> All fortio X.Y.Z  goM.m.p arm64 darwin servers started!
 
 ### Sample of the graphing UI
 
-With the 2 histograms - total and errors overlayed
+With the 2 histograms - total and errors overlayed:
 
 ![Graphical result](https://user-images.githubusercontent.com/3664595/165001248-33e180d5-fd6b-4389-b73e-79a21e76d5b0.png)
 
