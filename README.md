@@ -74,11 +74,11 @@ fortio.exe server
 ```
 (at the prompt, allow the windows firewall to let connections in)
 
-Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/).
+Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio](http://localhost:8080/fortio).
 
-You can get a preview of the reporting/graphing UI at [https://demo.fortio.org/](https://demo.fortio.org/).
+You can get a preview of the reporting/graphing UI at [https://demo.fortio.org](https://demo.fortio.org).
 <!--
-and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
+and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks)
 -->
 
 ## Command line arguments
@@ -457,7 +457,7 @@ body:
 ```
 
 ### TCP
-Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
+Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server):
 ```Shell
 $ fortio tcp-echo &
 Fortio X.Y.Z tcp-echo TCP server listening on [::]:8078
@@ -486,7 +486,7 @@ All done 100000 calls (plus 0 warmup) 0.049 ms avg, 80495.0 qps
 ```
 
 ### UDP
-Start the udp-echo server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
+Start the udp-echo server alone and run a load (use `udp://` prefix for the load test to be for udp echo server):
 ```
 $ fortio udp-echo &
 Fortio X.Y.Z udp-echo UDP server listening on [::]:8078
@@ -568,7 +568,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 * First, start Fortio server with the `-cert` and `-key` flags:
 
 `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
-you must provide.
+you must provide:
 
 ```Shell
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
@@ -710,7 +710,7 @@ X-On-Behalf-Of: [::1]:62629
 foo
 ```
 
-and you get in result.json
+and you get in result.json:
 ```json
 {
   "RunType": "HTTP",
@@ -977,7 +977,7 @@ $ fortio server -M "5554 http://localhost:8080 http://localhost:8080"
 Fortio X.Y.Z Multi on 5554 server listening on [::]:5554
 10:09:56 I http_forwarder.go:152> Multi-server on [::]:5554 running with &{Targets:[{Destination:http://localhost:8080 MirrorOrigin:true} {Destination:http://localhost:8080 MirrorOrigin:true}] Name:Multi on [::]:5554 client:0xc0001ccc00}
 ```
-Call the debug endpoint on both
+Call the debug endpoint on both:
 ```Shell
 # in new window
 $ fortio curl -payload "a test" http://localhost:5554/debug
@@ -1022,7 +1022,7 @@ a test
 There are 2 flags to further control the behaviour of the multi server proxies:
 
 - pass `-mirrorOriginFlag=false` to not mirror all headers and request type to targets.
-- pass `-multi-serial-mode` to stream request response serially instead of fetching in parallel and writing combined data after completion
+- pass `-multi-serial-mode` to stream request response serially instead of fetching in parallel and writing combined data after completion.
 
 Also remember you can pass multiple `-M`.
 
@@ -1045,14 +1045,14 @@ Fortio X.Y.Z proxy for [::1]:8080 server listening on [::1]:8889
 
 ## Implementation details
 
-Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](http/httprunner.go) and [grpc](fortiogrpc/grpcrunner.go).
-The [http/](http/) package includes a very high performance specialized http 1.1 client.
+Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](fhttp/httprunner.go) and [grpc](fgrpc/grpcrunner.go).
+The [fhttp/](fhttp/) package includes a very high performance specialized http 1.1 client.
 You may find fortio's [logger](log/logger.go) useful as well.
 
 You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 
 There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light http client without grpc or server side).
-A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/)
+A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/).
 
 ## More examples
 
@@ -1117,7 +1117,7 @@ Code 200 : 300000
 Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 </pre></details>
 
-Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
+Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`).
 
 ### Web/Graphical UI
 
@@ -1125,7 +1125,7 @@ Or graphically (through the [http://localhost:8080/fortio/](http://localhost:808
 
 Simple form/UI:
 
-Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors.
+Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors:
 
 ![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/41430618-53d911d4-6fc5-11e8-8e35-d4f5fea4426a.png)
 
@@ -1139,7 +1139,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are live examples on [demo.fortio.org](https://demo.fortio.org/)
+There are live examples on [demo.fortio.org](https://demo.fortio.org/).
 
 ## Contributing
 
@@ -1169,7 +1169,7 @@ New features and bug fixes should include a test.
 
 ## See also
 
-Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`).
 
 ## Disclaimer
 
