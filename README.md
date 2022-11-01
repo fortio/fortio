@@ -1121,7 +1121,7 @@ Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/S
 
 ### Web/Graphical UI
 
-Or graphically (through the [http://localhost:8080/fortio](http://localhost:8080/fortio/) web UI):
+Or graphically (through the [http://localhost:8080/fortio/](http://localhost:8080/fortio/) web UI):
 
 Simple form/UI:
 
