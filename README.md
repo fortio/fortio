@@ -74,7 +74,7 @@ fortio.exe server
 ```
 (at the prompt, allow the windows firewall to let connections in)
 
-Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio](http://localhost:8080/fortio).
+Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/).
 
 You can get a preview of the reporting/graphing UI at [https://demo.fortio.org](https://demo.fortio.org).
 <!--
