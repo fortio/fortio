@@ -11,7 +11,7 @@
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
-Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators)
+Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
 
 Fortio runs at a specified query per second (qps) and records an histogram of execution time
 and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
@@ -31,11 +31,11 @@ Fortio components can be used a library even for unrelated projects, for instanc
 As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
 Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
 
-If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy)
+If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
 ## Installation
 
-We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`
+We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
 
 For instance:
 ```shell
@@ -49,7 +49,7 @@ You can install from source:
 2. `go install fortio.org/fortio@latest`
 3. you can now run `fortio` (from your gopath bin/ directory, usually `~/go/bin`)
 
-The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets).
+The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
 curl -L https://github.com/fortio/fortio/releases/download/v1.38.2/fortio-linux_amd64-1.38.2.tgz \
@@ -76,7 +76,7 @@ fortio.exe server
 
 Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
-You can get a preview of the reporting/graphing UI at [https://demo.fortio.org/](https://demo.fortio.org/).
+You can get a preview of the reporting/graphing UI at [https://demo.fortio.org](https://demo.fortio.org)
 <!--
 and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
 -->
@@ -341,7 +341,7 @@ should be user:password
 </pre>
 </details>
 
-See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass)
+See also the FAQ entry about [fortio flags for best results](https://github.com/fortio/fortio/wiki/FAQ#i-want-to-get-the-best-results-what-flags-should-i-pass).
 
 ## Server URLs and features
 
@@ -370,10 +370,10 @@ You can set a default value for all these by passing `-echo-server-default-param
 * `/fortio/` A UI to
   * Run/Trigger tests and graph the results.
   * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
-  * Proxy/fetch other URLs
+  * Proxy/fetch other URLs.
   * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
-  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs)
-  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html)
+  * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs).
+  * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html).
 
 * API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
   * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
@@ -406,7 +406,7 @@ I fortio_main.go:293> All fortio X.Y.Z  goM.m.p arm64 darwin servers started!
 
 ### Sample of the graphing UI
 
-With the 2 histograms - total and errors overlayed
+With the 2 histograms - total and errors overlayed:
 
 ![Graphical result](https://user-images.githubusercontent.com/3664595/165001248-33e180d5-fd6b-4389-b73e-79a21e76d5b0.png)
 
@@ -457,7 +457,7 @@ body:
 ```
 
 ### TCP
-Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
+Start the echo-server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server):
 ```Shell
 $ fortio tcp-echo &
 Fortio X.Y.Z tcp-echo TCP server listening on [::]:8078
@@ -486,7 +486,7 @@ All done 100000 calls (plus 0 warmup) 0.049 ms avg, 80495.0 qps
 ```
 
 ### UDP
-Start the udp-echo server alone and run a load (use `tcp://` prefix for the load test to be for tcp echo server)
+Start the udp-echo server alone and run a load (use `udp://` prefix for the load test to be for udp echo server):
 ```
 $ fortio udp-echo &
 Fortio X.Y.Z udp-echo UDP server listening on [::]:8078
@@ -568,7 +568,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 * First, start Fortio server with the `-cert` and `-key` flags:
 
 `/path/to/fortio/server.crt` and `/path/to/fortio/server.key` are paths to the TLS certificate and key that
-you must provide.
+you must provide:
 
 ```Shell
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
@@ -655,10 +655,10 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ### Remote triggered load test (server mode rest API)
 
 New since 1.18 the server has a `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` to start a run.
-  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result)
-  - plus read all the run configuration from either query args or jsonPath POSTed info
-  - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks
-  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args)
+  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result);
+  - plus read all the run configuration from either query args or jsonPath POSTed info;
+  - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks;
+  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args).
 
 Examples:
 
@@ -710,7 +710,7 @@ X-On-Behalf-Of: [::1]:62629
 foo
 ```
 
-and you get in result.json
+and you get in result.json:
 ```json
 {
   "RunType": "HTTP",
@@ -828,7 +828,7 @@ and you get in result.json
 }
 ```
 
-- There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified
+- There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified.
 
 
 ### GRPC load test
@@ -977,7 +977,7 @@ $ fortio server -M "5554 http://localhost:8080 http://localhost:8080"
 Fortio X.Y.Z Multi on 5554 server listening on [::]:5554
 10:09:56 I http_forwarder.go:152> Multi-server on [::]:5554 running with &{Targets:[{Destination:http://localhost:8080 MirrorOrigin:true} {Destination:http://localhost:8080 MirrorOrigin:true}] Name:Multi on [::]:5554 client:0xc0001ccc00}
 ```
-Call the debug endpoint on both
+Call the debug endpoint on both:
 ```Shell
 # in new window
 $ fortio curl -payload "a test" http://localhost:5554/debug
@@ -1022,7 +1022,7 @@ a test
 There are 2 flags to further control the behaviour of the multi server proxies:
 
 - pass `-mirrorOriginFlag=false` to not mirror all headers and request type to targets.
-- pass `-multi-serial-mode` to stream request response serially instead of fetching in parallel and writing combined data after completion
+- pass `-multi-serial-mode` to stream request response serially instead of fetching in parallel and writing combined data after completion.
 
 Also remember you can pass multiple `-M`.
 
@@ -1045,14 +1045,14 @@ Fortio X.Y.Z proxy for [::1]:8080 server listening on [::1]:8889
 
 ## Implementation details
 
-Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](http/httprunner.go) and [grpc](fortiogrpc/grpcrunner.go).
-The [http/](http/) package includes a very high performance specialized http 1.1 client.
+Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](fhttp/httprunner.go) and [grpc](fgrpc/grpcrunner.go).
+The [fhttp/](fhttp/) package includes a very high performance specialized http 1.1 client.
 You may find fortio's [logger](log/logger.go) useful as well.
 
 You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 
 There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light http client without grpc or server side).
-A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/)
+A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/).
 
 ## More examples
 
@@ -1117,7 +1117,7 @@ Code 200 : 300000
 Response Body Sizes : count 300000 avg 0 +/- 0 min 0 max 0 sum 0
 </pre></details>
 
-Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`)
+Or you can get the data in [JSON format](https://github.com/fortio/fortio/wiki/Sample-JSON-output) (using `-json result.json`).
 
 ### Web/Graphical UI
 
@@ -1125,7 +1125,7 @@ Or graphically (through the [http://localhost:8080/fortio/](http://localhost:808
 
 Simple form/UI:
 
-Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors.
+Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors:
 
 ![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/41430618-53d911d4-6fc5-11e8-8e35-d4f5fea4426a.png)
 
@@ -1139,7 +1139,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are live examples on [demo.fortio.org](https://demo.fortio.org/)
+There are live examples on [https://demo.fortio.org](https://demo.fortio.org/)
 
 ## Contributing
 
@@ -1169,7 +1169,7 @@ New features and bug fixes should include a test.
 
 ## See also
 
-Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`)
+Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`).
 
 ## Disclaimer
 
