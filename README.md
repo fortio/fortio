@@ -74,9 +74,9 @@ fortio.exe server
 ```
 (at the prompt, allow the windows firewall to let connections in)
 
-Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/).
+Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
-You can get a preview of the reporting/graphing UI at [https://demo.fortio.org](https://demo.fortio.org).
+You can get a preview of the reporting/graphing UI at [https://demo.fortio.org](https://demo.fortio.org)
 <!--
 and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https://istio.io/docs/performance-and-scalability/synthetic-benchmarks/)
 -->
@@ -1139,7 +1139,7 @@ Code 429 : 56 (1.9 %)
 Code 503 : 15 (0.5 %)
 ```
 
-There are live examples on [demo.fortio.org](https://demo.fortio.org/).
+There are live examples on [https://demo.fortio.org](https://demo.fortio.org/)
 
 ## Contributing
 
