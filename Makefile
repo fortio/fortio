@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v47
+BUILD_IMAGE_TAG := v50
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -57,23 +57,24 @@ test: dependencies
 # DEBUG_LINTERS="--debug"
 
 local-lint:
+	govulncheck $(LINT_PACKAGES)
 	golangci-lint version
 	golangci-lint --timeout 120s $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
 lint:
-	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd /go/src/fortio.org/fortio \
+	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c \
+		"cd /build/fortio \
 		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 docker-test:
-	docker run -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE) bash -c \
-		"cd /go/src/fortio.org/fortio \
+	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c \
+		"cd /build/fortio \
 		&& time make test"
 
 shell:
-	docker run -ti -v $(CURDIR):/go/src/fortio.org/fortio $(BUILD_IMAGE)
+	docker run -ti -v $(CURDIR):/build/fortio $(BUILD_IMAGE)
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.
