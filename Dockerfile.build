@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.19.2
+FROM golang:1.19.3
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -21,9 +21,12 @@ RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
     apt-get -y update && apt-get install --no-install-recommends -y docker-ce; \
     fi
 
+# govulncheck
+RUN go install golang.org/x/vuln/cmd/govulncheck@latest
 WORKDIR /build
 COPY .golangci.yml .
 VOLUME /build
 RUN useradd -m build -d /build
 RUN chown -R build:build /build
+RUN chown -R build:build /go
 USER build
