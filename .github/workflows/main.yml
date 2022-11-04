@@ -52,7 +52,7 @@ jobs:
           echo "Version $VERSION, Package version $PACKAGE_VERSION"
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc # pin@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5 # pin@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
