@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95
 	golang.org/x/net v0.0.0-20221012135044-0b7e1fb9d458
-	google.golang.org/grpc v1.50.0
+	google.golang.org/grpc v1.50.1
 )
 
 require (
