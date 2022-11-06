@@ -148,9 +148,9 @@ release: dist
 BUILD_DIR := /tmp/fortio_build
 BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
 BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
-OFFICIAL_BIN ?= $(BUILD_DIR)/result/fortio
+OFFICIAL_EXE ?= $(notdir $(OFFICIAL_TARGET))
+OFFICIAL_BIN ?= $(BUILD_DIR)/result/$(OFFICIAL_EXE)
 OFFICIAL_DIR ?= $(dir $(OFFICIAL_BIN))
-OFFICIAL_EXE := $(notdir $(OFFICIAL_TARGET))
 
 GOOS :=
 GO_BIN := go
@@ -173,7 +173,6 @@ echo-package-version:
 	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
 
 $(BUILD_DIR):
-	@echo "Building $(OFFICIAL_EXE) in $(BUILD_DIR)"
 	mkdir -p $(BUILD_DIR)
 
 $(OFFICIAL_DIR):
@@ -184,6 +183,8 @@ $(OFFICIAL_DIR):
 official-build: official-build-internal
 
 official-build-internal: $(BUILD_DIR) $(OFFICIAL_DIR)
+	@echo "Building OFFICIAL_EXE=$(OFFICIAL_EXE) BUILD_DIR=$(BUILD_DIR) BUILD_DIR_BIN=$(BUILD_DIR_BIN) MODE=$(MODE)"
+	@echo "OFFICIAL_BIN=$(OFFICIAL_BIN) OFFICIAL_DIR=$(OFFICIAL_DIR) OFFICIAL_TARGET=$(OFFICIAL_TARGET)"
 	$(GO_BIN) version
 ifeq ($(MODE),install)
 	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags -s $(OFFICIAL_TARGET)@v$(DIST_VERSION)
