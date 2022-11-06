@@ -37,7 +37,7 @@ var (
 func main() {
 	flag.Parse()
 	if len(os.Args) >= 2 && strings.Contains(os.Args[1], "version") {
-		fmt.Println(version.Long())
+		fmt.Println(version.Full())
 		os.Exit(0)
 	}
 	if _, addr := fhttp.Serve(*port, *debugPath); addr == nil {

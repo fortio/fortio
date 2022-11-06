@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v50
+BUILD_IMAGE_TAG := v50@sha256:fe69c193d8ad40eb0d791984881f3678aead02660b8e3468c757f717892ada4c
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -109,10 +109,14 @@ update-build-image:
 	docker buildx create --use
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
+# Get the sha (use after newly building a new build image) to put it back in BUILD_IMAGE_TAG
+build-image-sha:
+	docker inspect $(BUILD_IMAGE) | jq -r '.[0].RepoDigests[0]' | sed -e "s/^.*@/$(BUILD_IMAGE_TAG)@/"
+
 SED:=sed
 update-build-image-tag:
 	@echo 'Need to use gnu sed (brew install gnu-sed; make update-build-image-tag SED=gsed)'
-	$(SED) --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	$(SED) --in-place=.bak -E -e 's!$(DOCKER_PREFIX).build:v[^ ]+!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-default-platform:
 	@docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $$1}'
@@ -136,7 +140,7 @@ release: dist
 
 .PHONY: all docker-internal docker-push-internal docker-version test dependencies
 
-.PHONY: go-install lint install-linters coverage webtest release-test update-build-image
+.PHONY: go-install lint install-linters coverage webtest release-test update-build-image build-image-sha
 
 .PHONY: local-lint update-build-image-tag release pull certs certs-clean
 
@@ -144,7 +148,8 @@ release: dist
 BUILD_DIR := /tmp/fortio_build
 BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
 BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
-OFFICIAL_BIN ?= $(BUILD_DIR)/result/fortio
+OFFICIAL_EXE ?= $(notdir $(OFFICIAL_TARGET))
+OFFICIAL_BIN ?= $(BUILD_DIR)/result/$(OFFICIAL_EXE)
 OFFICIAL_DIR ?= $(dir $(OFFICIAL_BIN))
 
 GOOS :=
@@ -178,14 +183,16 @@ $(OFFICIAL_DIR):
 official-build: official-build-internal
 
 official-build-internal: $(BUILD_DIR) $(OFFICIAL_DIR)
+	@echo "Building OFFICIAL_EXE=$(OFFICIAL_EXE) BUILD_DIR=$(BUILD_DIR) BUILD_DIR_BIN=$(BUILD_DIR_BIN) MODE=$(MODE)"
+	@echo "OFFICIAL_BIN=$(OFFICIAL_BIN) OFFICIAL_DIR=$(OFFICIAL_DIR) OFFICIAL_TARGET=$(OFFICIAL_TARGET)"
 	$(GO_BIN) version
 ifeq ($(MODE),install)
 	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags -s $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
 	ls -lR $(BUILD_DIR_BIN)
-	-mv -f $(BUILD_DIR_BIN)/*_*/fortio* $(BUILD_DIR_BIN)
+	-mv -f $(BUILD_DIR_BIN)/*_*/$(OFFICIAL_EXE)* $(BUILD_DIR_BIN)
 	-rmdir $(BUILD_DIR_BIN)/*_*
-	mv -f $(BUILD_DIR_BIN)/fortio* $(OFFICIAL_DIR)
+	mv -f $(BUILD_DIR_BIN)/$(OFFICIAL_EXE)* $(OFFICIAL_DIR)
 else
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags -s -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 endif

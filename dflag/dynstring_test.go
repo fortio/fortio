@@ -12,7 +12,7 @@ import (
 	"fortio.org/assert"
 )
 
-const notifierTimeout = 50 * time.Millisecond
+const notifierTimeout = 100 * time.Millisecond
 
 func TestDynString_SetAndGet(t *testing.T) {
 	set := flag.NewFlagSet("foobar", flag.ContinueOnError)

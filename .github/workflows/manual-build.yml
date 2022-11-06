@@ -21,16 +21,16 @@ jobs:
         run: |
           echo "tag is ${{ github.event.inputs.tag }}"
 
-      - uses: actions/checkout@7884fcad6b5d53d10323aee724dc68d8b9096a2e # pin@v2
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # pin@v3
         with:
           ref: ${{ github.event.inputs.tag }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18 # pin@v1
+        uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18 # pin@v2
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325 # pin@v1
+        uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325 # pin@v2
 
       - name: Build
         id: build
@@ -38,9 +38,7 @@ jobs:
           make info
           make release
           VERSION=$(make echo-version)
-          echo ::set-output name=VERSION::${VERSION}
           PACKAGE_VERSION=$(make echo-package-version)
-          echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
           echo "Version $VERSION, Package version $PACKAGE_VERSION"
 
       - name: Upload release artifacts

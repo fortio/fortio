@@ -29,8 +29,8 @@
 
 Update [../Dockerfile.build](../Dockerfile.build)
 
-Edit the `BUILD_IMAGE_TAG := v5` line in the Makefile, set it to `v6`
-for instance (replace `v6` by whichever is the next one at the time)
+Edit the `BUILD_IMAGE_TAG := v50@sha...` line in the Makefile, set it to `v51`
+for instance (replace `v50` by whichever is the next one at the time and temporarily remove the SHA part)
 
 run
 
@@ -40,7 +40,9 @@ make update-build-image
 
 Make sure it gets successfully pushed to the fortio registry (requires org access)
 
-run
+Then do `make build-image-sha` to get the new image sha to replace/put in `BUILD_IMAGE_TAG` line of the Makefile
+
+Then run
 
 ```Shell
 make update-build-image-tag SED=gsed
