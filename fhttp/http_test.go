@@ -67,13 +67,22 @@ func TestGetHeaders(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error for header without value, did not get one")
 	}
-	o.ResetHeaders()
+	o.InitHeaders()
 	h = o.AllHeaders()
 	if h.Get("Host") != "" {
 		t.Errorf("After reset Host header should be nil, got '%v'", h.Get("Host"))
 	}
+	if len(h) != 1 {
+		t.Errorf("Header count mismatch after reset, got %d instead of 1. %+v", len(h), h)
+	}
+	// test user-agent delete:
+	o.AddAndValidateExtraHeader("UsER-AgENT:")
+	h = o.AllHeaders()
 	if len(h) != 0 {
-		t.Errorf("Header count mismatch after reset, got %d instead of 1", len(h))
+		t.Errorf("Header count mismatch after delete, got %d instead of 0. %+v", len(h), h)
+	}
+	if h.Get("User-Agent") != "" {
+		t.Errorf("User-Agent header should be empty after delete, got '%v'", h.Get("User-Agent"))
 	}
 }
 
@@ -1120,6 +1129,11 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	o.AddAndValidateExtraHeader("CCC: ccc")
 	o.AddAndValidateExtraHeader("ZZZ: zzz")
 	o.AddAndValidateExtraHeader("AAA: aaa")
+	// test that headers usually Add (list) but stay in order of being set
+	o.AddAndValidateExtraHeader("BBB: aa2")
+	// test that User-Agent is special, only last value is kept - and replaces the default jrpc.UserAgent
+	o.AddAndValidateExtraHeader("User-Agent: ua1")
+	o.AddAndValidateExtraHeader("User-Agent: ua2")
 	client, _ := NewClient(&o)
 	now := time.Now()
 	code, data, header := client.Fetch() // used to panic/bug #127
@@ -1140,13 +1154,13 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 		"Host: localhost:%d\n"+
 		"Aaa: aaa\n"+
 		"Accept-Encoding: gzip\n"+
-		"Bbb: bbb\n"+
+		"Bbb: bbb,aa2\n"+
 		"Ccc: ccc\n"+
 		"Content-Length: 4\n"+
 		"Content-Type: application/octet-stream\n"+
-		"User-Agent: %s\n"+
+		"User-Agent: ua2\n"+
 		"Zzz: zzz\n\n"+
-		"body:\n\nabcd\n", a.Port, jrpc.UserAgent)
+		"body:\n\nabcd\n", a.Port)
 	if body != expected {
 		t.Errorf("Get body: %s not as expected: %s", body, expected)
 	}

@@ -274,10 +274,19 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	}
 	key := strings.TrimSpace(s[0])
 	value := strings.TrimSpace(s[1])
-	if strings.EqualFold(key, "host") {
+	switch strings.ToLower(key) {
+	case "host":
 		log.LogVf("Will be setting special Host header to %s", value)
 		h.hostOverride = value
-	} else {
+	case "user-agent":
+		if value == "" {
+			log.Infof("User-Agent: header removed.")
+			h.extraHeaders.Del(key)
+		} else {
+			log.LogVf("User-Agent being Set to %s", value)
+			h.extraHeaders.Set(key, value)
+		}
+	default:
 		log.LogVf("Setting regular extra header %s: %s", key, value)
 		h.extraHeaders.Add(key, value)
 		log.Debugf("headers now %+v", h.extraHeaders)

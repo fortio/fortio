@@ -266,7 +266,6 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	httpopts := &fhttp.HTTPOptions{}
 	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
 	httpopts = httpopts.Init(url)
-	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
