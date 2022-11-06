@@ -22,20 +22,20 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@7884fcad6b5d53d10323aee724dc68d8b9096a2e # pin@v2
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # pin@v3
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18 # pin@v1
+        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # pin@v1
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@8c0edbc76e98fa90f69d9a2c020dcb50019dc325 # pin@v1
+        uses: docker/setup-buildx-action@f211e3e9ded2d9377c8cadc4489a4e38014bc4c9 # pin@v1
 
       - name: Available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # pin@f054a8b539a109f9f41c372932f1ae047eff08c9
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # pin@v2
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
@@ -46,18 +46,17 @@ jobs:
           make info
           make release
           VERSION=$(make echo-version)
-          echo ::set-output name=VERSION::${VERSION}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           PACKAGE_VERSION=$(make echo-package-version)
-          echo ::set-output name=PACKAGE_VERSION::${PACKAGE_VERSION}
           echo "Version $VERSION, Package version $PACKAGE_VERSION"
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5 # pin@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc # pin@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
           push: true
-          tags: fortio/fortio:${{ steps.build.outputs.VERSION }}, fortio/fortio:latest
+          tags: fortio/fortio:${{ env.VERSION }}, fortio/fortio:latest
 
       - name: Create Release
         id: create_release
@@ -66,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: Fortio ${{ steps.build.outputs.VERSION }}
+          release_name: Fortio ${{ env.VERSION }}
           draft: true
 
       - name: Upload release artifacts
