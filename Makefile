@@ -109,10 +109,14 @@ update-build-image:
 	docker buildx create --use
 	$(MAKE) docker-push-internal IMAGE=.build TAG=$(BUILD_IMAGE_TAG)
 
+# Get the sha (use after newly building a new build image) to put it back in BUILD_IMAGE_TAG
+build-image-sha:
+	docker inspect $(BUILD_IMAGE) | jq -r '.[0].RepoDigests[0]' | sed -e "s/^.*@/$(BUILD_IMAGE_TAG)@/"
+
 SED:=sed
 update-build-image-tag:
 	@echo 'Need to use gnu sed (brew install gnu-sed; make update-build-image-tag SED=gsed)'
-	$(SED) --in-place=.bak -e 's!$(DOCKER_PREFIX).build:v..!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
+	$(SED) --in-place=.bak -E -e 's!$(DOCKER_PREFIX).build:v[^ ]+!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-default-platform:
 	@docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $$1}'
@@ -136,7 +140,7 @@ release: dist
 
 .PHONY: all docker-internal docker-push-internal docker-version test dependencies
 
-.PHONY: go-install lint install-linters coverage webtest release-test update-build-image
+.PHONY: go-install lint install-linters coverage webtest release-test update-build-image build-image-sha
 
 .PHONY: local-lint update-build-image-tag release pull certs certs-clean
 
