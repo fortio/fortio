@@ -6,5 +6,5 @@ RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_TARGET=forti
 # Minimal image with just the binary and certs
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /build/fcurl /usr/bin/fcurl
+COPY --from=build /build/result/fcurl /usr/bin/fcurl
 ENTRYPOINT ["/usr/bin/fcurl"]

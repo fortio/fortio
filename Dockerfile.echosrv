@@ -5,6 +5,6 @@ COPY . fortio
 RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_TARGET=fortio.org/fortio/echosrv
 # Minimal image with just the binary
 FROM scratch
-COPY --from=build /build/echosrv /usr/bin/echosrv
+COPY --from=build /build/result/echosrv /usr/bin/echosrv
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/echosrv"]
