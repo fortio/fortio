@@ -150,6 +150,7 @@ BUILD_DIR_ABS := $(abspath $(BUILD_DIR))
 BUILD_DIR_BIN := $(BUILD_DIR_ABS)/bin
 OFFICIAL_BIN ?= $(BUILD_DIR)/result/fortio
 OFFICIAL_DIR ?= $(dir $(OFFICIAL_BIN))
+OFFICIAL_EXE := $(notdir $(OFFICIAL_TARGET))
 
 GOOS :=
 GO_BIN := go
@@ -172,6 +173,7 @@ echo-package-version:
 	@echo "$(DIST_VERSION)" | sed -e "s/-/_/g"
 
 $(BUILD_DIR):
+	@echo "Building $(OFFICIAL_EXE) in $(BUILD_DIR)"
 	mkdir -p $(BUILD_DIR)
 
 $(OFFICIAL_DIR):
@@ -187,9 +189,9 @@ ifeq ($(MODE),install)
 	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags -s $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
 	ls -lR $(BUILD_DIR_BIN)
-	-mv -f $(BUILD_DIR_BIN)/*_*/fortio* $(BUILD_DIR_BIN)
+	-mv -f $(BUILD_DIR_BIN)/*_*/$(OFFICIAL_EXE)* $(BUILD_DIR_BIN)
 	-rmdir $(BUILD_DIR_BIN)/*_*
-	mv -f $(BUILD_DIR_BIN)/fortio* $(OFFICIAL_DIR)
+	mv -f $(BUILD_DIR_BIN)/$(OFFICIAL_EXE)* $(OFFICIAL_DIR)
 else
 	CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) build -a -ldflags -s -o $(OFFICIAL_BIN) $(OFFICIAL_TARGET)
 endif
