@@ -72,7 +72,7 @@ func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Reque
 	return req
 }
 
-// CopyHeaders copies all or trace headers.
+// CopyHeaders copies all or trace headers from `r` into `req`.
 func CopyHeaders(req, r *http.Request, all bool) {
 	// Copy only trace headers unless all is true.
 	for k, v := range r.Header {
@@ -84,6 +84,11 @@ func CopyHeaders(req, r *http.Request, all bool) {
 		} else {
 			log.Debugf("Skipping header %q", k)
 		}
+	}
+	if _, ok := r.Header["User-Agent"]; !ok {
+		// explicitly disable User-Agent so it's not set
+		// to default value (go client lib 'feature' workaround)
+		req.Header.Set("User-Agent", "")
 	}
 }
 
@@ -97,9 +102,7 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.R
 	}
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
-	if copyAllHeaders {
-		req.Header.Add("X-Proxy-Agent", jrpc.UserAgent)
-	} else {
+	if !copyAllHeaders {
 		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
 	return req
