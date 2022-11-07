@@ -27,9 +27,11 @@ func TestMultiProxy(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		serial := (i == 0)
 		mcfg := MultiServerConfig{Serial: serial}
-		mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true},
+		mcfg.Targets = []TargetConf{
+			{Destination: urlBase, MirrorOrigin: true},
 			{Destination: urlBase + "debug", MirrorOrigin: false},
-			{Destination: urlBase + "echo?status=555"}}
+			{Destination: urlBase + "echo?status=555"},
+		}
 		_, multiAddr := MultiServer("0", &mcfg)
 		url := fmt.Sprintf("http://%s/debug", multiAddr)
 		payload := "A test payload"
