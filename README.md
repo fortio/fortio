@@ -956,7 +956,7 @@ body:
 
 ```
 
-Note: if you do not want the default fortio User-Agent to be sent pass `-H user-agent:`. If you want to send an empty User-Agent: header, pass `-H "user-agent: "` (ie only whitespace sends empty one, empty value doesn't send any). You can only send an empty User-Agent using the FastClient as the standard one removes empty User-Agent (but not other empty headers...).
+Note: if you do not want the default fortio User-Agent to be sent pass `-H user-agent:`. If you want to send a present yet empty User-Agent: header, pass `-H "user-agent: "` (ie only whitespace sends empty one, empty value doesn't send any).
 
 ### Report only UI
 

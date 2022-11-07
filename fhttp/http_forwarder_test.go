@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"fortio.org/fortio/jrpc"
 )
 
 func TestMultiProxy(t *testing.T) {
@@ -36,6 +38,7 @@ func TestMultiProxy(t *testing.T) {
 		url := fmt.Sprintf("http://%s/debug", multiAddr)
 		payload := "A test payload"
 		opts := HTTPOptions{URL: url, Payload: []byte(payload)}
+		opts.AddAndValidateExtraHeader("User-agent:")
 		opts.AddAndValidateExtraHeader("b3: traceid...")
 		opts.AddAndValidateExtraHeader("X-FA: bar") // so it comes just before X-Fortio-Multi-Id
 		code, data := Fetch(&opts)
@@ -77,6 +80,18 @@ func TestMultiProxy(t *testing.T) {
 		searchFor = "X-Fortio-Multi-Id: 3"
 		if bytes.Contains(data, []byte(searchFor)) {
 			t.Errorf("Unexpected %q in %s", searchFor, DebugSummary(data, 1024))
+		}
+		searchFor = "\nX-Proxy-Agent: " + jrpc.UserAgent + "\n"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing %q in %s", searchFor, DebugSummary(data, 2048))
+		}
+		searchFor = "\nUser-Agent: " + jrpc.UserAgent + "\nX-Fortio-Multi-Id: 2\n"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing %q in %s", searchFor, DebugSummary(data, 2048))
+		}
+		searchFor = "\nUser-Agent: " + jrpc.UserAgent + "\nX-Fortio-Multi-Id: 1\n"
+		if bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Unexpected %q in %s", searchFor, DebugSummary(data, 2048))
 		}
 	}
 }
