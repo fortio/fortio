@@ -279,7 +279,7 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	switch strings.ToLower(key) {
 	case "host":
 		log.LogVf("Will be setting special Host header to %s", value)
-		h.hostOverride = value
+		h.hostOverride = strings.TrimSpace(value) // This one needs to be trimmed
 	case "user-agent":
 		if value == "" {
 			log.Infof("Deleting default User-Agent: header.")

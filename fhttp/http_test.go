@@ -124,7 +124,7 @@ func TestMultiInitAndEscape(t *testing.T) {
 	if o.URL != expected {
 		t.Errorf("Got initially '%s', expected '%s'", o.URL, expected)
 	}
-	o.AddAndValidateExtraHeader("FoO: BaR")
+	o.AddAndValidateExtraHeader("FoO:BaR")
 	// re init should not erase headers
 	o.Init(o.URL)
 	if o.AllHeaders().Get("Foo") != "BaR" {
