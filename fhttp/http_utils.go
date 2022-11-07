@@ -33,6 +33,7 @@ import (
 
 	"fortio.org/fortio/dflag"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
 )
@@ -572,9 +573,14 @@ func OnBehalfOf(o *HTTPOptions, r *http.Request) {
 	_ = o.AddAndValidateExtraHeader("X-On-Behalf-Of: " + r.RemoteAddr)
 }
 
-// OnBehalfOfRequest same as OnBehalfOf but places the header directly on the dst request object.
+// OnBehalfOfRequest same as OnBehalfOf but places the header directly on the dst request object
+// but also adds a X-Proxy-Agent header if the user-agent isn't already the same as this running
+// server's version.
 func OnBehalfOfRequest(to *http.Request, from *http.Request) {
 	to.Header.Add("X-On-Behalf-Of", from.RemoteAddr)
+	if to.Header.Get("User-Agent") != jrpc.UserAgent {
+		to.Header.Add("X-Proxy-Agent", jrpc.UserAgent)
+	}
 }
 
 // AddHTTPS replaces "http://" in url with "https://" or prepends "https://"

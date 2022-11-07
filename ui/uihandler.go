@@ -185,8 +185,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts := &fhttp.HTTPOptions{}
 	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
 	httpopts = httpopts.Init(url)
-	defaultHeaders := httpopts.AllHeaders()
-	httpopts.ResetHeaders()
 	httpopts.DisableFastClient = stdClient
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
@@ -221,7 +219,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		err := mainTemplate.Execute(w, &struct {
 			R                           *http.Request
-			Headers                     http.Header
 			Version                     string
 			LogoPath                    string
 			DebugPath                   string
@@ -237,7 +234,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, defaultHeaders, version.Short(), logoPath, debugPath, echoPath, chartJSPath,
+			r, version.Short(), logoPath, debugPath, echoPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})

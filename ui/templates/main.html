@@ -53,12 +53,7 @@
     No Catch-Up (qps is a ceiling): <input type="checkbox" name="nocatchup" /><br />
     Percentiles: <input type="text" name="p" size="20" value="50, 75, 90, 99, 99.9" /> <br />
     Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
-    Headers: <br />
-  {{ range $name, $vals := .Headers }}{{range $val := $vals}}
-    <input type="text" name="H" size=40 value="{{$name}}: {{ $val }}" /> <br />
-  {{end}}{{end}} <!-- 3 extra header lines, TODO(#283): add a JS 'more headers' button -->
-    <input type="text" name="H" size=40 value="" /> <br />
-    <input type="text" name="H" size=40 value="" /> <br />
+    Extra Headers:<br />
     <input type="text" name="H" size=40 value="" /> <br />
     <button type="button" onclick="addCustomHeader()">+</button>
     <br />

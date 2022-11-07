@@ -956,6 +956,8 @@ body:
 
 ```
 
+Note: if you do not want the default fortio User-Agent to be sent pass `-H user-agent:`. If you want to send a present yet empty User-Agent: header, pass `-H "user-agent: "` (ie only whitespace sends empty one, empty value doesn't send any).
+
 ### Report only UI
 
 If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:

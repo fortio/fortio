@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"fortio.org/fortio/jrpc"
 )
 
 func TestMultiProxy(t *testing.T) {
@@ -27,12 +29,18 @@ func TestMultiProxy(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		serial := (i == 0)
 		mcfg := MultiServerConfig{Serial: serial}
-		mcfg.Targets = []TargetConf{{Destination: urlBase, MirrorOrigin: true}, {Destination: urlBase + "echo?status=555"}}
+		mcfg.Targets = []TargetConf{
+			{Destination: urlBase, MirrorOrigin: true},
+			{Destination: urlBase + "debug", MirrorOrigin: false},
+			{Destination: urlBase + "echo?status=555"},
+		}
 		_, multiAddr := MultiServer("0", &mcfg)
 		url := fmt.Sprintf("http://%s/debug", multiAddr)
 		payload := "A test payload"
 		opts := HTTPOptions{URL: url, Payload: []byte(payload)}
+		opts.AddAndValidateExtraHeader("User-agent:")
 		opts.AddAndValidateExtraHeader("b3: traceid...")
+		opts.AddAndValidateExtraHeader("X-FA: bar") // so it comes just before X-Fortio-Multi-Id
 		code, data := Fetch(&opts)
 		if serial && code != http.StatusOK {
 			t.Errorf("Got %d %s instead of ok in serial mode (first response sets code) for %s", code, DebugSummary(data, 256), url)
@@ -41,18 +49,49 @@ func TestMultiProxy(t *testing.T) {
 			t.Errorf("Got %d %s instead of 555 in parallel mode (non ok response sets code) for %s", code, DebugSummary(data, 256), url)
 		}
 		if !bytes.Contains(data, []byte(payload)) {
-			t.Errorf("Result %s doesn't contain expected payload echo back %q", DebugSummary(data, 1024), payload)
+			t.Errorf("Missing expected payload %q in %s", payload, DebugSummary(data, 1024))
+		}
+		searchFor := "B3: traceid..."
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing expected trace header %q in %s", searchFor, DebugSummary(data, 1024))
+		}
+		searchFor = "\nX-Fa: bar\nX-Fortio-Multi-Id: 1\n"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing expected general header %q in 1st req %s", searchFor, DebugSummary(data, 1024))
+		}
+		searchFor = "\nX-Fa: bar\nX-Fortio-Multi-Id: 2\n"
+		if bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Unexpected non trace header %q in 2nd req %s", searchFor, DebugSummary(data, 1024))
 		}
 		// Issue #624
 		if bytes.Contains(data, []byte("gzip")) {
-			t.Errorf("Result %s contains unexpected gzip (accept encoding)", DebugSummary(data, 1024))
+			t.Errorf("Unexpected gzip (accept encoding)in %s", DebugSummary(data, 1024))
 		}
-		if !bytes.Contains(data, []byte("X-Fortio-Multi-Id: 1")) {
-			t.Errorf("Result %s doesn't contain expected X-Fortio-Multi-Id: 1", DebugSummary(data, 1024))
+		searchFor = "X-Fortio-Multi-Id: 1"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing expected %q in %s", searchFor, DebugSummary(data, 1024))
 		}
-		// Second request errors 100% so shouldn't be found
-		if bytes.Contains(data, []byte("X-Fortio-Multi-Id: 2")) {
-			t.Errorf("Result %s contains unexpected X-Fortio-Multi-Id: 2", DebugSummary(data, 1024))
+		// Second request should be found
+		searchFor = "X-Fortio-Multi-Id: 2"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing expected %q in %s", searchFor, DebugSummary(data, 1024))
+		}
+		// Third request errors 100% so shouldn't be found
+		searchFor = "X-Fortio-Multi-Id: 3"
+		if bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Unexpected %q in %s", searchFor, DebugSummary(data, 1024))
+		}
+		searchFor = "\nX-Proxy-Agent: " + jrpc.UserAgent + "\n"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing %q in %s", searchFor, DebugSummary(data, 2048))
+		}
+		searchFor = "\nUser-Agent: " + jrpc.UserAgent + "\nX-Fortio-Multi-Id: 2\n"
+		if !bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Missing %q in %s", searchFor, DebugSummary(data, 2048))
+		}
+		searchFor = "\nUser-Agent: " + jrpc.UserAgent + "\nX-Fortio-Multi-Id: 1\n"
+		if bytes.Contains(data, []byte(searchFor)) {
+			t.Errorf("Unexpected %q in %s", searchFor, DebugSummary(data, 2048))
 		}
 	}
 }
