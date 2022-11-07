@@ -273,17 +273,19 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
 	}
 	key := strings.TrimSpace(s[0])
-	value := strings.TrimSpace(s[1])
+	// No TrimSpace for the value, so we can set empty "" vs just whitespace " " which
+	// will get trimmed later but treated differently: not emitted vs emitted empty for User-Agent.
+	value := s[1]
 	switch strings.ToLower(key) {
 	case "host":
 		log.LogVf("Will be setting special Host header to %s", value)
 		h.hostOverride = value
 	case "user-agent":
 		if value == "" {
-			log.Infof("User-Agent: header removed.")
+			log.Infof("Deleting default User-Agent: header.")
 			h.extraHeaders.Del(key)
 		} else {
-			log.LogVf("User-Agent being Set to %s", value)
+			log.Infof("User-Agent being Set to %q", value)
 			h.extraHeaders.Set(key, value)
 		}
 	default:
@@ -341,6 +343,10 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	req.Header = o.GenerateHeaders()
 	if o.hostOverride != "" {
 		req.Host = o.hostOverride
+	}
+	// Another workaround for std client otherwise trying to set a default User-Agent
+	if _, ok := req.Header["User-Agent"]; !ok {
+		req.Header.Set("User-Agent", "")
 	}
 	if !log.LogDebug() {
 		return req, nil
@@ -483,7 +489,6 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	if req == nil {
 		return nil, err
 	}
-
 	client := Client{
 		url:                  o.URL,
 		path:                 req.URL.Path,
