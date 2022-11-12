@@ -38,9 +38,9 @@ fi
 
 # Expect error with extra args: (timeout (brew install coreutils) returns 124
 # for timeout) - #652
-timeout --preserve-status 3 docker run fortio/fortio:webtest server -loglevel debug extra-arg
+timeout 3 docker run fortio/fortio:webtest server -loglevel debug extra-arg
 if [[ $? == 124 || $? == 0 ]]; then
-  echo "Unrecognized extra args/typo in flags should error out"
+  echo "Unrecognized extra args/typo in flags should error out immediatly"
   exit 1
 fi
 
