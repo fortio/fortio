@@ -185,6 +185,15 @@ var (
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
 )
 
+// serverArgCheck always returns true after checking arguments length.
+// so it can be used with isServer = serverArgCheck() below.
+func serverArgCheck() bool {
+	if len(flag.Args()) != 0 {
+		usageErr("Error: too many arguments (typo in a flag?)")
+	}
+	return true
+}
+
 //nolint:funlen,gocyclo // well yes it's fairly big and lotsa ifs.
 func main() {
 	flag.Var(&proxiesFlags, "P",
@@ -231,10 +240,10 @@ func main() {
 	case "load":
 		fortioLoad(*curlFlag, percList)
 	case "redirect":
-		isServer = true
+		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
-		isServer = true
+		isServer = serverArgCheck()
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -242,20 +251,20 @@ func main() {
 			os.Exit(1) // error already logged
 		}
 	case "tcp-echo":
-		isServer = true
+		isServer = serverArgCheck()
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		startProxies()
 	case "udp-echo":
-		isServer = true
+		isServer = serverArgCheck()
 		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		startProxies()
 	case "proxies":
-		isServer = true
+		isServer = serverArgCheck()
 		if startProxies() == 0 {
 			usageErr("Error: fortio proxies command needs at least one -P / -M flag")
 		}
 	case "server":
-		isServer = true
+		isServer = serverArgCheck()
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		}
@@ -280,9 +289,6 @@ func main() {
 		usageErr("Error: unknown command ", command)
 	}
 	if isServer {
-		if len(flag.Args()) != 0 {
-			usageErr("Error: too many arguments (typo in a flag?)")
-		}
 		if confDir == "" {
 			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
 		}
