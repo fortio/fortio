@@ -152,7 +152,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	client, _ := fhttp.NewClient(o)
 	// big gotcha that nil client isn't nil interface value (!)
 	if client == nil || reflect.ValueOf(client).IsNil() {
-		return // error logged already
+		os.Exit(1) // error logged already
 	}
 	code, data, header := client.Fetch()
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
