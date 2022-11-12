@@ -71,16 +71,18 @@ func (f *httpMultiFlagList) Set(value string) error {
 
 // Usage to a writer.
 func usage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
 		"where command is one of: load (load testing), server (starts ui, rest api,",
-		" http-echo, redirect, proxies, tcp-echo and grpc ping servers), tcp-echo (only",
-		" the tcp-echo server), report (report only UI server), redirect (only the",
-		" redirect server), proxies (only the -M and -P configured proxies), grpcping",
-		" (grpc client), or curl (single URL debug), or nc (single tcp or udp://",
-		" connection), or version (prints the full version and build details).",
-		"where target is a url (http load tests) or host:port (grpc health test).")
+		" http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers), ",
+		" tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),",
+		" report (report only UI server), redirect (only the redirect server),",
+		" proxies (only the -M and -P configured proxies), grpcping (grpc client),",
+		" or curl (single URL debug), or nc (single tcp or udp:// connection),",
+		" or version (prints the full version and build details).",
+		"where target is a url (http load tests) or host:port (grpc health test),",
+		" or tcp://host:port (tcp load test), or udp://host:port (udp load test).")
 	bincommon.FlagsUsage(w, msgs...)
 }
 
@@ -248,9 +250,6 @@ func main() {
 		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		startProxies()
 	case "proxies":
-		if len(flag.Args()) != 0 {
-			usageErr("Error: fortio proxies command only takes -P / -M flags")
-		}
 		isServer = true
 		if startProxies() == 0 {
 			usageErr("Error: fortio proxies command needs at least one -P / -M flag")
@@ -281,6 +280,9 @@ func main() {
 		usageErr("Error: unknown command ", command)
 	}
 	if isServer {
+		if len(flag.Args()) != 0 {
+			usageErr("Error: too many arguments (typo in a flag?)")
+		}
 		if confDir == "" {
 			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
 		}
