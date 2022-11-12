@@ -28,6 +28,22 @@ DOCKERNAME=fortio_server
 DOCKERSECNAME=fortio_secure_server
 DOCKERSECVOLNAME=fortio_certs
 FORTIO_BIN_PATH=fortio # /usr/bin/fortio is the full path but isn't needed
+
+# Unresolvable should error out - #653
+docker run fortio/fortio:webtest curl http://doesnt.exist.google.com/
+if [[ $? == 0 ]]; then
+  echo "Error in curl should show up in status"
+  exit 1
+fi
+
+# Expect error with extra args: (timeout (brew install coreutils) returns 124
+# for timeout) - #652
+timeout --preserve-status 3 docker run fortio/fortio:webtest server -loglevel debug extra-arg
+if [[ $? == 124 || $? == 0 ]]; then
+  echo "Unrecognized extra args/typo in flags should error out"
+  exit 1
+fi
+
 DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
 function cleanup {
   set +e # errors are ok during cleanup
