@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"fortio.org/fortio/log"
+	"golang.org/x/exp/maps"
 )
 
 // Counter is a type whose instances record values
@@ -541,43 +542,46 @@ func Round(v float64) float64 {
 	return RoundToDigits(v, 4)
 }
 
-// Occurrence is a type that stores the occurrence of the key.
+// Occurrence is a type that stores the occurrences of the keys.
+// Could be directly an alias for map[string]int but keeping the
+// outer struct for parity with Counter and Histogram and to keep
+// 1.38's api.
 type Occurrence struct {
-	ipUsage map[string]int
+	m map[string]int
 }
 
-// NewOccurrence create a new occurrence map.
+// NewOccurrence create a new occurrence (map).
 func NewOccurrence() *Occurrence {
-	o := new(Occurrence)
-	o.ipUsage = make(map[string]int)
-
-	return o
+	return &Occurrence{m: make(map[string]int)}
 }
 
-// Record records a key value pair.
-func (m *Occurrence) Record(key string) {
-	m.ipUsage[key]++
+// Record records a new occurrence of the key.
+func (o *Occurrence) Record(key string) {
+	o.m[key]++
 }
 
-// PrintAndAggregate print the ip usage and aggregate to the total count map.
-func (m *Occurrence) PrintAndAggregate(ipCountMap map[string]int) string {
+// AggregateAndToString aggregates the data from the object into the passed in totals map
+// and returns a string suitable for printing usage counts per key of the incoming object.
+func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
+	if len(o.m) == 1 {
+		// Special case for single entry in the map, no [] form and the count is omitted (already printed in runner ip count case).
+		k := maps.Keys(o.m)[0]
+		v := o.m[k]
+		totals[k] += v
+		return k
+	}
 	var sb strings.Builder
 	sb.WriteString("[")
-
-	size := len(m.ipUsage)
-	count := 0
-
-	for k, v := range m.ipUsage {
-		ipCountMap[k] += v
-		sb.WriteString(k)
-		if size == 1 {
-			break
-		}
-		sb.WriteString(fmt.Sprintf(" (%d)", v))
-		count++
-		if count != size {
+	first := true
+	for k, v := range o.m {
+		totals[k] += v
+		if first {
+			first = false
+		} else {
 			sb.WriteString(", ")
 		}
+		sb.WriteString(k)
+		sb.WriteString(fmt.Sprintf(" (%d)", v))
 	}
 	sb.WriteString("]")
 	return sb.String()

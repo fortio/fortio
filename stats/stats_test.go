@@ -786,12 +786,12 @@ func TestAllBucketBoundaries(t *testing.T) {
 func TestSingleIPOccurrence(t *testing.T) {
 	singleIP := NewOccurrence()
 	totalMap := make(map[string]int)
-	expected := "[127.0.0.1]"
+	expected := "127.0.0.1"
 
 	singleIP.Record(ipOne)
 	singleIP.Record(ipOne)
 
-	actual := singleIP.PrintAndAggregate(totalMap)
+	actual := singleIP.AggregateAndToString(totalMap)
 
 	if expected != actual {
 		t.Errorf("Incorrect IP Usage Result. Expected: %s, got: %s", expected, actual)
@@ -808,7 +808,7 @@ func TestMultipleIPOccurrence(t *testing.T) {
 
 	multiIP.Record(ipTwo)
 
-	actual := multiIP.PrintAndAggregate(totalMap)
+	actual := multiIP.AggregateAndToString(totalMap)
 
 	if actual != expected[0] && actual != expected[1] {
 		t.Errorf("Incorrect IP Usage Result. Expected: %s, got: %s", expected, actual)
@@ -832,8 +832,8 @@ func TestMultipleConnIPOccurrence(t *testing.T) {
 	occurrenceTwo.Record(ipTwo)
 	occurrenceTwo.Record(ipTwo)
 
-	_ = occurrenceOne.PrintAndAggregate(totalMap)
-	_ = occurrenceTwo.PrintAndAggregate(totalMap)
+	_ = occurrenceOne.AggregateAndToString(totalMap)
+	_ = occurrenceTwo.AggregateAndToString(totalMap)
 
 	// The occurrence of ip one should be 5 and the occurrence of ip two should be 3.
 	if totalMap[ipOne] != 5 || totalMap[ipTwo] != 3 {
