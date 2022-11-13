@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"fortio.org/fortio/log"
-	"golang.org/x/exp/maps"
 )
 
 // Counter is a type whose instances record values
@@ -563,18 +562,17 @@ func (o *Occurrence) Record(key string) {
 // AggregateAndToString aggregates the data from the object into the passed in totals map
 // and returns a string suitable for printing usage counts per key of the incoming object.
 func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
-	if len(o.m) == 1 {
-		// Special case for single entry in the map, no [] form and the count is omitted (already printed in runner ip count case).
-		k := maps.Keys(o.m)[0]
-		v := o.m[k]
-		totals[k] += v
-		return k
-	}
+	onlyOne := (len(o.m) == 1)
 	var sb strings.Builder
-	sb.WriteString("[")
 	first := true
+	sb.WriteString("[")
 	for k, v := range o.m {
 		totals[k] += v
+		if onlyOne {
+			// Special case for single entry in the map, no [] form
+			// and the count is omitted (already printed in runner ip count case).
+			return k
+		}
 		if first {
 			first = false
 		} else {
