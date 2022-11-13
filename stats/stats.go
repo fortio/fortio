@@ -562,10 +562,12 @@ func (o *Occurrence) Record(key string) {
 // AggregateAndToString aggregates the data from the object into the passed in totals map
 // and returns a string suitable for printing usage counts per key of the incoming object.
 func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
-	onlyOne := (len(o.m) == 1)
 	var sb strings.Builder
-	first := true
 	sb.WriteString("[")
+
+	first := true
+	onlyOne := (len(o.m) == 1)
+
 	for k, v := range o.m {
 		totals[k] += v
 		if onlyOne {
