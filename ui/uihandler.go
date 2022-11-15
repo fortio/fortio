@@ -183,8 +183,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ro.RunID = runid
 	}
 	httpopts := &fhttp.HTTPOptions{}
-	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
-	httpopts = httpopts.Init(url)
+	// to be normalized in init 0 replaced by default value only in http runner, not here as this could be a tcp or udp runner
+	httpopts.URL = url // fixes #651
+	httpopts.HTTPReqTimeOut = timeout
 	httpopts.DisableFastClient = stdClient
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure

@@ -264,8 +264,9 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	ro.RunID = runid
 	log.Infof("New run id %d", runid)
 	httpopts := &fhttp.HTTPOptions{}
-	httpopts.HTTPReqTimeOut = timeout // to be normalized in init 0 replaced by default value
-	httpopts = httpopts.Init(url)
+	httpopts.HTTPReqTimeOut = timeout // to be normalized in init, 0 is replaced by default value (for all runners)
+	// We don't call Init because this could be a tcp:// or udp:// url. Was httpopts = httpopts.Init(url) - fixes #651
+	httpopts.URL = url
 	httpopts.DisableFastClient = stdClient
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
