@@ -208,8 +208,9 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		occurrence, connStats := httpstate[i].client.GetIPAddress()
 		currentSocketUsed := connStats.Count
 		httpstate[i].client.Close()
-		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s ", i, currentSocketUsed, occurrence.PrintAndAggregate(total.IPCountMap))
-		connStats.Counter.Print(out, "connection timing")
+		// next 2 in 1 (long) line:
+		fmt.Fprintf(out, "[%d] %3d socket used, resolved to %s", i, currentSocketUsed, occurrence.AggregateAndToString(total.IPCountMap))
+		connStats.Counter.Print(out, ", connection timing")
 		total.SocketCount += currentSocketUsed
 		total.Sockets = append(total.Sockets, currentSocketUsed)
 		// Q: is there some copying each time stats[i] is used?
