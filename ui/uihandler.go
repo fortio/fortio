@@ -482,6 +482,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
 	// use std client to avoid chunked raw we can get with fast client:
+	//nolint:contextcheck  // no context argument, bad linter?
 	client, _ := fhttp.NewStdClient(o)
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))

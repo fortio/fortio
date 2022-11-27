@@ -25,6 +25,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
@@ -192,6 +193,8 @@ type HTTPOptions struct {
 	Offset time.Duration
 	// Optional resolution divider for the Connection duration histogram. In seconds. Defaults to 0.001 or 1 millisecond.
 	Resolution float64
+	// Optional ClientTrace to use if set. Only effective when using std client.
+	ClientTrace *httptrace.ClientTrace
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -339,6 +342,9 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	if err != nil {
 		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
 		return nil, err
+	}
+	if o.ClientTrace != nil {
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), o.ClientTrace))
 	}
 	req.Header = o.GenerateHeaders()
 	if o.hostOverride != "" {

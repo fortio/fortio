@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -261,7 +263,7 @@ func gUnzipData(t *testing.T, data []byte) (resData []byte) {
 }
 
 //nolint:gocognit
-func TestAccessLog(t *testing.T) {
+func TestAccessLogAndTrace(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo-for-alog/", EchoHandler)
 	URL := fmt.Sprintf("http://localhost:%d/echo-for-alog/?status=555:50", addr.Port)
@@ -271,6 +273,14 @@ func TestAccessLog(t *testing.T) {
 	numReq := int64(50) // can't do too many without running out of fds on mac
 	opts.Exactly = numReq
 	opts.NumThreads = 5
+	numTrace := int64(0)
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			atomic.AddInt64(&numTrace, 1)
+		},
+	}
+	opts.DisableFastClient = true
+	opts.ClientTrace = trace
 	for _, format := range []string{"json", "influx"} {
 		dir := t.TempDir()
 		fname := path.Join(dir, "access.log")
@@ -285,6 +295,9 @@ func TestAccessLog(t *testing.T) {
 		totalReq := res.DurationHistogram.Count
 		if totalReq != numReq {
 			t.Errorf("Mismatch between requests %d and expected %d", totalReq, numReq)
+		}
+		if atomic.LoadInt64(&numTrace) != numReq {
+			t.Errorf("Mismatch between traces %d and expected %d", numTrace, numReq)
 		}
 		httpOk := res.RetCodes[http.StatusOK]
 		http555 := res.RetCodes[555]
@@ -335,6 +348,7 @@ func TestAccessLog(t *testing.T) {
 		if lines555 != int(http555) {
 			t.Errorf("unexpected number of lines in access log %s: with 555: %d instead of %d", format, lines555, http555)
 		}
+		atomic.StoreInt64(&numTrace, 0)
 	}
 }
 
