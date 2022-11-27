@@ -16,10 +16,12 @@
 package jrpc_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
 	"testing"
 	"time"
@@ -188,8 +190,7 @@ func TestJPRC(t *testing.T) {
 	if de != nil && !strings.HasPrefix(de.Error(), expected) {
 		t.Errorf("expected dns error to start with %q, got %q", expected, de.Error())
 	}
-	// bad json payload sent - call deprecated one for coverage for now, replace with Fetch() when it's gone:
-	errReply, err := jrpc.CallWithPayload[Response](jrpc.NewDestination(url), []byte(`{foo: missing-quotes}`))
+	errReply, err := jrpc.Fetch[Response](jrpc.NewDestination(url), []byte(`{foo: missing-quotes}`))
 	if err == nil {
 		t.Errorf("expected error, got nil and %v", res)
 	}
@@ -318,18 +319,27 @@ func TestJPRCHeaders(t *testing.T) {
 	inp.Add("Test1", "ValT1.2")
 	inp.Set("Test2", "ValT2")
 	jrpc.SetHeaderIfMissing(inp, "Test2", "ShouldNotSet") // test along the way
-	dest := &jrpc.Destination{
-		URL:     url,
-		Headers: &inp,
+	gotFirstByte := false
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			gotFirstByte = true
+		},
 	}
-	// use the deprecated for coverage. switch to jrpc.Get() in next version
-	res, err := jrpc.CallNoPayload[http.Header](dest)
+	dest := &jrpc.Destination{
+		URL:         url,
+		Headers:     &inp,
+		ClientTrace: trace,
+	}
+	res, err := jrpc.Get[http.Header](dest)
 	if err != nil {
 		t.Errorf("failed Call: %v", err)
 	}
 	// order etc is preserved, keys are not case sensitive (kinda tests go http api too)
 	assert.Equal(t, res.Values("test1"), []string{"ValT1.1", "ValT1.2"}, "Expecting echoed back Test1 multi valued header")
 	assert.CheckEquals(t, res.Get("test2"), "ValT2", "Expecting echoed back Test2 header")
+	if !gotFirstByte {
+		t.Errorf("expected trace callback to have been called")
+	}
 }
 
 type ErrReader struct{}
@@ -487,5 +497,26 @@ func TestJPRCSlices(t *testing.T) {
 	}
 	if slice != nil {
 		t.Errorf("expected nil slice, got %v", slice)
+	}
+}
+
+func TestContext(t *testing.T) {
+	dest := jrpc.NewDestination("http://localhost:1234")
+	ctx := dest.GetContext()
+	if ctx == nil {
+		t.Errorf("expected non-nil context")
+	}
+	if ctx != context.Background() {
+		t.Errorf("expected context.Background(), got %v", ctx)
+	}
+	if dest.Context != nil {
+		t.Errorf("expected Context inside struct to remain nil")
+	}
+	newCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	dest.Context = newCtx
+	ctx = dest.GetContext()
+	if ctx != newCtx {
+		t.Errorf("expected newCtx, got %v", ctx)
 	}
 }

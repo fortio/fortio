@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"time"
 
 	"fortio.org/fortio/version"
@@ -78,6 +79,17 @@ type Destination struct {
 	Timeout time.Duration
 	// Default is "" which will use POST if there is a payload and GET otherwise.
 	Method string
+	// Context or will be context.Background() if not set.
+	Context context.Context
+	// ClientTrace to use if set.
+	ClientTrace *httptrace.ClientTrace
+}
+
+func (d *Destination) GetContext() context.Context {
+	if d.Context != nil {
+		return d.Context
+	}
+	return context.Background()
 }
 
 func (fe *FetchError) Error() string {
@@ -108,19 +120,14 @@ func CallURL[Q any, T any](url string, payload *T) (*Q, error) {
 	return Call[Q](NewDestination(url), payload)
 }
 
-// Deprecated: CallNoPayload is for an API call without json payload.
-// Use  Get() instead.
-func CallNoPayload[Q any](url *Destination) (*Q, error) {
-	return Get[Q](url)
-}
-
-// Get fetches and deseializes the JSON returned by the Destination into a Q struct.
-// Used when there is no json payload to send.
+// Get fetches and deserializes the JSON returned by the Destination into a Q struct.
+// Used when there is no json payload to send. Note that Get can be a different http
+// method than GET, for instance if url.Method is set to "POST".
 func Get[Q any](url *Destination) (*Q, error) {
 	return Fetch[Q](url, []byte{})
 }
 
-// GetArray fetches and deseializes the JSON returned by the Destination into a slice of
+// GetArray fetches and deserializes the JSON returned by the Destination into a slice of
 // Q struct (ie the response is a json array).
 func GetArray[Q any](url *Destination) ([]Q, error) {
 	slicePtr, err := Fetch[[]Q](url, []byte{})
@@ -149,11 +156,6 @@ func Deserialize[Q any](bytes []byte) (*Q, error) {
 	}
 	err := json.Unmarshal(bytes, &result)
 	return &result, err // Will return zero object, not nil upon error
-}
-
-// Deprecated: CallWithPayload use Fetch() instead.
-func CallWithPayload[Q any](url *Destination, bytes []byte) (*Q, error) {
-	return Fetch[Q](url, bytes)
 }
 
 // Fetch is for cases where the payload is already serialized (or empty
@@ -197,7 +199,7 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	if curTimeout == 0 {
 		curTimeout = timeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), curTimeout)
+	ctx, cancel := context.WithTimeout(dest.GetContext(), curTimeout)
 	defer cancel()
 	var req *http.Request
 	var err error
@@ -213,6 +215,9 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 			method = http.MethodGet
 		}
 		req, err = http.NewRequestWithContext(ctx, method, dest.URL, nil)
+	}
+	if dest.ClientTrace != nil {
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), dest.ClientTrace))
 	}
 	if err != nil {
 		return -1, res, err
