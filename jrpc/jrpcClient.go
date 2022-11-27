@@ -80,6 +80,8 @@ type Destination struct {
 	// Default is "" which will use POST if there is a payload and GET otherwise.
 	Method string
 	// Context or will be context.Background() if not set.
+	//nolint:containedctx // backward compatibility and keeping the many APIs simple as it's optional
+	// https://go.dev/blog/context-and-structs
 	Context context.Context
 	// ClientTrace to use if set.
 	ClientTrace *httptrace.ClientTrace
