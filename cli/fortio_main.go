@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Originally fortio_main.go at the root of fortio.orf/fortio
+// now moved here it can be customized and reused in variants of fortio
+// like fortiotel (fortio with opentelemetry)
+package cli // import "fortio.org/fortio/cli"
 
 // Do not add any external dependencies we want to keep fortio minimal.
 
@@ -195,7 +198,7 @@ func serverArgCheck() bool {
 }
 
 //nolint:funlen // well yes it's fairly long
-func main() {
+func FortioMain() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
