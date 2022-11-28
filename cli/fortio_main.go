@@ -44,6 +44,8 @@ import (
 	"fortio.org/fortio/version"
 )
 
+type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
+
 // -- Start of support for multiple proxies (-P) flags on cmd line.
 type proxiesFlagList struct{}
 
@@ -198,7 +200,7 @@ func serverArgCheck() bool {
 }
 
 //nolint:funlen // well yes it's fairly long
-func FortioMain() {
+func FortioMain(hook FortioHook) {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
@@ -237,11 +239,11 @@ func FortioMain() {
 	isServer := false
 	switch command {
 	case "curl":
-		fortioLoad(true, nil)
+		fortioLoad(true, nil, hook)
 	case "nc":
 		fortioNC()
 	case "load":
-		fortioLoad(*curlFlag, percList)
+		fortioLoad(*curlFlag, percList, hook)
 	case "redirect":
 		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
@@ -360,7 +362,7 @@ func fortioNC() {
 }
 
 //nolint:funlen, gocognit // maybe refactor/shorten later.
-func fortioLoad(justCurl bool, percList []float64) {
+func fortioLoad(justCurl bool, percList []float64, hook FortioHook) {
 	if len(flag.Args()) != 1 {
 		usageErr("Error: fortio load/curl needs a url or destination")
 	}
@@ -430,6 +432,9 @@ func fortioLoad(justCurl bool, percList []float64) {
 		os.Exit(1)
 	}
 	var res periodic.HasRunnerResult
+	if hook != nil {
+		hook(httpOpts, &ro)
+	}
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,

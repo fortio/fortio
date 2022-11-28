@@ -194,7 +194,7 @@ type HTTPOptions struct {
 	// Optional resolution divider for the Connection duration histogram. In seconds. Defaults to 0.001 or 1 millisecond.
 	Resolution float64
 	// Optional ClientTrace to use if set. Only effective when using std client.
-	ClientTrace *httptrace.ClientTrace
+	ClientTrace *httptrace.ClientTrace `json:"-"`
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).

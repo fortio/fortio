@@ -246,7 +246,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	sort.Ints(keys)
 	totalCount := float64(total.DurationHistogram.Count)
 	_, _ = fmt.Fprintf(out, "Sockets used: %d (for perfect keepalive, would be %d)\n", total.SocketCount, r.Options().NumThreads)
-	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t\n", total.Uniform, total.Jitter)
+	_, _ = fmt.Fprintf(out, "Uniform: %t, Jitter: %t, Catchup allowed: %t\n", total.Uniform, total.Jitter, !total.NoCatchUp)
 	_, _ = fmt.Fprintf(out, "IP addresses distribution:\n")
 	for _, v := range ipList {
 		_, _ = fmt.Fprintf(out, "%s: %d\n", v, total.IPCountMap[v])
