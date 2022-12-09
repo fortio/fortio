@@ -60,6 +60,9 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
 func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) net.Addr {
+	if healthServiceName == "" {
+		healthServiceName = DefaultHealthServiceName
+	}
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return nil
