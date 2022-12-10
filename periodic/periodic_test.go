@@ -232,8 +232,15 @@ func TestExactlyMaxQps(t *testing.T) {
 
 type testAccessLogger struct {
 	sync.Mutex
+	starts  int64
 	reports int64
 	success int64
+}
+
+func (t *testAccessLogger) Start(thread int, time int64) {
+	t.Lock()
+	defer t.Unlock()
+	t.starts++
 }
 
 func (t *testAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
@@ -273,7 +280,10 @@ func TestAccessLogs(t *testing.T) {
 		t.Errorf("Access logs executed unexpected number of times %d instead %d", actual, expected)
 	}
 	if logger.reports != expected {
-		t.Errorf("Access logs log unexpected number of times %d instead %d", actual, expected)
+		t.Errorf("Access logs log unexpected number of times %d instead %d", logger.reports, expected)
+	}
+	if logger.starts != expected {
+		t.Errorf("Access logs log start unexpected number of times %d instead %d", logger.starts, expected)
 	}
 	if count != expected {
 		t.Errorf("Access logs executed unexpected number of times %d instead %d", count, expected)

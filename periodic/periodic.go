@@ -634,7 +634,9 @@ type fileAccessLogger struct {
 
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
-	// Report logs a single request to a file.
+	// Start is called just before each Run(). Can be used to start tracing spans for instance.
+	Start(thread int, time int64)
+	// Report is called just after each Run() to logs a single request.
 	Report(thread int, time int64, latency float64, status bool, details string)
 	Info() string
 }
@@ -678,6 +680,11 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 	}
 	infoStr := fmt.Sprintf("mode %s to %s", accessType.String(), filePath)
 	return &fileAccessLogger{file: f, format: accessType, info: infoStr}, nil
+}
+
+// Before each Run().
+func (a *fileAccessLogger) Start(thread int, startTime int64) {
+	// Nothing to do
 }
 
 // Report logs a single request to a file.
@@ -744,6 +751,9 @@ MainLoop:
 				log.Warnf("%s warning only did %d out of %d calls before reaching %v", tIDStr, i, numCalls, r.Duration)
 				break
 			}
+		}
+		if r.AccessLogger != nil {
+			r.AccessLogger.Start(id, fStart.UnixNano())
 		}
 		status, details := f.Run(id)
 		latency := time.Since(fStart).Seconds()
