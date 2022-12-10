@@ -15,6 +15,7 @@
 package fhttp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -56,9 +57,9 @@ type HTTPRunnerResults struct {
 
 // Run tests http request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (httpstate *HTTPRunnerResults) Run(t int) (bool, string) {
+func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
-	code, body, headerSize := httpstate.client.Fetch()
+	code, body, headerSize := httpstate.client.Fetch(ctx)
 	size := len(body)
 	log.Debugf("Got in %3d hsz %d sz %d - will abort on %d", code, headerSize, size, httpstate.AbortOn)
 	httpstate.RetCodes[code]++
@@ -124,6 +125,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	httpstate := make([]HTTPRunnerResults, numThreads)
 	// First build all the clients sequentially. This ensures we do not have data races when
 	// constructing requests.
+	ctx := context.Background()
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -136,7 +138,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
-			code, data, headerSize := httpstate[i].client.Fetch()
+			code, data, headerSize := httpstate[i].client.Fetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
 				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
 			}
@@ -156,7 +158,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		for i := 0; i < numThreads; i++ {
 			i := i
 			warmup.Go(func() error {
-				code, data, headerSize := httpstate[i].client.Fetch()
+				code, data, headerSize := httpstate[i].client.Fetch(ctx)
 				if !o.AllowInitialErrors && !codeIsOK(code) {
 					return fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
 				}

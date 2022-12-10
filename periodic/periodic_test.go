@@ -16,6 +16,7 @@ package periodic
 
 import (
 	"bufio"
+	"context"
 	"math"
 	"os"
 	"path"
@@ -29,7 +30,7 @@ import (
 
 type Noop struct{}
 
-func (n *Noop) Run(t int) (bool, string) {
+func (n *Noop) Run(context.Context, ThreadID) (bool, string) {
 	return true, ""
 }
 
@@ -78,7 +79,7 @@ type TestCount struct {
 	lock  *sync.Mutex
 }
 
-func (c *TestCount) Run(i int) (bool, string) {
+func (c *TestCount) Run(context.Context, ThreadID) (bool, string) {
 	c.lock.Lock()
 	(*c.count)++
 	status := (*c.count)%2 == 0
@@ -232,23 +233,29 @@ func TestExactlyMaxQps(t *testing.T) {
 
 type testAccessLogger struct {
 	sync.Mutex
+	last    int64
 	starts  int64
 	reports int64
 	success int64
 }
 
-func (t *testAccessLogger) Start(thread int, time int64) {
+func (t *testAccessLogger) Start(ctx context.Context, thread ThreadID, iter int64, time time.Time) {
 	t.Lock()
 	defer t.Unlock()
 	t.starts++
 }
 
-func (t *testAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
+func (t *testAccessLogger) Report(ctx context.Context, thread ThreadID, iter int64, time time.Time,
+	latency float64, status bool, details string,
+) {
 	t.Lock()
 	defer t.Unlock()
 	t.reports++
 	if status {
 		t.success++
+	}
+	if iter > t.last {
+		t.last = iter
 	}
 }
 
@@ -284,6 +291,10 @@ func TestAccessLogs(t *testing.T) {
 	}
 	if logger.starts != expected {
 		t.Errorf("Access logs log start unexpected number of times %d instead %d", logger.starts, expected)
+	}
+	// 10 calls on 4 threads is 2,2,2,4 so max will be on last thread, 0,1,2,3
+	if logger.last != 3 {
+		t.Errorf("Access logs log last unexpected %d instead %d", logger.last, 3)
 	}
 	if count != expected {
 		t.Errorf("Access logs executed unexpected number of times %d instead %d", count, expected)

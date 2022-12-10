@@ -81,16 +81,16 @@ type GRPCRunnerResults struct {
 
 // Run exercises GRPC health check or ping at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (grpcstate *GRPCRunnerResults) Run(t int) (bool, string) {
+func (grpcstate *GRPCRunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	var err error
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
 	if grpcstate.Ping {
-		res, err = grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
+		res, err = grpcstate.clientP.Ping(ctx, &grpcstate.reqP)
 	} else {
 		var r *grpc_health_v1.HealthCheckResponse
-		r, err = grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
+		r, err = grpcstate.clientH.Check(ctx, &grpcstate.reqH)
 		if r != nil {
 			status = r.Status
 			res = r

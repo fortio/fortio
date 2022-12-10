@@ -19,6 +19,7 @@ package bincommon
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -154,7 +155,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	if client == nil || reflect.ValueOf(client).IsNil() {
 		os.Exit(1) // error logged already
 	}
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
 	if *curlHeadersStdout {
 		os.Stdout.Write(data)

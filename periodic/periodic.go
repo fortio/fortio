@@ -23,6 +23,7 @@
 package periodic // import "fortio.org/fortio/periodic"
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -50,12 +51,14 @@ var DefaultRunnerOptions = RunnerOptions{
 	Resolution:  0.001, // milliseconds
 }
 
+type ThreadID int
+
 // Runnable are the function to run periodically.
 type Runnable interface {
 	// Run returns a boolean, true for normal/success, false otherwise.
 	// with details being an optional string that can be put in the access logs.
 	// Statistics are split into two sets.
-	Run(tid int) (status bool, details string)
+	Run(context.Context, ThreadID) (status bool, details string)
 }
 
 // MakeRunners creates an array of NumThreads identical Runnable instances
@@ -542,10 +545,10 @@ func (r *periodicRunner) Run() RunnerResults {
 				// The first thread gets to do the additional work
 				thisNumCalls += leftOver
 			}
-			go func(t int, durP, errP, sleepP *stats.Histogram) {
+			go func(t ThreadID, durP, errP, sleepP *stats.Histogram) {
 				runOne(t, runnerChan, durP, errP, sleepP, thisNumCalls, start, r)
 				wg.Done()
-			}(t, durP, errP, sleepP)
+			}(ThreadID(t), durP, errP, sleepP)
 		}
 		wg.Wait()
 		for t := 0; t < r.NumThreads; t++ {
@@ -635,9 +638,9 @@ type fileAccessLogger struct {
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
 	// Start is called just before each Run(). Can be used to start tracing spans for instance.
-	Start(thread int, time int64)
+	Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time)
 	// Report is called just after each Run() to logs a single request.
-	Report(thread int, time int64, latency float64, status bool, details string)
+	Report(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time, latency float64, status bool, details string)
 	Info() string
 }
 
@@ -683,20 +686,23 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 }
 
 // Before each Run().
-func (a *fileAccessLogger) Start(thread int, startTime int64) {
+func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) {
 	// Nothing to do
 }
 
 // Report logs a single request to a file.
-func (a *fileAccessLogger) Report(thread int, time int64, latency float64, status bool, details string) {
+func (a *fileAccessLogger) Report(ctx context.Context, thread ThreadID, iter int64, time time.Time,
+	latency float64, status bool, details string,
+) {
 	a.mu.Lock()
 	switch a.format {
 	case AccessInflux:
 		// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/
-		fmt.Fprintf(a.file, "latency,thread=%d,ok=%t value=%f,details=%q %d\n", thread, status, latency, details, time)
+		fmt.Fprintf(a.file, "latency,thread=%d,ok=%t value=%f,details=%q %d\n",
+			thread, status, latency, details, time.UnixNano())
 	case AccessJSON:
-		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d,\"ok\":%t,\"details\":%q}\n",
-			latency, time, thread, status, details)
+		fmt.Fprintf(a.file, "{\"latency\":%f,\"timestamp\":%d,\"thread\":%d,\"iter\":%d,\"ok\":%t,\"details\":%q}\n",
+			latency, time.UnixNano(), thread, iter, status, details)
 	}
 	a.mu.Unlock()
 }
@@ -709,7 +715,7 @@ func (a *fileAccessLogger) Info() string {
 // runOne runs in 1 go routine (or main one when -c 1 == single threaded mode).
 //
 //nolint:gocognit, gocyclo // we should try to simplify it though.
-func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *stats.Histogram,
+func runOne(id ThreadID, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *stats.Histogram,
 	numCalls int64, start time.Time, r *periodicRunner,
 ) {
 	var i int64
@@ -725,7 +731,7 @@ func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *s
 		delayBetweenRequest := 1. / perThreadQPS
 		// When using uniform mode, we should wait a bit relative to our QPS and thread ID.
 		// For example, with 10 threads and 1 QPS, thread 8 should delay 0.7s.
-		delaySeconds := delayBetweenRequest - (delayBetweenRequest / float64(r.NumThreads) * float64(r.NumThreads-id))
+		delaySeconds := delayBetweenRequest - (delayBetweenRequest / float64(r.NumThreads) * float64(r.NumThreads-int(id)))
 		delayDuration := time.Duration(delaySeconds * float64(time.Second))
 		start = start.Add(delayDuration)
 		log.Debugf("%s sleep %v for uniform distribution", tIDStr, delayDuration)
@@ -736,7 +742,8 @@ func runOne(id int, runnerChan chan struct{}, funcTimes, errTimes, sleepTimes *s
 			// continue normal execution
 		}
 	}
-
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, ThreadID(0), id)
 MainLoop:
 	for {
 		fStart := time.Now()
@@ -753,12 +760,12 @@ MainLoop:
 			}
 		}
 		if r.AccessLogger != nil {
-			r.AccessLogger.Start(id, fStart.UnixNano())
+			r.AccessLogger.Start(ctx, id, i, fStart)
 		}
-		status, details := f.Run(id)
+		status, details := f.Run(ctx, id)
 		latency := time.Since(fStart).Seconds()
 		if r.AccessLogger != nil {
-			r.AccessLogger.Report(id, fStart.UnixNano(), latency, status, details)
+			r.AccessLogger.Report(ctx, id, i, fStart, latency, status, details)
 		}
 		funcTimes.Record(latency)
 		if !status {

@@ -482,7 +482,6 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
 	// use std client to avoid chunked raw we can get with fast client:
-	//nolint:contextcheck  // no context argument, bad linter?
 	client, _ := fhttp.NewStdClient(o)
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
@@ -490,7 +489,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	code, data, _ := client.Fetch()
+	code, data, _ := client.Fetch(r.Context())
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
@@ -500,15 +499,15 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sdata := strings.TrimSpace(string(data))
 	if strings.HasPrefix(sdata, "TsvHttpData-1.0") {
-		processTSV(w, client, sdata)
-	} else if !processXML(w, client, data, uStr, 0) {
+		processTSV(r.Context(), w, client, sdata)
+	} else if !processXML(r.Context(), w, client, data, uStr, 0) {
 		return
 	}
 	_, _ = w.Write([]byte("</table>"))
 	_, _ = w.Write([]byte("\n</body></html>\n"))
 }
 
-func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
+func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, sdata string) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("processTSV expecting a flushable response")
@@ -532,7 +531,7 @@ func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
 			uPath := ur.Path
 			pathParts := strings.Split(uPath, "/")
 			name := pathParts[len(pathParts)-1]
-			downloadOne(w, client, name, u)
+			downloadOne(ctx, w, client, name, u)
 		}
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
@@ -548,7 +547,7 @@ type ListBucketResult struct {
 }
 
 // @returns true if started a table successfully - false is error.
-func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
+func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
 	// We already know this parses as we just fetched it:
 	bu, _ := url.Parse(baseURL)
 	flusher, ok := w.(http.Flusher)
@@ -580,7 +579,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		newURL := *bu // copy
 		newURL.Path = newURL.Path + "/" + el
 		fullURL := newURL.String()
-		downloadOne(w, client, name, fullURL)
+		downloadOne(ctx, w, client, name, fullURL)
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
@@ -608,7 +607,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	_, _ = w.Write([]byte(template.HTMLEscapeString(newBaseURL)))
 	_, _ = w.Write([]byte("<td>"))
 	_ = client.ChangeURL(newBaseURL)
-	ncode, ndata, _ := client.Fetch()
+	ncode, ndata, _ := client.Fetch(ctx)
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
@@ -616,10 +615,10 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		w.WriteHeader(http.StatusFailedDependency)
 		return false
 	}
-	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
+	return processXML(ctx, w, client, ndata, newBaseURL, level+1) // recurse
 }
 
-func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u string) {
+func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, name string, u string) {
 	log.Infof("downloadOne(%s,%s)", name, u)
 	if !strings.HasSuffix(name, ".json") {
 		_, _ = w.Write([]byte("<td>skipped (not json)"))
@@ -640,7 +639,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	}
 	// url already validated
 	_ = client.ChangeURL(u)
-	code1, data1, _ := client.Fetch()
+	code1, data1, _ := client.Fetch(ctx)
 	if code1 != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
 		w.WriteHeader(http.StatusFailedDependency)
