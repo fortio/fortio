@@ -348,6 +348,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 			Destination:   url,
 			UsePing:       grpcPing,
 			Delay:         grpcPingDelay,
+			Service:       FormValue(r, jd, "healthservice"),
 		}
 		o.TLSOptions = httpopts.TLSOptions
 		if grpcSecure {

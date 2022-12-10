@@ -142,7 +142,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			o.RunType += fmt.Sprintf(" Delay=%v", o.Delay)
 		}
 	} else {
-		o.RunType = "GRPC Health"
+		o.RunType = "GRPC Health for '" + o.Service + "'"
 	}
 	pll := len(o.Payload)
 	if pll > 0 {

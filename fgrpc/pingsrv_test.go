@@ -106,3 +106,20 @@ func TestPingServer(t *testing.T) {
 		t.Errorf("Didn't expect 2nd server on same port to succeed: %d %d", newPort, iPort)
 	}
 }
+
+func TestDefaultHealth(t *testing.T) {
+	iPort := PingServerTCP("0", "", "", "", 0)
+	iAddr := fmt.Sprintf("localhost:%d", iPort)
+	t.Logf("insecure grpc ping server running, will connect to %s", iAddr)
+	serving := grpc_health_v1.HealthCheckResponse_SERVING.String()
+	TLSInsecure := &fhttp.TLSOptions{Insecure: true}
+	if r, err := GrpcHealthCheck(iAddr, "", 1, TLSInsecure); err != nil || (*r)[serving] != 1 {
+		t.Errorf("Unexpected result %+v, %v with empty service health check", r, err)
+	}
+	if r, err := GrpcHealthCheck(iAddr, DefaultHealthServiceName, 3, TLSInsecure); err != nil || (*r)[serving] != 3 {
+		t.Errorf("Unexpected result %+v, %v with health check for same service as started (ping)", r, err)
+	}
+	if r, err := GrpcHealthCheck(iAddr, "foo", 1, TLSInsecure); err == nil || r != nil {
+		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
+	}
+}

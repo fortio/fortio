@@ -60,6 +60,9 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
 func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) net.Addr {
+	if healthServiceName == "" {
+		healthServiceName = DefaultHealthServiceName
+	}
 	socket, addr := fnet.Listen("grpc '"+healthServiceName+"'", port)
 	if addr == nil {
 		return nil
@@ -166,7 +169,7 @@ type HealthResultMap map[string]int64
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
 func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions) (*HealthResultMap, error) {
-	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
+	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
 	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
 	conn, err := Dial(&o)
 	if err != nil {
