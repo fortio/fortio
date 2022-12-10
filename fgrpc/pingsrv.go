@@ -169,7 +169,7 @@ type HealthResultMap map[string]int64
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
 func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions) (*HealthResultMap, error) {
-	log.Debugf("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
+	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
 	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
 	conn, err := Dial(&o)
 	if err != nil {
