@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v50@sha256:fe69c193d8ad40eb0d791984881f3678aead02660b8e3468c757f717892ada4c
+BUILD_IMAGE_TAG := v51@sha256:19c61def5203187354d7459781407c0d83895d20f100bfb6ff3a298c9f1cb2b6
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -111,6 +111,7 @@ update-build-image:
 
 # Get the sha (use after newly building a new build image) to put it back in BUILD_IMAGE_TAG
 build-image-sha:
+	docker pull $(BUILD_IMAGE)
 	docker inspect $(BUILD_IMAGE) | jq -r '.[0].RepoDigests[0]' | sed -e "s/^.*@/$(BUILD_IMAGE_TAG)@/"
 
 SED:=sed
