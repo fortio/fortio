@@ -115,7 +115,7 @@ func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 	c := TCPClient{}
 	d := o.Destination
 	c.destination = d
-	tAddr, err := fnet.ResolveDestination(d)
+	tAddr, err := fnet.ResolveDestination(context.Background(), d)
 	if tAddr == nil {
 		return nil, err
 	}

@@ -712,7 +712,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
+		tAddr, err = resolve(context.Background(), bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -770,14 +770,14 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 }
 
 // connect to destination.
-func (c *FastClient) connect() net.Conn {
+func (c *FastClient) connect(ctx context.Context) net.Conn {
 	c.socketCount++
 	var socket net.Conn
 	var err error
 
 	// Resolve the DNS name when making new connections.
 	if c.socketCount > 1 && !c.noResolveEachConn {
-		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
+		c.dest, err = resolve(ctx, c.hostname, c.port, c.resolve, c.ipAddrUsage)
 		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
 		if err != nil {
 			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
@@ -829,8 +829,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	}
 
 	if conn == nil {
-		//nolint:contextcheck  // TODO: fix this
-		conn = c.connect()
+		conn = c.connect(ctx)
 		c.reuseCount = 1
 		if conn == nil {
 			return c.returnRes()
@@ -1110,13 +1109,15 @@ func generateReuseThreshold(min int, max int) int {
 }
 
 // Resolve the DNS hostname to ip address or assign the override IP.
-func resolve(hostname string, port string, overrideIP string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+func resolve(ctx context.Context, hostname string, port string,
+	overrideIP string, ipAddrUsage *stats.Occurrence,
+) (*net.TCPAddr, error) {
 	var addr *net.TCPAddr
 	var err error
 	if overrideIP != "" {
-		addr, err = fnet.Resolve(overrideIP, port)
+		addr, err = fnet.Resolve(ctx, overrideIP, port)
 	} else {
-		addr, err = fnet.Resolve(hostname, port)
+		addr, err = fnet.Resolve(ctx, hostname, port)
 	}
 
 	ipAddrUsage.Record(addr.String())

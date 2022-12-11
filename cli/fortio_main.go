@@ -20,6 +20,7 @@ package cli // import "fortio.org/fortio/cli"
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -318,13 +319,14 @@ func serverLoop(sync string) {
 }
 
 func startProxies() int {
+	ctx := context.Background()
 	numProxies := 0
 	for _, proxy := range proxies {
 		s := strings.SplitN(proxy, " ", 2)
 		if len(s) != 2 {
 			log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
 		}
-		fnet.ProxyToDestination(s[0], s[1])
+		fnet.ProxyToDestination(ctx, s[0], s[1])
 		numProxies++
 	}
 	for _, hmulti := range httpMulties {
@@ -354,7 +356,7 @@ func fortioNC() {
 	if l == 2 {
 		d = d + ":" + flag.Args()[1]
 	}
-	err := fnet.NetCat(d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
+	err := fnet.NetCat(context.Background(), d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
 	if err != nil {
 		// already logged but exit with error back to shell/caller
 		os.Exit(1)

@@ -737,11 +737,12 @@ func TestDefaultPort(t *testing.T) {
 	url := "http://istio.io/" // shall imply port 80
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
-	code, _, _ := cli.Fetch(context.Background())
+	ctx := context.Background()
+	code, _, _ := cli.Fetch(ctx)
 	if code != 301 {
 		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
 	}
-	conn := cli.(*FastClient).connect()
+	conn := cli.(*FastClient).connect(ctx)
 	if conn != nil {
 		p := conn.RemoteAddr().(*net.TCPAddr).Port
 		if p != 80 {

@@ -109,7 +109,7 @@ func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
 	c := UDPClient{}
 	d := o.Destination
 	c.destination = d
-	tAddr, err := fnet.UDPResolveDestination(d)
+	tAddr, err := fnet.UDPResolveDestination(context.Background(), d)
 	if tAddr == nil {
 		return nil, err
 	}
