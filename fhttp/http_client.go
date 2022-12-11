@@ -193,8 +193,8 @@ type HTTPOptions struct {
 	Offset time.Duration
 	// Optional resolution divider for the Connection duration histogram. In seconds. Defaults to 0.001 or 1 millisecond.
 	Resolution float64
-	// Optional ClientTrace to use if set. Only effective when using std client.
-	ClientTrace *httptrace.ClientTrace `json:"-"`
+	// Optional ClientTrace factory to use if set. Only effective when using std client.
+	ClientTrace CreateClientTrace `json:"-"`
 }
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
@@ -363,6 +363,8 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	return req, nil
 }
 
+type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
+
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
 // TODO: refactor common parts with FastClient.
@@ -381,7 +383,7 @@ type Client struct {
 	id                   int
 	ipAddrUsage          *stats.Occurrence
 	connectStats         *stats.Histogram
-	clientTrace          *httptrace.ClientTrace
+	clientTrace          CreateClientTrace
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -412,7 +414,7 @@ func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
 	var req *http.Request
 	if c.clientTrace != nil {
-		req = c.req.WithContext(httptrace.WithClientTrace(ctx, c.clientTrace))
+		req = c.req.WithContext(httptrace.WithClientTrace(ctx, c.clientTrace(ctx)))
 	} else {
 		req = c.req.WithContext(ctx)
 	}

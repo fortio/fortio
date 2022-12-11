@@ -661,7 +661,7 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
-func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
+func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
 	if addr == nil {
@@ -687,7 +687,7 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	// New REST apis (includes the data/ handler)
-	rapi.AddHandlers(mux, baseurl, uiPath, datadir)
+	rapi.AddHandlers(hook, mux, baseurl, uiPath, datadir)
 	rapi.DefaultPercentileList = percentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"

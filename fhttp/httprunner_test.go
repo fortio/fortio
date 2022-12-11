@@ -280,8 +280,9 @@ func TestAccessLogAndTrace(t *testing.T) {
 			atomic.AddInt64(&numTrace, 1)
 		},
 	}
+	traceFactory := func(ctx context.Context) *httptrace.ClientTrace { return trace }
 	opts.DisableFastClient = true
-	opts.ClientTrace = trace
+	opts.ClientTrace = traceFactory
 	for _, format := range []string{"json", "influx"} {
 		dir := t.TempDir()
 		fname := path.Join(dir, "access.log")

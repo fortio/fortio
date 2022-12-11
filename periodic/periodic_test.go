@@ -239,10 +239,11 @@ type testAccessLogger struct {
 	success int64
 }
 
-func (t *testAccessLogger) Start(ctx context.Context, thread ThreadID, iter int64, time time.Time) {
+func (t *testAccessLogger) Start(ctx context.Context, thread ThreadID, iter int64, time time.Time) context.Context {
 	t.Lock()
 	defer t.Unlock()
 	t.starts++
+	return ctx
 }
 
 func (t *testAccessLogger) Report(ctx context.Context, thread ThreadID, iter int64, time time.Time,

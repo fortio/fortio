@@ -31,6 +31,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 )
@@ -81,6 +82,10 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 	return r
 }
 
+func hookTest(ho *fhttp.HTTPOptions, ro *periodic.RunnerOptions) {
+	// TODO: find something to mutate/test
+}
+
 //nolint:funlen,gocognit,maintidx // it's a test of a lot of things in sequence/context
 func TestHTTPRunnerRESTApi(t *testing.T) {
 	// log.SetLogLevel(log.Verbose)
@@ -96,7 +101,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
 	}
-	AddHandlers(mux, "", uiPath, tmpDir)
+	AddHandlers(hookTest, mux, "", uiPath, tmpDir)
 
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 
@@ -352,7 +357,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	uiPath := "/fortio3/"
 	tmpDir := t.TempDir()
-	AddHandlers(mux, "https://foo.fortio.org", uiPath, tmpDir)
+	AddHandlers(nil, mux, "https://foo.fortio.org", uiPath, tmpDir)
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	echoURL := baseURL + "foo/bar?delay=20ms&status=200:100"
 	// Start infinite running run
@@ -487,7 +492,7 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
-	AddHandlers(mux, "", "/fortio/", ".")
+	AddHandlers(nil, mux, "", "/fortio/", ".")
 	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
 
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)

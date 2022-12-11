@@ -638,7 +638,8 @@ type fileAccessLogger struct {
 // AccessLogger defines an interface to report a single request.
 type AccessLogger interface {
 	// Start is called just before each Run(). Can be used to start tracing spans for instance.
-	Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time)
+	// returns possibly updated context.
+	Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) context.Context
 	// Report is called just after each Run() to logs a single request.
 	Report(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time, latency float64, status bool, details string)
 	Info() string
@@ -686,8 +687,8 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 }
 
 // Before each Run().
-func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) {
-	// Nothing to do
+func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) context.Context {
+	return ctx
 }
 
 // Report logs a single request to a file.
@@ -744,6 +745,7 @@ func runOne(id ThreadID, runnerChan chan struct{}, funcTimes, errTimes, sleepTim
 	}
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, ThreadID(0), id)
+	var ctx2 context.Context
 MainLoop:
 	for {
 		fStart := time.Now()
@@ -759,13 +761,14 @@ MainLoop:
 				break
 			}
 		}
+		ctx2 = ctx
 		if r.AccessLogger != nil {
-			r.AccessLogger.Start(ctx, id, i, fStart)
+			ctx2 = r.AccessLogger.Start(ctx, id, i, fStart)
 		}
-		status, details := f.Run(ctx, id)
+		status, details := f.Run(ctx2, id)
 		latency := time.Since(fStart).Seconds()
 		if r.AccessLogger != nil {
-			r.AccessLogger.Report(ctx, id, i, fStart, latency, status, details)
+			r.AccessLogger.Report(ctx2, id, i, fStart, latency, status, details)
 		}
 		funcTimes.Record(latency)
 		if !status {
