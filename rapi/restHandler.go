@@ -183,6 +183,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 }
 
 // RESTRunHandler is api version of UI submit handler.
+// TODO: refactor common option/args/flag parsing between uihandler.go and this.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	fhttp.LogRequest(r, "REST Run Api call")
 	w.Header().Set("Content-Type", "application/json")
