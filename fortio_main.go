@@ -69,6 +69,25 @@ func (f *httpMultiFlagList) Set(value string) error {
 
 // -- End of -M support.
 
+// -- Support for multiple instances of -grpc-metadata flag on cmd line.
+type grpcMetadataFlagList struct{}
+
+func (f *grpcMetadataFlagList) String() string {
+	return ""
+}
+
+func (f *grpcMetadataFlagList) Set(md string) error {
+	kv := strings.Split(md, ":")
+	if len(kv) != 2 {
+		return fmt.Errorf("invalid metadta '%s', expecting key: value", md)
+	}
+	k := strings.ToLower(kv[0])
+	grpcMD[k] = append(grpcMD[k], kv[1])
+	return nil
+}
+
+// -- End of -M support.
+
 // Usage to a writer.
 func usage(w io.Writer, msgs ...interface{}) {
 	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
@@ -164,6 +183,8 @@ var (
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
 	pingDelayFlag  = flag.Duration("grpc-ping-delay", 0, "grpc ping delay in response")
 	streamsFlag    = flag.Int("s", 1, "Number of streams per grpc connection")
+	grpcMDFlags    grpcMetadataFlagList
+	grpcMD         = make(map[string][]string, 0)
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the grpc server. Default (0) is to leave the option unset.")
@@ -199,6 +220,8 @@ func main() {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
+	flag.Var(&grpcMDFlags, "grpc-metadata",
+		"Metadata that will be added to the grpc request. e.g. -grpc-metadata \"key: value\".")
 	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
 		usageErr("Error: need at least 1 command parameter")
@@ -437,6 +460,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Payload:            httpOpts.PayloadUTF8(),
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
+			Metadata:           grpcMD,
 		}
 		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
@@ -525,7 +549,7 @@ func grpcClient() {
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if *doHealthFlag {
-		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions)
+		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions, nil)
 		if err != nil {
 			// already logged
 			os.Exit(1)
@@ -536,7 +560,7 @@ func grpcClient() {
 		}
 		return
 	}
-	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadUTF8(), *pingDelayFlag, &httpOpts.TLSOptions)
+	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadUTF8(), *pingDelayFlag, &httpOpts.TLSOptions, grpcMD)
 	if err != nil {
 		// already logged
 		os.Exit(1)

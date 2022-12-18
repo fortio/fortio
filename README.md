@@ -200,6 +200,8 @@ option unset.
   -grpc-port port
         grpc server port. Can be in the form of host:port, ip:port or port or
 /unix/domain/path or "disabled" to not start the grpc server. (default "8079")
+  -grpc-metadata value
+        Metadata that will be added to the grpc request. e.g. -grpc-metadata "key: value".
   -h    Print usage/help on stdout
   -halfclose
         When not keepalive, whether to half close the connection (only for fast

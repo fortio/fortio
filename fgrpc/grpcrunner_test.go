@@ -134,6 +134,16 @@ func TestGRPCRunner(t *testing.T) {
 			},
 			expect: false,
 		},
+		{
+			name: "valid insecure runner with md",
+			runnerOpts: GRPCRunnerOptions{
+				Destination: iDest,
+				Metadata: map[string][]string{
+					"key": {"value"},
+				},
+			},
+			expect: true,
+		},
 	}
 	for _, test := range tests {
 		test.runnerOpts.Profiler = "test.profile"
