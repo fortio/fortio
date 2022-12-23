@@ -165,7 +165,6 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		Destination: o.Destination,
 		Streams:     o.Streams,
 		Ping:        o.UsePing,
-		Metadata:    o.Metadata,
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
@@ -188,6 +187,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		outCtx := context.Background()
 		if o.Metadata.Len() != 0 {
 			outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
+			grpcstate[i].Metadata = o.Metadata
 		}
 		if o.UsePing { //nolint:nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)

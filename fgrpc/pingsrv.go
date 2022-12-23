@@ -122,7 +122,7 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 	cli := NewPingServerClient(conn)
 	outCtx := context.Background()
 	if md.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
+		outCtx = metadata.NewOutgoingContext(outCtx, md)
 	}
 	// Warm up:
 	_, err = cli.Ping(outCtx, msg)
