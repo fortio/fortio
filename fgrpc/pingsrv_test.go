@@ -50,7 +50,8 @@ func TestPingServer(t *testing.T) {
 	if err != nil || latency < delay.Seconds() || latency > 10.*delay.Seconds() {
 		t.Errorf("Unexpected result %f, %v with ping calls and delay of %v", latency, err, delay)
 	}
-	if latency, err := PingClientCall(fnet.PrefixHTTPS+"grpc.fortio.org:443", 7, "test payload", 0, TLSInternet, nil); err != nil || latency <= 0 {
+	if latency, err := PingClientCall(fnet.PrefixHTTPS+"grpc.fortio.org:443", 7, "test payload", 0,
+		TLSInternet, nil); err != nil || latency <= 0 {
 		t.Errorf("Unexpected result %f, %v with ping calls", latency, err)
 	}
 	if latency, err := PingClientCall(sAddr, 7, "test payload", 0, TLSSecure, nil); err != nil || latency <= 0 {

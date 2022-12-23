@@ -111,7 +111,8 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
-func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions, md metadata.MD) (float64, error) {
+func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions, md metadata.MD,
+) (float64, error) {
 	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
@@ -119,16 +120,12 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 	}
 	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)
-	mkCtx := func() context.Context {
-		return context.Background()
-	}
+	outCtx := context.Background()
 	if md.Len() != 0 {
-		mkCtx = func() context.Context {
-			return metadata.NewOutgoingContext(context.Background(), md)
-		}
+		outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
 	}
 	// Warm up:
-	_, err = cli.Ping(mkCtx(), msg)
+	_, err = cli.Ping(outCtx, msg)
 	if err != nil {
 		log.Errf("grpc error from Ping0 %v", err)
 		return -1, err
@@ -139,14 +136,14 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 		msg.Seq = int64(i)
 		t1a := time.Now().UnixNano()
 		msg.Ts = t1a
-		res1, err := cli.Ping(mkCtx(), msg)
+		res1, err := cli.Ping(outCtx, msg)
 		t2a := time.Now().UnixNano()
 		if err != nil {
 			log.Errf("grpc error from Ping1 iter %d: %v", i, err)
 			return -1, err
 		}
 		t1b := res1.Ts
-		res2, err := cli.Ping(mkCtx(), msg)
+		res2, err := cli.Ping(outCtx, msg)
 		t3a := time.Now().UnixNano()
 		t2b := res2.Ts
 		if err != nil {
@@ -189,17 +186,13 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 	rttHistogram := stats.NewHistogram(0, 10)
 	statuses := make(HealthResultMap)
 
-	mkCtx := func() context.Context {
-		return context.Background()
-	}
+	outCtx := context.Background()
 	if md.Len() != 0 {
-		mkCtx = func() context.Context {
-			return metadata.NewOutgoingContext(context.Background(), md)
-		}
+		outCtx = metadata.NewOutgoingContext(outCtx, md)
 	}
 	for i := 1; i <= n; i++ {
 		start := time.Now()
-		res, err := cli.Check(mkCtx(), msg)
+		res, err := cli.Check(outCtx, msg)
 		dur := time.Since(start)
 		log.LogVf("Reply from health check %d: %+v", i, res)
 		if err != nil {
