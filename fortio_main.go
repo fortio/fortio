@@ -549,7 +549,7 @@ func grpcClient() {
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if *doHealthFlag {
-		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions, nil)
+		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions, grpcMD)
 		if err != nil {
 			// already logged
 			os.Exit(1)
