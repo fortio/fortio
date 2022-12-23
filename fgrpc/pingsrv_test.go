@@ -26,6 +26,7 @@ import (
 	"fortio.org/fortio/log"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 )
 
 func init() {
@@ -121,5 +122,59 @@ func TestDefaultHealth(t *testing.T) {
 	}
 	if r, err := GrpcHealthCheck(iAddr, "foo", 1, TLSInsecure, nil); err == nil || r != nil {
 		t.Errorf("Was expecting error when using unknown service, didn't get one, got %+v", r)
+	}
+}
+
+func TestSettingMetadata(t *testing.T) {
+	server := &mdTestServer{}
+	addr := server.Serve()
+	TLSInsecure := &fhttp.TLSOptions{Insecure: true}
+	if server.error != nil {
+		t.Fatal(server.error)
+	}
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			name:  "valid metadata",
+			key:   "abc",
+			value: "def",
+		},
+		{
+			name:  "empty value metadata",
+			key:   "ghi",
+			value: "",
+		},
+	}
+	for _, test := range tests {
+		server.mdKey = test.key
+		server.mdValue = test.value
+		server.error = nil
+		_, err := PingClientCall(addr.String(), 2, "", 0, TLSInsecure, metadata.MD{
+			test.key: []string{test.value},
+		})
+		if err != nil {
+			t.Errorf("PingClientCall test case: %s failed , err: %v", test.name, err)
+		}
+		if server.error != nil {
+			t.Errorf("PingClientCall test case: %s failed , err: %v", test.name, server.error)
+		}
+	}
+
+	for _, test := range tests {
+		server.mdKey = test.key
+		server.mdValue = test.value
+		server.error = nil
+		_, err := GrpcHealthCheck(addr.String(), "", 2, TLSInsecure, metadata.MD{
+			test.key: []string{test.value},
+		})
+		if err != nil {
+			t.Errorf("GrpcHealthCheck test case: %s failed , err: %v", test.name, err)
+		}
+		if server.error != nil {
+			t.Errorf("GrpcHealthCheck test case: %s failed , err: %v", test.name, server.error)
+		}
 	}
 }

@@ -17,6 +17,7 @@ package fgrpc
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -24,7 +25,11 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -133,16 +138,6 @@ func TestGRPCRunner(t *testing.T) {
 				TLSOptions:  fhttp.TLSOptions{CACert: "../missing/cert.crt"},
 			},
 			expect: false,
-		},
-		{
-			name: "valid insecure runner with md",
-			runnerOpts: GRPCRunnerOptions{
-				Destination: iDest,
-				Metadata: map[string][]string{
-					"key": {"value"},
-				},
-			},
-			expect: true,
 		},
 	}
 	for _, test := range tests {
@@ -395,6 +390,92 @@ func TestGRPCDestination(t *testing.T) {
 				tc.output,
 				dest,
 			)
+		}
+	}
+}
+
+type mdTestServer struct {
+	mdKey   string
+	mdValue string
+	health.Server
+	error
+}
+
+func (m *mdTestServer) Ping(ctx context.Context, _ *PingMessage) (*PingMessage, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	val := md.Get(m.mdKey)
+
+	if len(val) == 0 || val[0] != m.mdValue {
+		m.error = fmt.Errorf("metadata %s not found or value is not %s,actual value: %v", m.mdKey, m.mdValue, val)
+	}
+	return &PingMessage{}, nil
+}
+
+func (m *mdTestServer) Check(ctx context.Context, _ *grpc_health_v1.HealthCheckRequest,
+) (*grpc_health_v1.HealthCheckResponse, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	val := md.Get(m.mdKey)
+	if len(val) == 0 || val[0] != m.mdValue {
+		m.error = fmt.Errorf("metadata %s not found or value is not %s,actual value: %v", m.mdKey, m.mdValue, val)
+	}
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+func (m *mdTestServer) Serve() *net.TCPAddr {
+	server := grpc.NewServer()
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		m.error = err
+		return nil
+	}
+	grpc_health_v1.RegisterHealthServer(server, m)
+	RegisterPingServerServer(server, m)
+	go func() {
+		err = server.Serve(lis)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	return lis.Addr().(*net.TCPAddr)
+}
+
+func TestGRPCRunnerWithMetadata(t *testing.T) {
+	server := &mdTestServer{}
+	addr := server.Serve()
+	if server.error != nil {
+		t.Fatal(server.error)
+	}
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{
+			name:  "valid metadata",
+			key:   "abc",
+			value: "def",
+		},
+		{
+			name:  "empty value metadata",
+			key:   "ghi",
+			value: "",
+		},
+	}
+	for _, test := range tests {
+		server.mdKey = test.key
+		server.mdValue = test.value
+		server.error = nil
+		_, err := RunGRPCTest(&GRPCRunnerOptions{
+			Destination: addr.String(),
+			Metadata: map[string][]string{
+				test.key: {test.value},
+			},
+		})
+		if err != nil {
+			t.Errorf("Test case: %s failed , err: %v", test.name, err)
+		}
+		if server.error != nil {
+			t.Errorf("Test case: %s failed , err: %v", test.name, server.error)
 		}
 	}
 }
