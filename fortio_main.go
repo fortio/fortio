@@ -81,7 +81,7 @@ func (f *grpcMetadataFlagList) Set(md string) error {
 	if len(kv) != 2 {
 		return fmt.Errorf("invalid metadta '%s', expecting key: value", md)
 	}
-	key := kv[0]
+	key := strings.TrimSpace(kv[0])
 	if len(key) == 0 {
 		return fmt.Errorf("empty key in metadata is not allowed")
 	}
