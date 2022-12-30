@@ -368,8 +368,10 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if justCurl {
-		ro := periodic.RunnerOptions{} // not used, just to call hook for http options for fortiotel curl case
-		hook(httpOpts, &ro)
+		if hook != nil {
+			ro := periodic.RunnerOptions{} // not used, just to call hook for http options for fortiotel curl case
+			hook(httpOpts, &ro)
+		}
 		bincommon.FetchURL(httpOpts)
 		return
 	}
