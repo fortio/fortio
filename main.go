@@ -20,5 +20,5 @@ import "fortio.org/fortio/cli"
 // like fortiotel (fortio with opentelemetry)
 
 func main() {
-	cli.FortioMain(nil /* no hook needed */)
+	cli.FortioMain(cli.Usage, nil /* no hook needed */)
 }
