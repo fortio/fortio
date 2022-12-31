@@ -129,7 +129,9 @@ where target is a url (http load tests) or host:port (grpc health test),
  or tcp://host:port (tcp load test), or udp://host:port (udp load test).
 flags are:
   -H header
-        Additional header(s)
+        Additional http headers or grpc custom metadata (some grpc reserved or
+illegal keys are not supported, see 
+https://grpc.io/docs/what-is-grpc/core-concepts/#metadata). e.g. -H "key:value".
   -L    Follow redirects (implies -std-client) - do not use for load test
   -M value
         Http multi proxy to run, e.g -M "localport1 baseDestURL1 baseDestURL2"
@@ -200,8 +202,6 @@ option unset.
   -grpc-port port
         grpc server port. Can be in the form of host:port, ip:port or port or
 /unix/domain/path or "disabled" to not start the grpc server. (default "8079")
-  -grpc-metadata value
-        Metadata that will be added to the grpc request. e.g. -grpc-metadata "key: value".
   -h    Print usage/help on stdout
   -halfclose
         When not keepalive, whether to half close the connection (only for fast
