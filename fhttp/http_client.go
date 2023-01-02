@@ -195,7 +195,14 @@ type HTTPOptions struct {
 	Resolution float64
 	// Optional ClientTrace factory to use if set. Only effective when using std client.
 	ClientTrace CreateClientTrace `json:"-"`
+	// Optional Transport chain factory to use if set. Only effective when using std client.
+	// pass otelhttp.NewTransport for instance.
+	Transport CreateTransport `json:"-"`
 }
+
+type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
+
+type CreateTransport func(base http.RoundTripper) http.RoundTripper
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
 // This is used from the UI as the user agent is settable from the form UI.
@@ -362,8 +369,6 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	}
 	return req, nil
 }
-
-type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
 
 // Client object for making repeated requests of the same URL using the same
 // http client (net/http).
@@ -550,9 +555,12 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-
-	client.client.Transport = &tr
-	client.transport = &tr
+	var rt http.RoundTripper = &tr
+	if o.Transport != nil {
+		rt = o.Transport(rt)
+	}
+	client.client.Transport = rt
+	client.transport = &tr // internal transport, unwrapped (to close idle conns)
 
 	if o.https {
 		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
