@@ -222,6 +222,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		err := mainTemplate.Execute(w, &struct {
 			R                           *http.Request
 			Version                     string
+			LongVersion                 string
 			LogoPath                    string
 			DebugPath                   string
 			EchoDebugPath               string
@@ -236,7 +237,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, version.Short(), logoPath, debugPath, echoPath, chartJSPath,
+			r, version.Short(), version.Long(), logoPath, debugPath, echoPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})
