@@ -111,7 +111,7 @@ func (h *HTTPOptions) GenerateHeaders() http.Header {
 	if h.extraHeaders == nil { // not already initialized from flags.
 		h.InitHeaders()
 	}
-	allHeaders := h.extraHeaders
+	allHeaders := h.extraHeaders.Clone()
 	payloadLen := len(h.Payload)
 	// If content-type isn't already specified and we have a payload, let's use the
 	// standard for binary content:
