@@ -119,9 +119,8 @@ var (
 
 // SharedMain is the common part of main from fortio_main and fcurl.
 func SharedMain(usage func(io.Writer, ...interface{})) {
-	flag.Var(&headersFlags, "H", "Additional http headers or grpc custom metadata (some grpc reserved or "+
-		"illegal keys are not supported, see https://grpc.io/docs/what-is-grpc/core-concepts/#metadata). "+
-		"e.g. -H \"key:value\".")
+	flag.Var(&headersFlags, "H", "Additional http headers or grpc metadata. "+
+		"Multiple `key:value` pairs can be passed using multiple -H.")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
