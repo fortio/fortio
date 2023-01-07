@@ -18,11 +18,13 @@ package fgrpc
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"golang.org/x/net/context"
@@ -477,5 +479,76 @@ func TestGRPCRunnerWithMetadata(t *testing.T) {
 		if server.error != nil {
 			t.Errorf("Test case: %s failed , err: %v", test.name, server.error)
 		}
+	}
+}
+
+func Test_extractDialOptions(t *testing.T) {
+	type args struct {
+		in metadata.MD
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantOutLen int
+		wantMD     metadata.MD
+	}{
+		{
+			name: "host",
+			args: args{
+				in: map[string][]string{
+					"user-key": {"value"},
+					"host":     {"a.b"},
+				},
+			},
+			wantOutLen: 1,
+			wantMD: map[string][]string{
+				"user-key": {"value"},
+			},
+		},
+		{
+			name: "user-agent",
+			args: args{
+				in: map[string][]string{
+					"user-agent": {"value"},
+					"host":       {"a.b"},
+				},
+			},
+			wantOutLen: 2,
+			wantMD:     map[string][]string{},
+		},
+		{
+			name: "user-agent2",
+			args: args{
+				in: map[string][]string{
+					"user-agent": {jrpc.UserAgent},
+					"host":       {"a.b"},
+				},
+			},
+			wantOutLen: 1,
+			wantMD:     map[string][]string{},
+		},
+		{
+			name: "user-key",
+			args: args{
+				in: map[string][]string{
+					"user-key": {"value"},
+				},
+			},
+			wantOutLen: 0,
+			wantMD: map[string][]string{
+				"user-key": {"value"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOut := extractDialOptions(tt.args.in)
+			if !reflect.DeepEqual(len(gotOut), tt.wantOutLen) {
+				t.Errorf("extractDialOptions() = %v, want %v", len(gotOut), tt.wantOutLen)
+			}
+			if !reflect.DeepEqual(tt.args.in, tt.wantMD) {
+				t.Errorf("got md = %v, want %v", tt.args.in, tt.wantMD)
+			}
+		})
 	}
 }

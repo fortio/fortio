@@ -113,7 +113,7 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 // the destination). returns the average round trip in seconds.
 func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions, md metadata.MD,
 ) (float64, error) {
-	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts, Metadata: md}
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged

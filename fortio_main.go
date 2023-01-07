@@ -437,7 +437,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			Payload:            httpOpts.PayloadUTF8(),
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
-			Metadata:           grpcMD(),
+			Metadata:           httpHeader2grpcMetadata(httpOpts.AllHeaders()),
 		}
 		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
@@ -525,8 +525,9 @@ func grpcClient() {
 		count = 1
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
+	md := httpHeader2grpcMetadata(httpOpts.AllHeaders())
 	if *doHealthFlag {
-		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions, grpcMD())
+		status, err := fgrpc.GrpcHealthCheck(host, *healthSvcFlag, count, &httpOpts.TLSOptions, md)
 		if err != nil {
 			// already logged
 			os.Exit(1)
@@ -537,23 +538,25 @@ func grpcClient() {
 		}
 		return
 	}
-	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadUTF8(), *pingDelayFlag, &httpOpts.TLSOptions, grpcMD())
+	_, err := fgrpc.PingClientCall(host, count, httpOpts.PayloadUTF8(), *pingDelayFlag, &httpOpts.TLSOptions, md)
 	if err != nil {
 		// already logged
 		os.Exit(1)
 	}
 }
 
-func grpcMD() map[string][]string {
-	md := make(map[string][]string)
-	headers := bincommon.SharedHTTPOptions().ExtraHeaders
+// httpHeader2grpcMetadata covert md's key to lowercase and filter invalid key.
+func httpHeader2grpcMetadata(headers map[string][]string) map[string][]string {
+	ret := make(map[string][]string)
 	for k, v := range headers {
 		k = strings.ToLower(k)
-		if k == "user-agent" {
-			// todo: map standard http headers to grpc md using the dial options
+		switch k {
+		case "content-length", "content-type":
+			log.Infof("Skipping setting metadata %s:%v", k, v)
+			// shouldn't set for grpc
 			continue
 		}
-		md[k] = append(md[k], v...)
+		ret[k] = v
 	}
-	return md
+	return ret
 }

@@ -107,10 +107,10 @@ const (
 // coming from flags and AddAndValidateExtraHeader().
 // Warning this gets called more than once, do not generate duplicate headers.
 func (h *HTTPOptions) GenerateHeaders() http.Header {
-	if h.ExtraHeaders == nil { // not already initialized from flags.
+	if h.extraHeaders == nil { // not already initialized from flags.
 		h.InitHeaders()
 	}
-	allHeaders := h.ExtraHeaders
+	allHeaders := h.extraHeaders
 	payloadLen := len(h.Payload)
 	// If content-type isn't already specified and we have a payload, let's use the
 	// standard for binary content:
@@ -174,8 +174,8 @@ type HTTPOptions struct {
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
 	Resolve           string // resolve Common Name to this ip when use CN as target url
-	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
-	ExtraHeaders http.Header
+	// extraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
+	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
 	hostOverride     string
 	HTTPReqTimeOut   time.Duration // timeout value for http request
@@ -197,14 +197,14 @@ type HTTPOptions struct {
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
 // This is used from the UI as the user agent is settable from the form UI.
 func (h *HTTPOptions) ResetHeaders() {
-	h.ExtraHeaders = make(http.Header)
+	h.extraHeaders = make(http.Header)
 	h.hostOverride = ""
 }
 
 // InitHeaders initialize and/or resets the default headers (ie just User-Agent).
 func (h *HTTPOptions) InitHeaders() {
 	h.ResetHeaders()
-	h.ExtraHeaders.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
+	h.extraHeaders.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	// No other headers should be added here based on options content as this is called only once
 	// before command line option -H are parsed/set.
 }
@@ -265,7 +265,7 @@ func (h *HTTPOptions) Method() string {
 func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	// This function can be called from the flag settings, before we have a URL
 	// so we can't just call h.Init(h.URL)
-	if h.ExtraHeaders == nil {
+	if h.extraHeaders == nil {
 		h.InitHeaders()
 	}
 	s := strings.SplitN(hdr, ":", 2)
@@ -283,15 +283,15 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	case "user-agent":
 		if value == "" {
 			log.Infof("Deleting default User-Agent: header.")
-			h.ExtraHeaders.Del(key)
+			h.extraHeaders.Del(key)
 		} else {
 			log.Infof("User-Agent being Set to %q", value)
-			h.ExtraHeaders.Set(key, value)
+			h.extraHeaders.Set(key, value)
 		}
 	default:
 		log.LogVf("Setting regular extra header %s: %s", key, value)
-		h.ExtraHeaders.Add(key, value)
-		log.Debugf("headers now %+v", h.ExtraHeaders)
+		h.extraHeaders.Add(key, value)
+		log.Debugf("headers now %+v", h.extraHeaders)
 	}
 	return nil
 }
