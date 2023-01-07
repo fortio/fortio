@@ -33,6 +33,8 @@ Even more recent is the new `jrpc` JSON Remote Procedure Calls library package (
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
+If you want fortio to generate detailed Open Telemetry traces use [Fortiotel](https://github.com/fortio/fortiotel#fortiotel).
+
 ## Installation
 
 We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
