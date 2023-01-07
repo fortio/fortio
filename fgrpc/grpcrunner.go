@@ -26,6 +26,7 @@ import (
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"google.golang.org/grpc"
@@ -57,6 +58,7 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
+	opts = append(opts, extractDialOptions(o.Metadata)...)
 	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
@@ -310,4 +312,24 @@ func grpcDestination(dest string) (parsedDest string) {
 	// append ":port" and return.
 	parsedDest += fnet.NormalizePort(port)
 	return parsedDest
+}
+
+// extractDialOptions extract special MD and convert them to dial options.
+func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
+	for k, v := range in {
+		switch k {
+		case "user-agent":
+			delete(in, k)
+			if v[0] == jrpc.UserAgent {
+				// for keeping the same behavior as before, unless this is set by the user
+				continue
+			}
+			out = append(out, grpc.WithUserAgent(v[0]))
+		case "host":
+			out = append(out, grpc.WithAuthority(v[0]))
+			// avoid appearing in MD
+			delete(in, k)
+		}
+	}
+	return out
 }
