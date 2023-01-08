@@ -17,8 +17,11 @@ package log // import "fortio.org/fortio/log"
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"log"
+	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -34,11 +37,11 @@ func TestLoggerFilenameLine(t *testing.T) {
 	SetFlags(0)
 	SetLogLevel(Debug)
 	if LogDebug() {
-		Debugf("test") // line 36
+		Debugf("test") // line 40
 	}
 	w.Flush()
 	actual := b.String()
-	expected := "D logger_test.go:37-prefix-test\n"
+	expected := "D logger_test.go:40-prefix-test\n"
 	if actual != expected {
 		t.Errorf("unexpected:\n%s\nvs:\n%s\n", actual, expected)
 	}
@@ -140,6 +143,27 @@ func TestLogFatal(t *testing.T) {
 		}
 	}()
 	Fatalf("test of log fatal")
+}
+
+func TestLoggerFatalCliMode(t *testing.T) {
+	SetFlagDefaultsForClientTools()
+	if os.Getenv("DO_LOG_FATALF") == "1" {
+		Fatalf("test")
+		Errf("should have exited / this shouldn't have been reached")
+		return // will cause exit status 0 if reached and thus fail the test
+	}
+	// unfortunately, even if passing -test.coverprofile it doesn't get counted
+	cmd := exec.Command(os.Args[0], "-test.run=TestLoggerFatalCliMode")
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Env = append(os.Environ(), "DO_LOG_FATALF=1")
+	err := cmd.Run()
+	var e *exec.ExitError
+	if ok := errors.As(err, &e); ok && e.ExitCode() == 1 {
+		Printf("Got expected exit status 1")
+		return
+	}
+	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
 
 func BenchmarkLogDirect1(b *testing.B) {
