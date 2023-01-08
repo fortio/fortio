@@ -53,20 +53,29 @@ var (
 	fatalPanics    = flag.Bool("logfatalpanics", true, "If true, log.Fatal will panic (stack trace) instead of just exit 1")
 )
 
+// ChangeFlagsDefault sets some flags to a different default.
+func ChangeFlagsDefault(newDefault string, flagNames ...string) {
+	for _, flagName := range flagNames {
+		f := flag.Lookup(flagName)
+		if f == nil {
+			Fatalf("flag %s not found", flagName)
+			continue // not reached but linter doesn't know Fatalf panics/exits
+		}
+		f.DefValue = newDefault
+		err := f.Value.Set(newDefault)
+		if err != nil {
+			Fatalf("error setting flag %s: %v", flagName, err)
+		}
+	}
+}
+
 // SetFlagDefaultsForClientTools changes the default value of -logprefix and -logcaller
 // to make output without caller and prefix, a default more suitable for command line tools (like dnsping).
 // Needs to be called before flag.Parse(). Caller could also use log.Printf instead of changing this
 // if not wanting to use levels. Also makes log.Fatalf just exit instead of panic.
 func SetFlagDefaultsForClientTools() {
-	lcf := flag.Lookup("logcaller")
-	lcf.DefValue = "false"
-	_ = lcf.Value.Set("false")
-	lpf := flag.Lookup("logprefix")
-	lpf.DefValue = ""
-	_ = lpf.Value.Set("")
-	lfp := flag.Lookup("logfatalpanics")
-	lfp.DefValue = "false"
-	_ = lfp.Value.Set("false")
+	ChangeFlagsDefault("", "logprefix")
+	ChangeFlagsDefault("false", "logcaller", "logfatalpanics")
 }
 
 //nolint:gochecknoinits // needed
