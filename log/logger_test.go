@@ -144,6 +144,7 @@ func TestChangeFlagsDefaultErrCase1(t *testing.T) {
 	}()
 	ChangeFlagsDefault("value", "nosuchflag")
 }
+
 func TestChangeFlagsDefaultErrCase2(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
