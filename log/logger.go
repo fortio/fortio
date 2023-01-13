@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -49,12 +50,13 @@ var (
 	// LogFileAndLine determines if the log lines will contain caller file name and line number.
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
 	levelInternal  int32
+	fatalPanics    = flag.Bool("logfatalpanics", true, "If true, log.Fatal will panic (stack trace) instead of just exit 1")
 )
 
 // SetFlagDefaultsForClientTools changes the default value of -logprefix and -logcaller
 // to make output without caller and prefix, a default more suitable for command line tools (like dnsping).
 // Needs to be called before flag.Parse(). Caller could also use log.Printf instead of changing this
-// if not wanting to use levels.
+// if not wanting to use levels. Also makes log.Fatalf just exit instead of panic.
 func SetFlagDefaultsForClientTools() {
 	lcf := flag.Lookup("logcaller")
 	lcf.DefValue = "false"
@@ -62,6 +64,9 @@ func SetFlagDefaultsForClientTools() {
 	lpf := flag.Lookup("logprefix")
 	lpf.DefValue = ""
 	_ = lpf.Value.Set("")
+	lfp := flag.Lookup("logfatalpanics")
+	lfp.DefValue = "false"
+	_ = lfp.Value.Set("false")
 }
 
 //nolint:gochecknoinits // needed
@@ -194,7 +199,10 @@ func logPrintf(lvl Level, format string, rest ...interface{}) {
 		log.Print(levelToStrA[lvl][0:1], " ", *LogPrefix, fmt.Sprintf(format, rest...))
 	}
 	if lvl == Fatal {
-		panic("aborting...")
+		if *fatalPanics {
+			panic("aborting...")
+		}
+		os.Exit(1)
 	}
 }
 
