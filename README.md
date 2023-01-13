@@ -128,8 +128,9 @@ where command is one of: load (load testing), server (starts ui, rest api,
 where target is a url (http load tests) or host:port (grpc health test),
  or tcp://host:port (tcp load test), or udp://host:port (udp load test).
 flags are:
-  -H header
-        Additional header(s)
+  -H key:value
+        Additional http header(s) or grpc metadata. Multiple key:value pairs
+can be passed using multiple -H.
   -L    Follow redirects (implies -std-client) - do not use for load test
   -M value
         Http multi proxy to run, e.g -M "localport1 baseDestURL1 baseDestURL2"

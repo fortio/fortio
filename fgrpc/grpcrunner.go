@@ -26,12 +26,14 @@ import (
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 )
 
 // Dial dials grpc using insecure or tls transport security when serverAddr
@@ -56,6 +58,7 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
+	opts = append(opts, extractDialOptions(o.Metadata)...)
 	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
@@ -77,6 +80,7 @@ type GRPCRunnerResults struct {
 	Destination string
 	Streams     int
 	Ping        bool
+	Metadata    metadata.MD
 }
 
 // Run exercises GRPC health check or ping at the target QPS.
@@ -86,11 +90,15 @@ func (grpcstate *GRPCRunnerResults) Run(t int) (bool, string) {
 	var err error
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
+	outCtx := context.Background()
+	if grpcstate.Metadata.Len() != 0 {
+		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)
+	}
 	if grpcstate.Ping {
-		res, err = grpcstate.clientP.Ping(context.Background(), &grpcstate.reqP)
+		res, err = grpcstate.clientP.Ping(outCtx, &grpcstate.reqP)
 	} else {
 		var r *grpc_health_v1.HealthCheckResponse
-		r, err = grpcstate.clientH.Check(context.Background(), &grpcstate.reqH)
+		r, err = grpcstate.clientH.Check(outCtx, &grpcstate.reqH)
 		if r != nil {
 			status = r.Status
 			res = r
@@ -123,6 +131,7 @@ type GRPCRunnerOptions struct {
 	CertOverride       string        // Override the cert virtual host of authority for testing
 	AllowInitialErrors bool          // whether initial errors don't cause an abort
 	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
+	Metadata           metadata.MD   // metadata that will be added to the request
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -177,6 +186,11 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 		grpcstate[i].Ping = o.UsePing
 		var err error
+		outCtx := context.Background()
+		if o.Metadata.Len() != 0 {
+			outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
+			grpcstate[i].Metadata = o.Metadata
+		}
 		if o.UsePing { //nolint:nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
@@ -184,7 +198,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
 			if o.Exactly <= 0 {
-				_, err = grpcstate[i].clientP.Ping(context.Background(), &grpcstate[i].reqP)
+				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP)
 			}
 		} else {
 			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)
@@ -193,7 +207,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 			if o.Exactly <= 0 {
-				_, err = grpcstate[i].clientH.Check(context.Background(), &grpcstate[i].reqH)
+				_, err = grpcstate[i].clientH.Check(outCtx, &grpcstate[i].reqH)
 			}
 		}
 		if !o.AllowInitialErrors && err != nil {
@@ -298,4 +312,25 @@ func grpcDestination(dest string) (parsedDest string) {
 	// append ":port" and return.
 	parsedDest += fnet.NormalizePort(port)
 	return parsedDest
+}
+
+// extractDialOptions extract special MD and convert them to dial options.
+func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
+	for k, v := range in {
+		switch k {
+		// Transfer these 2 and avoid having them duplicated in original MD
+		case "user-agent":
+			delete(in, k)
+			// TODO: remove when #680 is figured out.
+			if v[0] == jrpc.UserAgent {
+				// for keeping the same behavior as before, unless this is set by the user
+				continue
+			}
+			out = append(out, grpc.WithUserAgent(v[0]))
+		case "host":
+			delete(in, k)
+			out = append(out, grpc.WithAuthority(v[0]))
+		}
+	}
+	return out
 }

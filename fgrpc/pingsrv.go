@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -43,7 +44,8 @@ const (
 type pingSrv struct{}
 
 func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error) {
-	log.LogVf("Ping called %+v (ctx %+v)", *in, c)
+	md, _ := metadata.FromIncomingContext(c)
+	log.LogVf("Ping called %+v (meta %+v)", *in, md)
 	out := *in // copy the input including the payload etc
 	out.Ts = time.Now().UnixNano()
 	if in.DelayNanos > 0 {
@@ -110,16 +112,21 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 
 // PingClientCall calls the ping service (presumably running as PingServer on
 // the destination). returns the average round trip in seconds.
-func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions) (float64, error) {
-	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
+func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions, md metadata.MD,
+) (float64, error) {
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts, Metadata: md}
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
 	}
 	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)
+	outCtx := context.Background()
+	if md.Len() != 0 {
+		outCtx = metadata.NewOutgoingContext(outCtx, md)
+	}
 	// Warm up:
-	_, err = cli.Ping(context.Background(), msg)
+	_, err = cli.Ping(outCtx, msg)
 	if err != nil {
 		log.Errf("grpc error from Ping0 %v", err)
 		return -1, err
@@ -130,14 +137,14 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 		msg.Seq = int64(i)
 		t1a := time.Now().UnixNano()
 		msg.Ts = t1a
-		res1, err := cli.Ping(context.Background(), msg)
+		res1, err := cli.Ping(outCtx, msg)
 		t2a := time.Now().UnixNano()
 		if err != nil {
 			log.Errf("grpc error from Ping1 iter %d: %v", i, err)
 			return -1, err
 		}
 		t1b := res1.Ts
-		res2, err := cli.Ping(context.Background(), msg)
+		res2, err := cli.Ping(outCtx, msg)
 		t3a := time.Now().UnixNano()
 		t2b := res2.Ts
 		if err != nil {
@@ -168,7 +175,7 @@ type HealthResultMap map[string]int64
 
 // GrpcHealthCheck makes a grpc client call to the standard grpc health check
 // service.
-func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions) (*HealthResultMap, error) {
+func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions, md metadata.MD) (*HealthResultMap, error) {
 	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
 	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
 	conn, err := Dial(&o)
@@ -180,9 +187,13 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 	rttHistogram := stats.NewHistogram(0, 10)
 	statuses := make(HealthResultMap)
 
+	outCtx := context.Background()
+	if md.Len() != 0 {
+		outCtx = metadata.NewOutgoingContext(outCtx, md)
+	}
 	for i := 1; i <= n; i++ {
 		start := time.Now()
-		res, err := cli.Check(context.Background(), msg)
+		res, err := cli.Check(outCtx, msg)
 		dur := time.Since(start)
 		log.LogVf("Reply from health check %d: %+v", i, res)
 		if err != nil {
