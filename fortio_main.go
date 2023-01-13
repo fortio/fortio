@@ -552,11 +552,12 @@ func httpHeader2grpcMetadata(headers map[string][]string) map[string][]string {
 		k = strings.ToLower(k)
 		switch k {
 		case "content-length", "content-type":
-			log.Infof("Skipping setting metadata %s:%v", k, v)
+			log.LogVf("Skipping setting metadata %s:%v", k, v)
 			// shouldn't set for grpc
 			continue
 		}
 		ret[k] = v
+		log.Debugf("Setting metadata %s:%v", k, v)
 	}
 	return ret
 }
