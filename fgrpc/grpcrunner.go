@@ -318,17 +318,18 @@ func grpcDestination(dest string) (parsedDest string) {
 func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
 	for k, v := range in {
 		switch k {
+		// Transfer these 2 and avoid having them duplicated in original MD
 		case "user-agent":
 			delete(in, k)
+			// TODO: remove when #680 is figured out.
 			if v[0] == jrpc.UserAgent {
 				// for keeping the same behavior as before, unless this is set by the user
 				continue
 			}
 			out = append(out, grpc.WithUserAgent(v[0]))
 		case "host":
-			out = append(out, grpc.WithAuthority(v[0]))
-			// avoid appearing in MD
 			delete(in, k)
+			out = append(out, grpc.WithAuthority(v[0]))
 		}
 	}
 	return out
