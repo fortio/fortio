@@ -175,7 +175,7 @@ type HTTPOptions struct {
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
 	Resolve           string // resolve Common Name to this ip when use CN as target url
-	// ExtraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
+	// extraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
 	hostOverride     string
