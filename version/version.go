@@ -57,15 +57,22 @@ func FromBuildInfo() (short, long, full string) {
 	return FromBuildInfoPath("")
 }
 
-func getVersion(binfo *debug.BuildInfo, path string) (short, sum string) {
-	if path == "" || binfo.Main.Path == path {
-		// skip leading v, assumes the project use `vX.Y.Z` tags.
-		short = strings.TrimLeft(binfo.Main.Version, "v")
-		// '(devel)' messes up the release-tests paths
-		if short == "(devel)" || short == "" {
-			short = "dev"
-		}
+func normalizeVersion(version string) string {
+	// skip leading v, assumes the project use `vX.Y.Z` tags.
+	short := strings.TrimLeft(version, "v")
+	// '(devel)' messes up the release-tests paths
+	if short == "(devel)" || short == "" {
+		short = "dev"
+	}
+	return short
+}
+
+func getVersion(binfo *debug.BuildInfo, path string) (short, sum, mainPath, base string) {
+	mainPath = binfo.Main.Path
+	base = normalizeVersion(binfo.Main.Version)
+	if path == "" || path == mainPath {
 		sum = binfo.Main.Sum
+		short = base
 		return
 	}
 	// try to find the right module in deps
@@ -89,8 +96,11 @@ func FromBuildInfoPath(path string) (short, long, full string) {
 		log.Print("Error calling debug.ReadBuildInfo() for fortio version module")
 		return
 	}
-	short, sum := getVersion(binfo, path)
+	short, sum, mainPath, base := getVersion(binfo, path)
 	long = short + " " + sum + " " + binfo.GoVersion + " " + runtime.GOARCH + " " + runtime.GOOS
+	if short != base {
+		long = long + " (in " + mainPath + " " + base + ")"
+	}
 	full = fmt.Sprintf("%s\n%v", long, binfo.String())
 	return
 }

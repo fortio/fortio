@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Originally fortio_main.go at the root of fortio.orf/fortio
+// now moved here it can be customized and reused in variants of fortio
+// like fortiotel (fortio with opentelemetry)
+package cli // import "fortio.org/fortio/cli"
 
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -69,8 +73,8 @@ func (f *httpMultiFlagList) Set(value string) error {
 
 // -- End of -M support.
 
-// Usage to a writer.
-func usage(w io.Writer, msgs ...interface{}) {
+// Usage is fortio's main cli Usage to a writer.
+func Usage(w io.Writer, msgs ...interface{}) {
 	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		version.Short(),
 		os.Args[0],
@@ -87,7 +91,7 @@ func usage(w io.Writer, msgs ...interface{}) {
 }
 
 // Prints usage and error messages with StdErr writer.
-func usageErr(msgs ...interface{}) {
+func usageErr(usage func(io.Writer, ...interface{}), msgs ...interface{}) {
 	usage(os.Stderr, msgs...)
 	os.Exit(1)
 }
@@ -187,21 +191,21 @@ var (
 
 // serverArgCheck always returns true after checking arguments length.
 // so it can be used with isServer = serverArgCheck() below.
-func serverArgCheck() bool {
+func serverArgCheck(usage func(io.Writer, ...interface{})) bool {
 	if len(flag.Args()) != 0 {
-		usageErr("Error: too many arguments (typo in a flag?)")
+		usageErr(usage, "Error: too many arguments (typo in a flag?)")
 	}
 	return true
 }
 
 //nolint:funlen // well yes it's fairly long
-func main() {
+func FortioMain(usage func(io.Writer, ...interface{}), hook bincommon.FortioHook) {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
 	bincommon.SharedMain(usage)
 	if len(os.Args) < 2 {
-		usageErr("Error: need at least 1 command parameter")
+		usageErr(usage, "Error: need at least 1 command parameter")
 	}
 	command := os.Args[1]
 	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
@@ -222,7 +226,7 @@ func main() {
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
-		usageErr("Unable to extract percentiles from -p: ", err)
+		usageErr(usage, "Unable to extract percentiles from -p: ", err)
 	}
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
@@ -234,16 +238,16 @@ func main() {
 	isServer := false
 	switch command {
 	case "curl":
-		fortioLoad(true, nil)
+		fortioLoad(usage, true, nil, hook)
 	case "nc":
-		fortioNC()
+		fortioNC(usage)
 	case "load":
-		fortioLoad(*curlFlag, percList)
+		fortioLoad(usage, *curlFlag, percList, hook)
 	case "redirect":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -251,20 +255,20 @@ func main() {
 			os.Exit(1) // error already logged
 		}
 	case "tcp-echo":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		startProxies()
 	case "udp-echo":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		startProxies()
 	case "proxies":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		if startProxies() == 0 {
-			usageErr("Error: fortio proxies command needs at least one -P / -M flag")
+			usageErr(usage, "Error: fortio proxies command needs at least one -P / -M flag")
 		}
 	case "server":
-		isServer = serverArgCheck()
+		isServer = serverArgCheck(usage)
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		}
@@ -278,15 +282,15 @@ func main() {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		if *echoPortFlag != disabled {
-			if !ui.Serve(baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
+			if !ui.Serve(hook, baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
 				os.Exit(1) // error already logged
 			}
 		}
 		startProxies()
 	case "grpcping":
-		grpcClient()
+		grpcClient(usage)
 	default:
-		usageErr("Error: unknown command ", command)
+		usageErr(usage, "Error: unknown command ", command)
 	}
 	if isServer {
 		if confDir == "" {
@@ -313,13 +317,14 @@ func serverLoop(sync string) {
 }
 
 func startProxies() int {
+	ctx := context.Background()
 	numProxies := 0
 	for _, proxy := range proxies {
 		s := strings.SplitN(proxy, " ", 2)
 		if len(s) != 2 {
 			log.Errf("Invalid syntax for proxy \"%s\", should be \"localAddr destHost:destPort\"", proxy)
 		}
-		fnet.ProxyToDestination(s[0], s[1])
+		fnet.ProxyToDestination(ctx, s[0], s[1])
 		numProxies++
 	}
 	for _, hmulti := range httpMulties {
@@ -340,16 +345,16 @@ func startProxies() int {
 	return numProxies
 }
 
-func fortioNC() {
+func fortioNC(usage func(io.Writer, ...interface{})) {
 	l := len(flag.Args())
 	if l != 1 && l != 2 {
-		usageErr("Error: fortio nc needs a host:port or host port destination")
+		usageErr(usage, "Error: fortio nc needs a host:port or host port destination")
 	}
 	d := flag.Args()[0]
 	if l == 2 {
 		d = d + ":" + flag.Args()[1]
 	}
-	err := fnet.NetCat(d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
+	err := fnet.NetCat(context.Background(), d, os.Stdin, os.Stderr, !*ncDontStopOnCloseFlag /* stop when server closes connection */)
 	if err != nil {
 		// already logged but exit with error back to shell/caller
 		os.Exit(1)
@@ -357,12 +362,16 @@ func fortioNC() {
 }
 
 //nolint:funlen, gocognit // maybe refactor/shorten later.
-func fortioLoad(justCurl bool, percList []float64) {
+func fortioLoad(usage func(io.Writer, ...interface{}), justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	if len(flag.Args()) != 1 {
-		usageErr("Error: fortio load/curl needs a url or destination")
+		usageErr(usage, "Error: fortio load/curl needs a url or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if justCurl {
+		if hook != nil {
+			ro := periodic.RunnerOptions{} // not used, just to call hook for http options for fortiotel curl case
+			hook(httpOpts, &ro)
+		}
 		bincommon.FetchURL(httpOpts)
 		return
 	}
@@ -372,7 +381,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	if *calcQPS {
 		if *exactlyFlag == 0 || *durationFlag <= 0 {
-			usageErr("Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
+			usageErr(usage, "Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
 		}
 		qps = float64(*exactlyFlag) / durationFlag.Seconds()
 		log.LogVf("Calculated QPS to do %d request in %v: %f", *exactlyFlag, *durationFlag, qps)
@@ -427,6 +436,9 @@ func fortioLoad(justCurl bool, percList []float64) {
 		os.Exit(1)
 	}
 	var res periodic.HasRunnerResult
+	if hook != nil {
+		hook(httpOpts, &ro)
+	}
 	if *grpcFlag {
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
@@ -515,9 +527,9 @@ func fortioLoad(justCurl bool, percList []float64) {
 	}
 }
 
-func grpcClient() {
+func grpcClient(usage func(io.Writer, ...interface{})) {
 	if len(flag.Args()) != 1 {
-		usageErr("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
+		usageErr(usage, "Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
 	count := int(*exactlyFlag)

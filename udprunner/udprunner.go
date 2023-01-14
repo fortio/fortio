@@ -16,6 +16,7 @@ package udprunner
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -50,7 +51,7 @@ type RunnerResults struct {
 
 // Run tests udp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (udpstate *RunnerResults) Run(t int) (bool, string) {
+func (udpstate *RunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	_, err := udpstate.client.Fetch()
 	if err != nil {
@@ -108,7 +109,7 @@ func NewUDPClient(o *UDPOptions) (*UDPClient, error) {
 	c := UDPClient{}
 	d := o.Destination
 	c.destination = d
-	tAddr, err := fnet.UDPResolveDestination(d)
+	tAddr, err := fnet.UDPResolveDestination(context.Background(), d)
 	if tAddr == nil {
 		return nil, err
 	}

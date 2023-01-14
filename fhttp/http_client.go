@@ -25,6 +25,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
@@ -42,7 +43,7 @@ import (
 type Fetcher interface {
 	// Fetch returns http code, data, offset of body (for client which returns
 	// headers)
-	Fetch() (int, []byte, int)
+	Fetch(context.Context) (int, []byte, int)
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
 	// GetIPAddress() returns the occurrence of ip address used by this client connection,
@@ -110,7 +111,7 @@ func (h *HTTPOptions) GenerateHeaders() http.Header {
 	if h.extraHeaders == nil { // not already initialized from flags.
 		h.InitHeaders()
 	}
-	allHeaders := h.extraHeaders
+	allHeaders := h.extraHeaders.Clone()
 	payloadLen := len(h.Payload)
 	// If content-type isn't already specified and we have a payload, let's use the
 	// standard for binary content:
@@ -192,7 +193,16 @@ type HTTPOptions struct {
 	Offset time.Duration
 	// Optional resolution divider for the Connection duration histogram. In seconds. Defaults to 0.001 or 1 millisecond.
 	Resolution float64
+	// Optional ClientTrace factory to use if set. Only effective when using std client.
+	ClientTrace CreateClientTrace `json:"-"`
+	// Optional Transport chain factory to use if set. Only effective when using std client.
+	// pass otelhttp.NewTransport for instance.
+	Transport CreateTransport `json:"-"`
 }
+
+type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
+
+type CreateTransport func(base http.RoundTripper) http.RoundTripper
 
 // ResetHeaders resets all the headers, including the User-Agent: one (and the Host: logical special header).
 // This is used from the UI as the user agent is settable from the form UI.
@@ -334,7 +344,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	if method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
-	//nolint:noctx // todo: confirm timeout set later replaces need for a context
+	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
 		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
@@ -378,6 +388,7 @@ type Client struct {
 	id                   int
 	ipAddrUsage          *stats.Occurrence
 	connectStats         *stats.Histogram
+	clientTrace          CreateClientTrace
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -404,14 +415,20 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 }
 
 // Fetch fetches the byte and code for pre created client.
-func (c *Client) Fetch() (int, []byte, int) {
+func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 	// req can't be null (client itself would be null in that case)
+	var req *http.Request
+	if c.clientTrace != nil {
+		req = c.req.WithContext(httptrace.WithClientTrace(ctx, c.clientTrace(ctx)))
+	} else {
+		req = c.req.WithContext(ctx)
+	}
 	if c.pathContainsUUID {
 		path := c.path
 		for strings.Contains(path, uuidToken) {
 			path = strings.Replace(path, uuidToken, generateUUID(), 1)
 		}
-		c.req.URL.Path = path
+		req.URL.Path = path
 	}
 	if c.rawQueryContainsUUID {
 		rawQuery := c.rawQuery
@@ -419,7 +436,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 			rawQuery = strings.Replace(rawQuery, uuidToken, generateUUID(), 1)
 		}
 
-		c.req.URL.RawQuery = rawQuery
+		req.URL.RawQuery = rawQuery
 	}
 	if c.bodyContainsUUID {
 		body := string(c.body)
@@ -427,15 +444,14 @@ func (c *Client) Fetch() (int, []byte, int) {
 			body = strings.Replace(body, uuidToken, generateUUID(), 1)
 		}
 		bodyBytes := []byte(body)
-		c.req.ContentLength = int64(len(bodyBytes))
-		c.req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		req.ContentLength = int64(len(bodyBytes))
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	} else if len(c.body) > 0 {
-		c.req.Body = io.NopCloser(bytes.NewReader(c.body))
+		req.Body = io.NopCloser(bytes.NewReader(c.body))
 	}
-
-	resp, err := c.client.Do(c.req)
+	resp, err := c.client.Do(req)
 	if err != nil {
-		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, c.req.Method, c.url, err)
+		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, req.Method, c.url, err)
 		return -1, []byte(err.Error()), 0
 	}
 	var data []byte
@@ -458,7 +474,7 @@ func (c *Client) Fetch() (int, []byte, int) {
 		return code, data, 0
 	}
 	code := resp.StatusCode
-	log.Debugf("[%d] Got %d : %s for %s %s - response is %d bytes", c.id, code, resp.Status, c.req.Method, c.url, len(data))
+	log.Debugf("[%d] Got %d : %s for %s %s - response is %d bytes", c.id, code, resp.Status, req.Method, c.url, len(data))
 	if c.logErrors && !codeIsOK(code) {
 		log.Warnf("[%d] Non ok http code %d", c.id, code)
 	}
@@ -506,6 +522,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		ipAddrUsage: stats.NewOccurrence(),
 		// Keep track of timing for connection (re)establishment.
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
+		clientTrace:  o.ClientTrace,
 	}
 
 	tr := http.Transport{
@@ -538,9 +555,12 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 	}
-
-	client.client.Transport = &tr
-	client.transport = &tr
+	var rt http.RoundTripper = &tr
+	if o.Transport != nil {
+		rt = o.Transport(rt)
+	}
+	client.client.Transport = rt
+	client.transport = &tr // internal transport, unwrapped (to close idle conns)
 
 	if o.https {
 		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
@@ -572,7 +592,7 @@ func FetchURL(url string) (int, []byte) {
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 	cli, _ := NewClient(httpOptions)
-	code, data, _ := cli.Fetch()
+	code, data, _ := cli.Fetch(context.Background())
 	cli.Close()
 	return code, data
 }
@@ -702,7 +722,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		tAddr, err = resolve(bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
+		tAddr, err = resolve(context.Background(), bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -760,14 +780,14 @@ func (c *FastClient) returnRes() (int, []byte, int) {
 }
 
 // connect to destination.
-func (c *FastClient) connect() net.Conn {
+func (c *FastClient) connect(ctx context.Context) net.Conn {
 	c.socketCount++
 	var socket net.Conn
 	var err error
 
 	// Resolve the DNS name when making new connections.
 	if c.socketCount > 1 && !c.noResolveEachConn {
-		c.dest, err = resolve(c.hostname, c.port, c.resolve, c.ipAddrUsage)
+		c.dest, err = resolve(ctx, c.hostname, c.port, c.resolve, c.ipAddrUsage)
 		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
 		if err != nil {
 			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
@@ -805,7 +825,7 @@ const (
 )
 
 // Fetch fetches the url content. Returns http code, data, offset of body.
-func (c *FastClient) Fetch() (int, []byte, int) {
+func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	c.code = SocketError
 	c.size = 0
 	c.headerLen = 0
@@ -819,7 +839,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	}
 
 	if conn == nil {
-		conn = c.connect()
+		conn = c.connect(ctx)
 		c.reuseCount = 1
 		if conn == nil {
 			return c.returnRes()
@@ -844,7 +864,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 			log.Infof("[%d] Closing dead socket %v (%v)", c.id, c.dest, err)
 			conn.Close()
 			c.errorCount++
-			return c.Fetch() // recurse once
+			return c.Fetch(ctx) // recurse once
 		}
 		log.Errf("[%d] Unable to write to %v : %v", c.id, c.dest, err)
 		return c.returnRes()
@@ -869,7 +889,7 @@ func (c *FastClient) Fetch() (int, []byte, int) {
 	c.readResponse(conn, canReuse)
 	if c.code == RetryOnce {
 		// Special "eof on reused socket" code
-		return c.Fetch() // recurse once
+		return c.Fetch(ctx) // recurse once
 	}
 	// Return the result:
 	return c.returnRes()
@@ -1099,13 +1119,15 @@ func generateReuseThreshold(min int, max int) int {
 }
 
 // Resolve the DNS hostname to ip address or assign the override IP.
-func resolve(hostname string, port string, overrideIP string, ipAddrUsage *stats.Occurrence) (*net.TCPAddr, error) {
+func resolve(ctx context.Context, hostname string, port string,
+	overrideIP string, ipAddrUsage *stats.Occurrence,
+) (*net.TCPAddr, error) {
 	var addr *net.TCPAddr
 	var err error
 	if overrideIP != "" {
-		addr, err = fnet.Resolve(overrideIP, port)
+		addr, err = fnet.Resolve(ctx, overrideIP, port)
 	} else {
-		addr, err = fnet.Resolve(hostname, port)
+		addr, err = fnet.Resolve(ctx, hostname, port)
 	}
 
 	ipAddrUsage.Record(addr.String())

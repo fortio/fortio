@@ -17,6 +17,7 @@ package fnet_test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -122,10 +123,11 @@ func TestResolveDestination(t *testing.T) {
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
 	}
+	ctx := context.Background()
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := fnet.TCPResolveDestination(tt.destination)
+			got, _ := fnet.TCPResolveDestination(ctx, tt.destination)
 			gotStr := ""
 			if got != nil {
 				gotStr = got.String()
@@ -155,10 +157,11 @@ func TestUDPResolveDestination(t *testing.T) {
 		{"using ip:port", "8.8.8.8:12345", "8.8.8.8:12345"},
 		{"using [ipv6]:port", "[::1]:12345", "[::1]:12345"},
 	}
+	ctx := context.Background()
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := fnet.UDPResolveDestination(tt.destination)
+			got, _ := fnet.UDPResolveDestination(ctx, tt.destination)
 			gotStr := ""
 			if got != nil {
 				gotStr = got.String()
@@ -171,7 +174,8 @@ func TestUDPResolveDestination(t *testing.T) {
 }
 
 func TestResolveDestinationMultipleIps(t *testing.T) {
-	addr, err := fnet.TCPResolveDestination("www.google.com:443")
+	ctx := context.Background()
+	addr, err := fnet.TCPResolveDestination(ctx, "www.google.com:443")
 	t.Logf("Found google addr %+v err=%v", addr, err)
 	if addr == nil || err != nil {
 		t.Errorf("got nil address for google: %v", err)
@@ -179,7 +183,8 @@ func TestResolveDestinationMultipleIps(t *testing.T) {
 }
 
 func TestProxy(t *testing.T) {
-	addr := fnet.ProxyToDestination(":0", "www.google.com:80")
+	ctx := context.Background()
+	addr := fnet.ProxyToDestination(ctx, ":0", "www.google.com:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
@@ -224,6 +229,7 @@ func TestTcpEcho(t *testing.T) {
 }
 
 func TestUdpEcho(t *testing.T) {
+	ctx := context.Background()
 	for i := 0; i <= 1; i++ {
 		async := (i == 0)
 		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
@@ -232,7 +238,7 @@ func TestUdpEcho(t *testing.T) {
 		var buf bytes.Buffer
 		dest := fmt.Sprintf("udp://localhost:%d", port)
 		out := bufio.NewWriter(&buf)
-		err := fnet.NetCat(dest, in, out, true)
+		err := fnet.NetCat(ctx, dest, in, out, true)
 		if err != nil {
 			t.Errorf("Unexpected NetCat err: %v", err)
 		}
@@ -271,10 +277,11 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
 	// with these timings (!)
 	eofStopFlag := false
+	ctx := context.Background()
 	for i := 0; i < 2; i++ {
 		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
 		var out ErroringWriter
-		fnet.NetCat("localhost"+port, in, &out, eofStopFlag)
+		fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
 		eofStopFlag = true
 	}
 }
@@ -283,7 +290,8 @@ func TestNetCatErrors(t *testing.T) {
 	listener, addr := fnet.Listen("test-closed-listener", ":0")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	listener.Close()
-	err := fnet.NetCat("localhost"+dAddr.String(), nil, nil, true)
+	ctx := context.Background()
+	err := fnet.NetCat(ctx, "localhost"+dAddr.String(), nil, nil, true)
 	if err == nil {
 		t.Errorf("Expected connect error on closed server, got success")
 	}
@@ -368,7 +376,8 @@ func TestDefaultGetUniqueUnixDomainPath(t *testing.T) {
 func TestUnixDomain(t *testing.T) {
 	// Test through the proxy as well (which indirectly tests fnet.Listen)
 	fname := fnet.GetUniqueUnixDomainPath("fortio-uds-test")
-	addr := fnet.ProxyToDestination(fname, "www.google.com:80")
+	ctx := context.Background()
+	addr := fnet.ProxyToDestination(ctx, fname, "www.google.com:80")
 	defer os.Remove(fname) // to not leak the temp socket
 	if addr == nil {
 		t.Fatalf("Nil socket in unix socket proxy listen")
@@ -400,7 +409,8 @@ func TestUnixDomain(t *testing.T) {
 }
 
 func TestProxyErrors(t *testing.T) {
-	addr := fnet.ProxyToDestination(":0", "doesnotexist.fortio.org:80")
+	ctx := context.Background()
+	addr := fnet.ProxyToDestination(ctx, ":0", "doesnotexist.fortio.org:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
@@ -413,14 +423,15 @@ func TestProxyErrors(t *testing.T) {
 		t.Errorf("didn't get expected error with proxy %d", n)
 	}
 	// 2nd proxy on same port should fail
-	addr2 := fnet.ProxyToDestination(fnet.GetPort(addr), "www.google.com:80")
+	addr2 := fnet.ProxyToDestination(ctx, fnet.GetPort(addr), "www.google.com:80")
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}
 }
 
 func TestResolveIpV6(t *testing.T) {
-	addr, err := fnet.ResolveByProto("[::1]", "http", "tcp")
+	ctx := context.Background()
+	addr, err := fnet.ResolveByProto(ctx, "[::1]", "http", "tcp")
 	addrStr := addr.String()
 	expected := "[::1]:80"
 	if addrStr != expected {
@@ -429,11 +440,12 @@ func TestResolveIpV6(t *testing.T) {
 }
 
 func TestResolveBW(t *testing.T) {
-	addr, err := fnet.Resolve("8.8.8.8", "zzzzzz")
+	ctx := context.Background()
+	addr, err := fnet.Resolve(ctx, "8.8.8.8", "zzzzzz")
 	if err == nil {
 		t.Errorf("should have errored out but got %v", addr)
 	}
-	addr, err = fnet.Resolve("8.8.4.4", "domain")
+	addr, err = fnet.Resolve(ctx, "8.8.4.4", "domain")
 	if err != nil {
 		t.Errorf("should have not errored out but got %v", err)
 	}
@@ -441,7 +453,7 @@ func TestResolveBW(t *testing.T) {
 	if addr.String() != expecting {
 		t.Errorf("expecting %q got %q", expecting, addr.String())
 	}
-	addr, err = fnet.ResolveDestination("8.8.4.4:domain")
+	addr, err = fnet.ResolveDestination(ctx, "8.8.4.4:domain")
 	if err != nil {
 		t.Errorf("should hav enot  errored out but got %v", err)
 	}
@@ -453,17 +465,18 @@ func TestResolveBW(t *testing.T) {
 // This test relies on google answer 2 ips, first ipv4, second ipv6.
 // if that's not the case anymore or in the testing environment, this will fail.
 func TestDNSMethods(t *testing.T) {
+	ctx := context.Background()
 	err := fnet.FlagResolveMethod.Set("first")
 	if err != nil {
 		t.Errorf("unexpected error setting method to first: %v", err)
 	}
 	fnet.FlagResolveIPType.Set("ip4")
-	addr4, err := fnet.Resolve("www.google.com", "80")
+	addr4, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip4 resolving google: %v", err)
 	}
 	fnet.FlagResolveIPType.Set("ip6")
-	addr6, err := fnet.Resolve("www.google.com", "80")
+	addr6, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip6 resolving google: %v", err)
 	}
@@ -471,7 +484,7 @@ func TestDNSMethods(t *testing.T) {
 		t.Errorf("ipv4 %v and ipv6 %v shouldn't be same", addr4, addr6)
 	}
 	fnet.FlagResolveIPType.Set("ip")
-	addrFirst, err := fnet.Resolve("www.google.com", "80")
+	addrFirst, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving google: %v", err)
 	}
@@ -479,7 +492,7 @@ func TestDNSMethods(t *testing.T) {
 		// dns might change when not in cached mode
 		log.Warnf("first ip %v not ipv4 %v", addrFirst, addr4)
 	}
-	addrSecond, err := fnet.Resolve("www.google.com", "80")
+	addrSecond, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (2) google: %v", err)
 	}
@@ -490,14 +503,14 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error setting back cached-rr mode: %v", err)
 	}
-	addrThird, err := fnet.Resolve("www.google.com", "80")
+	addrThird, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (3) google: %v", err)
 	}
 	if addrFirst.String() != addrThird.String() {
 		log.Warnf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
 	}
-	addrFourth, err := fnet.Resolve("www.google.com", "80")
+	addrFourth, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (4) google: %v", err)
 	}
@@ -508,7 +521,7 @@ func TestDNSMethods(t *testing.T) {
 		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for google", addrFourth, addrThird)
 	}
 	// back to first (rr) [only if there are only 2 ips]
-	addrFifth, err := fnet.Resolve("www.google.com", "80")
+	addrFifth, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (5) google: %v", err)
 	}
@@ -517,7 +530,7 @@ func TestDNSMethods(t *testing.T) {
 	}
 	// clear cache we'll get first again (if we don't get a completely different one that is)
 	fnet.ClearResolveCache()
-	addrAfterCache, err := fnet.Resolve("www.google.com", "80")
+	addrAfterCache, err := fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("error ip any resolving (6) google: %v", err)
 	}
@@ -532,7 +545,7 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error setting method to rnd: %v", err)
 	}
-	_, err = fnet.Resolve("www.google.com", "80")
+	_, err = fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("unexpected error in rnd mode for resolve of google: %v", err)
 	}
@@ -540,7 +553,7 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error setting method to rr: %v", err)
 	}
-	_, err = fnet.Resolve("www.google.com", "80")
+	_, err = fnet.Resolve(ctx, "www.google.com", "80")
 	if err != nil {
 		t.Errorf("unexpected error in rr mode for resolve of google: %v", err)
 	}
@@ -559,9 +572,10 @@ func TestDNSCacheConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	n := 20
 	wg.Add(n)
+	ctx := context.Background()
 	for i := 0; i < n; i++ {
 		go func() {
-			fnet.Resolve("localhost", "80")
+			fnet.Resolve(ctx, "localhost", "80")
 			wg.Done()
 		}()
 	}

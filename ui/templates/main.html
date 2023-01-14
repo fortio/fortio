@@ -49,8 +49,8 @@
     Connection reuse range: Min <input type="text" name="connection-reuse-range-min" size="6" value="" />
     Max <input type="text" name="connection-reuse-range-max" size="6" value="" />
     or Single value: <input type="text" name="connection-reuse-range-value" size="6" value="" /> <br />
-    Uniform:<input type="checkbox" name="uniform" /> or Jitter:<input type="checkbox" name="jitter" /> &nbsp;&nbsp;
-    No Catch-Up (qps is a ceiling): <input type="checkbox" name="nocatchup" /><br />
+    Uniform:<input type="checkbox" name="uniform" checked /> or Jitter:<input type="checkbox" name="jitter" /> &nbsp;&nbsp;
+    No Catch-Up (qps is a ceiling): <input type="checkbox" name="nocatchup" checked /><br />
     Percentiles: <input type="text" name="p" size="20" value="50, 75, 90, 99, 99.9" /> <br />
     Histogram Resolution: <input type="text" name="r" size="8" value="0.0001" /> <br />
     Extra Headers:<br />
@@ -113,6 +113,9 @@ query arguments mentioned on the <a href="https://github.com/fortio/fortio#serve
   </div>
 </form>
 {{end}}
+<p></p>
+<hr />
+Fortio {{.LongVersion}}
 </body>
 </html>
 {{end}}

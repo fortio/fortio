@@ -16,6 +16,7 @@ package tcprunner
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -47,7 +48,7 @@ type RunnerResults struct {
 
 // Run tests tcp request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
-func (tcpstate *RunnerResults) Run(t int) (bool, string) {
+func (tcpstate *RunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	_, err := tcpstate.client.Fetch()
 	if err != nil {
@@ -114,7 +115,7 @@ func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 	c := TCPClient{}
 	d := o.Destination
 	c.destination = d
-	tAddr, err := fnet.ResolveDestination(d)
+	tAddr, err := fnet.ResolveDestination(context.Background(), d)
 	if tAddr == nil {
 		return nil, err
 	}

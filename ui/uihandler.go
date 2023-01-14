@@ -95,6 +95,7 @@ const (
 )
 
 // Handler is the main UI handler creating the web forms and processing them.
+// TODO: refactor common option/args/flag parsing between restHandle.go and this.
 //
 //nolint:funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -221,6 +222,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		err := mainTemplate.Execute(w, &struct {
 			R                           *http.Request
 			Version                     string
+			LongVersion                 string
 			LogoPath                    string
 			DebugPath                   string
 			EchoDebugPath               string
@@ -235,7 +237,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, version.Short(), logoPath, debugPath, echoPath, chartJSPath,
+			r, version.Short(), version.Long(), logoPath, debugPath, echoPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})
@@ -489,7 +491,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	code, data, _ := client.Fetch()
+	code, data, _ := client.Fetch(r.Context())
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
@@ -499,15 +501,15 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sdata := strings.TrimSpace(string(data))
 	if strings.HasPrefix(sdata, "TsvHttpData-1.0") {
-		processTSV(w, client, sdata)
-	} else if !processXML(w, client, data, uStr, 0) {
+		processTSV(r.Context(), w, client, sdata)
+	} else if !processXML(r.Context(), w, client, data, uStr, 0) {
 		return
 	}
 	_, _ = w.Write([]byte("</table>"))
 	_, _ = w.Write([]byte("\n</body></html>\n"))
 }
 
-func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
+func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, sdata string) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("processTSV expecting a flushable response")
@@ -531,7 +533,7 @@ func processTSV(w http.ResponseWriter, client *fhttp.Client, sdata string) {
 			uPath := ur.Path
 			pathParts := strings.Split(uPath, "/")
 			name := pathParts[len(pathParts)-1]
-			downloadOne(w, client, name, u)
+			downloadOne(ctx, w, client, name, u)
 		}
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
@@ -547,7 +549,7 @@ type ListBucketResult struct {
 }
 
 // @returns true if started a table successfully - false is error.
-func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
+func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, data []byte, baseURL string, level int) bool {
 	// We already know this parses as we just fetched it:
 	bu, _ := url.Parse(baseURL)
 	flusher, ok := w.(http.Flusher)
@@ -579,7 +581,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		newURL := *bu // copy
 		newURL.Path = newURL.Path + "/" + el
 		fullURL := newURL.String()
-		downloadOne(w, client, name, fullURL)
+		downloadOne(ctx, w, client, name, fullURL)
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
@@ -607,7 +609,7 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 	_, _ = w.Write([]byte(template.HTMLEscapeString(newBaseURL)))
 	_, _ = w.Write([]byte("<td>"))
 	_ = client.ChangeURL(newBaseURL)
-	ncode, ndata, _ := client.Fetch()
+	ncode, ndata, _ := client.Fetch(ctx)
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
@@ -615,10 +617,10 @@ func processXML(w http.ResponseWriter, client *fhttp.Client, data []byte, baseUR
 		w.WriteHeader(http.StatusFailedDependency)
 		return false
 	}
-	return processXML(w, client, ndata, newBaseURL, level+1) // recurse
+	return processXML(ctx, w, client, ndata, newBaseURL, level+1) // recurse
 }
 
-func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u string) {
+func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, name string, u string) {
 	log.Infof("downloadOne(%s,%s)", name, u)
 	if !strings.HasSuffix(name, ".json") {
 		_, _ = w.Write([]byte("<td>skipped (not json)"))
@@ -639,7 +641,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 	}
 	// url already validated
 	_ = client.ChangeURL(u)
-	code1, data1, _ := client.Fetch()
+	code1, data1, _ := client.Fetch(ctx)
 	if code1 != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
 		w.WriteHeader(http.StatusFailedDependency)
@@ -661,7 +663,7 @@ func downloadOne(w http.ResponseWriter, client *fhttp.Client, name string, u str
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
-func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
+func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
 	startTime = time.Now()
 	mux, addr := fhttp.Serve(port, debugpath)
 	if addr == nil {
@@ -687,7 +689,7 @@ func Serve(baseurl, port, debugpath, uipath, datadir string, percentileList []fl
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	// New REST apis (includes the data/ handler)
-	rapi.AddHandlers(mux, baseurl, uiPath, datadir)
+	rapi.AddHandlers(hook, mux, baseurl, uiPath, datadir)
 	rapi.DefaultPercentileList = percentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"

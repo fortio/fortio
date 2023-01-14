@@ -136,6 +136,24 @@ func TestLogger1(t *testing.T) {
 	}
 }
 
+func TestChangeFlagsDefaultErrCase1(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic from log.Fatalf, didn't get one")
+		}
+	}()
+	ChangeFlagsDefault("value", "nosuchflag")
+}
+
+func TestChangeFlagsDefaultErrCase2(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic from log.Fatalf, didn't get one")
+		}
+	}()
+	ChangeFlagsDefault("foo", "loglevel")
+}
+
 func TestLogFatal(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

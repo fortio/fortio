@@ -19,13 +19,16 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"math"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -71,14 +74,14 @@ func TestHTTPRunner(t *testing.T) {
 	}
 	o1 := rawOpts
 	fc, _ := NewFastClient(&o1)
-	if r, _, _ := fc.Fetch(); r != http.StatusOK {
+	if r, _, _ := fc.Fetch(context.Background()); r != http.StatusOK {
 		t.Errorf("Fast Client with raw option should still work with warning in logs")
 	}
 	o1 = rawOpts
 	o1.URL = "http://www.doesnotexist.badtld/"
 	c, _ := NewStdClient(&o1)
 	c.ChangeURL(rawOpts.URL)
-	if r, _, _ := c.Fetch(); r != http.StatusOK {
+	if r, _, _ := c.Fetch(context.Background()); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")
 	}
 }
@@ -261,7 +264,7 @@ func gUnzipData(t *testing.T, data []byte) (resData []byte) {
 }
 
 //nolint:gocognit
-func TestAccessLog(t *testing.T) {
+func TestAccessLogAndTrace(t *testing.T) {
 	mux, addr := DynamicHTTPServer(false)
 	mux.HandleFunc("/echo-for-alog/", EchoHandler)
 	URL := fmt.Sprintf("http://localhost:%d/echo-for-alog/?status=555:50", addr.Port)
@@ -271,6 +274,15 @@ func TestAccessLog(t *testing.T) {
 	numReq := int64(50) // can't do too many without running out of fds on mac
 	opts.Exactly = numReq
 	opts.NumThreads = 5
+	numTrace := int64(0)
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			atomic.AddInt64(&numTrace, 1)
+		},
+	}
+	traceFactory := func(ctx context.Context) *httptrace.ClientTrace { return trace }
+	opts.DisableFastClient = true
+	opts.ClientTrace = traceFactory
 	for _, format := range []string{"json", "influx"} {
 		dir := t.TempDir()
 		fname := path.Join(dir, "access.log")
@@ -285,6 +297,9 @@ func TestAccessLog(t *testing.T) {
 		totalReq := res.DurationHistogram.Count
 		if totalReq != numReq {
 			t.Errorf("Mismatch between requests %d and expected %d", totalReq, numReq)
+		}
+		if atomic.LoadInt64(&numTrace) != numReq {
+			t.Errorf("Mismatch between traces %d and expected %d", numTrace, numReq)
 		}
 		httpOk := res.RetCodes[http.StatusOK]
 		http555 := res.RetCodes[555]
@@ -335,6 +350,7 @@ func TestAccessLog(t *testing.T) {
 		if lines555 != int(http555) {
 			t.Errorf("unexpected number of lines in access log %s: with 555: %d instead of %d", format, lines555, http555)
 		}
+		atomic.StoreInt64(&numTrace, 0)
 	}
 }
 
@@ -353,8 +369,9 @@ func TestServe(t *testing.T) {
 	o := NewHTTPOptions(url)
 	o.AddAndValidateExtraHeader("X-Header: value1")
 	o.AddAndValidateExtraHeader("X-Header: value2")
+	ctx := context.Background()
 	c, _ := NewClient(o)
-	code, data, _ := c.Fetch()
+	code, data, _ := c.Fetch(ctx)
 	if code != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug url %s : %d", url, code)
 	}
@@ -368,7 +385,7 @@ func TestServe(t *testing.T) {
 	o2 := NewHTTPOptions(url2)
 	o2.Payload = []byte("abcd")
 	c2, _ := NewClient(o2)
-	code2, data2, header := c2.Fetch()
+	code2, data2, header := c2.Fetch(ctx)
 	if code2 != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug echo url %s : %d", url2, code2)
 	}
@@ -378,7 +395,7 @@ func TestServe(t *testing.T) {
 	// Accept gzip but no actual gzip=true
 	o2.AddAndValidateExtraHeader("Accept-Encoding: gzip")
 	c3, _ := NewClient(o2)
-	code3, data3, header := c3.Fetch()
+	code3, data3, header := c3.Fetch(ctx)
 	if code3 != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug echo url %s : %d", url2, code3)
 	}
@@ -391,7 +408,7 @@ func TestServe(t *testing.T) {
 	o4.Payload = []byte(expected4)
 	o4.AddAndValidateExtraHeader("Accept-Encoding: gzip")
 	c4, _ := NewClient(o4)
-	code4, data4, header := c4.Fetch()
+	code4, data4, header := c4.Fetch(ctx)
 	if code4 != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url4, code4)
 	}
@@ -409,7 +426,7 @@ func TestServe(t *testing.T) {
 	url5 := url4 + "&size=400"
 	o5 := NewHTTPOptions(url5)
 	c5, _ := NewClient(o5)
-	code5, data5, header := c5.Fetch()
+	code5, data5, header := c5.Fetch(ctx)
 	if code5 != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code5)
 	}
@@ -420,7 +437,7 @@ func TestServe(t *testing.T) {
 	}
 	o5.AddAndValidateExtraHeader("Accept-Encoding: gzip")
 	c6, _ := NewClient(o5)
-	code6, data6, header := c6.Fetch()
+	code6, data6, header := c6.Fetch(ctx)
 	if code6 != http.StatusOK {
 		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code6)
 	}

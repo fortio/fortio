@@ -88,6 +88,8 @@ var (
 	dataDir string
 	// Default percentiles when not otherwise specified.
 	DefaultPercentileList []float64
+	// Hook to install OTEL or other options.
+	hook bincommon.FortioHook
 )
 
 // AsyncReply is returned when async=on is passed.
@@ -181,6 +183,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 }
 
 // RESTRunHandler is api version of UI submit handler.
+// TODO: refactor common option/args/flag parsing between uihandler.go and this.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	fhttp.LogRequest(r, "REST Run Api call")
 	w.Header().Set("Content-Type", "application/json")
@@ -339,6 +342,9 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	var res periodic.HasRunnerResult
 	var err error
 	var aborter *periodic.Aborter
+	if hook != nil {
+		hook(httpopts, ro)
+	}
 	if runner == ModeGRPC { //nolint:nestif
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
@@ -525,7 +531,8 @@ func RemoveRun(id int64) {
 
 // AddHandlers adds the REST Api handlers for run, status and stop.
 // uiPath must end with a /.
-func AddHandlers(mux *http.ServeMux, baseurl, uiPath, datadir string) {
+func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath, datadir string) {
+	hook = ahook
 	AddDataHandler(mux, baseurl, uiPath, datadir)
 	restRunPath := uiPath + RestRunURI
 	mux.HandleFunc(restRunPath, RESTRunHandler)

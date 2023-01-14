@@ -273,14 +273,14 @@ const UDPPrefix = "udp://"
 
 // ResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors. Backward compatible name (1.12 and prior) for TCPResolveDestination.
-func ResolveDestination(dest string) (*net.TCPAddr, error) {
-	return TCPResolveDestination(dest)
+func ResolveDestination(ctx context.Context, dest string) (*net.TCPAddr, error) {
+	return TCPResolveDestination(ctx, dest)
 }
 
 // TCPResolveDestination returns the TCP address of the "host:port" suitable for net.Dial.
 // nil in case of errors.
-func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
-	addr, err := ResolveDestinationInternal(dest, "tcp://", "udp://")
+func TCPResolveDestination(ctx context.Context, dest string) (*net.TCPAddr, error) {
+	addr, err := ResolveDestinationInternal(ctx, dest, "tcp://", "udp://")
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func TCPResolveDestination(dest string) (*net.TCPAddr, error) {
 // ResolveDestinationInternal returns the address of the "host:port" suitable for net.Dial.
 // nil in case of errors. Works for both TCP and UDP but proto must be passed as expected == tcp:// or udp://
 // and the other as unexpected.
-func ResolveDestinationInternal(dest string, expected string, unexpected string) (*HostPortAddr, error) {
+func ResolveDestinationInternal(ctx context.Context, dest string, expected string, unexpected string) (*HostPortAddr, error) {
 	if strings.HasPrefix(dest, unexpected) {
 		err := fmt.Errorf("expecting %s but got %s destination %q", expected, unexpected, dest)
 		log.Errf("ResolveDestination %s", err)
@@ -308,12 +308,12 @@ func ResolveDestinationInternal(dest string, expected string, unexpected string)
 	}
 	host := dest[0:i]
 	port := dest[i+1:]
-	return ResolveByProto(host, port, expected[:3]) // this could crash if not getting tcp:// -> tcp etc...
+	return ResolveByProto(ctx, host, port, expected[:3]) // this could crash if not getting tcp:// -> tcp etc...
 }
 
 // Resolve backward compatible TCP only version of ResolveByProto.
-func Resolve(host string, port string) (*net.TCPAddr, error) {
-	addr, err := ResolveByProto(host, port, "tcp")
+func Resolve(ctx context.Context, host string, port string) (*net.TCPAddr, error) {
+	addr, err := ResolveByProto(ctx, host, port, "tcp")
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 // Limit which address type is returned using `resolve-ip` ip4/ip6/ip (for both, default).
 // If the same host is requested, and it has more than 1 IP, returned value will first,
 // random or roundrobin or cached roundrobin over the ips depending on the -dns-method flag value.
-func ResolveByProto(host string, port string, proto string) (*HostPortAddr, error) {
+func ResolveByProto(ctx context.Context, host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
@@ -381,7 +381,7 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 		}
 		dnsMutex.Unlock()
 	}
-	addrs, err := net.DefaultResolver.LookupIP(context.Background(), filter, host)
+	addrs, err := net.DefaultResolver.LookupIP(ctx, filter, host)
 	if err != nil {
 		log.Errf("Unable to lookup '%s' : %v", host, err)
 		return nil, err
@@ -420,8 +420,8 @@ func ResolveByProto(host string, port string, proto string) (*HostPortAddr, erro
 
 // UDPResolveDestination returns the UDP address of the "host:port" suitable for net.Dial.
 // nil and the error in case of errors.
-func UDPResolveDestination(dest string) (*net.UDPAddr, error) {
-	addr, err := ResolveDestinationInternal(dest, "udp://", "tcp://")
+func UDPResolveDestination(ctx context.Context, dest string) (*net.UDPAddr, error) {
+	addr, err := ResolveDestinationInternal(ctx, dest, "udp://", "tcp://")
 	if err != nil {
 		return nil, err
 	}
@@ -553,8 +553,8 @@ func Proxy(port string, dest net.Addr) net.Addr {
 
 // ProxyToDestination opens a proxy from the listenPort (or addr:port or unix domain socket path) and forwards
 // all traffic to destination (host:port).
-func ProxyToDestination(listenPort string, destination string) net.Addr {
-	addr, _ := TCPResolveDestination(destination)
+func ProxyToDestination(ctx context.Context, listenPort string, destination string) net.Addr {
+	addr, _ := TCPResolveDestination(ctx, destination)
 	return Proxy(listenPort, addr)
 }
 
@@ -656,12 +656,12 @@ func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
 
 // NetCat connects to the destination and reads from in, sends to the socket, and write what it reads from the socket to out.
 // if the destination starts with udp:// UDP is used otherwise TCP.
-func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
+func NetCat(ctx context.Context, dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	if strings.HasPrefix(dest, UDPPrefix) {
-		return UDPNetCat(dest, in, out, stopOnEOF)
+		return UDPNetCat(ctx, dest, in, out, stopOnEOF)
 	}
 	log.Infof("TCP NetCat to %s, stop on eof %v", dest, stopOnEOF)
-	a, err := TCPResolveDestination(dest)
+	a, err := TCPResolveDestination(ctx, dest)
 	if a == nil {
 		return err // already logged
 	}
@@ -702,9 +702,9 @@ func NetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 }
 
 // UDPNetCat handles UDP part of NetCat.
-func UDPNetCat(dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
+func UDPNetCat(ctx context.Context, dest string, in io.Reader, out io.Writer, stopOnEOF bool) error {
 	log.Infof("UDP NetCat to %s, stop on eof %v", dest, stopOnEOF)
-	a, err := UDPResolveDestination(dest)
+	a, err := UDPResolveDestination(ctx, dest)
 	if a == nil {
 		return err // already logged
 	}

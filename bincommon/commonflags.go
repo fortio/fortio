@@ -19,6 +19,7 @@ package bincommon
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
+	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/version"
 )
 
@@ -46,6 +48,10 @@ func (f *headersFlagList) Set(value string) error {
 }
 
 // -- end of functions for -H support
+
+// FortioHook is used in cli and rapi to customize the run and introduce for instance clienttrace
+// and otel access logger.
+type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
 
 // FlagsUsage prints end of the usage() (flags part + error message).
 func FlagsUsage(w io.Writer, msgs ...interface{}) {
@@ -155,7 +161,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	if client == nil || reflect.ValueOf(client).IsNil() {
 		os.Exit(1) // error logged already
 	}
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
 	if *curlHeadersStdout {
 		os.Stdout.Write(data)

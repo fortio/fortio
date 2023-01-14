@@ -16,6 +16,7 @@ package fhttp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -572,12 +573,13 @@ func TestPayloadWithEchoBack(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
 	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	ctx := context.Background()
 	for _, test := range tests {
 		opts := NewHTTPOptions(url)
 		opts.DisableFastClient = test.disableFastClient
 		opts.Payload = test.payload
 		cli, _ := NewClient(opts)
-		code, body, header := cli.Fetch()
+		code, body, header := cli.Fetch(ctx)
 		if code != 200 {
 			t.Errorf("Unexpected error %d", code)
 		}
@@ -601,9 +603,9 @@ func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
 	opts.DisableFastClient = true
 	opts.Payload = payload
 	cli, _ := NewClient(opts)
-
+	ctx := context.Background()
 	for i := 0; i < 3; i++ {
-		code, body, header := cli.Fetch()
+		code, body, header := cli.Fetch(ctx)
 
 		if code != 200 {
 			t.Errorf("Unexpected http status code, expected 200, got %d", code)
@@ -625,7 +627,7 @@ func TestUnixDomainHttp(t *testing.T) {
 	}
 	o := HTTPOptions{TLSOptions: TLSOptions{UnixDomainSocket: uds}, URL: "http://foo.bar:123/debug1"}
 	client, _ := NewClient(&o)
-	code, data, _ := client.Fetch()
+	code, data, _ := client.Fetch(context.Background())
 	if code != http.StatusOK {
 		t.Errorf("Got error %d fetching uds %s", code, uds)
 	}
@@ -663,7 +665,7 @@ func TestH10Cli(t *testing.T) {
 	opts.HTTP10 = true
 	opts.AddAndValidateExtraHeader("Host: mhostname")
 	cli, _ := NewFastClient(opts)
-	code, _, _ := cli.Fetch()
+	code, _, _ := cli.Fetch(context.Background())
 	if code != 200 {
 		t.Errorf("http 1.0 unexpected error %d", code)
 	}
@@ -682,7 +684,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
-	_, data, _ := cli.Fetch()
+	_, data, _ := cli.Fetch(context.Background())
 	recSz := len(data)
 	if recSz > sz {
 		t.Errorf("config1: was expecting truncated read, got %d", recSz)
@@ -691,7 +693,7 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	// Same test without keepalive (exercises a different path)
 	opts.DisableKeepAlive = true
 	cli, _ = NewFastClient(opts)
-	_, data, _ = cli.Fetch()
+	_, data, _ = cli.Fetch(context.Background())
 	recSz = len(data)
 	if recSz > sz {
 		t.Errorf("config2: was expecting truncated read, got %d", recSz)
@@ -724,7 +726,7 @@ func TestBadURLStdClient(t *testing.T) {
 
 	opts.URL = "http://doesnotexist.fortio.org"
 	cli, _ = NewStdClient(opts)
-	code, _, _ := cli.Fetch()
+	code, _, _ := cli.Fetch(context.Background())
 	if code != -1 {
 		t.Errorf("config2: client can send request despite bogus url %s", opts.URL)
 	}
@@ -735,11 +737,12 @@ func TestDefaultPort(t *testing.T) {
 	url := "http://istio.io/" // shall imply port 80
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
-	code, _, _ := cli.Fetch()
+	ctx := context.Background()
+	code, _, _ := cli.Fetch(ctx)
 	if code != 301 {
 		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
 	}
-	conn := cli.(*FastClient).connect()
+	conn := cli.(*FastClient).connect(ctx)
 	if conn != nil {
 		p := conn.RemoteAddr().(*net.TCPAddr).Port
 		if p != 80 {
@@ -757,7 +760,7 @@ func TestDefaultPort(t *testing.T) {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}
 	// currently fast client fails with https:
-	code, _, _ = cli.Fetch()
+	code, _, _ = cli.Fetch(context.Background())
 	if code != 200 {
 		t.Errorf("Standard client http error code %d", code)
 	}
@@ -783,7 +786,7 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/delayedChunkedSize", a.Port)
 	o := HTTPOptions{URL: url}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch() // used to panic/bug #127
+	code, data, header := client.Fetch(context.Background()) // used to panic/bug #127
 	t.Logf("delayedChunkedSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -806,7 +809,7 @@ func TestInvalidRequest(t *testing.T) {
 	}
 	client.ChangeURL(" http://bad.url.with.space.com/") // invalid url
 	// should not crash (issue #93), should error out
-	code, _, _ := client.Fetch()
+	code, _, _ := client.Fetch(context.Background())
 	if code != -1 {
 		t.Errorf("Got %d code while expecting -1 (local error)", code)
 	}
@@ -824,7 +827,7 @@ func TestPayloadSizeSmall(t *testing.T) {
 		url := fmt.Sprintf("http://localhost:%d/with-size?size=%d", a.Port, size)
 		o := HTTPOptions{URL: url}
 		client, _ := NewClient(&o)
-		code, data, header := client.Fetch() // used to panic/bug #127
+		code, data, header := client.Fetch(context.Background()) // used to panic/bug #127
 		t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 		if code != http.StatusOK {
 			t.Errorf("Got %d instead of 200", code)
@@ -934,7 +937,7 @@ func TestPayloadSizeLarge(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/with-size?size=%d&status=888", a.Port, size)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch() // used to panic/bug #127
+	code, data, header := client.Fetch(context.Background()) // used to panic/bug #127
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 888 {
 		t.Errorf("Got %d instead of 888", code)
@@ -950,7 +953,7 @@ func TestUUIDFastClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/{uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: false}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -967,7 +970,7 @@ func TestUUIDPayloadFastClient(t *testing.T) {
 		Payload:           []byte("[\"{uuid}\", \"{uuid}\"]"),
 	}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -980,7 +983,7 @@ func TestQueryUUIDFastClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/?uuid={uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: false}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -995,7 +998,7 @@ func TestManyUUIDsFastClient(t *testing.T) {
 		o := HTTPOptions{URL: url, DisableFastClient: false}
 		client, _ := NewClient(&o)
 		for j := 0; j < 3; j++ {
-			code, data, header := client.Fetch()
+			code, data, header := client.Fetch(context.Background())
 			t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 			if code != 200 {
 				t.Errorf("Got %d instead of 200", code)
@@ -1010,7 +1013,7 @@ func TestBadUUIDFastClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/{not_uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: false}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 400 {
 		t.Errorf("Got %d instead of 400", code)
@@ -1023,7 +1026,7 @@ func TestBadQueryUUIDFastClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/?uuid={not_uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: false}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 400 {
 		t.Errorf("Got %d instead of 400", code)
@@ -1036,7 +1039,7 @@ func TestUUIDClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/{uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -1053,7 +1056,7 @@ func TestUUIDPayloadClient(t *testing.T) {
 		Payload:           []byte("[\"{uuid}\", \"{uuid}\"]"),
 	}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -1066,7 +1069,7 @@ func TestQueryUUIDClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/?uuid={uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
@@ -1081,7 +1084,7 @@ func TestManyUUIDsClient(t *testing.T) {
 		o := HTTPOptions{URL: url, DisableFastClient: true}
 		client, _ := NewClient(&o)
 		for j := 0; j < 3; j++ {
-			code, data, header := client.Fetch()
+			code, data, header := client.Fetch(context.Background())
 			t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 			if code != 200 {
 				t.Errorf("Got %d instead of 200", code)
@@ -1096,7 +1099,7 @@ func TestBadUUIDClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/{not_uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 400 {
 		t.Errorf("Got %d instead of 400", code)
@@ -1109,7 +1112,7 @@ func TestBadQueryUUIDClient(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/?uuid={not_uuid}", a.Port)
 	o := HTTPOptions{URL: url, DisableFastClient: true}
 	client, _ := NewClient(&o)
-	code, data, header := client.Fetch()
+	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 400 {
 		t.Errorf("Got %d instead of 400", code)
@@ -1136,7 +1139,7 @@ func TestDebugHandlerSortedHeaders(t *testing.T) {
 	o.AddAndValidateExtraHeader("User-Agent: ua2")
 	client, _ := NewClient(&o)
 	now := time.Now()
-	code, data, header := client.Fetch() // used to panic/bug #127
+	code, data, header := client.Fetch(context.Background()) // used to panic/bug #127
 	duration := time.Since(now)
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
@@ -1407,7 +1410,8 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
 	o1 := o
 	cli1, _ := NewStdClient(&o1)
-	code, data, _ := cli1.Fetch()
+	ctx := context.Background()
+	code, data, _ := cli1.Fetch(ctx)
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch1", code)
 	}
@@ -1417,7 +1421,7 @@ func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	}
 	o2 := o
 	cli2, _ := NewFastClient(&o2)
-	code, data, _ = cli2.Fetch()
+	code, data, _ = cli2.Fetch(ctx)
 	if code != 200 {
 		t.Errorf("Non ok code %d for debug default fetch2", code)
 	}
