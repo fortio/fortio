@@ -524,7 +524,7 @@ func Test_extractDialOptions(t *testing.T) {
 					"host":       {"a.b"},
 				},
 			},
-			wantOutLen: 1,
+			wantOutLen: 2,
 			wantMD:     map[string][]string{},
 		},
 		{

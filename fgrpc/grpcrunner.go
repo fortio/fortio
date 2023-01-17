@@ -26,7 +26,6 @@ import (
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"google.golang.org/grpc"
@@ -320,11 +319,6 @@ func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
 		// Transfer these 2 and avoid having them duplicated in original MD
 		case "user-agent":
 			delete(in, k)
-			// TODO: remove when #680 is figured out.
-			if v[0] == jrpc.UserAgent {
-				// for keeping the same behavior as before, unless this is set by the user
-				continue
-			}
 			out = append(out, grpc.WithUserAgent(v[0]))
 		case "host":
 			delete(in, k)
