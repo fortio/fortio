@@ -129,6 +129,11 @@ func TestLogger1(t *testing.T) {
 	expected += "C testing crit 7\n"
 	Printf("Printf should always show n=%d", 8)
 	expected += "Printf should always show n=8\n"
+	r := FErrf("FErrf should always show but not exit, n=%d", 9)
+	expected += "F FErrf should always show but not exit, n=9\n"
+	if r != 1 {
+		t.Errorf("FErrf returned %d instead of 1", r)
+	}
 	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
