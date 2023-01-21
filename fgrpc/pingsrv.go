@@ -77,10 +77,9 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 	if cert != "" && key != "" {
 		creds, err := credentials.NewServerTLSFromFile(cert, key)
 		if err != nil {
-			log.Fatalf("Invalid TLS credentials: %v\n", err)
+			log.Fatalf("Invalid TLS credentials: %v", err)
 		}
-		log.Infof("Using server certificate %v to construct TLS credentials", cert)
-		log.Infof("Using server key %v to construct TLS credentials", key)
+		log.Infof("Using server certificate %v and key %v to construct TLS credentials", cert, key)
 		grpcOptions = append(grpcOptions, grpc.Creds(creds))
 	}
 	grpcServer := grpc.NewServer(grpcOptions...)
