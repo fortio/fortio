@@ -51,6 +51,8 @@ var (
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
 	levelInternal  int32
 	fatalPanics    = flag.Bool("logfatalpanics", true, "If true, log.Fatal will panic (stack trace) instead of just exit 1")
+	// Tests can override this to cover exit case.
+	FatalExit = os.Exit
 )
 
 // ChangeFlagsDefault sets some flags to a different default.
@@ -263,7 +265,7 @@ func Fatalf(format string, rest ...interface{}) {
 	if *fatalPanics {
 		panic("aborting...")
 	}
-	os.Exit(1)
+	FatalExit(1)
 }
 
 // FErrF logs a fatal error and returns 1.

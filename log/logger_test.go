@@ -189,6 +189,18 @@ func TestLoggerFatalCliMode(t *testing.T) {
 	t.Fatalf("process ran with err %v, want exit status 1", err)
 }
 
+func TestLoggerFatalExitOverride(t *testing.T) {
+	SetFlagDefaultsForClientTools()
+	exitCalled := false
+	FatalExit = func(code int) {
+		exitCalled = true
+	}
+	Fatalf("testing log.Fatalf exit case")
+	if !exitCalled {
+		t.Error("expected exit function override not called")
+	}
+}
+
 func BenchmarkLogDirect1(b *testing.B) {
 	setLevel(Error)
 	for n := 0; n < b.N; n++ {
