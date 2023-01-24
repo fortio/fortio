@@ -22,8 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"fortio.org/fortio/log"
 )
 
 var (
@@ -34,14 +32,13 @@ var (
 )
 
 func TestHTTPSServer(t *testing.T) {
-	log.SetLogLevel(log.Debug)
+	// log.SetLogLevel(log.Debug)
 	m, a := ServeTLS("0", "/debug", svrCrt, svrKey)
 	if m == nil || a == nil {
 		t.Errorf("Failed to create server %v %v", m, a)
 	}
 	url := fmt.Sprintf("https://localhost:%d/debug", a.(*net.TCPAddr).Port)
-	// Trigger transparent compression (which will add Accept-Encoding: gzip header)
-	o := HTTPOptions{URL: url, DisableFastClient: true, TLSOptions: TLSOptions{CACert: caCrt}}
+	o := HTTPOptions{URL: url, DisableFastClient: true, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
@@ -49,7 +46,7 @@ func TestHTTPSServer(t *testing.T) {
 		t.Errorf("Got %d instead of 200", code)
 	}
 	body := string(data)
-	if !strings.Contains(body, "HTTP/") { // somehow with our go client it's not http2... (it is with plain curl)
-		t.Errorf("Missing HTTP/ in body: %s", body)
+	if !strings.Contains(body, "HTTP/2.0") {
+		t.Errorf("Missing HTTP/2.0 in body: %s", body)
 	}
 }

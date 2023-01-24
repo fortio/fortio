@@ -133,6 +133,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
 	stdClient := (r.FormValue("stdclient") == "on")
+	h2 := (r.FormValue("h2") == "on")
 	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
@@ -191,6 +192,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	httpopts.H2 = h2
 	// Set the connection reuse range.
 	err := bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
