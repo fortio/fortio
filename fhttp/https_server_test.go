@@ -38,7 +38,8 @@ func TestHTTPSServer(t *testing.T) {
 		t.Errorf("Failed to create server %v %v", m, a)
 	}
 	url := fmt.Sprintf("https://localhost:%d/debug", a.(*net.TCPAddr).Port)
-	o := HTTPOptions{URL: url, DisableFastClient: true, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
+	// Triggers the h2->DisableFastClient normalization code too.
+	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
