@@ -205,6 +205,26 @@ func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr
 	return addr
 }
 
+func HTTPSServer(name string, port string, certFile string, keyFile string) (*http.ServeMux, net.Addr) {
+	listener, addr := fnet.Listen(name, port)
+	if listener == nil {
+		return nil, nil // error already logged
+	}
+	m := http.NewServeMux()
+	s := &http.Server{
+		ReadHeaderTimeout: serverIdleTimeout.Get(),
+		IdleTimeout:       serverIdleTimeout.Get(),
+		Handler:           m,
+	}
+	go func() {
+		err := s.ServeTLS(listener, certFile, keyFile)
+		if err != nil {
+			log.Fatalf("Unable to TLS serve %s on %s: %v", name, addr.String(), err)
+		}
+	}()
+	return m, addr
+}
+
 // DynamicHTTPServer listens on an available port, sets up an http or a closing
 // server simulating an https server (when closing is true) server on it and
 // returns the listening port and mux to which one can attach handlers to.
@@ -371,8 +391,20 @@ func EchoDebugPath(debugPath string) string {
 // The .Port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
 func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
+	return ServeTLS(port, debugPath, "", "")
+}
+
+// ServeTLS starts a debug / echo server on the given port,
+// using TLS if certPath and keyPath aren't not empty.
+func ServeTLS(port, debugPath, certPath, keyPath string) (*http.ServeMux, net.Addr) {
 	startTime = time.Now()
-	mux, addr := HTTPServer("http-echo", port)
+	var mux *http.ServeMux
+	var addr net.Addr
+	if certPath != "" && keyPath != "" {
+		mux, addr = HTTPSServer("https-echo", port, certPath, keyPath)
+	} else {
+		mux, addr = HTTPServer("http-echo", port)
+	}
 	if addr == nil {
 		return nil, nil // error already logged
 	}

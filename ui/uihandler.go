@@ -665,7 +665,9 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 // (be a 'directory' path). Returns true if server is started successfully.
 func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
 	startTime = time.Now()
-	mux, addr := fhttp.Serve(port, debugpath)
+	// Kinda ugly that we get most params past in but we get the tls stuff from flags directly,
+	// it avoids making an already too long list of string params longer. probably should make a FortioConfig struct.
+	mux, addr := fhttp.ServeTLS(port, debugpath, *bincommon.CertFlag, *bincommon.KeyFlag)
 	if addr == nil {
 		return false // Error already logged
 	}
