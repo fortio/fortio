@@ -50,6 +50,6 @@ func TestHTTPSServer(t *testing.T) {
 	}
 	body := string(data)
 	if !strings.Contains(body, "HTTP/") { // somehow with our go client it's not http2... (it is with plain curl)
-		t.Errorf("Missing Φορτίο in body: %s", body)
+		t.Errorf("Missing HTTP/ in body: %s", body)
 	}
 }
