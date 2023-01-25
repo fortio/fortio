@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/log"
@@ -75,10 +76,13 @@ func TestHTTPSServerMissingCert(t *testing.T) {
 	log.SetFlagDefaultsForClientTools()
 	_, addr := ServeTLS("0", "", "/foo/bar.crt", "/foo/bar.key")
 	url := fmt.Sprintf("https://localhost:%d/debug", addr.(*net.TCPAddr).Port)
-	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
+	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true, HTTPReqTimeOut: 100 * time.Millisecond}
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != -1 {
+		t.Errorf("Got %d instead of expected error", code)
+	}
 	if !fatalCalled.Load() {
 		t.Errorf("FatalExit not called")
 	}
