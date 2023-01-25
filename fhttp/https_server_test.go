@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"fortio.org/fortio/fnet"
@@ -65,10 +66,11 @@ func TestHTTPSServerError(t *testing.T) {
 }
 
 func TestHTTPSServerMissingCert(t *testing.T) {
-	fatalCalled := false
+	fatalCalled := atomic.Bool{}
+	fatalCalled.Store(false)
 	log.FatalExit = func(int) {
 		t.Logf("FatalExit called")
-		fatalCalled = true
+		fatalCalled.Store(true)
 	}
 	log.SetFlagDefaultsForClientTools()
 	_, addr := ServeTLS("0", "", "/foo/bar.crt", "/foo/bar.key")
@@ -77,7 +79,7 @@ func TestHTTPSServerMissingCert(t *testing.T) {
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch(context.Background())
 	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
-	if !fatalCalled {
+	if !fatalCalled.Load() {
 		t.Errorf("FatalExit not called")
 	}
 }
