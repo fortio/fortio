@@ -17,6 +17,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -205,6 +206,26 @@ func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr
 	return addr
 }
 
+func HTTPSServer(name string, port string, certFile string, keyFile string) (*http.ServeMux, net.Addr) {
+	listener, addr := fnet.Listen(name, port)
+	if listener == nil {
+		return nil, nil // error already logged
+	}
+	m := http.NewServeMux()
+	s := &http.Server{
+		ReadHeaderTimeout: serverIdleTimeout.Get(),
+		IdleTimeout:       serverIdleTimeout.Get(),
+		Handler:           m,
+	}
+	go func() {
+		err := s.ServeTLS(listener, certFile, keyFile)
+		if err != nil {
+			log.Fatalf("Unable to TLS serve %s on %s: %v", name, addr.String(), err)
+		}
+	}()
+	return m, addr
+}
+
 // DynamicHTTPServer listens on an available port, sets up an http or a closing
 // server simulating an https server (when closing is true) server on it and
 // returns the listening port and mux to which one can attach handlers to.
@@ -287,6 +308,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
+	buf.WriteString(TLSInfo(r))
 	buf.WriteString("\n\n")
 	buf.WriteString(r.Method)
 	buf.WriteByte(' ')
@@ -371,8 +393,20 @@ func EchoDebugPath(debugPath string) string {
 // The .Port can be retrieved from it when requesting the 0 port as
 // input for dynamic http server.
 func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
+	return ServeTLS(port, debugPath, "", "")
+}
+
+// ServeTLS starts a debug / echo server on the given port,
+// using TLS if certPath and keyPath aren't not empty.
+func ServeTLS(port, debugPath, certPath, keyPath string) (*http.ServeMux, net.Addr) {
 	startTime = time.Now()
-	mux, addr := HTTPServer("http-echo", port)
+	var mux *http.ServeMux
+	var addr net.Addr
+	if certPath != "" && keyPath != "" {
+		mux, addr = HTTPSServer("https-echo", port, certPath, keyPath)
+	} else {
+		mux, addr = HTTPServer("http-echo", port)
+	}
 	if addr == nil {
 		return nil, nil // error already logged
 	}
@@ -510,11 +544,20 @@ func RedirectToHTTPS(port string) net.Addr {
 	return a
 }
 
+// TLSInfo returns " https <cipher suite>" if the request is using TLS, or "" otherwise.
+func TLSInfo(r *http.Request) string {
+	if r.TLS == nil {
+		return ""
+	}
+	return fmt.Sprintf(" https %s", tls.CipherSuiteName(r.TLS.CipherSuite))
+}
+
 // LogRequest logs the incoming request, including headers when loglevel is verbose.
 func LogRequest(r *http.Request, msg string) {
 	if log.Log(log.Info) {
-		log.Printf("%s: %v %v %v %v (%s) %s %q", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
-			r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"), r.Header.Get("User-Agent"))
+		tlsInfo := TLSInfo(r)
+		log.Printf("%s: %v %v %v %v (%v) %s %q%s", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+			r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"), r.Header.Get("User-Agent"), tlsInfo)
 	}
 	if log.LogVerbose() {
 		// Host is removed from headers map and put separately

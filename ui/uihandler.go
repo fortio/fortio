@@ -133,6 +133,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
 	stdClient := (r.FormValue("stdclient") == "on")
+	h2 := (r.FormValue("h2") == "on")
 	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
 	httpsInsecure := (r.FormValue("https-insecure") == "on")
 	resolve := r.FormValue("resolve")
@@ -191,6 +192,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.SequentialWarmup = sequentialWarmup
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
+	httpopts.H2 = h2
 	// Set the connection reuse range.
 	err := bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
@@ -665,7 +667,9 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 // (be a 'directory' path). Returns true if server is started successfully.
 func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
 	startTime = time.Now()
-	mux, addr := fhttp.Serve(port, debugpath)
+	// Kinda ugly that we get most params past in but we get the tls stuff from flags directly,
+	// it avoids making an already too long list of string params longer. probably should make a FortioConfig struct.
+	mux, addr := fhttp.ServeTLS(port, debugpath, *bincommon.CertFlag, *bincommon.KeyFlag)
 	if addr == nil {
 		return false // Error already logged
 	}

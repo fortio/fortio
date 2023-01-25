@@ -32,6 +32,8 @@ import (
 var (
 	port      = flag.String("port", "8080", "default http port, either port or address:port can be specified")
 	debugPath = flag.String("debug-path", "/debug", "path for debug url, set to empty for no debug")
+	certFlag  = flag.String("cert", "", "`Path` to the certificate file to be used for client or server TLS")
+	keyFlag   = flag.String("key", "", "`Path` to the key file matching the -cert")
 )
 
 func main() {
@@ -40,7 +42,7 @@ func main() {
 		fmt.Println(version.Full())
 		os.Exit(0)
 	}
-	if _, addr := fhttp.Serve(*port, *debugPath); addr == nil {
+	if _, addr := fhttp.ServeTLS(*port, *debugPath, *certFlag, *keyFlag); addr == nil {
 		os.Exit(1) // error already logged
 	}
 	select {}

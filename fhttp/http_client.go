@@ -140,6 +140,10 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		log.Errf("Unexpected init with empty url")
 		return
 	}
+	if h.H2 && !h.DisableFastClient {
+		log.Infof("H2 requested, switching to std client")
+		h.DisableFastClient = true
+	}
 	hs := "https://" // longer of the 2 prefixes
 	lcURL := h.URL
 	if len(lcURL) > len(hs) {
@@ -169,6 +173,7 @@ type HTTPOptions struct {
 	Compression       bool // defaults to no compression, only used by std client
 	DisableFastClient bool // defaults to fast client
 	HTTP10            bool // defaults to http1.1
+	H2                bool // defaults to http1.1 (h2 only for stdclient)
 	DisableKeepAlive  bool // so default is keep alive
 	AllowHalfClose    bool // if not keepalive, whether to half close after request
 	FollowRedirects   bool // For the Std Client only: follow redirects.
@@ -554,6 +559,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			return conn, err
 		},
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
+		ForceAttemptHTTP2:   o.H2,
 	}
 	var rt http.RoundTripper = &tr
 	if o.Transport != nil {
