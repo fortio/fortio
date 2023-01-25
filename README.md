@@ -111,6 +111,7 @@ Most important flags for http load generation:
 | `-a`     |  Automatically save JSON result with filename based on labels and timestamp |
 | `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typicallly a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
+| `-h2` |  Client calls will attempt to negotiate http/2.0 instead of http1.1, implies `-stdclient`|
 
 You can switch from http GET queries to POST by setting `-content-type` or passing one of the `-payload-*` option.
 
@@ -569,6 +570,10 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 ```
 
 #### `grpcping` using TLS
+
+Note that since 1.40 the same applies to the main http server port, it will listen on TLS if `-cert` and `-key` flags are provided.
+
+For testing use `make certs` to generate self signed test certificates.
 
 * First, start Fortio server with the `-cert` and `-key` flags:
 
