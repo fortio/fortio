@@ -205,6 +205,8 @@ option unset.
         grpc server port. Can be in the form of host:port, ip:port or port or
 /unix/domain/path or "disabled" to not start the grpc server. (default "8079")
   -h    Print usage/help on stdout
+  -h2
+        Attempt to use http2.0 / h2 (instead of http 1.1) with stdclient and TLS
   -halfclose
         When not keepalive, whether to half close the connection (only for fast
 http)
@@ -241,6 +243,9 @@ target URL and hostname
         Log http non 2xx/418 error codes as they occur (default true)
   -logcaller
         Logs filename and line number of callers to log (default true)
+  -logfatalpanics
+        If true, log.Fatal will panic (stack trace) instead of just exit 1
+(default true)
   -loglevel value
         loglevel, one of [Debug Verbose Info Warning Error Critical Fatal]
 (default Info)
