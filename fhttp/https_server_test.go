@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"fortio.org/fortio/fnet"
 )
 
 var (
@@ -51,3 +53,31 @@ func TestHTTPSServer(t *testing.T) {
 		t.Errorf("Missing HTTP/2.0 in body: %s", body)
 	}
 }
+
+func TestHTTPSServerError(t *testing.T) {
+	_, addr := ServeTLS("0", "", svrCrt, svrKey)
+	port := fnet.GetPort(addr)
+	mux2, addr2 := ServeTLS(port, "", svrCrt, svrKey)
+	if mux2 != nil || addr2 != nil {
+		t.Errorf("2nd Serve() on same port %v should have failed: %v %v", port, mux2, addr2)
+	}
+}
+
+/* Add when we have log.FataExit from other MR
+func TestHTTPSServerMissingCert(t *testing.T) {
+	fatalCalled := false
+	log.FatalExit = func (int, string) {
+		 t.Logf("FatalExit called")
+		 fatalCalled = true
+}
+	_, addr := ServeTLS("0", "", "/foo/bar.crt", "/foo/bar.key")
+	url := fmt.Sprintf("https://localhost:%d/debug", addr.(*net.TCPAddr).Port)
+	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
+	if !fatalCalled {
+		t.Errorf("FatalExit not called")
+	}
+}
+*/
