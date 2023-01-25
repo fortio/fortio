@@ -17,6 +17,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -307,6 +308,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
+	buf.WriteString(TLSInfo(r))
 	buf.WriteString("\n\n")
 	buf.WriteString(r.Method)
 	buf.WriteByte(' ')
@@ -542,11 +544,20 @@ func RedirectToHTTPS(port string) net.Addr {
 	return a
 }
 
+// TLSInfo returns " https <cipher suite>" if the request is using TLS, or "" otherwise.
+func TLSInfo(r *http.Request) string {
+	if r.TLS == nil {
+		return ""
+	}
+	return fmt.Sprintf(" https %s", tls.CipherSuiteName(r.TLS.CipherSuite))
+}
+
 // LogRequest logs the incoming request, including headers when loglevel is verbose.
 func LogRequest(r *http.Request, msg string) {
 	if log.Log(log.Info) {
-		log.Printf("%s: %v %v %v %v (%s) %s %q", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
-			r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"), r.Header.Get("User-Agent"))
+		tlsInfo := TLSInfo(r)
+		log.Printf("%s: %v %v %v %v (%v) %s %q%s", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
+			r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"), r.Header.Get("User-Agent"), tlsInfo)
 	}
 	if log.LogVerbose() {
 		// Host is removed from headers map and put separately

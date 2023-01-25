@@ -52,6 +52,9 @@ func TestHTTPSServer(t *testing.T) {
 		t.Errorf("Got %d instead of 200", code)
 	}
 	body := string(data)
+	if !strings.Contains(body, "https TLS_") {
+		t.Errorf("Missing https TLS_ in body: %s", body)
+	}
 	if !strings.Contains(body, "HTTP/2.0") {
 		t.Errorf("Missing HTTP/2.0 in body: %s", body)
 	}
