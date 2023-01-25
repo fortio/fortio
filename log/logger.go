@@ -51,6 +51,8 @@ var (
 	LogFileAndLine = flag.Bool("logcaller", true, "Logs filename and line number of callers to log")
 	levelInternal  int32
 	fatalPanics    = flag.Bool("logfatalpanics", true, "If true, log.Fatal will panic (stack trace) instead of just exit 1")
+	// Tests can override this to cover exit case.
+	FatalExit = os.Exit
 )
 
 // ChangeFlagsDefault sets some flags to a different default.
@@ -192,6 +194,7 @@ func LevelByName(str string) Level {
 
 // Logf logs with format at the given level.
 // 2 level of calls so it's always same depth for extracting caller file/line.
+// Note that log.Logf(Fatal, "...") will not panic or exit, only log.Fatalf() does.
 func Logf(lvl Level, format string, rest ...interface{}) {
 	logPrintf(lvl, format, rest...)
 }
@@ -206,12 +209,6 @@ func logPrintf(lvl Level, format string, rest ...interface{}) {
 		log.Print(levelToStrA[lvl][0:1], " ", file, ":", line, *LogPrefix, fmt.Sprintf(format, rest...))
 	} else {
 		log.Print(levelToStrA[lvl][0:1], " ", *LogPrefix, fmt.Sprintf(format, rest...))
-	}
-	if lvl == Fatal {
-		if *fatalPanics {
-			panic("aborting...")
-		}
-		os.Exit(1)
 	}
 }
 
@@ -262,9 +259,25 @@ func Critf(format string, rest ...interface{}) {
 	logPrintf(Critical, format, rest...)
 }
 
-// Fatalf logs if Warning level is on.
+// Fatalf logs if Warning level is on and panics or exits.
 func Fatalf(format string, rest ...interface{}) {
 	logPrintf(Fatal, format, rest...)
+	if *fatalPanics {
+		panic("aborting...")
+	}
+	FatalExit(1)
+}
+
+// FErrF logs a fatal error and returns 1.
+// meant for cli main functions written like:
+// func main() { os.Exit(Main()) }
+// and
+// if err != nil { return log.FErrf("error: %v", err) }
+// so they can be tested with testscript.
+// See https://github.com/fortio/delta/ for example.
+func FErrf(format string, rest ...interface{}) int {
+	logPrintf(Fatal, format, rest...)
+	return 1
 }
 
 // LogDebug shortcut for fortio.Log(fortio.Debug).
