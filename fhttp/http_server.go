@@ -295,6 +295,9 @@ environment:
 */
 
 // DebugHandler returns debug/useful info to http client.
+// Note this can be dangerous and shouldn't be exposed to the internet.
+// A safer version is available as part of fortio's proxy
+// https://github.com/fortio/proxy/blob/main/rp/reverse_proxy.go
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Debug")
 	var buf bytes.Buffer
