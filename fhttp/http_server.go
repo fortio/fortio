@@ -45,7 +45,7 @@ import (
 
 var (
 	// Start time of the server (used in debug handler for uptime).
-	startTime time.Time
+	startTime = time.Now()
 	// EchoRequests is the number of request received. Only updated in Debug mode.
 	EchoRequests int64
 	// TODO find a way to only include this on binaries and not library mode (#433).
@@ -238,9 +238,8 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 		return mux, addr.(*net.TCPAddr)
 	}
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
-	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
+	log.Warnf("Closing server requested (for error testing)")
 	listener, addr := fnet.Listen("closing server", "0")
-	// err = http.ServeTLS(listener, nil, "", "") // go 1.9
 	go func() {
 		err := closingServer(listener)
 		if err != nil {
@@ -296,6 +295,9 @@ environment:
 */
 
 // DebugHandler returns debug/useful info to http client.
+// Note this can be dangerous and shouldn't be exposed to the internet.
+// A safer version is available as part of fortio's proxy
+// https://github.com/fortio/proxy/blob/main/rp/reverse_proxy.go
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, "Debug")
 	var buf bytes.Buffer
@@ -536,12 +538,7 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress).
 func RedirectToHTTPS(port string) net.Addr {
-	m, a := HTTPServer("https redirector", port)
-	if m == nil {
-		return nil // error already logged
-	}
-	m.HandleFunc("/", RedirectToHTTPSHandler)
-	return a
+	return HTTPServerWithHandler("https redirector", port, http.HandlerFunc(RedirectToHTTPSHandler))
 }
 
 // TLSInfo returns " https <cipher suite>" if the request is using TLS, or "" otherwise.
