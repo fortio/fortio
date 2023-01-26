@@ -538,12 +538,7 @@ func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 // RedirectToHTTPS Sets up a redirector to https on the given port.
 // (Do not create a loop, make sure this is addressed from an ingress).
 func RedirectToHTTPS(port string) net.Addr {
-	m, a := HTTPServer("https redirector", port)
-	if m == nil {
-		return nil // error already logged
-	}
-	m.HandleFunc("/", RedirectToHTTPSHandler)
-	return a
+	return HTTPServerWithHandler("https redirector", port, http.HandlerFunc(RedirectToHTTPSHandler))
 }
 
 // TLSInfo returns " https <cipher suite>" if the request is using TLS, or "" otherwise.
