@@ -45,7 +45,7 @@ import (
 
 var (
 	// Start time of the server (used in debug handler for uptime).
-	startTime time.Time = time.Now()
+	startTime = time.Now()
 	// EchoRequests is the number of request received. Only updated in Debug mode.
 	EchoRequests int64
 	// TODO find a way to only include this on binaries and not library mode (#433).
@@ -238,9 +238,8 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 		return mux, addr.(*net.TCPAddr)
 	}
 	// Note: we actually use the fact it's not supported as an error server for tests - need to change that
-	log.Errf("Secure setup not yet supported. Will just close incoming connections for now")
+	log.Warnf("Closing server requested (for error testing)")
 	listener, addr := fnet.Listen("closing server", "0")
-	// err = http.ServeTLS(listener, nil, "", "") // go 1.9
 	go func() {
 		err := closingServer(listener)
 		if err != nil {
