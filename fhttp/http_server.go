@@ -45,7 +45,7 @@ import (
 
 var (
 	// Start time of the server (used in debug handler for uptime).
-	startTime time.Time
+	startTime time.Time = time.Now()
 	// EchoRequests is the number of request received. Only updated in Debug mode.
 	EchoRequests int64
 	// TODO find a way to only include this on binaries and not library mode (#433).
