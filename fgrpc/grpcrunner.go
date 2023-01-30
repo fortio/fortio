@@ -90,7 +90,7 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
 	if grpcstate.Metadata.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)
+		outCtx = metadata.NewOutgoingContext(outCtx, sanitize(grpcstate.Metadata))
 	}
 	if grpcstate.Ping {
 		res, err = grpcstate.clientP.Ping(outCtx, &grpcstate.reqP)
@@ -186,7 +186,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		var err error
 		outCtx := context.Background()
 		if o.Metadata.Len() != 0 {
-			outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
+			outCtx = metadata.NewOutgoingContext(outCtx, sanitize(o.Metadata))
 			grpcstate[i].Metadata = o.Metadata
 		}
 		if o.UsePing { //nolint:nestif
@@ -316,14 +316,26 @@ func grpcDestination(dest string) (parsedDest string) {
 func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
 	for k, v := range in {
 		switch k {
-		// Transfer these 2 and avoid having them duplicated in original MD
+		// Transfer these 2
 		case "user-agent":
-			delete(in, k)
 			out = append(out, grpc.WithUserAgent(v[0]))
 		case "host":
-			delete(in, k)
 			out = append(out, grpc.WithAuthority(v[0]))
 		}
 	}
 	return out
+}
+
+// sanitize remove special MD pairs.
+func sanitize(md metadata.MD) metadata.MD {
+	// copy
+	cp := make(metadata.MD, len(md))
+	for k, v := range md {
+		switch k {
+		case "user-agent", "host":
+		default:
+			cp[k] = v
+		}
+	}
+	return cp
 }

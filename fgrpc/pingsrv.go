@@ -122,7 +122,7 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 	cli := NewPingServerClient(conn)
 	outCtx := context.Background()
 	if md.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, md)
+		outCtx = metadata.NewOutgoingContext(outCtx, sanitize(md))
 	}
 	// Warm up:
 	_, err = cli.Ping(outCtx, msg)
@@ -176,7 +176,7 @@ type HealthResultMap map[string]int64
 // service.
 func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions, md metadata.MD) (*HealthResultMap, error) {
 	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
-	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts, Metadata: md}
 	conn, err := Dial(&o)
 	if err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 
 	outCtx := context.Background()
 	if md.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, md)
+		outCtx = metadata.NewOutgoingContext(outCtx, sanitize(md))
 	}
 	for i := 1; i <= n; i++ {
 		start := time.Now()

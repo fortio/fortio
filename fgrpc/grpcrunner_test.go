@@ -448,9 +448,10 @@ func TestGRPCRunnerWithMetadata(t *testing.T) {
 		t.Fatal(server.error)
 	}
 	tests := []struct {
-		name  string
-		key   string
-		value string
+		name      string
+		key       string
+		serverKey string
+		value     string
 	}{
 		{
 			name:  "valid metadata",
@@ -462,12 +463,22 @@ func TestGRPCRunnerWithMetadata(t *testing.T) {
 			key:   "ghi",
 			value: "",
 		},
+		{
+			name:      "authority",
+			key:       "host",
+			serverKey: ":authority",
+			value:     "xyz",
+		},
 	}
 	for _, test := range tests {
 		server.mdKey = test.key
+		if test.serverKey != "" {
+			server.mdKey = test.serverKey
+		}
 		server.mdValue = test.value
 		server.error = nil
 		_, err := RunGRPCTest(&GRPCRunnerOptions{
+			Streams:     10,
 			Destination: addr.String(),
 			Metadata: map[string][]string{
 				test.key: {test.value},
@@ -482,7 +493,7 @@ func TestGRPCRunnerWithMetadata(t *testing.T) {
 	}
 }
 
-func Test_extractDialOptions(t *testing.T) {
+func TestHeaderHandling(t *testing.T) {
 	type args struct {
 		in metadata.MD
 	}
@@ -546,7 +557,7 @@ func Test_extractDialOptions(t *testing.T) {
 			if !reflect.DeepEqual(len(gotOut), tt.wantOutLen) {
 				t.Errorf("extractDialOptions() = %v, want %v", len(gotOut), tt.wantOutLen)
 			}
-			if !reflect.DeepEqual(tt.args.in, tt.wantMD) {
+			if !reflect.DeepEqual(sanitize(tt.args.in), tt.wantMD) {
 				t.Errorf("got md = %v, want %v", tt.args.in, tt.wantMD)
 			}
 		})
