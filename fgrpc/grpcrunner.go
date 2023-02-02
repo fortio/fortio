@@ -57,7 +57,7 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
-	opts = append(opts, extractDialOptions(o.Metadata)...)
+	opts = append(opts, o.dialOptions...)
 	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
@@ -89,7 +89,7 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 	var err error
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
-	if grpcstate.Metadata.Len() != 0 {
+	if len(grpcstate.Metadata) != 0 { // filtered one
 		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)
 	}
 	if grpcstate.Ping {
@@ -121,15 +121,17 @@ type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
 	fhttp.TLSOptions
 	Destination        string
-	Service            string        // Service to be checked when using grpc health check
-	Profiler           string        // file to save profiles to. defaults to no profiling
-	Payload            string        // Payload to be sent for grpc ping service
-	Streams            int           // number of streams. total go routines and data streams will be streams*numthreads.
-	Delay              time.Duration // Delay to be sent when using grpc ping service
-	CertOverride       string        // Override the cert virtual host of authority for testing
-	AllowInitialErrors bool          // whether initial errors don't cause an abort
-	UsePing            bool          // use our own Ping proto for grpc load instead of standard health check one.
-	Metadata           metadata.MD   // metadata that will be added to the request
+	Service            string            // Service to be checked when using grpc health check
+	Profiler           string            // file to save profiles to. defaults to no profiling
+	Payload            string            // Payload to be sent for grpc ping service
+	Streams            int               // number of streams. total go routines and data streams will be streams*numthreads.
+	Delay              time.Duration     // Delay to be sent when using grpc ping service
+	CertOverride       string            // Override the cert virtual host of authority for testing
+	AllowInitialErrors bool              // whether initial errors don't cause an abort
+	UsePing            bool              // use our own Ping proto for grpc load instead of standard health check one.
+	Metadata           metadata.MD       // input metadata that will be added to the request
+	dialOptions        []grpc.DialOption // grpc dial options extracted from Metadata (authority and user-agent extracted)
+	filteredMetadata   metadata.MD       // filtered version of Metadata metadata (without authority and user-agent)
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -160,11 +162,13 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // may change
+	o.dialOptions, o.filteredMetadata = extractDialOptionsAndFilter(o.Metadata)
 	total := GRPCRunnerResults{
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
 		Streams:     o.Streams,
 		Ping:        o.UsePing,
+		Metadata:    o.Metadata, // the original one
 	}
 	grpcstate := make([]GRPCRunnerResults, numThreads)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
@@ -185,9 +189,9 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		grpcstate[i].Ping = o.UsePing
 		var err error
 		outCtx := context.Background()
-		if o.Metadata.Len() != 0 {
-			outCtx = metadata.NewOutgoingContext(outCtx, o.Metadata)
-			grpcstate[i].Metadata = o.Metadata
+		if o.filteredMetadata.Len() != 0 {
+			outCtx = metadata.NewOutgoingContext(outCtx, o.filteredMetadata)
+			grpcstate[i].Metadata = o.filteredMetadata // the one used to send
 		}
 		if o.UsePing { //nolint:nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)
@@ -312,18 +316,20 @@ func grpcDestination(dest string) (parsedDest string) {
 	return parsedDest
 }
 
-// extractDialOptions extract special MD and convert them to dial options.
-func extractDialOptions(in metadata.MD) (out []grpc.DialOption) {
+// extractDialOptionsAndFilter converts special MD into dial options and filters them in outMD.
+func extractDialOptionsAndFilter(in metadata.MD) (out []grpc.DialOption, outMD metadata.MD) {
+	outMD = make(metadata.MD, len(in))
 	for k, v := range in {
 		switch k {
-		// Transfer these 2 and avoid having them duplicated in original MD
+		// Transfer these 2
 		case "user-agent":
-			delete(in, k)
 			out = append(out, grpc.WithUserAgent(v[0]))
 		case "host":
-			delete(in, k)
 			out = append(out, grpc.WithAuthority(v[0]))
+		default:
+			outMD[k] = v
 		}
 	}
-	return out
+	log.Infof("Extracted dial options: %+v", out)
+	return out, outMD
 }

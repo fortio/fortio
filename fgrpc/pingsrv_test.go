@@ -129,13 +129,11 @@ func TestSettingMetadata(t *testing.T) {
 	server := &mdTestServer{}
 	addr := server.Serve()
 	TLSInsecure := &fhttp.TLSOptions{Insecure: true}
-	if server.error != nil {
-		t.Fatal(server.error)
-	}
 	tests := []struct {
-		name  string
-		key   string
-		value string
+		name      string
+		key       string
+		serverKey string
+		value     string
 	}{
 		{
 			name:  "valid metadata",
@@ -147,34 +145,39 @@ func TestSettingMetadata(t *testing.T) {
 			key:   "ghi",
 			value: "",
 		},
+		{
+			name:      "authority",
+			key:       "host",
+			serverKey: ":authority",
+			value:     "xyz",
+		},
 	}
+
 	for _, test := range tests {
 		server.mdKey = test.key
+		if test.serverKey != "" {
+			server.mdKey = test.serverKey
+		}
 		server.mdValue = test.value
-		server.error = nil
 		_, err := PingClientCall(addr.String(), 2, "", 0, TLSInsecure, metadata.MD{
 			test.key: []string{test.value},
 		})
 		if err != nil {
 			t.Errorf("PingClientCall test case: %s failed , err: %v", test.name, err)
 		}
-		if server.error != nil {
-			t.Errorf("PingClientCall test case: %s failed , err: %v", test.name, server.error)
-		}
 	}
 
 	for _, test := range tests {
 		server.mdKey = test.key
+		if test.serverKey != "" {
+			server.mdKey = test.serverKey
+		}
 		server.mdValue = test.value
-		server.error = nil
 		_, err := GrpcHealthCheck(addr.String(), "", 2, TLSInsecure, metadata.MD{
 			test.key: []string{test.value},
 		})
 		if err != nil {
 			t.Errorf("GrpcHealthCheck test case: %s failed , err: %v", test.name, err)
-		}
-		if server.error != nil {
-			t.Errorf("GrpcHealthCheck test case: %s failed , err: %v", test.name, server.error)
 		}
 	}
 }

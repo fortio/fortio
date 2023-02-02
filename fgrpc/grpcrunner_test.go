@@ -397,10 +397,10 @@ func TestGRPCDestination(t *testing.T) {
 }
 
 type mdTestServer struct {
+	t       *testing.T
 	mdKey   string
 	mdValue string
 	health.Server
-	error
 }
 
 func (m *mdTestServer) Ping(ctx context.Context, _ *PingMessage) (*PingMessage, error) {
@@ -408,7 +408,7 @@ func (m *mdTestServer) Ping(ctx context.Context, _ *PingMessage) (*PingMessage, 
 	val := md.Get(m.mdKey)
 
 	if len(val) == 0 || val[0] != m.mdValue {
-		m.error = fmt.Errorf("metadata %s not found or value is not %s,actual value: %v", m.mdKey, m.mdValue, val)
+		m.t.Errorf("metadata %s not found or value is not %s,actual value: %v", m.mdKey, m.mdValue, val)
 	}
 	return &PingMessage{}, nil
 }
@@ -418,7 +418,7 @@ func (m *mdTestServer) Check(ctx context.Context, _ *grpc_health_v1.HealthCheckR
 	md, _ := metadata.FromIncomingContext(ctx)
 	val := md.Get(m.mdKey)
 	if len(val) == 0 || val[0] != m.mdValue {
-		m.error = fmt.Errorf("metadata %s not found or value is not %s,actual value: %v", m.mdKey, m.mdValue, val)
+		m.t.Errorf("metadata %q not found or value is not %q, actual value: %v", m.mdKey, m.mdValue, val)
 	}
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
@@ -427,7 +427,7 @@ func (m *mdTestServer) Serve() *net.TCPAddr {
 	server := grpc.NewServer()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		m.error = err
+		m.t.Fatal(err)
 		return nil
 	}
 	grpc_health_v1.RegisterHealthServer(server, m)
@@ -442,15 +442,13 @@ func (m *mdTestServer) Serve() *net.TCPAddr {
 }
 
 func TestGRPCRunnerWithMetadata(t *testing.T) {
-	server := &mdTestServer{}
+	server := &mdTestServer{t: t}
 	addr := server.Serve()
-	if server.error != nil {
-		t.Fatal(server.error)
-	}
 	tests := []struct {
-		name  string
-		key   string
-		value string
+		name      string
+		key       string
+		serverKey string
+		value     string
 	}{
 		{
 			name:  "valid metadata",
@@ -462,27 +460,34 @@ func TestGRPCRunnerWithMetadata(t *testing.T) {
 			key:   "ghi",
 			value: "",
 		},
+		{
+			name:      "authority",
+			key:       "host",
+			serverKey: ":authority",
+			value:     "xyz",
+		},
 	}
 	for _, test := range tests {
 		server.mdKey = test.key
+		if test.serverKey != "" {
+			server.mdKey = test.serverKey
+		}
 		server.mdValue = test.value
-		server.error = nil
 		_, err := RunGRPCTest(&GRPCRunnerOptions{
+			Streams:     10,
 			Destination: addr.String(),
 			Metadata: map[string][]string{
 				test.key: {test.value},
 			},
 		})
 		if err != nil {
-			t.Errorf("Test case: %s failed , err: %v", test.name, err)
+			t.Errorf("Test case: %s failed, err: %v", test.name, err)
 		}
-		if server.error != nil {
-			t.Errorf("Test case: %s failed , err: %v", test.name, server.error)
-		}
+		// errors will be set by the server
 	}
 }
 
-func Test_extractDialOptions(t *testing.T) {
+func TestHeaderHandling(t *testing.T) {
 	type args struct {
 		in metadata.MD
 	}
@@ -542,11 +547,11 @@ func Test_extractDialOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOut := extractDialOptions(tt.args.in)
+			gotOut, mdOut := extractDialOptionsAndFilter(tt.args.in)
 			if !reflect.DeepEqual(len(gotOut), tt.wantOutLen) {
-				t.Errorf("extractDialOptions() = %v, want %v", len(gotOut), tt.wantOutLen)
+				t.Errorf("extractDialOptionsAndFilter() = %v, want %v", len(gotOut), tt.wantOutLen)
 			}
-			if !reflect.DeepEqual(tt.args.in, tt.wantMD) {
+			if !reflect.DeepEqual(mdOut, tt.wantMD) {
 				t.Errorf("got md = %v, want %v", tt.args.in, tt.wantMD)
 			}
 		})

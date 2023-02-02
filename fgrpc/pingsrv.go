@@ -114,6 +114,7 @@ func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStrea
 func PingClientCall(serverAddr string, n int, payload string, delay time.Duration, tlsOpts *fhttp.TLSOptions, md metadata.MD,
 ) (float64, error) {
 	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts, Metadata: md}
+	o.dialOptions, o.filteredMetadata = extractDialOptionsAndFilter(md)
 	conn, err := Dial(&o) // somehow this never seem to error out, error comes later
 	if err != nil {
 		return -1, err // error already logged
@@ -122,7 +123,7 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 	cli := NewPingServerClient(conn)
 	outCtx := context.Background()
 	if md.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, md)
+		outCtx = metadata.NewOutgoingContext(outCtx, o.filteredMetadata)
 	}
 	// Warm up:
 	_, err = cli.Ping(outCtx, msg)
@@ -176,7 +177,8 @@ type HealthResultMap map[string]int64
 // service.
 func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions, md metadata.MD) (*HealthResultMap, error) {
 	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)
-	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts}
+	o := GRPCRunnerOptions{Destination: serverAddr, TLSOptions: *tlsOpts, Metadata: md}
+	o.dialOptions, o.filteredMetadata = extractDialOptionsAndFilter(md)
 	conn, err := Dial(&o)
 	if err != nil {
 		return nil, err
@@ -188,7 +190,7 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 
 	outCtx := context.Background()
 	if md.Len() != 0 {
-		outCtx = metadata.NewOutgoingContext(outCtx, md)
+		outCtx = metadata.NewOutgoingContext(outCtx, o.filteredMetadata)
 	}
 	for i := 1; i <= n; i++ {
 		start := time.Now()
