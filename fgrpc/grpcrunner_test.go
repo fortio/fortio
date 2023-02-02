@@ -547,9 +547,9 @@ func TestHeaderHandling(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotOut, mdOut := extractDialOptions(tt.args.in)
+			gotOut, mdOut := extractDialOptionsAndFilter(tt.args.in)
 			if !reflect.DeepEqual(len(gotOut), tt.wantOutLen) {
-				t.Errorf("extractDialOptions() = %v, want %v", len(gotOut), tt.wantOutLen)
+				t.Errorf("extractDialOptionsAndFilter() = %v, want %v", len(gotOut), tt.wantOutLen)
 			}
 			if !reflect.DeepEqual(mdOut, tt.wantMD) {
 				t.Errorf("got md = %v, want %v", tt.args.in, tt.wantMD)

@@ -162,7 +162,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // may change
-	o.dialOptions, o.filteredMetadata = extractDialOptions(o.Metadata)
+	o.dialOptions, o.filteredMetadata = extractDialOptionsAndFilter(o.Metadata)
 	total := GRPCRunnerResults{
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
@@ -316,8 +316,8 @@ func grpcDestination(dest string) (parsedDest string) {
 	return parsedDest
 }
 
-// extractDialOptions extract special MD and convert them to dial options.
-func extractDialOptions(in metadata.MD) (out []grpc.DialOption, outMD metadata.MD) {
+// extractDialOptionsAndFilter converts special MD into dial options and filters them in outMD.
+func extractDialOptionsAndFilter(in metadata.MD) (out []grpc.DialOption, outMD metadata.MD) {
 	outMD = make(metadata.MD, len(in))
 	for k, v := range in {
 		switch k {
