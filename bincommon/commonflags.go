@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"fortio.org/dflag"
+	"fortio.org/dflag/dynloglevel"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/periodic"
@@ -132,6 +133,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
+	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {
 		return
