@@ -28,10 +28,10 @@ import (
 	"sync"
 	"time"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 const (

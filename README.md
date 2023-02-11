@@ -27,9 +27,12 @@ Fortio also includes a set of server side features (similar to httpbin) to help 
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
-Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
-As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
-Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
+Fortio components can be used a library even for unrelated projects, for instance the `stats`, or `fhttp` utilities both client and server.
+A recent addition is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
+
+We also have moved some of the library to their own toplevel package, like:
+- Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag/#fortio-dynamic-flags-was-go-flagz)
+- Logger: [fortio.org/log](https://github.com/fortio/log#log)
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 

@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 func TestNormalizePort(t *testing.T) {

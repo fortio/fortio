@@ -32,11 +32,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )

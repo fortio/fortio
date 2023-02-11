@@ -24,9 +24,9 @@ import (
 	"sort"
 	"sync"
 
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
+	"fortio.org/log"
 )
 
 // Most of the code in this file is the library-fication of code originally

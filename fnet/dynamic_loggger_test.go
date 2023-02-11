@@ -21,12 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"fortio.org/fortio/dflag/configmap"
-	"fortio.org/fortio/log"
+	"fortio.org/dflag/configmap"
+	_ "fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 func init() {
-	log.SetFlagDefaultsForClientTools()
+	log.SetDefaultsForClientTools()
 }
 
 func TestDynamicLogLevel(t *testing.T) {

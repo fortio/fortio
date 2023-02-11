@@ -31,11 +31,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
+	"fortio.org/log"
 )
 
 // TLSOptions are common TLS related options between https and grpc.

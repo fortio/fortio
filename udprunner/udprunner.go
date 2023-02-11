@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/tcprunner"
+	"fortio.org/log"
 )
 
 // TODO: this quite the search and replace udp->udp from tcprunner/ - refactor?

@@ -28,12 +28,12 @@ import (
 	"reflect"
 	"strings"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // -- Support for multiple instances of -H flag on cmd line.

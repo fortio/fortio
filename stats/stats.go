@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 // Counter is a type whose instances record values

@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 var (
@@ -72,11 +72,11 @@ func TestHTTPSServerError(t *testing.T) {
 func TestHTTPSServerMissingCert(t *testing.T) {
 	fatalCalled := atomic.Bool{}
 	fatalCalled.Store(false)
-	log.FatalExit = func(int) {
+	log.Config.FatalExit = func(int) {
 		t.Logf("FatalExit called")
 		fatalCalled.Store(true)
 	}
-	log.SetFlagDefaultsForClientTools()
+	log.SetDefaultsForClientTools()
 	_, addr := ServeTLS("0", "", "/foo/bar.crt", "/foo/bar.key")
 	url := fmt.Sprintf("https://localhost:%d/debug", addr.(*net.TCPAddr).Port)
 	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true, HTTPReqTimeOut: 100 * time.Millisecond}

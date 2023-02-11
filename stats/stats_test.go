@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	"fortio.org/assert"
-	"fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 const (
@@ -41,7 +41,7 @@ func TestCounter(t *testing.T) {
 	expected := "test1c : count 0 avg 0 +/- 0 min 0 max 0 sum 0\n"
 	c.Print(w, "test1h", []float64{50.0})
 	expected += "test1h : no data\n"
-	*log.LogFileAndLine = false
+	log.Config.LogFileAndLine = false
 	log.SetFlags(0)
 	log.SetOutput(w)
 	c.Export().CalcPercentile(50)
@@ -65,8 +65,8 @@ func TestCounter(t *testing.T) {
 	// Try the Log() function too:
 	log.SetOutput(w)
 	log.SetFlags(0)
-	*log.LogFileAndLine = false
-	*log.LogPrefix = ""
+	log.Config.LogFileAndLine = false
+	log.Config.LogPrefix = ""
 	c.Counter.Log("testLogC")
 	expected += "I testLogC" + finalExpected
 	_ = w.Flush()

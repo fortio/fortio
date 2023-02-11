@@ -32,15 +32,15 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/dflag/endpoint"
 	"fortio.org/fortio/bincommon"
-	"fortio.org/fortio/dflag/endpoint"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // TODO: move some of those in their own files/package (e.g data transfer TSV)
