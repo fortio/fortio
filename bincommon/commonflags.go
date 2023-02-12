@@ -148,6 +148,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	// MaxDelay is the maximum delay allowed for the echoserver responses.
 	// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
 	dflag.Flag("max-echo-delay", fhttp.MaxDelay)
+	// This sets up the logger's -loglevel as a dynamic flag.
 	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {
