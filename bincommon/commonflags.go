@@ -133,6 +133,17 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
+	// FlagResolveIPType indicates which IP types to resolve.
+	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
+	// use both type (`ip`). In particular some test environments like the CI do have ipv6
+	// for localhost but fail to connect. So we made the default ip4 only.
+	fnet.FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", fnet.FlagResolveIPType.Get(),
+		fnet.FlagResolveIPType.Usage())
+	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
+	// default assumes one gets all the ips in the first call and does round robin across these.
+	// first just picks the first answer, rr rounds robin on each answer.
+	fnet.FlagResolveMethod = dflag.DynString(flag.CommandLine, "dns-method", fnet.FlagResolveMethod.Get(),
+		fnet.FlagResolveMethod.Usage()).WithValidator(fnet.DnsValidator)
 	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {

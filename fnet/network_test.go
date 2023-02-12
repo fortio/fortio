@@ -466,7 +466,11 @@ func TestResolveBW(t *testing.T) {
 // if that's not the case anymore or in the testing environment, this will fail.
 func TestDNSMethods(t *testing.T) {
 	ctx := context.Background()
-	err := fnet.FlagResolveMethod.Set("first")
+	err := fnet.DnsValidator("first")
+	if err != nil {
+		t.Errorf("unexpected error validating method to 'first': %v", err)
+	}
+	err = fnet.FlagResolveMethod.Set("first")
 	if err != nil {
 		t.Errorf("unexpected error setting method to first: %v", err)
 	}
@@ -584,7 +588,7 @@ func TestDNSCacheConcurrency(t *testing.T) {
 }
 
 func TestBadValueForDNSMethod(t *testing.T) {
-	err := fnet.FlagResolveMethod.Set("foo")
+	err := fnet.DnsValidator("foo")
 	if err == nil {
 		t.Errorf("passing foo to FlagResolveMethod.Set should error out/fail validation")
 	}
