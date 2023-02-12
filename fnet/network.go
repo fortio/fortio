@@ -82,7 +82,7 @@ var (
 	dnsRoundRobin uint32
 )
 
-func DnsValidator(inp string) error {
+func DNSValidator(inp string) error {
 	valid := map[string]bool{
 		"cached-rr": true,
 		"rnd":       true,

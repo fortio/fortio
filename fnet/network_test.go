@@ -464,9 +464,11 @@ func TestResolveBW(t *testing.T) {
 
 // This test relies on google answer 2 ips, first ipv4, second ipv6.
 // if that's not the case anymore or in the testing environment, this will fail.
+//
+//nolint:funlen
 func TestDNSMethods(t *testing.T) {
 	ctx := context.Background()
-	err := fnet.DnsValidator("first")
+	err := fnet.DNSValidator("first")
 	if err != nil {
 		t.Errorf("unexpected error validating method to 'first': %v", err)
 	}
@@ -588,7 +590,7 @@ func TestDNSCacheConcurrency(t *testing.T) {
 }
 
 func TestBadValueForDNSMethod(t *testing.T) {
-	err := fnet.DnsValidator("foo")
+	err := fnet.DNSValidator("foo")
 	if err == nil {
 		t.Errorf("passing foo to FlagResolveMethod.Set should error out/fail validation")
 	}

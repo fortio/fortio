@@ -143,7 +143,7 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	// default assumes one gets all the ips in the first call and does round robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
 	fnet.FlagResolveMethod = dflag.DynString(flag.CommandLine, "dns-method", fnet.FlagResolveMethod.Get(),
-		fnet.FlagResolveMethod.Usage()).WithValidator(fnet.DnsValidator)
+		fnet.FlagResolveMethod.Usage()).WithValidator(fnet.DNSValidator)
 	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {
