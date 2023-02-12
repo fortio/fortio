@@ -464,8 +464,7 @@ func TestResolveBW(t *testing.T) {
 
 // This test relies on google answer 2 ips, first ipv4, second ipv6.
 // if that's not the case anymore or in the testing environment, this will fail.
-//
-//nolint:funlen
+// TODO: switch to debug.fortio.org where we control the IPs.
 func TestDNSMethods(t *testing.T) {
 	ctx := context.Background()
 	err := fnet.FlagResolveMethod.Set("first")
