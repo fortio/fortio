@@ -468,11 +468,7 @@ func TestResolveBW(t *testing.T) {
 //nolint:funlen
 func TestDNSMethods(t *testing.T) {
 	ctx := context.Background()
-	err := fnet.DNSValidator("first")
-	if err != nil {
-		t.Errorf("unexpected error validating method to 'first': %v", err)
-	}
-	err = fnet.FlagResolveMethod.Set("first")
+	err := fnet.FlagResolveMethod.Set("first")
 	if err != nil {
 		t.Errorf("unexpected error setting method to first: %v", err)
 	}

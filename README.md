@@ -244,8 +244,8 @@ output, unless -a is used)
 target URL and hostname
   -log-errors
         Log http non 2xx/418 error codes as they occur (default true)
-  -loglevel value
-        loglevel, one of [Debug Verbose Info Warning Error Critical Fatal]
+  -loglevel level
+        log level, one of [Debug Verbose Info Warning Error Critical Fatal]
 (default Info)
   -max-echo-delay value
         Maximum sleep time for delay= echo server parameter. dynamic flag.

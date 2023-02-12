@@ -73,7 +73,7 @@ var (
 	// first just picks the first answer, rr rounds robin on each answer.
 	FlagResolveMethod = dflag.New("cached-rr",
 		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round robin, rnd for random, "+
-			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(DNSValidator)
+			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(dnsMethodValidator)
 	// cache for cached-rr mode.
 	dnsMutex sync.Mutex
 	// all below are updated under lock.
@@ -82,7 +82,7 @@ var (
 	dnsRoundRobin uint32
 )
 
-func DNSValidator(inp string) error {
+func dnsMethodValidator(inp string) error {
 	valid := map[string]bool{
 		"cached-rr": true,
 		"rnd":       true,
@@ -92,7 +92,7 @@ func DNSValidator(inp string) error {
 	if valid[inp] {
 		return nil
 	}
-	return fmt.Errorf("invalid value for -dns-method, should be one of cached-rr, first, rnd or rr")
+	return fmt.Errorf("invalid value for dns method, should be one of cached-rr, first, rnd or rr")
 }
 
 //nolint:gochecknoinits // needed here (unit change)
