@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"flag"
 	"html/template"
 	"io"
 	"math/rand"
@@ -370,7 +369,7 @@ func generateSize(sizeInput string) (size int) {
 
 // MaxDelay is the maximum delay allowed for the echoserver responses.
 // It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
-var MaxDelay = dflag.DynDuration(flag.CommandLine, "max-echo-delay", 1500*time.Millisecond,
+var MaxDelay = dflag.New(1500*time.Millisecond,
 	"Maximum sleep time for delay= echo server parameter. dynamic flag.")
 
 // generateDelay from string, format: delay="100ms" for 100% 100ms delay

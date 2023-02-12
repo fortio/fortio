@@ -142,6 +142,12 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	// default assumes one gets all the ips in the first call and does round robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
 	dflag.Flag("dns-method", fnet.FlagResolveMethod)
+	dflag.Flag("echo-server-default-params", fhttp.DefaultEchoServerParams)
+	dflag.FlagBool("proxy-all-headers", fhttp.Fetch2CopiesAllHeader)
+	dflag.Flag("server-idle-timeout", fhttp.ServerIdleTimeout)
+	// MaxDelay is the maximum delay allowed for the echoserver responses.
+	// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
+	dflag.Flag("max-echo-delay", fhttp.MaxDelay)
 	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {
