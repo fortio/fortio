@@ -590,7 +590,7 @@ func TestDNSCacheConcurrency(t *testing.T) {
 }
 
 func TestBadValueForDNSMethod(t *testing.T) {
-	err := fnet.DNSValidator("foo")
+	err := fnet.FlagResolveMethod.Set("foo")
 	if err == nil {
 		t.Errorf("passing foo to FlagResolveMethod.Set should error out/fail validation")
 	}

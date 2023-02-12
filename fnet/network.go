@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	"fortio.org/fortio/config"
+	"fortio.org/dflag"
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/version"
 	"fortio.org/log"
@@ -66,14 +66,14 @@ var (
 	// use both type (`ip`). In particular some test environments like the CI do have ipv6
 	// for localhost but fail to connect. So we made the default ip4 only.
 	// See bincommon/commonflags.go for how an actual dflag is plugged here.
-	FlagResolveIPType = config.New[string]("ip4",
+	FlagResolveIPType = dflag.New("ip4",
 		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
 	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
 	// default assumes one gets all the ips in the first call and does round robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
-	FlagResolveMethod = config.New[string]("cached-rr",
+	FlagResolveMethod = dflag.New("cached-rr",
 		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round robin, rnd for random, "+
-			"first for first answer (pre 1.30 behavior), rr for round robin.")
+			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(DNSValidator)
 	// cache for cached-rr mode.
 	dnsMutex sync.Mutex
 	// all below are updated under lock.
