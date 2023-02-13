@@ -17,7 +17,6 @@ package fnet // import "fortio.org/fortio/fnet"
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"math/rand"
@@ -28,10 +27,10 @@ import (
 	"sync"
 	"time"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 const (
@@ -66,14 +65,15 @@ var (
 	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
 	// use both type (`ip`). In particular some test environments like the CI do have ipv6
 	// for localhost but fail to connect. So we made the default ip4 only.
-	FlagResolveIPType = dflag.DynString(flag.CommandLine, "resolve-ip-type", "ip4",
+	// See bincommon/commonflags.go for how an actual dflag is plugged here.
+	FlagResolveIPType = dflag.New("ip4",
 		"Resolve `type`: ip4 for ipv4, ip6 for ipv6 only, use ip for both")
 	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
 	// default assumes one gets all the ips in the first call and does round robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
-	FlagResolveMethod = dflag.DynString(flag.CommandLine, "dns-method", "cached-rr",
+	FlagResolveMethod = dflag.New("cached-rr",
 		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round robin, rnd for random, "+
-			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(dnsValidator)
+			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(dnsMethodValidator)
 	// cache for cached-rr mode.
 	dnsMutex sync.Mutex
 	// all below are updated under lock.
@@ -82,7 +82,7 @@ var (
 	dnsRoundRobin uint32
 )
 
-func dnsValidator(inp string) error {
+func dnsMethodValidator(inp string) error {
 	valid := map[string]bool{
 		"cached-rr": true,
 		"rnd":       true,
@@ -92,7 +92,7 @@ func dnsValidator(inp string) error {
 	if valid[inp] {
 		return nil
 	}
-	return fmt.Errorf("invalid value for -dns-method, should be one of cached-rr, first, rnd or rr")
+	return fmt.Errorf("invalid value for dns method, should be one of cached-rr, first, rnd or rr")
 }
 
 //nolint:gochecknoinits // needed here (unit change)

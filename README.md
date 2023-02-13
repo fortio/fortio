@@ -27,9 +27,13 @@ Fortio also includes a set of server side features (similar to httpbin) to help 
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
 
-Fortio components can be used a library even for unrelated projects, for instance the `log`, `stats`, or `fhttp` utilities both client and server.
-As well as the newly integrated [Dynamic Flags](dflag/) support (greatly inspired/imported initially from https://github.com/mwitkow/go-flagz but recently reimplemented using Go generics).
-Even more recent is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
+Fortio components can be used a library even for unrelated projects, for instance the `stats`, or `fhttp` utilities both client and server.
+A recent addition is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
+
+We also have moved some of the library to their own toplevel package, like:
+- Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag/#fortio-dynamic-flags-was-go-flagz)
+- Logger: [fortio.org/log](https://github.com/fortio/log#log)
+- Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
@@ -54,13 +58,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.40.1/fortio-linux_amd64-1.40.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.50.0/fortio-linux_amd64-1.50.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.40.1/fortio_1.40.1_amd64.deb
-dpkg -i fortio_1.40.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.50.0/fortio_1.50.0_amd64.deb
+dpkg -i fortio_1.50.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.40.1/fortio-1.40.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.50.0/fortio-1.50.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -70,7 +74,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.40.1/fortio_win_1.40.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.50.0/fortio_win_1.50.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -119,7 +123,7 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
-Φορτίο 1.40.1 usage:
+Φορτίο 1.50.0 usage:
     fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -241,16 +245,9 @@ output, unless -a is used)
 target URL and hostname
   -log-errors
         Log http non 2xx/418 error codes as they occur (default true)
-  -logcaller
-        Logs filename and line number of callers to log (default true)
-  -logfatalpanics
-        If true, log.Fatal will panic (stack trace) instead of just exit 1
-(default true)
-  -loglevel value
-        loglevel, one of [Debug Verbose Info Warning Error Critical Fatal]
+  -loglevel level
+        log level, one of [Debug Verbose Info Warning Error Critical Fatal]
 (default Info)
-  -logprefix string
-        Prefix to log lines before logged messages (default "> ")
   -max-echo-delay value
         Maximum sleep time for delay= echo server parameter. dynamic flag.
 (default 1.5s)

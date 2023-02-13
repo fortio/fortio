@@ -23,8 +23,8 @@ import (
 	"os"
 
 	"fortio.org/fortio/bincommon"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // Prints usage.

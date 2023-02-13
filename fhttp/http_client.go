@@ -34,8 +34,8 @@ import (
 
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
+	"fortio.org/log"
 	"github.com/google/uuid"
 )
 

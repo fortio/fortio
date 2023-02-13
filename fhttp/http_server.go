@@ -18,7 +18,6 @@ package fhttp // import "fortio.org/fortio/fhttp"
 import (
 	"bytes"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -32,11 +31,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -47,13 +46,12 @@ var (
 	// Start time of the server (used in debug handler for uptime).
 	startTime = time.Now()
 	// EchoRequests is the number of request received. Only updated in Debug mode.
-	EchoRequests int64
-	// TODO find a way to only include this on binaries and not library mode (#433).
-	defaultEchoServerParams = dflag.DynString(flag.CommandLine, "echo-server-default-params", "",
+	EchoRequests            int64
+	DefaultEchoServerParams = dflag.New("",
 		"Default parameters/querystring to use if there isn't one provided explicitly. E.g \"status=404&delay=3s\"")
-	fetch2CopiesAllHeader = dflag.DynBool(flag.CommandLine, "proxy-all-headers", true,
+	Fetch2CopiesAllHeader = dflag.NewBool(true,
 		"Determines if only tracing or all headers (and cookies) are copied from request on the fetch2 ui/server endpoint")
-	serverIdleTimeout = dflag.DynDuration(flag.CommandLine, "server-idle-timeout", 30*time.Second, "Default IdleTimeout for servers")
+	ServerIdleTimeout = dflag.New(30*time.Second, "Default IdleTimeout for servers")
 )
 
 // EchoHandler is an http server handler echoing back the input.
@@ -61,7 +59,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		LogRequest(r, "Echo") // will also print headers
 	}
-	defaultParams := defaultEchoServerParams.Get()
+	defaultParams := DefaultEchoServerParams.Get()
 	hasQuestionMark := strings.Contains(r.RequestURI, "?")
 	if !hasQuestionMark && len(defaultParams) > 0 {
 		newQS := r.RequestURI + "?" + defaultParams
@@ -189,8 +187,8 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
 	h2s := &http2.Server{}
 	s := &http.Server{
-		ReadHeaderTimeout: serverIdleTimeout.Get(),
-		IdleTimeout:       serverIdleTimeout.Get(),
+		ReadHeaderTimeout: ServerIdleTimeout.Get(),
+		IdleTimeout:       ServerIdleTimeout.Get(),
 		Handler:           h2c.NewHandler(hdlr, h2s),
 	}
 	listener, addr := fnet.Listen(name, port)
@@ -213,8 +211,8 @@ func HTTPSServer(name string, port string, certFile string, keyFile string) (*ht
 	}
 	m := http.NewServeMux()
 	s := &http.Server{
-		ReadHeaderTimeout: serverIdleTimeout.Get(),
-		IdleTimeout:       serverIdleTimeout.Get(),
+		ReadHeaderTimeout: ServerIdleTimeout.Get(),
+		IdleTimeout:       ServerIdleTimeout.Get(),
 		Handler:           m,
 	}
 	go func() {
@@ -464,7 +462,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
-	req := MakeSimpleRequest(url, r, fetch2CopiesAllHeader.Get())
+	req := MakeSimpleRequest(url, r, Fetch2CopiesAllHeader.Get())
 	if req == nil {
 		http.Error(w, "parsing url failed, invalid url", http.StatusBadRequest)
 		return

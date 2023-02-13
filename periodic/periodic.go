@@ -34,9 +34,9 @@ import (
 	"sync"
 	"time"
 
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // DefaultRunnerOptions are the default values for options (do not mutate!).

@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 func TestTCPRunnerBadDestination(t *testing.T) {

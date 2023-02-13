@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/fhttp"
-	"fortio.org/fortio/log"
+	"fortio.org/log"
 )
 
 // DataList returns the .json files/entries in data dir.

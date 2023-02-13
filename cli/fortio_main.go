@@ -31,18 +31,18 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/dflag/configmap"
 	"fortio.org/fortio/bincommon"
-	"fortio.org/fortio/dflag/configmap"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // -- Start of support for multiple proxies (-P) flags on cmd line.

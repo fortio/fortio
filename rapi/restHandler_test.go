@@ -30,10 +30,10 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
+	"fortio.org/log"
 )
 
 // Generics ftw.

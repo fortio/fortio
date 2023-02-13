@@ -24,8 +24,8 @@ import (
 	"os"
 	"strconv"
 
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
+	"fortio.org/log"
 )
 
 func main() {

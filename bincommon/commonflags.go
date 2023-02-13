@@ -28,12 +28,13 @@ import (
 	"reflect"
 	"strings"
 
-	"fortio.org/fortio/dflag"
+	"fortio.org/dflag"
+	"fortio.org/dflag/dynloglevel"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/version"
+	"fortio.org/log"
 )
 
 // -- Support for multiple instances of -H flag on cmd line.
@@ -115,10 +116,10 @@ var (
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
 	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.
-	ConnectionReuseRange = dflag.DynString(flag.CommandLine, "connection-reuse", "",
+	ConnectionReuseRange = dflag.Flag("connection-reuse", dflag.New("",
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
 			"e.g. 10:30 means randomly choose a max connection reuse threshold between 10 and 30 requests.").
-		WithValidator(ConnectionReuseRangeValidator(&httpOpts))
+		WithValidator(ConnectionReuseRangeValidator(&httpOpts)))
 	// NoReResolveFlag is false if we want to resolve the DNS name for each new connection.
 	NoReResolveFlag = flag.Bool("no-reresolve", false, "Keep the initial DNS resolution and "+
 		"don't re-resolve when making new connections (because of error or reuse limit reached)")
@@ -132,6 +133,23 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
+	// FlagResolveIPType indicates which IP types to resolve.
+	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
+	// use both type (`ip`). In particular some test environments like the CI do have ipv6
+	// for localhost but fail to connect. So we made the default ip4 only.
+	dflag.Flag("resolve-ip-type", fnet.FlagResolveIPType)
+	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
+	// default assumes one gets all the ips in the first call and does round robin across these.
+	// first just picks the first answer, rr rounds robin on each answer.
+	dflag.Flag("dns-method", fnet.FlagResolveMethod)
+	dflag.Flag("echo-server-default-params", fhttp.DefaultEchoServerParams)
+	dflag.FlagBool("proxy-all-headers", fhttp.Fetch2CopiesAllHeader)
+	dflag.Flag("server-idle-timeout", fhttp.ServerIdleTimeout)
+	// MaxDelay is the maximum delay allowed for the echoserver responses.
+	// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
+	dflag.Flag("max-echo-delay", fhttp.MaxDelay)
+	// This sets up the logger's -loglevel as a dynamic flag.
+	dynloglevel.LoggerFlagSetup()
 	// Special case so `fcurl -version` and `--version` and `version` and ... work
 	if len(os.Args) < 2 {
 		return

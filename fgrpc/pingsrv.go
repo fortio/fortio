@@ -23,8 +23,8 @@ import (
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/stats"
+	"fortio.org/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

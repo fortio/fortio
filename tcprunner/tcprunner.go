@@ -27,8 +27,8 @@ import (
 
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/log"
 	"fortio.org/fortio/periodic"
+	"fortio.org/log"
 )
 
 type TCPResultMap map[string]int64
