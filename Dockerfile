@@ -1,7 +1,7 @@
 # Build the binaries in larger image
 FROM docker.io/fortio/fortio.build:v54@sha256:4775038c3ace753978c8dfd99ebbd23607b61eeb0bf6c2bf2901d0485cc1870c as build
 WORKDIR /build
-COPY . fortio
+COPY --chown=build:build . fortio
 ARG MODE=install
 # We moved a lot of the logic into the Makefile so it can be reused in brew
 # but that also couples the 2, this expects to find binaries in the right place etc
