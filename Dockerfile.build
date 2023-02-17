@@ -18,7 +18,7 @@ RUN golangci-lint version
 RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
     curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add; \
     echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get -y update && apt-get install --no-install-recommends -y docker-ce; \
+    apt-get -y update && apt-get install --no-install-recommends -y docker-ce docker-buildx-plugin; \
     fi
 
 # govulncheck
