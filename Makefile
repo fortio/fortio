@@ -7,7 +7,8 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v52@sha256:2a85bd3b97d7eaf1718a3fc7a376d52dbe78f01cd8cb3baee87228ad92adf710
+# Note to self: skip 55 (was built and push with unecessarily changing git config), so 56 is next
+BUILD_IMAGE_TAG := v54@sha256:4775038c3ace753978c8dfd99ebbd23607b61eeb0bf6c2bf2901d0485cc1870c
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -78,7 +79,7 @@ shell:
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.
-release-test:
+release-test: docker-version
 	./Webtest.sh
 
 # old name for release-test

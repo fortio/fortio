@@ -82,6 +82,8 @@ linters-settings:
 
 linters:
   disable:
+    # bad ones:
+    - musttag
     # Deprecated ones:
     - scopelint
     - golint
