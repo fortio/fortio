@@ -78,7 +78,7 @@ shell:
 
 # This really also tests the release process and build on windows,mac,linux
 # and the docker images, not just "web" (ui) stuff that it also exercises.
-release-test:
+release-test: docker-version
 	./Webtest.sh
 
 # old name for release-test
