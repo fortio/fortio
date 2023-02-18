@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package has moved to [fortio.org/log] (and [fortio.org/dflag/dynloglevel]
+// Deprecated: package has moved to [fortio.org/log] (and [fortio.org/dflag/dynloglevel]
 // for the dynamic flag setup and the [fortio.org/dflag/dynloglevel.ChangeFlagsDefault] function).
 package log // import "fortio.org/fortio/log"
