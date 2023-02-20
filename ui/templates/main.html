@@ -41,11 +41,11 @@
   <div>
     Title/Labels: <input type="text" name="labels" size="40" value="Fortio" /> (empty to skip title)<br />
     URL: <input type="text" name="url" size="80" value="http://{{.URLHostPort}}/echo?delay=250us:30,5ms:5&status=503:0.5,429:1.5" /> <br />
-    QPS: <input type="text" name="qps" size="6" value="1000" />
+    QPS: <input type="text" name="qps" size="6" value="100" />
     Duration: <input id="duration" type="text" name="t" size="6" value="3s" />
     or run until interrupted:<input type="checkbox" name="t" onchange="toggleDuration(this)" />
     or run for exactly <input type="text" name="n" size="6" value="" /> calls. <br />
-    Threads/Simultaneous connections: <input type="text" name="c" size="6" value="8" /> <br />
+    Threads/Simultaneous connections: <input type="text" name="c" size="6" value="10" /> <br />
     Connection reuse range: Min <input type="text" name="connection-reuse-range-min" size="6" value="" />
     Max <input type="text" name="connection-reuse-range-max" size="6" value="" />
     or Single value: <input type="text" name="connection-reuse-range-value" size="6" value="" /> <br />
@@ -61,7 +61,7 @@
     Load using:<br />
     tcp/udp/http: <input type="radio" name="runner" value="http/tcp/udp" checked/>
     (https insecure:<input type="checkbox" name="https-insecure" />,
-    standard go client instead of fastclient:<input type="checkbox" name="stdclient"/>,
+    standard go client instead of fastclient:<input type="checkbox" name="stdclient" checked/>,
     h2: <input type="checkbox" name="h2"/>,
     sequential warmup: <input type="checkbox" name="sequential-warmup"/>,
     resolve: <input type="text" name="resolve" size="12" value="" />)

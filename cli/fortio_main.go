@@ -24,14 +24,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"runtime"
 	"strings"
 	"time"
 
-	"fortio.org/dflag/configmap"
+	"fortio.org/cli"
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
@@ -43,6 +42,7 @@ import (
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 	"fortio.org/log"
+	"fortio.org/scli"
 )
 
 // -- Start of support for multiple proxies (-P) flags on cmd line.
@@ -73,11 +73,9 @@ func (f *httpMultiFlagList) Set(value string) error {
 
 // -- End of -M support.
 
-// Usage is fortio's main cli Usage to a writer.
-func Usage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "Φορτίο %s usage:\n\t%s command [flags] target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		version.Short(),
-		os.Args[0],
+// fortio's help/args message.
+func helpArgsString() string {
+	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
 		"where command is one of: load (load testing), server (starts ui, rest api,",
 		" http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers), ",
 		" tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),",
@@ -87,13 +85,6 @@ func Usage(w io.Writer, msgs ...interface{}) {
 		" or version (prints the full version and build details).",
 		"where target is a url (http load tests) or host:port (grpc health test),",
 		" or tcp://host:port (tcp load test), or udp://host:port (udp load test).")
-	bincommon.FlagsUsage(w, msgs...)
-}
-
-// Prints usage and error messages with StdErr writer.
-func usageErr(usage func(io.Writer, ...interface{}), msgs ...interface{}) {
-	usage(os.Stderr, msgs...)
-	os.Exit(1)
 }
 
 // Attention: every flag that is common to http client goes to bincommon/
@@ -191,42 +182,34 @@ var (
 
 // serverArgCheck always returns true after checking arguments length.
 // so it can be used with isServer = serverArgCheck() below.
-func serverArgCheck(usage func(io.Writer, ...interface{})) bool {
+func serverArgCheck() bool {
 	if len(flag.Args()) != 0 {
-		usageErr(usage, "Error: too many arguments (typo in a flag?)")
+		cli.ErrUsage("Error: too many arguments (typo in a flag?)")
 	}
 	return true
 }
 
-//nolint:funlen // well yes it's fairly long
-func FortioMain(usage func(io.Writer, ...interface{}), hook bincommon.FortioHook) {
+func FortioMain(hook bincommon.FortioHook) {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
-	bincommon.SharedMain(usage)
-	if len(os.Args) < 2 {
-		usageErr(usage, "Error: need at least 1 command parameter")
+	bincommon.SharedMain()
+
+	// Use the new [fortio.org/cli] package to handle usage, arguments and flags parsing.
+	if cli.ProgramName == "" {
+		// fortiotel presets this.
+		cli.ProgramName = "Φορτίο"
 	}
-	command := os.Args[1]
-	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
-	flag.Parse()
-	if *bincommon.HelpFlag {
-		usage(os.Stdout)
-		os.Exit(0)
-	}
-	if *bincommon.QuietFlag {
-		log.SetLogLevelQuiet(log.Error)
-	}
-	confDir := *bincommon.ConfigDirectoryFlag
-	if confDir != "" {
-		if _, err := configmap.Setup(flag.CommandLine, confDir); err != nil {
-			log.Critf("Unable to watch config/flag changes in %v: %v", confDir, err)
-		}
-	}
+	cli.ArgsHelp = helpArgsString()
+	cli.CommandBeforeFlags = true
+	cli.MinArgs = 0   // because `fortio server`s don't take any args
+	cli.MaxArgs = 1   // for load, curl etc... subcommands.
+	scli.ServerMain() // will Exit if there were arguments/flags errors.
+
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
-		usageErr(usage, "Unable to extract percentiles from -p: ", err)
+		cli.ErrUsage("Unable to extract percentiles from -p: %v", err)
 	}
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
@@ -236,18 +219,18 @@ func FortioMain(usage func(io.Writer, ...interface{}), hook bincommon.FortioHook
 		}
 	}
 	isServer := false
-	switch command {
+	switch cli.Command {
 	case "curl":
-		fortioLoad(usage, true, nil, hook)
+		fortioLoad(true, nil, hook)
 	case "nc":
-		fortioNC(usage)
+		fortioNC()
 	case "load":
-		fortioLoad(usage, *curlFlag, percList, hook)
+		fortioLoad(*curlFlag, percList, hook)
 	case "redirect":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
 	case "report":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
@@ -255,20 +238,20 @@ func FortioMain(usage func(io.Writer, ...interface{}), hook bincommon.FortioHook
 			os.Exit(1) // error already logged
 		}
 	case "tcp-echo":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		startProxies()
 	case "udp-echo":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		startProxies()
 	case "proxies":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		if startProxies() == 0 {
-			usageErr(usage, "Error: fortio proxies command needs at least one -P / -M flag")
+			cli.ErrUsage("Error: fortio proxies command needs at least one -P / -M flag")
 		}
 	case "server":
-		isServer = serverArgCheck(usage)
+		isServer = serverArgCheck()
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		}
@@ -288,14 +271,11 @@ func FortioMain(usage func(io.Writer, ...interface{}), hook bincommon.FortioHook
 		}
 		startProxies()
 	case "grpcping":
-		grpcClient(usage)
+		grpcClient()
 	default:
-		usageErr(usage, "Error: unknown command ", command)
+		cli.ErrUsage("Error: unknown command %q", cli.Command)
 	}
 	if isServer {
-		if confDir == "" {
-			log.Infof("Note: not using dynamic flag watching (use -config to set watch directory)")
-		}
 		serverLoop(sync)
 	}
 }
@@ -345,10 +325,10 @@ func startProxies() int {
 	return numProxies
 }
 
-func fortioNC(usage func(io.Writer, ...interface{})) {
+func fortioNC() {
 	l := len(flag.Args())
 	if l != 1 && l != 2 {
-		usageErr(usage, "Error: fortio nc needs a host:port or host port destination")
+		cli.ErrUsage("Error: fortio nc needs a host:port or host port destination")
 	}
 	d := flag.Args()[0]
 	if l == 2 {
@@ -362,9 +342,9 @@ func fortioNC(usage func(io.Writer, ...interface{})) {
 }
 
 //nolint:funlen, gocognit // maybe refactor/shorten later.
-func fortioLoad(usage func(io.Writer, ...interface{}), justCurl bool, percList []float64, hook bincommon.FortioHook) {
+func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	if len(flag.Args()) != 1 {
-		usageErr(usage, "Error: fortio load/curl needs a url or destination")
+		cli.ErrUsage("Error: fortio load/curl needs a url or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if justCurl {
@@ -381,7 +361,7 @@ func fortioLoad(usage func(io.Writer, ...interface{}), justCurl bool, percList [
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	if *calcQPS {
 		if *exactlyFlag == 0 || *durationFlag <= 0 {
-			usageErr(usage, "Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
+			cli.ErrUsage("Error: can't use `-calc-qps` without also specifying `-n` and `-t`")
 		}
 		qps = float64(*exactlyFlag) / durationFlag.Seconds()
 		log.LogVf("Calculated QPS to do %d request in %v: %f", *exactlyFlag, *durationFlag, qps)
@@ -527,9 +507,9 @@ func fortioLoad(usage func(io.Writer, ...interface{}), justCurl bool, percList [
 	}
 }
 
-func grpcClient(usage func(io.Writer, ...interface{})) {
+func grpcClient() {
 	if len(flag.Args()) != 1 {
-		usageErr(usage, "Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
+		cli.ErrUsage("Error: fortio grpcping needs host argument in the form of host, host:port or ip:port")
 	}
 	host := flag.Arg(0)
 	count := int(*exactlyFlag)

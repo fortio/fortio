@@ -4,14 +4,25 @@ go 1.18
 
 require (
 	fortio.org/assert v1.1.3
+	fortio.org/cli v1.1.0
 	fortio.org/dflag v1.4.2
 	fortio.org/log v1.2.2
+	fortio.org/scli v1.1.0
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	golang.org/x/net v0.7.0
 	google.golang.org/grpc v1.53.0
 )
+
+// Local dev of dependencies changes
+// replace (
+// 	fortio.org/cli => ../cli
+// 	fortio.org/dflag => ../dflag
+// 	fortio.org/log => ../log
+// 	fortio.org/scli => ../scli
+// 	fortio.org/version => ../version
+// )
 
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

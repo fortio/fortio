@@ -83,7 +83,7 @@ $CURL "${BASE_FORTIO}fetch/localhost:8080${FORTIO_UI_PREFIX}rest/run?url=http://
 # Check we can connect, and run a grpc QPS test against ourselves through fetch
 $CURL "${BASE_FORTIO}fetch/localhost:8080$FORTIO_UI_PREFIX?url=localhost:8079&load=Start&qps=-1&json=on&n=100&runner=grpc" | grep '"SERVING": 100'
 # Check we get the logo (need to remove the CR from raw headers)
-VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
+VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version)
 LOGO_TYPE=$($CURL "${BASE_FORTIO}${VERSION}/static/img/${LOGO}" 2>&1 >/dev/null | grep -i Content-Type: | tr -d '\r'| awk '{print $2}')
 if [ "$LOGO_TYPE" != "image/svg+xml" ]; then
   echo "Unexpected content type for the logo: $LOGO_TYPE"
@@ -104,7 +104,6 @@ if [ "$SIZE" -lt 8191 ] || [ "$SIZE" -gt 8400 ]; then
 fi
 
 # Check main, sync, browse pages
-VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version -s)
 LOGOPATH="${VERSION}/static/img/${LOGO}"
 for p in "" browse sync; do
   # Check the page doesn't 404s

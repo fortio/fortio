@@ -17,34 +17,16 @@ package main
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
-	"flag"
-	"fmt"
-	"io"
-	"os"
-
+	"fortio.org/cli"
 	"fortio.org/fortio/bincommon"
-	"fortio.org/fortio/version"
-	"fortio.org/log"
 )
 
-// Prints usage.
-func usage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "Φορτίο fortio-curl %s usage:\n\t%s [flags] url\n",
-		version.Short(),
-		os.Args[0])
-	bincommon.FlagsUsage(w, msgs...)
-}
-
 func main() {
-	bincommon.SharedMain(usage)
-	if len(os.Args) < 2 {
-		usage(os.Stderr, "Error: need a url as parameter")
-		os.Exit(1)
-	}
-	flag.Parse()
-	if *bincommon.QuietFlag {
-		log.SetLogLevelQuiet(log.Error)
-	}
+	cli.ProgramName = "Φορτίο fortio-curl"
+	cli.ArgsHelp = "url"
+	cli.MinArgs = 1
+	bincommon.SharedMain()
+	cli.Main()
 	o := bincommon.SharedHTTPOptions()
 	bincommon.FetchURL(o)
 }
