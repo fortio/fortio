@@ -197,12 +197,12 @@ func FortioMain(hook bincommon.FortioHook) {
 		// fortiotel presets this.
 		cli.ProgramName = "Φορτίο"
 	}
+	bincommon.SharedMain()
 	cli.ArgsHelp = helpArgsString()
 	cli.CommandBeforeFlags = true
-	cli.MinArgs = 0
-	cli.MaxArgs = 1
-	bincommon.SharedMain()
-	scli.ServerMain()
+	cli.MinArgs = 0   // because `fortio server`s don't take any args
+	cli.MaxArgs = 1   // for load, curl etc... subcommands.
+	scli.ServerMain() // will Exit if there were arguments/flags errors.
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {
