@@ -26,4 +26,4 @@ VOLUME /var/lib/fortio
 WORKDIR /var/lib/fortio
 ENTRYPOINT ["/usr/bin/fortio"]
 # start the server mode (grpc ping on 8079, http echo and UI on 8080, redirector on 8081) by default
-CMD ["server", "-config", "/etc/fortio"]
+CMD ["server", "-config-dir", "/etc/fortio"]

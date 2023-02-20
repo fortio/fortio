@@ -21,19 +21,15 @@ package bincommon
 import (
 	"context"
 	"flag"
-	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"reflect"
 	"strings"
 
 	"fortio.org/dflag"
-	"fortio.org/dflag/dynloglevel"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/periodic"
-	"fortio.org/fortio/version"
 	"fortio.org/log"
 )
 
@@ -54,16 +50,6 @@ func (f *headersFlagList) Set(value string) error {
 // and otel access logger.
 type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
 
-// FlagsUsage prints end of the usage() (flags part + error message).
-func FlagsUsage(w io.Writer, msgs ...interface{}) {
-	_, _ = fmt.Fprintf(w, "flags are:\n")
-	flag.CommandLine.SetOutput(w)
-	flag.PrintDefaults()
-	if len(msgs) > 0 {
-		_, _ = fmt.Fprintln(w, msgs...)
-	}
-}
-
 var (
 	compressionFlag = flag.Bool("compression", false, "Enable http compression")
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
@@ -81,8 +67,6 @@ var (
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
 		" should be `user:password`")
-	// QuietFlag is the value of -quiet.
-	QuietFlag       = flag.Bool("quiet", false, "Quiet mode: sets the loglevel to Error and reduces the output.")
 	contentTypeFlag = flag.String("content-type", "",
 		"Sets http content type. Setting this value switches the request method from GET to POST.")
 	// PayloadSizeFlag is the value of -payload-size.
@@ -94,9 +78,6 @@ var (
 	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
 	// UnixDomainSocket to use instead of regular host:port.
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
-	// ConfigDirectoryFlag is where to watch for dynamic flag updates.
-	ConfigDirectoryFlag = flag.String("config", "",
-		"Config directory `path` to watch for changes of dynamic flags (empty for no watch)")
 	// CertFlag is the flag for the path for the client custom certificate.
 	CertFlag = flag.String("cert", "", "`Path` to the certificate file to be used for client or server TLS")
 	// KeyFlag is the flag for the path for the key for the `cert`.
@@ -126,7 +107,7 @@ var (
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
-func SharedMain(usage func(io.Writer, ...interface{})) {
+func SharedMain() {
 	flag.Var(&headersFlags, "H",
 		"Additional http header(s) or grpc metadata. Multiple `key:value` pairs can be passed using multiple -H.")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
@@ -149,25 +130,6 @@ func SharedMain(usage func(io.Writer, ...interface{})) {
 	// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
 	dflag.Flag("max-echo-delay", fhttp.MaxDelay)
 	// This sets up the logger's -loglevel as a dynamic flag.
-	dynloglevel.LoggerFlagSetup()
-	// Special case so `fcurl -version` and `--version` and `version` and ... work
-	if len(os.Args) < 2 {
-		return
-	}
-	firstArg := os.Args[1]
-	if strings.Contains(firstArg, "version") {
-		if len(os.Args) >= 3 && strings.Contains(os.Args[2], "s") {
-			// so `fortio version -s` is the short version; everything else is long/full
-			fmt.Println(version.Short())
-		} else {
-			fmt.Print(version.Full())
-		}
-		os.Exit(0)
-	}
-	if strings.Contains(firstArg, "help") || firstArg == "-h" {
-		usage(os.Stdout)
-		os.Exit(0)
-	}
 }
 
 // FetchURL is fetching url content and exiting with 1 upon error.

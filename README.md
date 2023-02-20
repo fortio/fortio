@@ -96,7 +96,8 @@ It can also fetch a single URL's for debugging when using the `curl` command (or
 Likewise you can establish a single TCP (or unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
 You can run just the redirector with `redirect` or just the tcp echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
-The `version` command will print version and build information, `fortio version -s` just the version.
+The `version` command will the short print versiob. `fortio buildinfo` will print the full
+build information.
 Lastly, you can learn which flags are available using `help` command.
 
 Most important flags for http load generation:
@@ -124,7 +125,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 Φορτίο 1.50.1 usage:
-    fortio command [flags] target
+        fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
  tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),
@@ -134,7 +135,9 @@ where command is one of: load (load testing), server (starts ui, rest api,
  or version (prints the full version and build details).
 where target is a url (http load tests) or host:port (grpc health test),
  or tcp://host:port (tcp load test), or udp://host:port (udp load test).
-flags are:
+or 1 of the special arguments
+        fortio {help|version|buildinfo}
+flags:
   -H key:value
         Additional http header(s) or grpc metadata. Multiple key:value pairs
 can be passed using multiple -H.
@@ -169,9 +172,10 @@ connections, if empty, use https:// prefix for standard internet/system CAs
         Path to the certificate file to be used for client or server TLS
   -compression
         Enable http compression
-  -config path
-        Config directory path to watch for changes of dynamic flags (empty for
-no watch)
+  -config-dir directory
+        Config directory to watch for dynamic flag changes
+  -config-port port
+        Config port to open for dynamic flag UI/api
   -connection-reuse min:max
         Range min:max for the max number of connections to reuse for each
 thread, default to unlimited. e.g. 10:30 means randomly choose a max connection
@@ -292,7 +296,7 @@ request on the fetch2 ui/server endpoint (default true)
   -qps float
         Queries Per Seconds or 0 for no wait/max qps (default 8)
   -quiet
-        Quiet mode: sets the loglevel to Error and reduces the output.
+        Quiet mode, sets loglevel to Error (quietly) to reduces the output
   -r float
         Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port port

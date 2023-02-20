@@ -24,7 +24,7 @@ RUN sh -c \
        make -C fortio official-build BUILD_DIR=/build GOARCH=${arch} OFFICIAL_DIR=/tmp/fortio_${arch}; \
     done'
 
-RUN cd fortio && /tmp/fortio_$(go env GOARCH)/fortio version -s > /tmp/version
+RUN cd fortio && /tmp/fortio_$(go env GOARCH)/fortio version > /tmp/version
 
 WORKDIR /stage
 

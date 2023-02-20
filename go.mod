@@ -4,8 +4,10 @@ go 1.18
 
 require (
 	fortio.org/assert v1.1.3
+	fortio.org/cli v1.1.0-pre1
 	fortio.org/dflag v1.4.2
 	fortio.org/log v1.2.2
+	fortio.org/scli v1.0.1
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
