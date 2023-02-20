@@ -31,9 +31,10 @@ Fortio components can be used a library even for unrelated projects, for instanc
 A recent addition is the new `jrpc` JSON Remote Procedure Calls library package ([docs](https://pkg.go.dev/fortio.org/fortio/jrpc)).
 
 We also have moved some of the library to their own toplevel package, like:
-- Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag/#fortio-dynamic-flags-was-go-flagz)
+- Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag#fortio-dynamic-flags)
 - Logger: [fortio.org/log](https://github.com/fortio/log#log)
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
+- CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
 If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
