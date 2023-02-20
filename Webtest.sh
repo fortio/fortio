@@ -104,7 +104,6 @@ if [ "$SIZE" -lt 8191 ] || [ "$SIZE" -gt 8400 ]; then
 fi
 
 # Check main, sync, browse pages
-VERSION=$(docker exec $DOCKERNAME $FORTIO_BIN_PATH version)
 LOGOPATH="${VERSION}/static/img/${LOGO}"
 for p in "" browse sync; do
   # Check the page doesn't 404s
