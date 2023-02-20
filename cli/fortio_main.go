@@ -193,16 +193,19 @@ func FortioMain(hook bincommon.FortioHook) {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
 	flag.Var(&httpMultiFlags, "M", "Http multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
+	bincommon.SharedMain()
+
+	// Use the new [fortio.org/cli] package to handle usage, arguments and flags parsing.
 	if cli.ProgramName == "" {
 		// fortiotel presets this.
 		cli.ProgramName = "Φορτίο"
 	}
-	bincommon.SharedMain()
 	cli.ArgsHelp = helpArgsString()
 	cli.CommandBeforeFlags = true
 	cli.MinArgs = 0   // because `fortio server`s don't take any args
 	cli.MaxArgs = 1   // for load, curl etc... subcommands.
 	scli.ServerMain() // will Exit if there were arguments/flags errors.
+
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	percList, err := stats.ParsePercentiles(*percentilesFlag)
 	if err != nil {

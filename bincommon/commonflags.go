@@ -107,6 +107,8 @@ var (
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
+// It sets up the common flags, the rest of usage/argument/flag handling
+// is now moved to the [fortio.org/cli] and [fortio.org/scli] packages.
 func SharedMain() {
 	flag.Var(&headersFlags, "H",
 		"Additional http header(s) or grpc metadata. Multiple `key:value` pairs can be passed using multiple -H.")
