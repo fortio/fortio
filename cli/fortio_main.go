@@ -183,7 +183,7 @@ var (
 // serverArgCheck always returns true after checking arguments length.
 // so it can be used with isServer = serverArgCheck() below.
 func serverArgCheck() bool {
-	if len(flag.Args()) != 1 {
+	if len(flag.Args()) != 0 {
 		cli.ErrUsage("Error: too many arguments (typo in a flag?)")
 	}
 	return true
