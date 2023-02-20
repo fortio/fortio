@@ -129,7 +129,7 @@ func SharedMain() {
 	// MaxDelay is the maximum delay allowed for the echoserver responses.
 	// It is a dynamic flag with default value of 1.5s so we can test the default 1s timeout in envoy.
 	dflag.Flag("max-echo-delay", fhttp.MaxDelay)
-	// This sets up the logger's -loglevel as a dynamic flag.
+	// call [scli.ServerMain()] to complete the setup.
 }
 
 // FetchURL is fetching url content and exiting with 1 upon error.
