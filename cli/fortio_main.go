@@ -73,7 +73,7 @@ func (f *httpMultiFlagList) Set(value string) error {
 
 // -- End of -M support.
 
-// fortio's help/args message
+// fortio's help/args message.
 func helpArgsString() string {
 	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
 		"where command is one of: load (load testing), server (starts ui, rest api,",
@@ -189,7 +189,6 @@ func serverArgCheck() bool {
 	return true
 }
 
-//nolint:funlen // well yes it's fairly long
 func FortioMain(hook bincommon.FortioHook) {
 	flag.Var(&proxiesFlags, "P",
 		"Tcp proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
