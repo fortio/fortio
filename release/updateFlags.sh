@@ -15,4 +15,4 @@
 #
 # Extract fortio's help and rewrap it to 80 cols
 # TODO: do like fmt does to keep leading identation
-go run . help | expand | fold -s | sed -e "s/ $//" -e "s/</\&lt;/"
+go run . help | expand | fold -s -w 90 | sed -e "s/ $//" -e "s/</\&lt;/"
