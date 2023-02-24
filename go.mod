@@ -3,9 +3,9 @@ module fortio.org/fortio
 go 1.18
 
 require (
-	fortio.org/assert v1.1.3
+	fortio.org/assert v1.1.4
 	fortio.org/cli v1.1.0
-	fortio.org/dflag v1.4.2
+	fortio.org/dflag v1.5.1
 	fortio.org/log v1.2.2
 	fortio.org/scli v1.1.0
 	fortio.org/version v1.0.2
@@ -25,6 +25,7 @@ require (
 // )
 
 require (
+	fortio.org/sets v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
 	golang.org/x/sys v0.5.0 // indirect
