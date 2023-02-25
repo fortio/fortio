@@ -669,7 +669,7 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	startTime = time.Now()
 	// Kinda ugly that we get most params past in but we get the tls stuff from flags directly,
 	// it avoids making an already too long list of string params longer. probably should make a FortioConfig struct.
-	mux, addr := fhttp.ServeTLS(port, debugpath, *bincommon.CertFlag, *bincommon.KeyFlag)
+	mux, addr := fhttp.ServeTLS(port, debugpath, &bincommon.SharedHTTPOptions().TLSOptions)
 	if addr == nil {
 		return false // Error already logged
 	}

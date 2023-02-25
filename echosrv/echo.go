@@ -42,7 +42,7 @@ func main() {
 		fmt.Println(version.Full())
 		os.Exit(0)
 	}
-	if _, addr := fhttp.ServeTLS(*port, *debugPath, *certFlag, *keyFlag); addr == nil {
+	if _, addr := fhttp.ServeTLS(*port, *debugPath, &fhttp.TLSOptions{Cert: *certFlag, Key: *keyFlag}); addr == nil {
 		os.Exit(1) // error already logged
 	}
 	select {}

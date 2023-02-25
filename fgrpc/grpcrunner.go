@@ -41,7 +41,7 @@ import (
 func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	if o.CACert != "" || strings.HasPrefix(o.Destination, fnet.PrefixHTTPS) {
-		tlsConfig, err := o.TLSOptions.TLSClientConfig()
+		tlsConfig, err := o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}

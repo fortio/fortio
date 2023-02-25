@@ -569,7 +569,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	client.transport = &tr // internal transport, unwrapped (to close idle conns)
 
 	if o.https {
-		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
+		tr.TLSClientConfig, err = o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -710,7 +710,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 	}
 	if o.https {
-		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
+		bc.tlsConfig, err = o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}
