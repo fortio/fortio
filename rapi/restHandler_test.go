@@ -488,7 +488,7 @@ func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunn
 }
 
 func TestOtherRunnersRESTApi(t *testing.T) {
-	iPort := fgrpc.PingServerTCP("0", "", "", "bar", 0)
+	iPort := fgrpc.PingServerTCP("0", "bar", 0, &fhttp.TLSOptions{})
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
