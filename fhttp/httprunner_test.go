@@ -608,7 +608,7 @@ func TestReresolveDNS(t *testing.T) {
 	opts := HTTPRunnerOptions{}
 	opts.Init(url)
 	opts.QPS = 50
-	opts.URL = url
+	// leave the URL "normalized" (http:// added) by init, don't reset it - ie no opts.URL = url
 	opts.NumThreads = 1
 	opts.Exactly = 3
 	opts.ConnReuseRange = [2]int{1, 1}
