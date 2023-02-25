@@ -92,7 +92,6 @@ var (
 	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
 	// HelpFlag is true if help/usage is being requested by the user.
-	HelpFlag   = flag.Bool("h", false, "Print usage/help on stdout")
 	warmupFlag = flag.Bool("sequential-warmup", false,
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
