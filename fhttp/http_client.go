@@ -495,8 +495,6 @@ func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
 // the DisableFastClient flag).
 func NewClient(o *HTTPOptions) (Fetcher, error) {
 	o.Init(o.URL) // For completely new options
-	// For changes to options after init
-	o.URLSchemeCheck()
 	if o.DisableFastClient {
 		return NewStdClient(o)
 	}
