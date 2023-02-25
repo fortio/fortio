@@ -733,13 +733,12 @@ func TestBadURLStdClient(t *testing.T) {
 }
 
 func TestDefaultPort(t *testing.T) {
-	// TODO: change back to fortio demo server once setup
-	url := "http://istio.io/" // shall imply port 80
+	url := "http://demo.fortio.org/" // shall imply port 80
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
 	ctx := context.Background()
 	code, _, _ := cli.Fetch(ctx)
-	if code != 301 {
+	if code != 303 {
 		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
 	}
 	conn := cli.(*FastClient).connect(ctx)
@@ -753,8 +752,8 @@ func TestDefaultPort(t *testing.T) {
 		t.Errorf("unable to connect to %s", url)
 	}
 	cli.Close()
-	opts.URL = "https://fortio.org" // will be https port 443
-	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
+	opts = NewHTTPOptions("https://fortio.org") // will be https port 443
+	opts.Insecure = true                        // not needed as we have valid certs but to exercise that code
 	cli, err := NewClient(opts)
 	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)

@@ -68,6 +68,7 @@ var (
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
+// Do not change the URL directly later, make a new HTTPOptions.
 // It replaces plain % to %25 in the url. If you already have properly
 // escaped URLs use o.URL = to set it.
 func NewHTTPOptions(url string) *HTTPOptions {
