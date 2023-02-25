@@ -1310,7 +1310,7 @@ func TestServeError(t *testing.T) {
 }
 
 func testCacheHeaderHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "testCacheHeader")
+	log.LogRequest(r, "testCacheHeader")
 	CacheOn(w)
 	w.Write([]byte("cache me"))
 }
@@ -1377,7 +1377,7 @@ func TestRedirector(t *testing.T) {
 var testNeedEscape = "<a href='http://google.com'>link</a>"
 
 func escapeTestHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "escapeTestHandler")
+	log.LogRequest(r, "escapeTestHandler")
 	out := NewHTMLEscapeWriter(w)
 	fmt.Fprintln(out, testNeedEscape)
 }
@@ -1540,7 +1540,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 // ValidateUUIDPath is an http server handler validating /{uuid}.
 func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateUUIDPath")
+		log.LogRequest(r, "ValidateUUIDPath")
 	}
 
 	uuidParam := strings.TrimPrefix(r.URL.Path, "/")
@@ -1557,7 +1557,7 @@ func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 // ValidateUUIDQueryparam is an http server handler validating /?uuid={uuid}.
 func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateUUIDQueryParam")
+		log.LogRequest(r, "ValidateUUIDQueryParam")
 	}
 
 	uuidParam := r.URL.Query().Get("uuid")
@@ -1575,7 +1575,7 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 // including payload in JSON following the format: ["{uuid}","{uuid}"].
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateManyUUID")
+		log.LogRequest(r, "ValidateManyUUID")
 	}
 
 	uuidParams := strings.Split(r.URL.Path, "/")

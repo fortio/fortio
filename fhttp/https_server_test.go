@@ -56,6 +56,9 @@ func TestHTTPSServer(t *testing.T) {
 	if !strings.Contains(body, "https TLS_") {
 		t.Errorf("Missing https TLS_ in body: %s", body)
 	}
+	if !strings.Contains(body, "\"CN=fake-client\"") {
+		t.Errorf("Missing client cert CN in body: %s", body)
+	}
 	if !strings.Contains(body, "HTTP/2.0") {
 		t.Errorf("Missing HTTP/2.0 in body: %s", body)
 	}

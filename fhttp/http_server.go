@@ -18,7 +18,6 @@ package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -58,7 +57,7 @@ var (
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "Echo") // will also print headers
+		log.LogRequest(r, "Echo") // will also print headers
 	}
 	defaultParams := DefaultEchoServerParams.Get()
 	hasQuestionMark := strings.Contains(r.RequestURI, "?")
@@ -303,7 +302,7 @@ environment:
 // A safer version is available as part of fortio's proxy
 // https://github.com/fortio/proxy/blob/main/rp/reverse_proxy.go
 func DebugHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Debug")
+	log.LogRequest(r, "Debug")
 	var buf bytes.Buffer
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
@@ -314,7 +313,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString(hostname)
 	buf.WriteString(" - request from ")
 	buf.WriteString(r.RemoteAddr)
-	buf.WriteString(TLSInfo(r))
+	buf.WriteString(log.TLSInfo(r))
 	buf.WriteString("\n\n")
 	buf.WriteString(r.Method)
 	buf.WriteByte(' ')
@@ -453,7 +452,7 @@ var proxyClient = CreateProxyClient()
 // new request with all headers copied (allows to test sticky routing)
 // Note this should only be made available to trusted clients.
 func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Fetch proxy2")
+	log.LogRequest(r, "Fetch proxy2")
 	query := r.URL.Query()
 	vals, ok := query["url"]
 	if !ok {
@@ -498,7 +497,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 
 // FetcherHandler is the handler for the fetcher/proxy.
 func FetcherHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "Fetch (prefix stripped)")
+	log.LogRequest(r, "Fetch (prefix stripped)")
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		log.Errf("hijacking not supported: %v", r.Proto)
@@ -535,7 +534,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 // RedirectToHTTPSHandler handler sends a redirect to same URL with https.
 func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 	dest := "https://" + r.Host + r.URL.String()
-	LogRequest(r, "Redirecting to "+dest)
+	log.LogRequest(r, "Redirecting to "+dest)
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
@@ -545,36 +544,10 @@ func RedirectToHTTPS(port string) net.Addr {
 	return HTTPServerWithHandler("https redirector", port, http.HandlerFunc(RedirectToHTTPSHandler))
 }
 
-// TLSInfo returns " https <cipher suite>" if the request is using TLS, or "" otherwise.
-func TLSInfo(r *http.Request) string {
-	if r.TLS == nil {
-		return ""
-	}
-	return fmt.Sprintf(" https %s", tls.CipherSuiteName(r.TLS.CipherSuite))
-}
-
-// LogRequest logs the incoming request, including headers when loglevel is verbose.
-func LogRequest(r *http.Request, msg string) {
-	if log.Log(log.Info) {
-		tlsInfo := TLSInfo(r)
-		log.Printf("%s: %v %v %v %v (%v) %s %q%s", msg, r.Method, r.URL, r.Proto, r.RemoteAddr,
-			r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-For"), r.Header.Get("User-Agent"), tlsInfo)
-	}
-	if log.LogVerbose() {
-		// Host is removed from headers map and put separately
-		log.Printf("Header Host: %v", r.Host)
-		for name, headers := range r.Header {
-			for _, h := range headers {
-				log.Printf("Header %v: %v\n", name, h)
-			}
-		}
-	}
-}
-
 // LogAndCall wraps an HTTP handler to log the request first.
 func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r, msg)
+		log.LogRequest(r, msg)
 		hf(w, r)
 	})
 }
@@ -582,7 +555,7 @@ func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
 // LogAndCallNoArg is LogAndCall for functions not needing the response/request args.
 func LogAndCallNoArg(msg string, f func()) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		LogRequest(r, msg)
+		log.LogRequest(r, msg)
 		f()
 	})
 }
