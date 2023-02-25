@@ -31,7 +31,10 @@ var (
 	caCrt      = "../cert-tmp/ca.crt"
 	svrCrt     = "../cert-tmp/server.crt"
 	svrKey     = "../cert-tmp/server.key"
-	tlsOptions = &TLSOptions{Cert: svrCrt, Key: svrKey, CACert: caCrt}
+	cliCrt     = "../cert-tmp/client.crt"
+	cliKey     = "../cert-tmp/client.key"
+	cliCaCrt   = "../cert-tmp/clica.crt"
+	tlsOptions = &TLSOptions{Cert: svrCrt, Key: svrKey, CACert: cliCaCrt, MTLS: true}
 )
 
 func TestHTTPSServer(t *testing.T) {
@@ -42,10 +45,10 @@ func TestHTTPSServer(t *testing.T) {
 	}
 	url := fmt.Sprintf("https://localhost:%d/debug", a.(*net.TCPAddr).Port)
 	// Triggers the h2->DisableFastClient normalization code too.
-	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}, H2: true}
+	o := HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt, Cert: cliCrt, Key: cliKey}, H2: true}
 	client, _ := NewClient(&o)
 	code, data, header := client.Fetch(context.Background())
-	t.Logf("TestDebugHandlerSortedHeaders result code %d, data len %d, headerlen %d", code, len(data), header)
+	t.Logf("TestHTTPSServer-1 result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != http.StatusOK {
 		t.Errorf("Got %d instead of 200", code)
 	}
@@ -55,6 +58,22 @@ func TestHTTPSServer(t *testing.T) {
 	}
 	if !strings.Contains(body, "HTTP/2.0") {
 		t.Errorf("Missing HTTP/2.0 in body: %s", body)
+	}
+	// test no cert no connection
+	o = HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt}}
+	client, _ = NewClient(&o)
+	code, data, header = client.Fetch(context.Background())
+	t.Logf("TestHTTPSServer-2 result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != -1 {
+		t.Errorf("Got %d instead of expected error", code)
+	}
+	// test wrong cert/ca combo (use server cert as client cert, not signed by same ca)
+	o = HTTPOptions{URL: url, TLSOptions: TLSOptions{CACert: caCrt, Cert: svrCrt, Key: svrKey}}
+	client, _ = NewClient(&o)
+	code, data, header = client.Fetch(context.Background())
+	t.Logf("TestHTTPSServer-3 result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != -1 {
+		t.Errorf("Got %d instead of expected error", code)
 	}
 }
 
