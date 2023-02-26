@@ -54,6 +54,35 @@ var (
 	ServerIdleTimeout = dflag.New(30*time.Second, "Default IdleTimeout for servers")
 )
 
+func Flush(w http.ResponseWriter) {
+	f, ok := w.(http.Flusher)
+	if ok {
+		f.Flush()
+	}
+}
+
+type FlushWriter struct {
+	w http.ResponseWriter
+}
+
+func (fw FlushWriter) Write(p []byte) (n int, err error) {
+	n, err = fw.w.Write(p)
+	log.Debugf("FlushWriter wrote %d", n)
+	Flush(fw.w)
+	return
+}
+
+// QueryArg(r,...) is like r.FormValue(...) but exclusively
+// getting the values from the query string (as we use the body for data).
+// Result of parsing the query string is cached in r.Form so we don't keep
+// parsing it and so r.Form can be used for multivalued entries like r.Form["header"].
+func QueryArg(r *http.Request, key string) string {
+	if r.Form == nil {
+		r.Form = r.URL.Query()
+	}
+	return r.Form.Get(key)
+}
+
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
@@ -74,28 +103,34 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			r = &nr
 		}
 	}
-	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
-	if err != nil {
-		log.Errf("Error reading %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	log.Debugf("Read %d", len(data))
-	handleCommonArgs(w, r)
-	statusStr := r.FormValue("status")
+	reqNum := handleCommonArgs(w, r)
+	statusStr := QueryArg(r, "status")
 	var status int
 	if statusStr != "" {
 		status = generateStatus(statusStr)
 	} else {
 		status = http.StatusOK
 	}
-	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(r.FormValue("gzip"))
+	gzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && generateGzip(QueryArg(r, "gzip"))
 	if gzip {
 		gwz := NewGzipHTTPResponseWriter(w)
 		defer gwz.Close()
 		w = gwz
 	}
-	size := generateSize(r.FormValue("size"))
+	var data []byte
+	var err error
+	h2Mode := (r.ProtoMajor == 2) && !gzip
+	if !h2Mode {
+		h2Mode = false
+		data, err = io.ReadAll(r.Body)
+		log.Debugf("H1(.1) read %d", len(data))
+		if err != nil {
+			log.Errf("Error reading body: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	size := generateSize(QueryArg(r, "size"))
 	if size >= 0 {
 		log.LogVf("Writing %d size with %d status", size, status)
 		writePayload(w, status, size)
@@ -107,26 +142,41 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			jrpc.SetHeaderIfMissing(w.Header(), k, v)
 		}
 	}
+	if reqNum > 0 {
+		jrpc.SetHeaderIfMissing(w.Header(), "x-fortio-id", strconv.FormatInt(reqNum, 10))
+	}
 	w.WriteHeader(status)
-	if _, err = w.Write(data); err != nil {
-		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
+	if h2Mode {
+		// h2 non gzip case
+		Flush(w)
+		n, err := io.Copy(FlushWriter{w}, r.Body)
+		log.Debugf("H2 read/Copied %d", n)
+		if err != nil {
+			log.Errf("Error copying from body to output: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if _, err = w.Write(data); err != nil {
+			log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
+		}
 	}
 }
 
 // handleCommonArgs common flags for debug and echo handlers.
 // Must be called after body is read.
-func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
-	dur := generateDelay(r.FormValue("delay"))
+func handleCommonArgs(w http.ResponseWriter, r *http.Request) (rqNum int64) {
+	dur := generateDelay(QueryArg(r, "delay"))
 	if dur > 0 {
 		log.LogVf("Sleeping for %v", dur)
 		time.Sleep(dur)
 	}
 	if log.LogDebug() {
 		// Note this easily lead to contention, debug mode only (or low qps).
-		rqNum := atomic.AddInt64(&EchoRequests, 1)
+		rqNum = atomic.AddInt64(&EchoRequests, 1)
 		log.Debugf("Request # %v", rqNum)
 	}
-	if generateClose(r.FormValue("close")) {
+	if generateClose(QueryArg(r, "close")) {
 		log.Debugf("Adding Connection:close / will close socket")
 		w.Header().Set("Connection", "close")
 	}
@@ -143,6 +193,7 @@ func handleCommonArgs(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Add(s[0], s[1])
 	}
+	return // rqNum ie 0 most of the time
 }
 
 func writePayload(w http.ResponseWriter, status int, size int) {
@@ -289,7 +340,7 @@ environment:
 		Body     string
 		DumpEnv  bool
 		Env      []string
-	}{r, hostname, Version, DebugSummary(data, 512), r.FormValue("env") == "dump", os.Environ()})
+	}{r, hostname, Version, DebugSummary(data, 512), QueryArg(r,"env") == "dump", os.Environ()})
 	if err != nil {
 		Critf("Template execution failed: %v", err)
 	}
@@ -364,7 +415,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("\n\nbody:\n\n")
 	buf.WriteString(DebugSummary(data, 512))
 	buf.WriteByte('\n')
-	if r.FormValue("env") == "dump" {
+	if QueryArg(r, "env") == "dump" {
 		buf.WriteString("\nenvironment:\n\n")
 		for _, v := range os.Environ() {
 			buf.WriteString(v)
@@ -376,11 +427,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf.Bytes()); err != nil {
 		log.Errf("Error writing response %v to %v", err, r.RemoteAddr)
 	}
-	/*
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-	*/
+	// Flush(w)
 }
 
 // CacheOn sets the header for indefinite caching.
