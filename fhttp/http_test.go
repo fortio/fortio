@@ -738,8 +738,9 @@ func TestDefaultPort(t *testing.T) {
 	cli, _ := NewFastClient(opts)
 	ctx := context.Background()
 	code, _, _ := cli.Fetch(ctx)
-	if code != 303 {
-		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
+	expectedRedirect := 303 // might need to change if switching from cloudflare to native fortio proxy.
+	if code != expectedRedirect {
+		t.Errorf("unexpected code for %s: %d (expecting %d redirect to https)", url, code, expectedRedirect)
 	}
 	conn := cli.(*FastClient).connect(ctx)
 	if conn != nil {
