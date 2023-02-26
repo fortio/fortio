@@ -61,7 +61,7 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 // get a dynamic server). Pass the healthServiceName to use for the
 // grpc service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
-func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) net.Addr {
+func PingServer(port, healthServiceName string, maxConcurrentStreams uint32, tlsOptions *fhttp.TLSOptions) net.Addr {
 	if healthServiceName == "" {
 		healthServiceName = DefaultHealthServiceName
 	}
@@ -74,12 +74,17 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 		log.Infof("Setting grpc.MaxConcurrentStreams server to %d", maxConcurrentStreams)
 		grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(maxConcurrentStreams))
 	}
-	if cert != "" && key != "" {
-		creds, err := credentials.NewServerTLSFromFile(cert, key)
+	if tlsOptions.Cert != "" && tlsOptions.Key != "" {
+		tlsCfg, err := tlsOptions.TLSConfig()
 		if err != nil {
 			log.Fatalf("Invalid TLS credentials: %v", err)
 		}
-		log.Infof("Using server certificate %v and key %v to construct TLS credentials", cert, key)
+		creds := credentials.NewTLS(tlsCfg)
+		mtls := ""
+		if tlsOptions.MTLS {
+			mtls = "mutual "
+		}
+		log.Printf("Using server cert and key from %v and %v to construct %sTLS credentials", tlsOptions.Cert, tlsOptions.Key, mtls)
 		grpcOptions = append(grpcOptions, grpc.Creds(creds))
 	}
 	grpcServer := grpc.NewServer(grpcOptions...)
@@ -99,8 +104,8 @@ func PingServer(port, cert, key, healthServiceName string, maxConcurrentStreams 
 
 // PingServerTCP is PingServer() assuming tcp instead of possible unix domain socket port, returns
 // the numeric port.
-func PingServerTCP(port, cert, key, healthServiceName string, maxConcurrentStreams uint32) int {
-	addr := PingServer(port, cert, key, healthServiceName, maxConcurrentStreams)
+func PingServerTCP(port, healthServiceName string, maxConcurrentStreams uint32, tlsOptions *fhttp.TLSOptions) int {
+	addr := PingServer(port, healthServiceName, maxConcurrentStreams, tlsOptions)
 	if addr == nil {
 		return -1
 	}

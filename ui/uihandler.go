@@ -99,7 +99,7 @@ const (
 //
 //nolint:funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "UI")
+	log.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
 	url := r.FormValue("url")
@@ -345,7 +345,7 @@ type ChartOptions struct {
 
 // BrowseHandler handles listing and rendering the JSON results.
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "Browse")
+	log.LogRequest(r, "Browse")
 	path := r.URL.Path
 	if (path != uiPath) && (path != (uiPath + "browse")) {
 		if strings.HasPrefix(path, "/fortio") {
@@ -410,7 +410,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 // LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fhttp.LogRequest(r, "Static")
+		log.LogRequest(r, "Static")
 		path := r.URL.Path
 		if path == faviconPath {
 			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
@@ -461,7 +461,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "Sync")
+	log.LogRequest(r, "Sync")
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
@@ -669,7 +669,7 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	startTime = time.Now()
 	// Kinda ugly that we get most params past in but we get the tls stuff from flags directly,
 	// it avoids making an already too long list of string params longer. probably should make a FortioConfig struct.
-	mux, addr := fhttp.ServeTLS(port, debugpath, *bincommon.CertFlag, *bincommon.KeyFlag)
+	mux, addr := fhttp.ServeTLS(port, debugpath, &bincommon.SharedHTTPOptions().TLSOptions)
 	if addr == nil {
 		return false // Error already logged
 	}

@@ -260,7 +260,7 @@ func FortioMain(hook bincommon.FortioHook) {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
-			fgrpc.PingServer(*grpcPortFlag, *bincommon.CertFlag, *bincommon.KeyFlag, *healthSvcFlag, uint32(*maxStreamsFlag))
+			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, uint32(*maxStreamsFlag), &bincommon.SharedHTTPOptions().TLSOptions)
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
