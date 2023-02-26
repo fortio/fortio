@@ -86,12 +86,12 @@ var (
 	CACertFlag = flag.String("cacert", "",
 		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
 			"if empty, use https:// prefix for standard internet/system CAs")
+	mTLS = flag.Bool("mtls", false, "Require client certificate signed by -cacert for client connections")
 	// LogErrorsFlag determines if the non ok http error codes get logged as they occur or not.
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
 	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
 	// HelpFlag is true if help/usage is being requested by the user.
-	HelpFlag   = flag.Bool("h", false, "Print usage/help on stdout")
 	warmupFlag = flag.Bool("sequential-warmup", false,
 		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
@@ -206,6 +206,7 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.CACert = *CACertFlag
 	httpOpts.Cert = *CertFlag
 	httpOpts.Key = *KeyFlag
+	httpOpts.MTLS = *mTLS
 	httpOpts.LogErrors = *LogErrorsFlag
 	httpOpts.SequentialWarmup = *warmupFlag
 	httpOpts.NoResolveEachConn = *NoReResolveFlag

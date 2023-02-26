@@ -733,14 +733,14 @@ func TestBadURLStdClient(t *testing.T) {
 }
 
 func TestDefaultPort(t *testing.T) {
-	// TODO: change back to fortio demo server once setup
-	url := "http://istio.io/" // shall imply port 80
+	url := "http://demo.fortio.org/" // shall imply port 80
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
 	ctx := context.Background()
 	code, _, _ := cli.Fetch(ctx)
-	if code != 301 {
-		t.Errorf("unexpected code for %s: %d (expecting 301 redirect to https)", url, code)
+	expectedRedirect := 303 // might need to change if switching from cloudflare to native fortio proxy.
+	if code != expectedRedirect {
+		t.Errorf("unexpected code for %s: %d (expecting %d redirect to https)", url, code, expectedRedirect)
 	}
 	conn := cli.(*FastClient).connect(ctx)
 	if conn != nil {
@@ -753,8 +753,8 @@ func TestDefaultPort(t *testing.T) {
 		t.Errorf("unable to connect to %s", url)
 	}
 	cli.Close()
-	opts.URL = "https://fortio.org" // will be https port 443
-	opts.Insecure = true            // not needed as we have valid certs but to exercise that code
+	opts = NewHTTPOptions("https://fortio.org") // will be https port 443
+	opts.Insecure = true                        // not needed as we have valid certs but to exercise that code
 	cli, err := NewClient(opts)
 	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
@@ -1310,7 +1310,7 @@ func TestServeError(t *testing.T) {
 }
 
 func testCacheHeaderHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "testCacheHeader")
+	log.LogRequest(r, "testCacheHeader")
 	CacheOn(w)
 	w.Write([]byte("cache me"))
 }
@@ -1377,7 +1377,7 @@ func TestRedirector(t *testing.T) {
 var testNeedEscape = "<a href='http://google.com'>link</a>"
 
 func escapeTestHandler(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, "escapeTestHandler")
+	log.LogRequest(r, "escapeTestHandler")
 	out := NewHTMLEscapeWriter(w)
 	fmt.Fprintln(out, testNeedEscape)
 }
@@ -1540,7 +1540,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 // ValidateUUIDPath is an http server handler validating /{uuid}.
 func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateUUIDPath")
+		log.LogRequest(r, "ValidateUUIDPath")
 	}
 
 	uuidParam := strings.TrimPrefix(r.URL.Path, "/")
@@ -1557,7 +1557,7 @@ func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 // ValidateUUIDQueryparam is an http server handler validating /?uuid={uuid}.
 func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateUUIDQueryParam")
+		log.LogRequest(r, "ValidateUUIDQueryParam")
 	}
 
 	uuidParam := r.URL.Query().Get("uuid")
@@ -1575,7 +1575,7 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 // including payload in JSON following the format: ["{uuid}","{uuid}"].
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, "ValidateManyUUID")
+		log.LogRequest(r, "ValidateManyUUID")
 	}
 
 	uuidParams := strings.Split(r.URL.Path, "/")

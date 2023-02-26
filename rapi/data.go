@@ -157,7 +157,7 @@ func ID2URL(r *http.Request, id string) string {
 // LogAndFilterDataRequest logs the data request.
 func LogAndFilterDataRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fhttp.LogRequest(r, "Data")
+		log.LogRequest(r, "Data")
 		path := r.URL.Path
 		if strings.HasSuffix(path, "/") || strings.HasSuffix(path, "/index.html") {
 			sendHTMLDataIndex(w)

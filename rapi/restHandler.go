@@ -185,7 +185,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 // RESTRunHandler is api version of UI submit handler.
 // TODO: refactor common option/args/flag parsing between uihandler.go and this.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
-	fhttp.LogRequest(r, "REST Run Api call")
+	log.LogRequest(r, "REST Run Api call")
 	w.Header().Set("Content-Type", "application/json")
 	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
@@ -436,7 +436,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "REST Status Api call")
+	log.LogRequest(r, "REST Status Api call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	statusReply := StatusReply{}
 	if runid != 0 {
@@ -455,7 +455,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
 func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
-	fhttp.LogRequest(r, "REST Stop Api call")
+	log.LogRequest(r, "REST Stop Api call")
 	w.Header().Set("Content-Type", "application/json")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	waitStr := strings.ToLower(r.FormValue("wait"))

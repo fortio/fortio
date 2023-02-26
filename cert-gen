@@ -5,6 +5,10 @@ CERT_TEMP_DIR=./cert-tmp
 CA_CERT=$CERT_TEMP_DIR/ca.crt
 SVR_CERT=$CERT_TEMP_DIR/server.crt
 SVR_KEY=$CERT_TEMP_DIR/server.key
+# Use a different CA for client so we can test CA mismatch
+CLI_CA_CERT=$CERT_TEMP_DIR/clica.crt
+CLI_CERT=$CERT_TEMP_DIR/client.crt
+CLI_KEY=$CERT_TEMP_DIR/client.key
 SAN=DNS.1:localhost,IP.1:127.0.0.1
 
 set -e
@@ -16,7 +20,7 @@ then
     exit
 fi
 
-echo "Creating test CA cert and server cert/key..."
+echo "Creating test CA cert and client and server cert/key..."
 
 # create cert directory and files
 mkdir -p $CERT_TEMP_DIR
@@ -98,17 +102,29 @@ EOF
 # CA private key (unencrypted)
 openssl genrsa -out $CERT_TEMP_DIR/ca.key 4096
 # Certificate Authority (self-signed certificate)
-openssl req -config $CERT_TEMP_DIR/openssl.conf -new -x509 -days 3650 -sha256 -key $CERT_TEMP_DIR/ca.key -extensions v3_ca -out $CERT_TEMP_DIR/ca.crt -subj "/CN=fake-ca"
+openssl req -config $CERT_TEMP_DIR/openssl.conf -new -x509 -days 3650 -sha256 -key $CERT_TEMP_DIR/ca.key -extensions v3_ca -out $CA_CERT -subj "/CN=fake-server-ca"
 
 # Server private key (unencrypted)
-openssl genrsa -out $CERT_TEMP_DIR/server.key 2048
+openssl genrsa -out $SVR_KEY 2048
 # Server certificate signing request (CSR)
-openssl req -config $CERT_TEMP_DIR/openssl.conf -new -sha256 -key $CERT_TEMP_DIR/server.key -out $CERT_TEMP_DIR/server.csr -subj "/CN=fake-server"
+openssl req -config $CERT_TEMP_DIR/openssl.conf -new -sha256 -key $SVR_KEY -out $CERT_TEMP_DIR/server.csr -subj "/CN=fake-server"
 # Certificate Authority signs CSR to grant a certificate
-openssl ca -batch -config $CERT_TEMP_DIR/openssl.conf -extensions server_cert -days 365 -notext -md sha256 -in $CERT_TEMP_DIR/server.csr -out $CERT_TEMP_DIR/server.crt -cert $CERT_TEMP_DIR/ca.crt -keyfile $CERT_TEMP_DIR/ca.key
+openssl ca -batch -config $CERT_TEMP_DIR/openssl.conf -extensions server_cert -days 365 -notext -md sha256 -in $CERT_TEMP_DIR/server.csr -out $SVR_CERT -cert $CA_CERT -keyfile $CERT_TEMP_DIR/ca.key
+
+# Client CA private key (unencrypted)
+openssl genrsa -out $CERT_TEMP_DIR/clica.key 4096
+# Certificate Authority (self-signed certificate)
+openssl req -config $CERT_TEMP_DIR/openssl.conf -new -x509 -days 3650 -sha256 -key $CERT_TEMP_DIR/clica.key -extensions v3_ca -out $CLI_CA_CERT -subj "/CN=fake-client-ca"
+
+# Client private key (unencrypted)
+openssl genrsa -out $CLI_KEY 2048
+# Client certificate signing request (CSR)
+openssl req -config $CERT_TEMP_DIR/openssl.conf -new -sha256 -key $CLI_KEY -out $CERT_TEMP_DIR/client.csr -subj "/CN=fake-client"
+# Certificate Authority signs CSR to grant a certificate
+openssl ca -batch -config $CERT_TEMP_DIR/openssl.conf -extensions usr_cert -days 365 -notext -md sha256 -in $CERT_TEMP_DIR/client.csr -out $CLI_CERT -cert $CLI_CA_CERT -keyfile $CERT_TEMP_DIR/clica.key
 
 # Remove unneeded files
-rm -f index.* serial* $CERT_TEMP_DIR/ca.key $CERT_TEMP_DIR/*.csr $CERT_TEMP_DIR/*.pem $CERT_TEMP_DIR/openssl.conf
+rm -f index.* serial* $CERT_TEMP_DIR/*ca.key $CERT_TEMP_DIR/*.csr $CERT_TEMP_DIR/*.pem $CERT_TEMP_DIR/openssl.conf
 
 echo "*******************************************************************"
 echo "WARNING: Generated credentials are self-signed and should be used for testing purposes only."

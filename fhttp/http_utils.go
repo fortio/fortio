@@ -40,16 +40,17 @@ import (
 // TLSOptions are common TLS related options between https and grpc.
 type TLSOptions struct {
 	Insecure         bool   // Do not verify certs
+	MTLS             bool   // Use mutual TLS, require client cert
 	CACert           string // `Path` to a custom CA certificate file to be used
 	Cert             string // `Path` to the certificate file to be used
 	Key              string // `Path` to the key file used
 	UnixDomainSocket string // `Path`` of unix domain socket to use instead of host:port
 }
 
-// TLSClientConfig creates a tls.Config based on input TLSOptions.
+// TLSConfig creates a tls.Config based on input TLSOptions.
 // For https, ServerName is set later (once host is determined after URL parsing
-// and depending on hostOverride).
-func (to *TLSOptions) TLSClientConfig() (*tls.Config, error) {
+// and depending on hostOverride). Used for both client and server TLS config.
+func (to *TLSOptions) TLSConfig() (*tls.Config, error) {
 	res := &tls.Config{MinVersion: tls.VersionTLS12}
 	if to.Insecure {
 		log.LogVf("Using insecure https")
@@ -74,6 +75,10 @@ func (to *TLSOptions) TLSClientConfig() (*tls.Config, error) {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 		res.RootCAs = caCertPool
+	}
+	if to.MTLS {
+		res.ClientAuth = tls.RequireAndVerifyClientCert
+		res.ClientCAs = res.RootCAs
 	}
 	return res, nil
 }

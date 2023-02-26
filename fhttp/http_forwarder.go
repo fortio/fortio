@@ -111,7 +111,7 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.R
 // TeeHandler common part between TeeSerialHandler and TeeParallelHandler.
 func (mcfg *MultiServerConfig) TeeHandler(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
-		LogRequest(r, mcfg.Name)
+		log.LogRequest(r, mcfg.Name)
 	}
 	data, err := io.ReadAll(r.Body)
 	if err != nil {

@@ -42,16 +42,22 @@ var (
 	// used for failure test cases.
 	failCrt = "../missing/cert.crt"
 	failKey = "../missing/cert.key"
+	tlsO    = &fhttp.TLSOptions{
+		CACert: caCrt,
+		Cert:   svrCrt,
+		Key:    svrKey,
+	}
+	noTLSO = &fhttp.TLSOptions{}
 )
 
 func TestGRPCRunner(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	iPort := PingServerTCP("0", "", "", "bar", 0)
+	iPort := PingServerTCP("0", "bar", 0, noTLSO)
 	iDest := fmt.Sprintf("localhost:%d", iPort)
-	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
+	sPort := PingServerTCP("0", "bar", 0, tlsO)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 	uds := fnet.GetUniqueUnixDomainPath("fortio-grpc-test")
-	uPath := PingServer(uds, "", "", "", 10)
+	uPath := PingServer(uds, "", 10, noTLSO)
 	uDest := "foo.bar:125"
 
 	ro := periodic.RunnerOptions{
@@ -166,7 +172,7 @@ func TestGRPCRunner(t *testing.T) {
 
 func TestGRPCRunnerMaxStreams(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	port := PingServerTCP("0", "", "", "maxstream", 10)
+	port := PingServerTCP("0", "maxstream", 10, noTLSO)
 	destination := fmt.Sprintf("localhost:%d", port)
 
 	opts := GRPCRunnerOptions{
@@ -215,9 +221,9 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 
 func TestGRPCRunnerWithError(t *testing.T) {
 	log.SetLogLevel(log.Info)
-	iPort := PingServerTCP("0", "", "", "bar", 0)
+	iPort := PingServerTCP("0", "bar", 0, noTLSO)
 	iDest := fmt.Sprintf("localhost:%d", iPort)
-	sPort := PingServerTCP("0", svrCrt, svrKey, "bar", 0)
+	sPort := PingServerTCP("0", "bar", 0, tlsO)
 	sDest := fmt.Sprintf("localhost:%d", sPort)
 
 	ro := periodic.RunnerOptions{

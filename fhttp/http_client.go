@@ -68,6 +68,7 @@ var (
 )
 
 // NewHTTPOptions creates and initialize a HTTPOptions object.
+// Do not change the URL directly later, make a new HTTPOptions.
 // It replaces plain % to %25 in the url. If you already have properly
 // escaped URLs use o.URL = to set it.
 func NewHTTPOptions(url string) *HTTPOptions {
@@ -495,8 +496,6 @@ func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
 // the DisableFastClient flag).
 func NewClient(o *HTTPOptions) (Fetcher, error) {
 	o.Init(o.URL) // For completely new options
-	// For changes to options after init
-	o.URLSchemeCheck()
 	if o.DisableFastClient {
 		return NewStdClient(o)
 	}
@@ -569,7 +568,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	client.transport = &tr // internal transport, unwrapped (to close idle conns)
 
 	if o.https {
-		tr.TLSClientConfig, err = o.TLSOptions.TLSClientConfig()
+		tr.TLSClientConfig, err = o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -710,7 +709,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 	}
 	if o.https {
-		bc.tlsConfig, err = o.TLSOptions.TLSClientConfig()
+		bc.tlsConfig, err = o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}
