@@ -117,9 +117,11 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		defer gwz.Close()
 		w = gwz
 	}
+	size := generateSize(QueryArg(r, "size")) // -1 means no size/payload mode
 	var data []byte
 	var err error
-	h2Mode := (r.ProtoMajor == 2) && !gzip
+	// Also read the whole input if we're supposed to write something unrelated like size=100
+	h2Mode := (r.ProtoMajor == 2) && (!gzip) && (size == -1)
 	if !h2Mode {
 		h2Mode = false
 		data, err = io.ReadAll(r.Body)
@@ -130,7 +132,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	size := generateSize(QueryArg(r, "size"))
 	if size >= 0 {
 		log.LogVf("Writing %d size with %d status", size, status)
 		writePayload(w, status, size)
@@ -148,8 +149,8 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(status)
 	if h2Mode {
 		// h2 non gzip case
-		Flush(w)
-		n, err := io.Copy(FlushWriter{w}, r.Body)
+		var n int64
+		n, err = io.Copy(FlushWriter{w}, r.Body)
 		log.Debugf("H2 read/Copied %d", n)
 		if err != nil {
 			log.Errf("Error copying from body to output: %v", err)
