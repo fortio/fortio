@@ -590,7 +590,12 @@ func GenerateRandomPayload(payloadSize int) []byte {
 }
 
 // ReadFileForPayload reads the file from given input path.
+// if filename is `-` then it reads from stdin.
 func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
+	if payloadFilePath == "-" {
+		log.Infof("Reading payload from stdin...")
+		return io.ReadAll(os.Stdin)
+	}
 	data, err := os.ReadFile(payloadFilePath)
 	if err != nil {
 		return nil, err
@@ -604,7 +609,7 @@ func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []
 	if len(payloadFilePath) > 0 {
 		p, err := ReadFileForPayload(payloadFilePath)
 		if err != nil {
-			log.Warnf("File read operation is failed %v", err)
+			log.Warnf("File read operation failed %v", err)
 			return nil
 		}
 		return p

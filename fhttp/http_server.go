@@ -148,7 +148,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(status)
 	if h2Mode {
-		// h2 non gzip case
+		// h2 non gzip, non size case: stream the body back
 		var n int64
 		n, err = io.Copy(FlushWriter{w}, r.Body)
 		log.Debugf("H2 read/Copied %d", n)
