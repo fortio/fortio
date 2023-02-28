@@ -541,7 +541,7 @@ func NewClient(o *HTTPOptions) (Fetcher, error) {
 	return NewFastClient(o)
 }
 
-// Transport common interface between http.Transport and http2.Transport
+// Transport common interface between http.Transport and http2.Transport.
 type Transport interface {
 	http.RoundTripper
 	CloseIdleConnections()
