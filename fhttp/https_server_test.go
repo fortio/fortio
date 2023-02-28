@@ -18,10 +18,12 @@ package fhttp
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"fortio.org/fortio/fnet"
 )
@@ -117,4 +119,79 @@ func TestHTTPSServerMissingCert(t *testing.T) {
 			t.Errorf("FatalExit not called")
 		}
 	*/
+}
+
+func TestH2Streaming(t *testing.T) {
+	m, a := ServeTLS("0", "", tlsOptions)
+	if m == nil || a == nil {
+		t.Errorf("Failed to create server %v %v", m, a)
+	}
+	testStreaming(t, a, "https")
+}
+
+func TestH2CStreaming(t *testing.T) {
+	m, a := Serve("0", "")
+	if m == nil || a == nil {
+		t.Errorf("Failed to create server %v %v", m, a)
+	}
+	testStreaming(t, a, "http")
+}
+
+func testStreaming(t *testing.T, a net.Addr, proto string) {
+	url := fmt.Sprintf("%s://localhost:%d/", proto, a.(*net.TCPAddr).Port)
+	reader1, writer1 := io.Pipe()
+	reader2, writer2 := io.Pipe()
+	o := HTTPOptions{
+		URL:           url,
+		TLSOptions:    TLSOptions{CACert: caCrt, Cert: cliCrt, Key: cliKey},
+		H2:            true,
+		PayloadReader: reader1,
+		DataWriter:    writer2,
+	}
+	client, _ := NewClient(&o)
+	go func() {
+		time.Sleep(1 * time.Second)
+		writer1.Write([]byte("hello"))
+		t.Logf("Wrote hello")
+		time.Sleep(1100 * time.Millisecond)
+		writer1.Write([]byte("world!"))
+		t.Logf("Wrote world!")
+		writer1.Close()
+	}()
+	ok := false
+	go func() {
+		buf := make([]byte, 1024)
+		n, err := reader2.Read(buf)
+		now := time.Now()
+		if err != nil {
+			t.Errorf("Error reading from pipe: %v", err)
+		}
+		if n != 5 {
+			t.Errorf("Expected 5 bytes, got %d %q", n, string(buf[:n]))
+		}
+		n, err = reader2.Read(buf)
+		t.Logf("Read %d bytes after %v after first read", n, time.Since(now))
+		elapsed := time.Since(now)
+		if err != nil {
+			t.Errorf("Error reading from pipe: %v", err)
+		}
+		if elapsed < 1000*time.Millisecond {
+			t.Errorf("Expected >1s between read got %v", elapsed)
+		}
+		if n != 6 {
+			t.Errorf("Expected 6 bytes, got %d %q", n, string(buf[:n]))
+		}
+		ok = true
+	}()
+	code, dataLen, header := client.StreamFetch(context.Background())
+	t.Logf("TestHTTPSServer-1 result code %d, data len %d, headerlen %d", code, dataLen, header)
+	if code != http.StatusOK {
+		t.Errorf("Got %d instead of 200", code)
+	}
+	if dataLen != 11 {
+		t.Errorf("Expected 11 bytes, got %d", dataLen)
+	}
+	if !ok {
+		t.Errorf("Did not get data from pipe")
+	}
 }
