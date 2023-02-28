@@ -123,7 +123,6 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	// Also read the whole input if we're supposed to write something unrelated like size=100
 	h2Mode := (r.ProtoMajor == 2) && (!gzip) && (size == -1)
 	if !h2Mode {
-		h2Mode = false
 		data, err = io.ReadAll(r.Body)
 		log.Debugf("H1(.1) read %d", len(data))
 		if err != nil {

@@ -151,8 +151,9 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	var header uint
 	if client.HasBuffer() {
 		// Fast client
-		codeI, data, headerI := client.Fetch(context.Background())
-		code = int(codeI)
+		var data []byte
+		var headerI int
+		code, data, headerI = client.Fetch(context.Background())
 		dataLen = int64(len(data))
 		header = uint(headerI)
 		if *curlHeadersStdout {

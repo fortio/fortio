@@ -363,10 +363,8 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	var body io.Reader
 	if o.PayloadReader != nil {
 		body = o.PayloadReader
-	} else {
-		if len(o.Payload) > 0 || method == fnet.POST {
-			body = bytes.NewReader(o.Payload)
-		}
+	} else if len(o.Payload) > 0 || method == fnet.POST {
+		body = bytes.NewReader(o.Payload)
 	}
 	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
@@ -846,7 +844,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 // return the result from the state.
 func (c *FastClient) returnRes() (int, int64, uint) {
 	if c.dataWriter != nil && c.dataWriter != io.Discard {
-		c.dataWriter.Write(c.buffer[:c.size])
+		_, _ = c.dataWriter.Write(c.buffer[:c.size])
 	}
 	return c.code, c.size, c.headerLen
 }
@@ -902,8 +900,8 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	// so we keep that path optimized.
 	c.dataWriter = nil
 	// we're inlining the old returnRes() below so no need to capture the return values
-	_, _, _ = c.StreamFetch(ctx)
-	return c.code, c.buffer[:c.size], int(c.headerLen)
+	code, _, _ := c.StreamFetch(ctx)
+	return code, c.buffer[:c.size], int(c.headerLen)
 }
 
 // Fetch fetches the url content. Returns http code, data written to the writer, length of headers.
