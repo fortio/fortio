@@ -37,6 +37,7 @@ import (
 	"fortio.org/fortio/stats"
 	"fortio.org/log"
 	"github.com/google/uuid"
+	"golang.org/x/net/http2"
 )
 
 // Fetcher is the Url content fetcher that the different client implements.
@@ -402,7 +403,7 @@ type Client struct {
 	body                 []byte // original body of the request
 	req                  *http.Request
 	client               *http.Client
-	transport            *http.Transport
+	transport            Transport
 	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
 	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
@@ -540,6 +541,12 @@ func NewClient(o *HTTPOptions) (Fetcher, error) {
 	return NewFastClient(o)
 }
 
+// Transport common interface between http.Transport and http2.Transport
+type Transport interface {
+	http.RoundTripper
+	CloseIdleConnections()
+}
+
 // NewStdClient creates a client object that wraps the net/http standard client.
 func NewStdClient(o *HTTPOptions) (*Client, error) {
 	o.Init(o.URL) // also normalizes NumConnections etc to be valid.
@@ -567,51 +574,65 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		clientTrace:  o.ClientTrace,
 		dataWriter:   o.DataWriter,
 	}
-
-	tr := http.Transport{
+	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		// redirect all connections to resolved ip, and use cn as sni host
+		if o.Resolve != "" {
+			addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
+		}
+		var conn net.Conn
+		now := time.Now()
+		conn, err = (&net.Dialer{
+			Timeout: o.HTTPReqTimeOut,
+		}).DialContext(ctx, network, addr)
+		client.connectStats.Record(time.Since(now).Seconds())
+		if conn != nil {
+			newRemoteAddress := conn.RemoteAddr().String()
+			// No change when it wasn't set before (first time) and when the value isn't actually changing either.
+			if req.RemoteAddr != "" && newRemoteAddress != req.RemoteAddr {
+				log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
+			}
+			req.RemoteAddr = newRemoteAddress
+			client.ipAddrUsage.Record(req.RemoteAddr)
+		}
+		return conn, err
+	}
+	tr := &http.Transport{
 		MaxIdleConns:        o.NumConnections,
 		MaxIdleConnsPerHost: o.NumConnections,
 		DisableCompression:  !o.Compression,
 		DisableKeepAlives:   o.DisableKeepAlive,
 		Proxy:               http.ProxyFromEnvironment,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// redirect all connections to resolved ip, and use cn as sni host
-			if o.Resolve != "" {
-				addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
-			}
-			var conn net.Conn
-			now := time.Now()
-			conn, err = (&net.Dialer{
-				Timeout: o.HTTPReqTimeOut,
-			}).DialContext(ctx, network, addr)
-			client.connectStats.Record(time.Since(now).Seconds())
-			if conn != nil {
-				newRemoteAddress := conn.RemoteAddr().String()
-				// No change when it wasn't set before (first time) and when the value isn't actually changing either.
-				if req.RemoteAddr != "" && newRemoteAddress != req.RemoteAddr {
-					log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
-				}
-				req.RemoteAddr = newRemoteAddress
-				client.ipAddrUsage.Record(req.RemoteAddr)
-			}
-			return conn, err
-		},
+		DialContext:         dialCtx,
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 		ForceAttemptHTTP2:   o.H2,
 	}
-	var rt http.RoundTripper = &tr
-	if o.Transport != nil {
-		rt = o.Transport(rt)
-	}
-	client.client.Transport = rt
-	client.transport = &tr // internal transport, unwrapped (to close idle conns)
-
+	client.transport = tr // internal transport, unwrapped (to close idle conns)
 	if o.https {
 		tr.TLSClientConfig, err = o.TLSOptions.TLSConfig()
 		if err != nil {
 			return nil, err
 		}
+	} else if o.H2 {
+		// Need to do h2c instead of normal transport
+		// Note: this likely means connection multiplexing / not sure how to force unique connections
+		// with http2.Transport.
+		if err != nil {
+			return nil, err
+		}
+		tr2 := &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return dialCtx(ctx, network, addr)
+			},
+			DisableCompression: !o.Compression,
+		}
+		client.transport = tr2
 	}
+	var rt http.RoundTripper = client.transport
+	if o.Transport != nil {
+		rt = o.Transport(rt)
+	}
+	client.client.Transport = rt
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
 		client.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {

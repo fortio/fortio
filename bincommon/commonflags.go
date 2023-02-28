@@ -141,6 +141,7 @@ func SharedMain() {
 func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
+	o.DataWriter = os.Stdout
 	client, _ := fhttp.NewClient(o)
 	// big gotcha that nil client isn't nil interface value (!)
 	if client == nil || reflect.ValueOf(client).IsNil() {
@@ -163,7 +164,6 @@ func FetchURL(o *fhttp.HTTPOptions) {
 			os.Stdout.Write(data[header:])
 		}
 	} else {
-		o.DataWriter = os.Stdout
 		code, dataLen, header = client.StreamFetch(context.Background())
 	}
 	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, dataLen, header)
