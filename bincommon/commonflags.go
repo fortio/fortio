@@ -76,6 +76,8 @@ var (
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
 	// PayloadFileFlag is the value of -paylaod-file.
 	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
+	// PayloadStreamFlag for streaming payload from stdin (curl only).
+	PayloadStreamFlag = flag.Bool("stream", false, "Stream payload from stdin (only for fortio curl mode)")
 	// UnixDomainSocket to use instead of regular host:port.
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
 	// CertFlag is the flag for the path for the client custom certificate.
@@ -144,16 +146,28 @@ func FetchURL(o *fhttp.HTTPOptions) {
 	if client == nil || reflect.ValueOf(client).IsNil() {
 		os.Exit(1) // error logged already
 	}
-	code, data, header := client.Fetch(context.Background())
-	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	if *curlHeadersStdout {
-		os.Stdout.Write(data)
+	var code int
+	var dataLen int64
+	var header uint
+	if client.HasBuffer() {
+		// Fast client
+		codeI, data, headerI := client.Fetch(context.Background())
+		code = int(codeI)
+		dataLen = int64(len(data))
+		header = uint(headerI)
+		if *curlHeadersStdout {
+			os.Stdout.Write(data)
+		} else {
+			os.Stderr.Write(data[:header])
+			os.Stdout.Write(data[header:])
+		}
 	} else {
-		os.Stderr.Write(data[:header])
-		os.Stdout.Write(data[header:])
+		o.DataWriter = os.Stdout
+		code, dataLen, header = client.StreamFetch(context.Background())
 	}
+	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, dataLen, header)
 	if code != http.StatusOK {
-		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
+		log.Errf("Error status %d", code)
 		os.Exit(1)
 	}
 }
@@ -197,7 +211,11 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
 	httpOpts.ContentType = *contentTypeFlag
-	httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+	if *PayloadStreamFlag {
+		httpOpts.PayloadReader = os.Stdin
+	} else {
+		httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+	}
 	httpOpts.UnixDomainSocket = *unixDomainSocketFlag
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true

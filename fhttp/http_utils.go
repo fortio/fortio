@@ -161,8 +161,8 @@ func FoldFind(haystack []byte, needle []byte) (bool, int) {
 // ParseDecimal extracts the first positive integer number from the input.
 // spaces are ignored.
 // any character that isn't a digit cause the parsing to stop.
-func ParseDecimal(inp []byte) int {
-	res := -1
+func ParseDecimal(inp []byte) int64 {
+	res := int64(-1)
 	for _, b := range inp {
 		if b == ' ' && res == -1 {
 			continue
@@ -170,7 +170,7 @@ func ParseDecimal(inp []byte) int {
 		if b < '0' || b > '9' {
 			break
 		}
-		digit := int(b - '0')
+		digit := int64(b - '0')
 		if res == -1 {
 			res = digit
 		} else {
@@ -183,13 +183,13 @@ func ParseDecimal(inp []byte) int {
 // ParseChunkSize extracts the chunk size and consumes the line.
 // Returns the offset of the data and the size of the chunk,
 // 0, -1 when not found.
-func ParseChunkSize(inp []byte) (int, int) {
+func ParseChunkSize(inp []byte) (int64, int64) {
 	if log.LogDebug() {
 		log.Debugf("ParseChunkSize(%s)", DebugSummary(inp, 128))
 	}
-	res := -1
-	off := 0
-	end := len(inp)
+	res := int64(-1)
+	off := int64(0)
+	end := int64(len(inp))
 	inDigits := true
 	for {
 		if off >= end {
@@ -197,11 +197,11 @@ func ParseChunkSize(inp []byte) (int, int) {
 		}
 		if inDigits { //nolint:nestif
 			b := toUpper(inp[off])
-			var digit int
+			var digit int64
 			if b >= 'A' && b <= 'F' {
-				digit = 10 + int(b-'A')
+				digit = 10 + int64(b-'A')
 			} else if b >= '0' && b <= '9' {
-				digit = int(b - '0')
+				digit = int64(b - '0')
 			} else {
 				inDigits = false
 				if res == -1 {

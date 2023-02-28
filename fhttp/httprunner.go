@@ -138,12 +138,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
-			code, data, headerSize := httpstate[i].client.Fetch(ctx)
+			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+				return nil, fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
 			}
 			if i == 0 && log.LogVerbose() {
-				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+				log.LogVf("first hit of url %s: status %03d, headers %d, total %d", o.URL, code, headerSize, dataLen)
 			}
 		}
 		// Setup the stats for each 'thread'

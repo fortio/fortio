@@ -262,7 +262,7 @@ func TestASCIIToUpper(t *testing.T) {
 func TestParseDecimal(t *testing.T) {
 	tests := []struct {
 		input    string // input
-		expected int    // output
+		expected int64  // output
 	}{
 		{"", -1},
 		{"3", 3},
@@ -283,8 +283,8 @@ func TestParseDecimal(t *testing.T) {
 func TestParseChunkSize(t *testing.T) {
 	tests := []struct {
 		input     string // input
-		expOffset int    // expected offset
-		expValue  int    // expected value
+		expOffset int64  // expected offset
+		expValue  int64  // expected value
 	}{
 		// Errors :
 		{"", 0, -1},

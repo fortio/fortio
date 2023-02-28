@@ -43,7 +43,14 @@ import (
 type Fetcher interface {
 	// Fetch returns http code, data, offset of body (for client which returns
 	// headers)
+	// Deprecated: use StreamFetch with a DataWriter (nil if you don't need the data) instead.
 	Fetch(context.Context) (int, []byte, int)
+	// StreamFetch returns http code and body bytes read
+	// (body is streamed to Dest writer or null),and header size for the fast client.
+	StreamFetch(context.Context) (int, int64, uint)
+	// HasBuffer is true for the fast client and false for golang standard library based client.
+	// it's used to know if calling Fetch() is actually better (fast client with headers to stderr)
+	HasBuffer() bool
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
 	// GetIPAddress() returns the occurrence of ip address used by this client connection,
@@ -141,6 +148,10 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		log.Errf("Unexpected init with empty url")
 		return
 	}
+	if h.PayloadReader != nil && !h.H2 {
+		log.Infof("PayloadReader set, switching to H2")
+		h.H2 = true
+	}
 	if h.H2 && !h.DisableFastClient {
 		log.Infof("H2 requested, switching to std client")
 		h.DisableFastClient = true
@@ -161,7 +172,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 }
 
 const (
-	retcodeOffset = len("HTTP/1.X ")
+	retcodeOffset = int64(len("HTTP/1.X "))
 	// HTTPReqTimeOutDefaultValue is the default timeout value. 3s.
 	HTTPReqTimeOutDefaultValue = 3 * time.Second
 )
@@ -204,6 +215,9 @@ type HTTPOptions struct {
 	// Optional Transport chain factory to use if set. Only effective when using std client.
 	// pass otelhttp.NewTransport for instance.
 	Transport CreateTransport `json:"-"`
+	// These following 2 options are only making sense for single operation (curl) mode.
+	PayloadReader io.Reader `json:"-"` // if set, Payload is ignored and this is used instead.
+	DataWriter    io.Writer `json:"-"` // if set, the response body is written to this writer.
 }
 
 type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
@@ -347,8 +361,12 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	method := o.Method()
 	var body io.Reader
-	if method == fnet.POST {
-		body = bytes.NewReader(o.Payload)
+	if o.PayloadReader != nil {
+		body = o.PayloadReader
+	} else {
+		if len(o.Payload) > 0 || method == fnet.POST {
+			body = bytes.NewReader(o.Payload)
+		}
 	}
 	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
@@ -395,6 +413,11 @@ type Client struct {
 	ipAddrUsage          *stats.Occurrence
 	connectStats         *stats.Histogram
 	clientTrace          CreateClientTrace
+	dataWriter           io.Writer
+}
+
+func (c *Client) HasBuffer() bool {
+	return false
 }
 
 // Close cleans up any resources used by NewStdClient.
@@ -420,8 +443,21 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 	return err
 }
 
-// Fetch fetches the byte and code for pre created client.
+// Fetch is the backward compatible version of StreamFetch to avoid
+// rewriting a bunch of tests but should not be used for load tests
+// (where we don't care about the data and only the stats)
+// Deprecated: use StreamFetch instead.
 func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
+	buf := &bytes.Buffer{}
+	c.dataWriter = buf
+	status, _, _ := c.StreamFetch(ctx)
+	return status, buf.Bytes(), 0
+}
+
+// StreamFetch fetches the byte and code for pre created std client.
+// header length (3rd returned value) is always 0 for that client
+// and only available with the fastclient.
+func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	// req can't be null (client itself would be null in that case)
 	var req *http.Request
 	if c.clientTrace != nil {
@@ -458,7 +494,7 @@ func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, req.Method, c.url, err)
-		return -1, []byte(err.Error()), 0
+		return -1, -1, 0
 	}
 	var data []byte
 	if log.LogDebug() {
@@ -468,7 +504,11 @@ func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 			log.Debugf("[%d] For URL %s, received:\n%s", c.id, c.url, data)
 		}
 	}
-	data, err = io.ReadAll(resp.Body)
+	if c.dataWriter == nil {
+		c.dataWriter = io.Discard
+	}
+	var n int64
+	n, err = io.Copy(c.dataWriter, resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		log.Errf("[%d] Unable to read response for %s : %v", c.id, c.url, err)
@@ -477,14 +517,14 @@ func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 			code = http.StatusNoContent
 			log.Warnf("[%d] Ok code despite read error, switching code to %d", c.id, code)
 		}
-		return code, data, 0
+		return code, n, 0
 	}
 	code := resp.StatusCode
 	log.Debugf("[%d] Got %d : %s for %s %s - response is %d bytes", c.id, code, resp.Status, req.Method, c.url, len(data))
 	if c.logErrors && !codeIsOK(code) {
 		log.Warnf("[%d] Non ok http code %d", c.id, code)
 	}
-	return code, data, 0
+	return code, n, 0
 }
 
 // GetIPAddress get the ip address that DNS resolves to when using stdClient and connection stats.
@@ -527,6 +567,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		// Keep track of timing for connection (re)establishment.
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 		clientTrace:  o.ClientTrace,
+		dataWriter:   o.DataWriter,
 	}
 
 	tr := http.Transport{
@@ -585,21 +626,38 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 // FetchURL fetches the data at the given url using the standard client and default options.
 // Returns the http status code (http.StatusOK == 200 for success) and the data.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+// Deprecated: use StreamURL instead.
 func FetchURL(url string) (int, []byte) {
+	w := &bytes.Buffer{}
+	code := StreamURL(url, w)
+	return code, w.Bytes()
+}
+
+func StreamURL(url string, w io.Writer) int {
 	o := NewHTTPOptions(url)
 	// Maximize chances of getting the data back, vs the raw payload like the fast client
 	o.DisableFastClient = true
 	o.FollowRedirects = true
-	return Fetch(o)
+	o.DataWriter = w
+	return StreamFetch(o)
 }
 
 // Fetch creates a client an performs a fetch according to the http options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+// Deprecated: use StreamFetch instead.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
+	w := &bytes.Buffer{}
+	httpOptions.DataWriter = w
+	return StreamFetch(httpOptions), w.Bytes()
+}
+
+// Fetch creates a client an performs a fetch according to the http options passed in.
+// To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+func StreamFetch(httpOptions *HTTPOptions) int {
 	cli, _ := NewClient(httpOptions)
-	code, data, _ := cli.Fetch(context.Background())
+	code, _, _ := cli.StreamFetch(context.Background())
 	cli.Close()
-	return code, data
+	return code
 }
 
 // FastClient is a fast, lockfree single purpose http 1.0/1.1 client.
@@ -609,10 +667,10 @@ type FastClient struct {
 	dest         net.Addr
 	socket       net.Conn
 	socketCount  int // number of sockets attempts, same as the new connectStats.Count() + DNS errors if any.
-	size         int
+	size         int64
 	code         int
 	errorCount   int
-	headerLen    int
+	headerLen    uint
 	url          string
 	host         string
 	hostname     string
@@ -636,11 +694,16 @@ type FastClient struct {
 	connReuse      int
 	reuseCount     int
 	connectStats   *stats.Histogram
+	dataWriter     io.Writer
 }
 
 // GetIPAddress get ip address that DNS resolved to when using fast client and connection stats.
 func (c *FastClient) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
 	return c.ipAddrUsage, c.connectStats
+}
+
+func (c *FastClient) HasBuffer() bool {
+	return true
 }
 
 // Close cleans up any resources used by FastClient.
@@ -707,6 +770,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn, ipAddrUsage: stats.NewOccurrence(),
 		// Keep track of timing for connection (re)establishment.
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
+		dataWriter:   o.DataWriter,
 	}
 	if o.https {
 		bc.tlsConfig, err = o.TLSOptions.TLSConfig()
@@ -780,8 +844,11 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 }
 
 // return the result from the state.
-func (c *FastClient) returnRes() (int, []byte, int) {
-	return c.code, c.buffer[:c.size], c.headerLen
+func (c *FastClient) returnRes() (int, int64, uint) {
+	if c.dataWriter != nil && c.dataWriter != io.Discard {
+		c.dataWriter.Write(c.buffer[:c.size])
+	}
+	return c.code, c.size, c.headerLen
 }
 
 // connect to destination.
@@ -831,6 +898,16 @@ const (
 
 // Fetch fetches the url content. Returns http code, data, offset of body.
 func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
+	// We don't want to even use a writer as the buffer is there and fixed
+	// so we keep that path optimized.
+	c.dataWriter = nil
+	// we're inlining the old returnRes() below so no need to capture the return values
+	_, _, _ = c.StreamFetch(ctx)
+	return c.code, c.buffer[:c.size], int(c.headerLen)
+}
+
+// Fetch fetches the url content. Returns http code, data written to the writer, length of headers.
+func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	c.code = SocketError
 	c.size = 0
 	c.headerLen = 0
@@ -869,7 +946,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 			log.Infof("[%d] Closing dead socket %v (%v)", c.id, c.dest, err)
 			conn.Close()
 			c.errorCount++
-			return c.Fetch(ctx) // recurse once
+			return c.StreamFetch(ctx) // recurse once
 		}
 		log.Errf("[%d] Unable to write to %v : %v", c.id, c.dest, err)
 		return c.returnRes()
@@ -894,7 +971,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	c.readResponse(conn, canReuse)
 	if c.code == RetryOnce {
 		// Special "eof on reused socket" code
-		return c.Fetch(ctx) // recurse once
+		return c.StreamFetch(ctx) // recurse once
 	}
 	// Return the result:
 	return c.returnRes()
@@ -909,7 +986,7 @@ func codeIsOK(code int) bool {
 //
 //nolint:nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
-	max := len(c.buffer)
+	max := int64(len(c.buffer))
 	parsedHeaders := false
 	// TODO: safer to start with -1 / SocketError and fix ok for http 1.0
 	c.code = http.StatusOK // In http 1.0 mode we don't bother parsing anything
@@ -922,7 +999,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		// Ugly way to cover the case where we get more than 1 chunk at the end
 		// TODO: need automated tests
 		if !skipRead {
-			n, err := conn.Read(c.buffer[c.size:])
+			nI, err := conn.Read(c.buffer[c.size:])
+			n := int64(nI)
 			if err != nil {
 				if reusedSocket && c.size == 0 {
 					// Ok for reused socket to be dead once (close by server)
@@ -946,7 +1024,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			c.size += n
 			if log.LogDebug() {
 				log.Debugf("[%d] Read ok %d total %d so far (-%d headers = %d data) %s",
-					c.id, n, c.size, c.headerLen, c.size-c.headerLen, DebugSummary(c.buffer[c.size-n:c.size], 256))
+					c.id, n, c.size, c.headerLen, c.size-int64(c.headerLen), DebugSummary(c.buffer[c.size-n:c.size], 256))
 			}
 		}
 		skipRead = false
@@ -954,7 +1032,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		// at least parse the http retcode:
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
 			// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
-			c.code = ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3]) // TODO do that only once...
+			c.code = int(ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3])) // TODO do that only once...
 			// TODO handle 100 Continue, make the "ok" codes configurable
 			if !codeIsOK(c.code) {
 				if c.logErrors {
@@ -970,11 +1048,11 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			idx := endofHeadersStart
 			for idx < c.size-1 {
 				if c.buffer[idx] == '\r' && c.buffer[idx+1] == '\n' {
-					if c.headerLen == idx-2 { // found end of headers
+					if int64(c.headerLen) == idx-2 { // found end of headers
 						parsedHeaders = true
 						break
 					}
-					c.headerLen = idx
+					c.headerLen = uint(idx)
 					idx++
 				}
 				idx++
@@ -988,7 +1066,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 				}
 				// Find the content length or chunked mode
 				if keepAlive {
-					var contentLength int
+					var contentLength int64
 					found, offset := FoldFind(c.buffer[:c.headerLen], contentLengthHeader)
 					if found {
 						// Content-Length mode:
@@ -998,7 +1076,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							keepAlive = false
 							break
 						}
-						max = c.headerLen + contentLength
+						max = int64(c.headerLen) + contentLength
 						if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
 							log.Debugf("[%d] found content length %d", c.id, contentLength)
 						}
@@ -1006,17 +1084,17 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 						// Chunked mode (or err/missing):
 						if found, _ := FoldFind(c.buffer[:c.headerLen], chunkedHeader); found {
 							chunkedMode = true
-							var dataStart int
+							var dataStart int64
 							dataStart, contentLength = ParseChunkSize(c.buffer[c.headerLen:c.size])
 							if contentLength == -1 {
 								// chunk length not available yet
 								log.LogVf("[%d] chunk mode but no first chunk length yet, reading more", c.id)
-								max = c.headerLen
+								max = int64(c.headerLen)
 								continue
 							}
-							max = c.headerLen + dataStart + contentLength + 2 // extra CR LF
+							max = int64(c.headerLen) + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("[%d] chunk-length is %d (%s) setting max to %d",
-								c.id, contentLength, c.buffer[c.headerLen:c.headerLen+dataStart-2],
+								c.id, contentLength, c.buffer[c.headerLen:int64(c.headerLen)+dataStart-2],
 								max)
 						} else {
 							if log.LogVerbose() {
@@ -1028,17 +1106,18 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							break
 						}
 					} // end of content-length section
-					if max > len(c.buffer) {
+					if max > int64(len(c.buffer)) {
 						log.Warnf("[%d] Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
-							c.id, c.headerLen, contentLength, (c.headerLen+contentLength)/1024+1)
+							c.id, c.headerLen, contentLength, (int64(c.headerLen)+contentLength)/1024+1)
 						// TODO: just consume the extra instead
-						max = len(c.buffer)
+						// or rather use the dataWriter post headers
+						max = int64(len(c.buffer))
 					}
 					if checkConnectionClosedHeader {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
 							log.Infof("[%d] Server wants to close connection, no keep-alive!", c.id)
 							keepAlive = false
-							max = len(c.buffer) // reset to read as much as available
+							max = int64(len(c.buffer)) // reset to read as much as available
 						}
 					}
 				}
@@ -1071,7 +1150,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 				} else {
 					max += dataStart + nextChunkLen + 2 // extra CR LF
 					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, max)
-					if max > len(c.buffer) {
+					if max > int64(len(c.buffer)) {
 						log.Errf("[%d] Buffer too small for %d data", c.id, max)
 					} else {
 						if max <= c.size {
