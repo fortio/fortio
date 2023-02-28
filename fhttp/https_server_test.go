@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -158,7 +159,7 @@ func testStreaming(t *testing.T, a net.Addr, proto string) {
 		t.Logf("Wrote world!")
 		writer1.Close()
 	}()
-	ok := false
+	var ok atomic.Bool
 	go func() {
 		buf := make([]byte, 1024)
 		n, err := reader2.Read(buf)
@@ -181,7 +182,7 @@ func testStreaming(t *testing.T, a net.Addr, proto string) {
 		if n != 6 {
 			t.Errorf("Expected 6 bytes, got %d %q", n, string(buf[:n]))
 		}
-		ok = true
+		ok.Store(true)
 	}()
 	code, dataLen, header := client.StreamFetch(context.Background())
 	t.Logf("TestHTTPSServer-1 result code %d, data len %d, headerlen %d", code, dataLen, header)
@@ -191,7 +192,7 @@ func testStreaming(t *testing.T, a net.Addr, proto string) {
 	if dataLen != 11 {
 		t.Errorf("Expected 11 bytes, got %d", dataLen)
 	}
-	if !ok {
+	if !ok.Load() {
 		t.Errorf("Did not get data from pipe")
 	}
 }
