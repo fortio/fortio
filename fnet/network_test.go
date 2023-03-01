@@ -716,7 +716,7 @@ func TestReadFileForPayload(t *testing.T) {
 	for _, test := range tests {
 		data, err := fnet.ReadFileForPayload(test.payloadFile)
 		if err != nil && len(test.expectedText) > 0 {
-			t.Errorf("Error should not be happened for ReadFileForPayload")
+			t.Errorf("Error should not be happened for ReadFileForPayload: %v", err)
 		}
 		if !bytes.Equal(data, test.expectedText) {
 			t.Errorf("Got %s, expected %s for ReadFileForPayload()", string(data), string(test.expectedText))

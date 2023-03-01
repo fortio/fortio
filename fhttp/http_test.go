@@ -759,7 +759,9 @@ func TestDefaultPort(t *testing.T) {
 	if cli == nil {
 		t.Fatalf("Couldn't get a client using NewClient on modified opts: %v", err)
 	}
-	// currently fast client fails with https:
+	if !cli.HasBuffer() {
+		t.Errorf("didn't get expected fast client with buffer")
+	}
 	code, _, _ = cli.Fetch(context.Background())
 	if code != 200 {
 		t.Errorf("Standard client http error code %d", code)

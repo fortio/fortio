@@ -145,11 +145,14 @@ func testStreaming(t *testing.T, a net.Addr, proto string) {
 	o := HTTPOptions{
 		URL:           url,
 		TLSOptions:    TLSOptions{CACert: caCrt, Cert: cliCrt, Key: cliKey},
-		H2:            true,
+		H2:            false, // exercise PayloadReader -> implies h2
 		PayloadReader: reader1,
 		DataWriter:    writer2,
 	}
 	client, _ := NewClient(&o)
+	if client.HasBuffer() {
+		t.Errorf("HasBuffer should be false")
+	}
 	go func() {
 		time.Sleep(1 * time.Second)
 		writer1.Write([]byte("hello"))
