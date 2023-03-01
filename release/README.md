@@ -20,7 +20,7 @@
   regctl image copy fortio/fortio:1.30.0 fortio/fortio:latest_release
   ```
 
-- To update the command line flags in the ../README.md; run `release/updateFlags.sh`
+- To update the command line flags in the ../README.md; run the new `release/bumpRelease.sh 1.53.0` for instance
 
 - Update the homebrew tap `brew bump-formula-pr --tag v1.2.3 fortio`
 

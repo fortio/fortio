@@ -126,9 +126,9 @@ Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
+<!-- USAGE_START -->
 Φορτίο 1.52.0 usage:
         fortio command [flags] target
-<!-- USAGE_START -->
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
  tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),
