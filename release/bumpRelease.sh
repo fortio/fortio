@@ -6,18 +6,18 @@
 set -e
 FILENAME="README.md"
 RELEASE=$1
-if [ -z "$RELEASE" ]; then
-    echo "Usage: $0 <release number>, eg 1.53.0 without the v"
-    exit 1
-fi
 CURRENT=$(head -1 $FILENAME | awk '/<!-- ([^- ]+) -->$/ { print $2}')
-if [ "$CURRENT" = "$RELEASE" ]; then
-    echo "Release $RELEASE is already in $FILENAME"
-    exit 0
-fi
 if [ -z "$CURRENT" ]; then
     echo "Cannot find current release in $FILENAME"
     exit 1
+fi
+if [ -z "$RELEASE" ]; then
+    echo "Usage: $0 <release number>, eg 1.53.0 without the v, to change from current $CURRENT"
+    exit 1
+fi
+if [ "$CURRENT" = "$RELEASE" ]; then
+    echo "Release $RELEASE is already in $FILENAME"
+    exit 0
 fi
 echo "Changing $FILENAME from $CURRENT to release $RELEASE and updating usage section"
 ./release/updateFlags.sh | sed -e "s/Φορτίο dev/Φορτίο $RELEASE/" > /tmp/fortio_flags.txt
