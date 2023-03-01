@@ -1,3 +1,4 @@
+<!-- 1.52.0 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -127,6 +128,7 @@ Full list of command line flags (`fortio help`):
 <pre>
 Φορτίο 1.52.0 usage:
         fortio command [flags] target
+<!-- USAGE_START -->
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
  tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),
@@ -343,6 +345,7 @@ restores pre 1.21 behavior
   -user user:password
         User credentials for basic authentication (for http). Input data format should be
 user:password
+<!-- USAGE_END -->
 </pre>
 </details>
 
