@@ -360,7 +360,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	}
 	var err error
 	if host == "" {
-		return nil, fmt.Errorf("Can't resolve empty host")
+		return nil, fmt.Errorf("can't resolve empty host")
 	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
