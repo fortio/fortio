@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 // Copyright 2017-2023 Fortio Authors
-=======
-// Copyright 2017 Istio Authors
->>>>>>> c9f907a (split away flacky/race test)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
