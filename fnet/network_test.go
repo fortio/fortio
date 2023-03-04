@@ -273,18 +273,12 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}
-	// For some reason unable to trigger these 2 cases within go
-	// TODO: figure it out... this is now only triggering coverage but not really testing anything
-	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
-	// with these timings (!)
+	// Moved race issue to network_test_norace.go
 	eofStopFlag := false
 	ctx := context.Background()
-	for i := 0; i < 2; i++ {
-		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
-		var out ErroringWriter
-		fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
-		eofStopFlag = true
-	}
+	in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+	var out ErroringWriter
+	fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
 }
 
 func TestNetCatErrors(t *testing.T) {
