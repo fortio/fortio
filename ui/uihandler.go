@@ -36,6 +36,7 @@ import (
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/metrics"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
@@ -60,6 +61,7 @@ var (
 	chartJSPath string // relative
 	debugPath   string // absolute
 	echoPath    string // absolute
+	metricsPath string // absolute
 	fetchPath   string // this one is absolute
 	// Used to construct default URL to self.
 	urlHostPort string
@@ -228,6 +230,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			LogoPath                    string
 			DebugPath                   string
 			EchoDebugPath               string
+			MetricsPath                 string
 			ChartJSPath                 string
 			StartTime                   string
 			TargetURL                   string
@@ -239,7 +242,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			DoStop                      bool
 			DoLoad                      bool
 		}{
-			r, version.Short(), version.Long(), logoPath, debugPath, echoPath, chartJSPath,
+			r, version.Short(), version.Long(), logoPath, debugPath, echoPath, metricsPath, chartJSPath,
 			startTime.Format(time.ANSIC), url, labels, runid,
 			fhttp.RoundDuration(time.Since(startTime)), durSeconds, urlHostPort, mode == stop, mode == run,
 		})
@@ -662,6 +665,10 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 	_, _ = w.Write([]byte("<td class='checkmark'>✓"))
 }
 
+func getMetricsPath(debugPath string) string {
+	return strings.TrimSuffix(debugPath, "/") + "/metrics"
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
@@ -684,6 +691,7 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	}
 	debugPath = debugpath
 	echoPath = fhttp.EchoDebugPath(debugpath)
+	metricsPath = getMetricsPath(debugpath)
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
 	// For backward compatibility with http:// only fetcher
@@ -725,10 +733,16 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	} else {
 		mux.HandleFunc(uiPath+"sync", SyncHandler)
 	}
-	dflagSetURL := uiPath + "flags/set"
+	dflagsPath := uiPath + "flags"
+	dflagSetURL := dflagsPath + "/set"
 	dflagEndPt := endpoint.NewFlagsEndpoint(flag.CommandLine, dflagSetURL)
-	mux.HandleFunc(uiPath+"flags", dflagEndPt.ListFlags)
+	mux.HandleFunc(dflagsPath, dflagEndPt.ListFlags)
 	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
+
+	// metrics endpoint
+	log.Printf("Debug endpoint on %s, Additional Echo on %s, flags on %s, and Metrics endpoint on %s",
+		debugPath, echoPath, dflagsPath, metricsPath)
+	mux.HandleFunc(metricsPath, metrics.Exporter)
 
 	urlHostPort = fnet.NormalizeHostPort(port, addr)
 	uiMsg := "\t UI started - visit:\n\t\t"
