@@ -116,6 +116,7 @@ func TestResolveDestination(t *testing.T) {
 		{"using ip:bogussvc", "8.8.8.8:doesnotexisthopefully", ""},
 		{"using bogus hostname", "doesnotexist.fortio.org:443", ""},
 		{"using udp://ip:portname", "udp://8.8.8.8:http", ""},
+		{"empty host", ":80", ""},
 		// Good cases:
 		{"using tcp://ip:portname", "tcp://8.8.8.8:http", "8.8.8.8:80"},
 		{"using tcp://ip:portname/", "tcp://8.8.8.8:http/", "8.8.8.8:80"},

@@ -333,7 +333,7 @@ func ClearResolveCache() {
 // port is only for logging.
 func checkCache(host, port string) (found bool, res net.IP) {
 	dnsMutex.Lock() // unlock before IOs
-	if host != dnsHost {
+	if dnsAddrs == nil || host != dnsHost {
 		// keep the lock locked
 		return
 	}
@@ -359,6 +359,9 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 		host = host[1 : len(host)-1]
 	}
 	var err error
+	if host == "" {
+		return nil, fmt.Errorf("Can't resolve empty host")
+	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve %s port '%s' : %v", proto, port, err)
