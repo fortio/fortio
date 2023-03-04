@@ -612,6 +612,16 @@ func GetAllRuns() StatusMap {
 	return res
 }
 
+// RunMetrics returns the number of currently running runs as well as the total runs so far.
+// acquire the lock once (per scrape) for all stats.
+func RunMetrics() (int, int64) {
+	uiRunMapMutex.Lock()
+	runid := id
+	n := len(runs)
+	uiRunMapMutex.Unlock()
+	return n, runid
+}
+
 func SetDataDir(datadir string) {
 	dataDir = datadir
 }

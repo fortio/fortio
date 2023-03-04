@@ -1,4 +1,4 @@
-// Copyright 2017 Istio Authors
+// Copyright 2017-2023 Fortio Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -187,14 +187,21 @@ func TestProxy(t *testing.T) {
 	ctx := context.Background()
 	addr := fnet.ProxyToDestination(ctx, ":0", "www.google.com:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	t.Logf("Proxying %v to %v", addr, dAddr)
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
 		t.Fatalf("can't connect to our proxy: %v", err)
 	}
 	defer d.Close()
-	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
-	_, _ = d.Write([]byte(data))
-	_ = d.CloseWrite()
+	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test\r\n\r\n"
+	_, err = d.Write([]byte(data))
+	if err != nil {
+		t.Errorf("can't write to our proxy: %v", err)
+	}
+	err = d.CloseWrite()
+	if err != nil {
+		t.Errorf("can't CloseWrite to our proxy: %v", err)
+	}
 	res := make([]byte, 4096)
 	n, err := d.Read(res)
 	if err != nil {
@@ -273,18 +280,12 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}
-	// For some reason unable to trigger these 2 cases within go
-	// TODO: figure it out... this is now only triggering coverage but not really testing anything
-	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
-	// with these timings (!)
+	// Moved race issue to network_test_norace.go
 	eofStopFlag := false
 	ctx := context.Background()
-	for i := 0; i < 2; i++ {
-		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
-		var out ErroringWriter
-		fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
-		eofStopFlag = true
-	}
+	in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+	var out ErroringWriter
+	fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
 }
 
 func TestNetCatErrors(t *testing.T) {
