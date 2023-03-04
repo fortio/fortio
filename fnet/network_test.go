@@ -187,14 +187,21 @@ func TestProxy(t *testing.T) {
 	ctx := context.Background()
 	addr := fnet.ProxyToDestination(ctx, ":0", "www.google.com:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	t.Logf("Proxying %v to %v", addr, dAddr)
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
 		t.Fatalf("can't connect to our proxy: %v", err)
 	}
 	defer d.Close()
-	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
-	_, _ = d.Write([]byte(data))
-	_ = d.CloseWrite()
+	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test\r\n\r\n"
+	_, err = d.Write([]byte(data))
+	if err != nil {
+		t.Errorf("can't write to our proxy: %v", err)
+	}
+	err = d.CloseWrite()
+	if err != nil {
+		t.Errorf("can't CloseWrite to our proxy: %v", err)
+	}
 	res := make([]byte, 4096)
 	n, err := d.Read(res)
 	if err != nil {
