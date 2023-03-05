@@ -211,6 +211,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if len(statuses.Statuses) != 1 {
 		t.Errorf("Status count %d != expected 1", len(statuses.Statuses))
 	}
+	if c, _ := RunMetrics(); c != 1 {
+		t.Errorf("NumRuns() %d != expected 1", c)
+	}
 	status, found := statuses.Statuses[runID]
 	if !found {
 		t.Errorf("Status not found in reply, for runid %d: %+v", runID, statuses)
@@ -271,6 +274,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if len(statuses.Statuses) != 0 {
 		t.Errorf("Status count %d != expected 0 - %v", len(statuses.Statuses), statuses)
 	}
+	if c, n := RunMetrics(); c != 0 || n < 1 {
+		t.Errorf("NumRuns() %d,%d != expected 0,>=1", c, n)
+	}
 	// Start 3 async test
 	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, echoURL)
 	_ = GetAsyncResult(t, runURL, jsonData)
@@ -285,6 +291,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	if len(statuses.Statuses) != 3 {
 		t.Errorf("Status count not the expected 3: %+v", statuses)
+	}
+	if c, n := RunMetrics(); c != 3 || n < 4 {
+		t.Errorf("NumRuns() %d,%d != expected 3,>=4", c, n)
 	}
 	// stop all
 	stopURL = fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestStopURI)

@@ -1,0 +1,10 @@
+# Used to test locally (make)
+global:
+  scrape_interval:     5s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: 'fortio'
+    metrics_path: '/debug/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8080']

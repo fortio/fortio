@@ -207,10 +207,6 @@ func FortioMain(hook bincommon.FortioHook) {
 	scli.ServerMain() // will Exit if there were arguments/flags errors.
 
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
-	percList, err := stats.ParsePercentiles(*percentilesFlag)
-	if err != nil {
-		cli.ErrUsage("Unable to extract percentiles from -p: %v", err)
-	}
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
 	sync := strings.TrimSpace(*syncFlag)
 	if sync != "" {
@@ -221,11 +217,13 @@ func FortioMain(hook bincommon.FortioHook) {
 	isServer := false
 	switch cli.Command {
 	case "curl":
+		log.SetDefaultsForClientTools()
 		fortioLoad(true, nil, hook)
 	case "nc":
+		log.SetDefaultsForClientTools()
 		fortioNC()
 	case "load":
-		fortioLoad(*curlFlag, percList, hook)
+		fortioLoad(*curlFlag, percList(), hook)
 	case "redirect":
 		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
@@ -265,12 +263,13 @@ func FortioMain(hook bincommon.FortioHook) {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		if *echoPortFlag != disabled {
-			if !ui.Serve(hook, baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList) {
+			if !ui.Serve(hook, baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList()) {
 				os.Exit(1) // error already logged
 			}
 		}
 		startProxies()
 	case "grpcping":
+		log.SetDefaultsForClientTools()
 		grpcClient()
 	default:
 		cli.ErrUsage("Error: unknown command %q", cli.Command)
@@ -278,6 +277,14 @@ func FortioMain(hook bincommon.FortioHook) {
 	if isServer {
 		serverLoop(sync)
 	}
+}
+
+func percList() (percList []float64) {
+	percList, err := stats.ParsePercentiles(*percentilesFlag)
+	if err != nil {
+		cli.ErrUsage("Unable to extract percentiles from -p: %v", err)
+	}
+	return
 }
 
 func serverLoop(sync string) {

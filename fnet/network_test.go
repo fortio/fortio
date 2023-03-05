@@ -1,4 +1,4 @@
-// Copyright 2017 Istio Authors
+// Copyright 2017-2023 Fortio Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,6 +116,7 @@ func TestResolveDestination(t *testing.T) {
 		{"using ip:bogussvc", "8.8.8.8:doesnotexisthopefully", ""},
 		{"using bogus hostname", "doesnotexist.fortio.org:443", ""},
 		{"using udp://ip:portname", "udp://8.8.8.8:http", ""},
+		{"empty host", ":80", ""},
 		// Good cases:
 		{"using tcp://ip:portname", "tcp://8.8.8.8:http", "8.8.8.8:80"},
 		{"using tcp://ip:portname/", "tcp://8.8.8.8:http/", "8.8.8.8:80"},
@@ -186,14 +187,21 @@ func TestProxy(t *testing.T) {
 	ctx := context.Background()
 	addr := fnet.ProxyToDestination(ctx, ":0", "www.google.com:80")
 	dAddr := net.TCPAddr{Port: addr.(*net.TCPAddr).Port}
+	t.Logf("Proxying %v to %v", addr, dAddr)
 	d, err := net.DialTCP("tcp", nil, &dAddr)
 	if err != nil {
 		t.Fatalf("can't connect to our proxy: %v", err)
 	}
 	defer d.Close()
-	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test-" + version.Long() + "\r\n\r\n"
-	_, _ = d.Write([]byte(data))
-	_ = d.CloseWrite()
+	data := "HEAD / HTTP/1.0\r\nUser-Agent: fortio-unit-test\r\n\r\n"
+	_, err = d.Write([]byte(data))
+	if err != nil {
+		t.Errorf("can't write to our proxy: %v", err)
+	}
+	err = d.CloseWrite()
+	if err != nil {
+		t.Errorf("can't CloseWrite to our proxy: %v", err)
+	}
 	res := make([]byte, 4096)
 	n, err := d.Read(res)
 	if err != nil {
@@ -272,18 +280,12 @@ func TestTCPEchoServerErrors(t *testing.T) {
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}
-	// For some reason unable to trigger these 2 cases within go
-	// TODO: figure it out... this is now only triggering coverage but not really testing anything
-	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
-	// with these timings (!)
+	// Moved race issue to network_test_norace.go
 	eofStopFlag := false
 	ctx := context.Background()
-	for i := 0; i < 2; i++ {
-		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
-		var out ErroringWriter
-		fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
-		eofStopFlag = true
-	}
+	in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
+	var out ErroringWriter
+	fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
 }
 
 func TestNetCatErrors(t *testing.T) {
@@ -716,7 +718,7 @@ func TestReadFileForPayload(t *testing.T) {
 	for _, test := range tests {
 		data, err := fnet.ReadFileForPayload(test.payloadFile)
 		if err != nil && len(test.expectedText) > 0 {
-			t.Errorf("Error should not be happened for ReadFileForPayload")
+			t.Errorf("Error should not be happened for ReadFileForPayload: %v", err)
 		}
 		if !bytes.Equal(data, test.expectedText) {
 			t.Errorf("Got %s, expected %s for ReadFileForPayload()", string(data), string(test.expectedText))
