@@ -199,3 +199,24 @@ func testStreaming(t *testing.T, a net.Addr, proto string) {
 		t.Errorf("Did not get data from pipe")
 	}
 }
+
+func TestDefaultQueryParam(t *testing.T) {
+	m, a := Serve("0", "")
+	if m == nil || a == nil {
+		t.Errorf("Failed to create server %v %v", m, a)
+	}
+	url := fmt.Sprintf("http://localhost:%d/", a.(*net.TCPAddr).Port)
+	o := HTTPOptions{URL: url}
+	client, _ := NewClient(&o)
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestDefaultQueryPar result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != http.StatusOK {
+		t.Errorf("Got %d instead of 200", code)
+	}
+	DefaultEchoServerParams.Set("status=556")
+	code, data, header = client.Fetch(context.Background())
+	t.Logf("TestDefaultQueryPar result code %d, data len %d, headerlen %d", code, len(data), header)
+	if code != 556 {
+		t.Errorf("Got %d instead of 556", code)
+	}
+}
