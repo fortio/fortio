@@ -219,4 +219,9 @@ func TestDefaultQueryParam(t *testing.T) {
 	if code != 556 {
 		t.Errorf("Got %d instead of 556", code)
 	}
+	DefaultEchoServerParams.Set("?\x03")
+	code, _, _ = client.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("Got %d instead of 200 with bad default query", code)
+	}
 }

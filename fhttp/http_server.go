@@ -163,8 +163,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleCommonArgs common flags for debug and echo handlers.
-// Must be called after body is read.
+// handleCommonArgs common flags for debug and echo handlers from query string only.
 func handleCommonArgs(w http.ResponseWriter, r *http.Request) (rqNum int64) {
 	dur := generateDelay(QueryArg(r, "delay"))
 	if dur > 0 {
