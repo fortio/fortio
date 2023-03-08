@@ -17,7 +17,6 @@ package fhttp
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -69,8 +68,8 @@ func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID
 		httpstate.aborter.Abort(false)
 		log.Infof("Aborted run because of code %d - data %s", code, DebugSummary(body, 1024))
 	}
-	if code == http.StatusOK {
-		return true, "200"
+	if code >= 200 && code <= 299 {
+		return true, fmt.Sprint(code)
 	}
 	return false, fmt.Sprint(code)
 }
