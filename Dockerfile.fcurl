@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v54@sha256:4775038c3ace753978c8dfd99ebbd23607b61eeb0bf6c2bf2901d0485cc1870c as build
+FROM docker.io/fortio/fortio.build:v56@sha256:07d916612d89c95abf15f519d2d1afc91af6e58ca36bd6c67f584379f8ef0680 as build
 WORKDIR /build
 COPY . fortio
 RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_TARGET=fortio.org/fortio/fcurl
