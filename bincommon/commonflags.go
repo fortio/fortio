@@ -56,9 +56,9 @@ var (
 	halfCloseFlag   = flag.Bool("halfclose", false,
 		"When not keepalive, whether to half close the connection (only for fast http)")
 	httpReqTimeoutFlag  = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
-	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (slower but supports h2)")
+	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (slower but supports h2/h2c)")
 	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
-	h2Flag              = flag.Bool("h2", false, "Attempt to use http2.0 / h2 (instead of http 1.1) with stdclient and TLS")
+	h2Flag              = flag.Bool("h2", false, "Attempt to use http2.0 / h2 (instead of http 1.1) for both TLS and h2c")
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https/tls/grpc connections")
 	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	resolve             = flag.String("resolve", "", "Resolve host name to this `IP`")
@@ -76,6 +76,8 @@ var (
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
 	// PayloadFileFlag is the value of -paylaod-file.
 	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
+	// PayloadStreamFlag for streaming payload from stdin (curl only).
+	PayloadStreamFlag = flag.Bool("stream", false, "Stream payload from stdin (only for fortio curl mode)")
 	// UnixDomainSocket to use instead of regular host:port.
 	unixDomainSocketFlag = flag.String("unix-socket", "", "Unix domain socket `path` to use for physical connection")
 	// CertFlag is the flag for the path for the client custom certificate.
@@ -139,21 +141,34 @@ func SharedMain() {
 func FetchURL(o *fhttp.HTTPOptions) {
 	// keepAlive could be just false when making 1 fetch but it helps debugging
 	// the http client when making a single request if using the flags
+	o.DataWriter = os.Stdout
 	client, _ := fhttp.NewClient(o)
 	// big gotcha that nil client isn't nil interface value (!)
 	if client == nil || reflect.ValueOf(client).IsNil() {
 		os.Exit(1) // error logged already
 	}
-	code, data, header := client.Fetch(context.Background())
-	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, len(data), header)
-	if *curlHeadersStdout {
-		os.Stdout.Write(data)
+	var code int
+	var dataLen int64
+	var header uint
+	if client.HasBuffer() {
+		// Fast client
+		var data []byte
+		var headerI int
+		code, data, headerI = client.Fetch(context.Background())
+		dataLen = int64(len(data))
+		header = uint(headerI)
+		if *curlHeadersStdout {
+			os.Stdout.Write(data)
+		} else {
+			os.Stderr.Write(data[:header])
+			os.Stdout.Write(data[header:])
+		}
 	} else {
-		os.Stderr.Write(data[:header])
-		os.Stdout.Write(data[header:])
+		code, dataLen, header = client.StreamFetch(context.Background())
 	}
+	log.LogVf("Fetch result code %d, data len %d, headerlen %d", code, dataLen, header)
 	if code != http.StatusOK {
-		log.Errf("Error status %d : %s", code, fhttp.DebugSummary(data, 512))
+		log.Errf("Error status %d", code)
 		os.Exit(1)
 	}
 }
@@ -197,7 +212,11 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
 	httpOpts.ContentType = *contentTypeFlag
-	httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+	if *PayloadStreamFlag {
+		httpOpts.PayloadReader = os.Stdin
+	} else {
+		httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+	}
 	httpOpts.UnixDomainSocket = *unixDomainSocketFlag
 	if *followRedirectsFlag {
 		httpOpts.FollowRedirects = true

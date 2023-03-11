@@ -17,11 +17,11 @@ package fhttp
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
 	"sort"
+	"strconv"
 	"sync"
 
 	"fortio.org/fortio/periodic"
@@ -59,20 +59,16 @@ type HTTPRunnerResults struct {
 // To be set as the Function in RunnerOptions.
 func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
-	code, body, headerSize := httpstate.client.Fetch(ctx)
-	size := len(body)
+	code, size, headerSize := httpstate.client.StreamFetch(ctx)
 	log.Debugf("Got in %3d hsz %d sz %d - will abort on %d", code, headerSize, size, httpstate.AbortOn)
 	httpstate.RetCodes[code]++
 	httpstate.sizes.Record(float64(size))
 	httpstate.headerSizes.Record(float64(headerSize))
 	if httpstate.AbortOn == code {
 		httpstate.aborter.Abort(false)
-		log.Infof("Aborted run because of code %d - data %s", code, DebugSummary(body, 1024))
+		log.Infof("Aborted run because of code %d - data len %d", code, size)
 	}
-	if code == http.StatusOK {
-		return true, "200"
-	}
-	return false, fmt.Sprint(code)
+	return codeIsOK(code), strconv.Itoa(code)
 }
 
 // HTTPRunnerOptions includes the base RunnerOptions plus http specific
@@ -138,12 +134,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			return nil, err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
-			code, data, headerSize := httpstate[i].client.Fetch(ctx)
+			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+				return nil, fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
 			}
 			if i == 0 && log.LogVerbose() {
-				log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+				log.LogVf("first hit of url %s: status %03d, headers %d, total %d", o.URL, code, headerSize, dataLen)
 			}
 		}
 		// Setup the stats for each 'thread'
@@ -158,12 +154,12 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		for i := 0; i < numThreads; i++ {
 			i := i
 			warmup.Go(func() error {
-				code, data, headerSize := httpstate[i].client.Fetch(ctx)
+				code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 				if !o.AllowInitialErrors && !codeIsOK(code) {
-					return fmt.Errorf("error %d for %s: %q", code, o.URL, string(data))
+					return fmt.Errorf("error %d for %s (%d bytes)", code, o.URL, dataLen)
 				}
 				if i == 0 && log.LogVerbose() {
-					log.LogVf("first hit of url %s: status %03d, headers %d, total %d\n%s\n", o.URL, code, headerSize, len(data), data)
+					log.LogVf("first hit of url %s: status %03d, headers %d, total %d", o.URL, code, headerSize, dataLen)
 				}
 				return nil
 			})

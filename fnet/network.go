@@ -333,7 +333,7 @@ func ClearResolveCache() {
 // port is only for logging.
 func checkCache(host, port string) (found bool, res net.IP) {
 	dnsMutex.Lock() // unlock before IOs
-	if host != dnsHost {
+	if dnsAddrs == nil || host != dnsHost {
 		// keep the lock locked
 		return
 	}
@@ -359,6 +359,9 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 		host = host[1 : len(host)-1]
 	}
 	var err error
+	if host == "" {
+		return nil, fmt.Errorf("can't resolve empty host")
+	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve %s port '%s' : %v", proto, port, err)
@@ -589,8 +592,15 @@ func GenerateRandomPayload(payloadSize int) []byte {
 	return Payload[:payloadSize]
 }
 
+var stdin io.Reader = os.Stdin // to change for testing
+
 // ReadFileForPayload reads the file from given input path.
+// if filename is `-` then it reads from stdin.
 func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
+	if payloadFilePath == "-" {
+		log.Infof("Reading payload from stdin...")
+		return io.ReadAll(stdin)
+	}
 	data, err := os.ReadFile(payloadFilePath)
 	if err != nil {
 		return nil, err
@@ -604,7 +614,7 @@ func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []
 	if len(payloadFilePath) > 0 {
 		p, err := ReadFileForPayload(payloadFilePath)
 		if err != nil {
-			log.Warnf("File read operation is failed %v", err)
+			log.Warnf("File read operation failed %v", err)
 			return nil
 		}
 		return p

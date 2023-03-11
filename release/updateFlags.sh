@@ -13,6 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Extract fortio's help and rewrap it to 80 cols
-# TODO: do like fmt does to keep leading identation
-go run . help | expand | fold -s -w 90 | sed -e "s/ $//" -e "s/</\&lt;/"
+# Extract fortio's help and rewrap it to 90 cols (as MD doesn't wrap code blocks)
+# Also remove the /var/folders/fq/gng4z4915mb73r9js_422h4c0000gn/T/go-build179128464/b001/exe/ noise
+go run . help | expand | sed -e 's!/.*/fortio !fortio !' | fold -s -w 90 | sed -e "s/ $//" -e "s/</\&lt;/"

@@ -638,3 +638,32 @@ func getIPUsageCount(ipCountMap map[string]int) (count int) {
 
 	return count
 }
+
+func TestRunnerErrors(t *testing.T) {
+	mux, addr := DynamicHTTPServer(false)
+	mux.HandleFunc("/", EchoHandler)
+	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
+
+	opts := HTTPRunnerOptions{}
+	opts.QPS = 2
+	opts.Duration = 1 * time.Second
+	opts.URL = baseURL + "?status=555"
+	opts.SequentialWarmup = true
+	_, err := RunHTTPTest(&opts)
+	t.Logf("Got expected error %v", err)
+	if err == nil {
+		t.Error("Expecting an because of not allowing initial errors")
+	}
+	log.SetLogLevel(log.Verbose)
+	opts.AllowInitialErrors = true
+	opts.NumThreads = 1
+	_, err = RunHTTPTest(&opts)
+	if err != nil {
+		t.Errorf("Expecting no error because of allowing initial errors, got: %v", err)
+	}
+	opts.URL = "http:// not a url / foo"
+	_, err = RunHTTPTest(&opts)
+	if err == nil {
+		t.Error("Expecting an error because of invalid url")
+	}
+}
