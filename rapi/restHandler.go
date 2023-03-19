@@ -544,7 +544,7 @@ func RESTDNSHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	ips, err := fnet.ResolveAll(r.Context(), name, "ip")
 	if err != nil {
-		err := jrpc.ReplyError(w, "dns failed", err)
+		err = jrpc.ReplyError(w, "dns failed", err)
 		if err != nil {
 			log.Errf("Error replying: %v", err)
 		}
