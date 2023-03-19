@@ -82,6 +82,12 @@
   Browse <a href='browse'>saved results</a> (or <a href="data/">raw JSON</a>)
 </div>
 <p><i>Or</i></p>
+<form action="rest/dns">
+  <div>
+    DNS resolve <input type="text" id="name" name="name" value="" size=50/>
+  </div>
+</form>
+<p><i>Or</i></p>
 <form action="fetch2/">
 <div>
     Debug fetch any single URL: <input type="text" id="url" name="url" value="" size=50/>
@@ -95,7 +101,7 @@
   </div>
 </form>
 <p><i>Or</i></p>
-<a href="{{.DebugPath}}">debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>
+Other endpoints: <a href="{{.DebugPath}}">Debug</a> and <a href="{{.DebugPath}}?env=dump">debug with env dump</a>
 and <a href="/debug/pprof/">Internal PPROF</a>
 and <a href="flags">Command line flags</a>
 and <a href="{{.EchoDebugPath}}">Additional echo handler under {{.EchoDebugPath}}</a> (supports all the

@@ -772,6 +772,27 @@ func TestDebugSummary(t *testing.T) {
 	}
 }
 
+func TestResolveIP6(t *testing.T) {
+	a, err := fnet.ResolveAll(context.Background(), "[::1]", "ip")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if len(a) != 1 {
+		t.Errorf("Unexpected number of addresses: %d", len(a))
+	}
+	aStr := a[0].String()
+	if aStr != "::1" {
+		t.Errorf("Unexpected address: %s", aStr)
+	}
+}
+
+func TestResolveNoFilter(t *testing.T) {
+	_, err := fnet.ResolveAll(context.Background(), "localhost", "")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
 // --- max logging for tests
 
 func init() {

@@ -354,24 +354,11 @@ func checkCache(host, port string) (found bool, res net.IP) {
 func ResolveByProto(ctx context.Context, host string, port string, proto string) (*HostPortAddr, error) {
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
-	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
-		log.Debugf("host %s looks like an IPv6, stripping []", host)
-		host = host[1 : len(host)-1]
-	}
 	var err error
-	if host == "" {
-		return nil, fmt.Errorf("can't resolve empty host")
-	}
 	dest.Port, err = net.LookupPort(proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve %s port '%s' : %v", proto, port, err)
 		return nil, err
-	}
-	isAddr := net.ParseIP(host)
-	if isAddr != nil {
-		dest.IP = isAddr
-		log.LogVf("Resolved %s:%s already an IP as addr %+v", host, port, dest)
-		return dest, nil
 	}
 	filter := FlagResolveIPType.Get()
 	dnsMethod := FlagResolveMethod.Get()
@@ -384,10 +371,9 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 		}
 		dnsMutex.Unlock()
 	}
-	addrs, err := net.DefaultResolver.LookupIP(ctx, filter, host)
+	addrs, err := ResolveAll(ctx, host, filter)
 	if err != nil {
-		log.Errf("Unable to lookup '%s' : %v", host, err)
-		return nil, err
+		return nil, err // error already logged
 	}
 	l := uint32(len(addrs))
 	if l > 1 {
@@ -419,6 +405,31 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	dest.IP = addrs[idx]
 	log.LogVf("Resolved %s:%s to %s %s %s #%d addr %+v", host, port, proto, filter, dnsMethod, idx, dest)
 	return dest, nil
+}
+
+// ResolveAll returns all the IPs for the host.
+// resolveType is a filter for the IPs to use, `ip4` for ipv4, `ip6` for ipv6, or `ip` or "" for both.
+func ResolveAll(ctx context.Context, host, resolveType string) ([]net.IP, error) {
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		log.Debugf("host %s looks like an IPv6, stripping []", host)
+		host = host[1 : len(host)-1]
+	}
+	if host == "" {
+		return nil, fmt.Errorf("can't resolve empty host")
+	}
+	isAddr := net.ParseIP(host)
+	if isAddr != nil {
+		log.LogVf("Resolved %s already an IP as addr", host)
+		return []net.IP{isAddr}, nil
+	}
+	if resolveType == "" {
+		resolveType = "ip"
+	}
+	addrs, err := net.DefaultResolver.LookupIP(ctx, resolveType, host)
+	if err != nil {
+		log.Errf("Unable to lookup %q: %v", host, err)
+	}
+	return addrs, err
 }
 
 // UDPResolveDestination returns the UDP address of the "host:port" suitable for net.Dial.

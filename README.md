@@ -390,6 +390,8 @@ You can set a default value for all these by passing `-echo-server-default-param
   * `/fortio/rest/stop` stops all current run or by run id (passing `runid=` query argument).
   * `/fortio/rest/status` lists the current runs (or the options of a single one if `runid` is passed).
 
+* DNS api for troubleshooting latency based records / view of the DNS where fortio server is running. `/fortio/rest/dns?name=x` resolves all the IPs for `x`.
+
 The `report` mode is a readonly subset of the above directly on `/`.
 
 There is also the GRPC health and ping servers, as well as the http->https redirector.
@@ -406,7 +408,8 @@ Fortio X.Y.Z grpc 'ping' server listening on tcp [::]:8079
 Fortio X.Y.Z https redirector server listening on tcp [::]:8081
 Fortio X.Y.Z http-echo server listening on tcp [::]:8080
 Data directory is /Users/ldemailly/dev/fortio
-REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop
+REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop, /fortio/rest/dns
+Debug endpoint on /debug, Additional Echo on /debug/echo/, flags on /fortio/flags, and Metrics endpoint on /debug/metrics
 	 UI started - visit:
 		http://localhost:8080/fortio/
 	 (or any host/ip reachable on this server)
@@ -844,6 +847,27 @@ and you get in result.json:
 
 - There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified.
 
+### DNS Rest api example
+
+```bash
+$ curl -s localhost:8080/fortio/rest/dns?name=debug.fortio.org | jq
+```
+Returns
+```json
+{
+  "Name": "debug.fortio.org",
+  "IPv4": [
+    "18.222.136.83",
+    "192.9.142.5",
+    "192.9.227.83"
+  ],
+  "IPv6": [
+    "2600:1f16:9c6:b400:282c:a766:6cab:4e82",
+    "2603:c024:c00a:d144:7cd0:4951:7106:96b8",
+    "2603:c024:c00a:d144:6663:5896:7efb:fbf3"
+  ]
+}
+```
 
 ### GRPC load test
 
