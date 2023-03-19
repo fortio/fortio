@@ -629,7 +629,7 @@ func UpdateRun(ro *periodic.RunnerOptions) *periodic.Aborter {
 
 func GetRun(id int64) *Status {
 	uiRunMapMutex.Lock()
-	res := runs[id]
+	res := runs[id] // TODO: race: need to copy because the pointers to options can be changed by the runners
 	uiRunMapMutex.Unlock()
 	return res
 }
