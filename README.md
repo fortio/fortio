@@ -409,7 +409,7 @@ Fortio X.Y.Z https redirector server listening on tcp [::]:8081
 Fortio X.Y.Z http-echo server listening on tcp [::]:8080
 Data directory is /Users/ldemailly/dev/fortio
 REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop, /fortio/rest/dns
-Debug endpoint on /debug, Additional Echo on /debug/echo/, flags on /fortio/flags, and Metrics endpoint on /debug/metrics
+Debug endpoint on /debug, Additional Echo on /debug/echo/, Flags on /fortio/flags, and Metrics on /debug/metrics
 	 UI started - visit:
 		http://localhost:8080/fortio/
 	 (or any host/ip reachable on this server)
