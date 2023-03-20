@@ -1,4 +1,4 @@
-<!-- 1.53.1 -->
+<!-- 1.54.0 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -60,13 +60,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.53.1/fortio-linux_amd64-1.53.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.54.0/fortio-linux_amd64-1.54.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.53.1/fortio_1.53.1_amd64.deb
-dpkg -i fortio_1.53.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.54.0/fortio_1.54.0_amd64.deb
+dpkg -i fortio_1.54.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.53.1/fortio-1.53.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.54.0/fortio-1.54.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -76,7 +76,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.53.1/fortio_win_1.53.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.54.0/fortio_win_1.54.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -127,7 +127,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.53.1 usage:
+Φορτίο 1.54.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -390,6 +390,8 @@ You can set a default value for all these by passing `-echo-server-default-param
   * `/fortio/rest/stop` stops all current run or by run id (passing `runid=` query argument).
   * `/fortio/rest/status` lists the current runs (or the options of a single one if `runid` is passed).
 
+* DNS api for troubleshooting latency based records / view of the DNS where fortio server is running. `/fortio/rest/dns?name=x` resolves all the IPs for `x`.
+
 The `report` mode is a readonly subset of the above directly on `/`.
 
 There is also the GRPC health and ping servers, as well as the http->https redirector.
@@ -406,7 +408,8 @@ Fortio X.Y.Z grpc 'ping' server listening on tcp [::]:8079
 Fortio X.Y.Z https redirector server listening on tcp [::]:8081
 Fortio X.Y.Z http-echo server listening on tcp [::]:8080
 Data directory is /Users/ldemailly/dev/fortio
-REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop
+REST API on /fortio/rest/run, /fortio/rest/status, /fortio/rest/stop, /fortio/rest/dns
+Debug endpoint on /debug, Additional Echo on /debug/echo/, Flags on /fortio/flags, and Metrics on /debug/metrics
 	 UI started - visit:
 		http://localhost:8080/fortio/
 	 (or any host/ip reachable on this server)
@@ -844,6 +847,27 @@ and you get in result.json:
 
 - There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified.
 
+### DNS Rest api example
+
+```bash
+$ curl -s localhost:8080/fortio/rest/dns?name=debug.fortio.org | jq
+```
+Returns
+```json
+{
+  "Name": "debug.fortio.org",
+  "IPv4": [
+    "18.222.136.83",
+    "192.9.142.5",
+    "192.9.227.83"
+  ],
+  "IPv6": [
+    "2600:1f16:9c6:b400:282c:a766:6cab:4e82",
+    "2603:c024:c00a:d144:7cd0:4951:7106:96b8",
+    "2603:c024:c00a:d144:6663:5896:7efb:fbf3"
+  ]
+}
+```
 
 ### GRPC load test
 

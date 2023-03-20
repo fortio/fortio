@@ -30,6 +30,7 @@ import (
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
@@ -42,6 +43,7 @@ const (
 	RestRunURI    = "rest/run"
 	RestStatusURI = "rest/status"
 	RestStopURI   = "rest/stop"
+	RestDNS       = "rest/dns"
 	ModeGRPC      = "grpc"
 )
 
@@ -107,6 +109,13 @@ type AsyncReply struct {
 type StatusReply struct {
 	jrpc.ServerReply
 	Statuses StatusMap
+}
+
+type DNSReply struct {
+	jrpc.ServerReply
+	Name string
+	IPv4 []string
+	IPv6 []string
 }
 
 // Error writes serialized ServerReply marked as error, to the writer.
@@ -185,7 +194,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 // RESTRunHandler is api version of UI submit handler.
 // TODO: refactor common option/args/flag parsing between uihandler.go and this.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
-	log.LogRequest(r, "REST Run Api call")
+	log.LogRequest(r, "REST Run call")
 	w.Header().Set("Content-Type", "application/json")
 	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
 	if err != nil {
@@ -436,7 +445,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 
 // RESTStatusHandler will print the state of the runs.
 func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogRequest(r, "REST Status Api call")
+	log.LogRequest(r, "REST Status call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	statusReply := StatusReply{}
 	if runid != 0 {
@@ -455,8 +464,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 // RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
 func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogRequest(r, "REST Stop Api call")
-	w.Header().Set("Content-Type", "application/json")
+	log.LogRequest(r, "REST Stop call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
 	waitStr := strings.ToLower(r.FormValue("wait"))
 	wait := (waitStr != "" && waitStr != "off" && waitStr != "false")
@@ -531,6 +539,31 @@ func RemoveRun(id int64) {
 	log.LogVf("REST Removed run %d", id)
 }
 
+func RESTDNSHandler(w http.ResponseWriter, r *http.Request) {
+	log.LogRequest(r, "REST DNS call")
+	name := r.FormValue("name")
+	ips, err := fnet.ResolveAll(r.Context(), name, "ip")
+	if err != nil {
+		err = jrpc.ReplyError(w, "dns failed", err)
+		if err != nil {
+			log.Errf("Error replying: %v", err)
+		}
+		return
+	}
+	reply := DNSReply{Name: name, IPv4: make([]string, 0), IPv6: make([]string, 0)}
+	for _, ip := range ips {
+		if ip.To4() == nil {
+			reply.IPv6 = append(reply.IPv6, ip.String())
+		} else {
+			reply.IPv4 = append(reply.IPv4, ip.String())
+		}
+	}
+	err = jrpc.ReplyOk(w, &reply)
+	if err != nil {
+		log.Errf("Error replying: %v", err)
+	}
+}
+
 // AddHandlers adds the REST Api handlers for run, status and stop.
 // uiPath must end with a /.
 func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath, datadir string) {
@@ -542,7 +575,9 @@ func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath
 	mux.HandleFunc(restStatusPath, RESTStatusHandler)
 	restStopPath := uiPath + RestStopURI
 	mux.HandleFunc(restStopPath, RESTStopHandler)
-	log.Printf("REST API on %s, %s, %s", restRunPath, restStatusPath, restStopPath)
+	dnsPath := uiPath + RestDNS
+	mux.HandleFunc(dnsPath, RESTDNSHandler)
+	log.Printf("REST API on %s, %s, %s, %s", restRunPath, restStatusPath, restStopPath, dnsPath)
 }
 
 // SaveJSON save Json bytes to give file name (.json) in data-path dir.
@@ -594,7 +629,7 @@ func UpdateRun(ro *periodic.RunnerOptions) *periodic.Aborter {
 
 func GetRun(id int64) *Status {
 	uiRunMapMutex.Lock()
-	res := runs[id]
+	res := runs[id] // TODO: race: need to copy because the pointers to options can be changed by the runners
 	uiRunMapMutex.Unlock()
 	return res
 }

@@ -1,4 +1,4 @@
-// Copyright 2017 Istio Authors.
+// Copyright 2017 Fortio Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -740,7 +740,7 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	mux.HandleFunc(dflagSetURL, dflagEndPt.SetFlag)
 
 	// metrics endpoint
-	log.Printf("Debug endpoint on %s, Additional Echo on %s, flags on %s, and Metrics endpoint on %s",
+	log.Printf("Debug endpoint on %s, Additional Echo on %s, Flags on %s, and Metrics on %s",
 		debugPath, echoPath, dflagsPath, metricsPath)
 	mux.HandleFunc(metricsPath, metrics.Exporter)
 

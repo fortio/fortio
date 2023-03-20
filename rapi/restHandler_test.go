@@ -103,6 +103,32 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 	AddHandlers(hookTest, mux, "", uiPath, tmpDir)
 
+	dnsURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestDNS)
+	// Error case (no/empty name)
+	reply, err := jrpc.Get[DNSReply](jrpc.NewDestination(dnsURL))
+	if err == nil {
+		t.Errorf("Got unexpected no error for URL %s: %+v", dnsURL, reply)
+	}
+	if !reply.Error {
+		t.Errorf("Unexpected no error field: %+v", reply)
+	}
+	// Ok case
+	dnsOkURL := dnsURL + "?name=debug.fortio.org"
+	reply, err = jrpc.Get[DNSReply](jrpc.NewDestination(dnsOkURL))
+	if err != nil {
+		t.Errorf("Got unexpected error for URL %s: %v - %+v", dnsOkURL, err, reply)
+	}
+	if reply.Error {
+		t.Errorf("Unexpected error field: %+v", reply)
+	}
+	if reply.Name != "debug.fortio.org" {
+		t.Errorf("Unexpected name no echoed back: %+v", reply)
+	}
+	// test need change when we change debug.fortio.org hosting (currently 3 hosts with both ipv4 and ipv6)
+	if len(reply.IPv4) != len(reply.IPv6) || len(reply.IPv4) != 3 {
+		t.Errorf("Unexpected number of IPs (3 currently for debug.fortio.org): %+v", reply)
+	}
+
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, baseURL)
