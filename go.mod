@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.0
 	golang.org/x/net v0.8.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 )
 
 // Local dev of dependencies changes
