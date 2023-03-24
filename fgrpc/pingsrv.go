@@ -28,6 +28,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/encoding"
+	"google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
@@ -127,11 +129,12 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 	msg := &PingMessage{Payload: payload, DelayNanos: delay.Nanoseconds()}
 	cli := NewPingServerClient(conn)
 	outCtx := context.Background()
+	co := grpc.CallContentSubtype(proto.Name)
 	if md.Len() != 0 {
 		outCtx = metadata.NewOutgoingContext(outCtx, o.filteredMetadata)
 	}
 	// Warm up:
-	_, err = cli.Ping(outCtx, msg)
+	_, err = cli.Ping(outCtx, msg, co)
 	if err != nil {
 		log.Errf("grpc error from Ping0 %v", err)
 		return -1, err
@@ -142,14 +145,14 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 		msg.Seq = int64(i)
 		t1a := time.Now().UnixNano()
 		msg.Ts = t1a
-		res1, err := cli.Ping(outCtx, msg)
+		res1, err := cli.Ping(outCtx, msg, co)
 		t2a := time.Now().UnixNano()
 		if err != nil {
 			log.Errf("grpc error from Ping1 iter %d: %v", i, err)
 			return -1, err
 		}
 		t1b := res1.Ts
-		res2, err := cli.Ping(outCtx, msg)
+		res2, err := cli.Ping(outCtx, msg, co)
 		t3a := time.Now().UnixNano()
 		t2b := res2.Ts
 		if err != nil {
@@ -188,6 +191,7 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 	if err != nil {
 		return nil, err
 	}
+	co := grpc.CallContentSubtype(proto.Name)
 	msg := &grpc_health_v1.HealthCheckRequest{Service: svcname}
 	cli := grpc_health_v1.NewHealthClient(conn)
 	rttHistogram := stats.NewHistogram(0, 10)
@@ -199,7 +203,7 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 	}
 	for i := 1; i <= n; i++ {
 		start := time.Now()
-		res, err := cli.Check(outCtx, msg)
+		res, err := cli.Check(outCtx, msg, co)
 		dur := time.Since(start)
 		log.LogVf("Reply from health check %d: %+v", i, res)
 		if err != nil {

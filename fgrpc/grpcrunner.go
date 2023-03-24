@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 )
@@ -89,14 +90,15 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 	var err error
 	var res interface{}
 	status := grpc_health_v1.HealthCheckResponse_SERVING
+	co := grpc.CallContentSubtype(proto.Name)
 	if len(grpcstate.Metadata) != 0 { // filtered one
 		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)
 	}
 	if grpcstate.Ping {
-		res, err = grpcstate.clientP.Ping(outCtx, &grpcstate.reqP)
+		res, err = grpcstate.clientP.Ping(outCtx, &grpcstate.reqP, co)
 	} else {
 		var r *grpc_health_v1.HealthCheckResponse
-		r, err = grpcstate.clientH.Check(outCtx, &grpcstate.reqH)
+		r, err = grpcstate.clientH.Check(outCtx, &grpcstate.reqH, co)
 		if r != nil {
 			status = r.Status
 			res = r
@@ -175,6 +177,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	var conn *grpc.ClientConn
 	var err error
 	ts := time.Now().UnixNano()
+	co := grpc.CallContentSubtype(proto.Name)
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
 		if (i % o.Streams) == 0 {
@@ -200,7 +203,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
 			if o.Exactly <= 0 {
-				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP)
+				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP, co)
 			}
 		} else {
 			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)
@@ -209,7 +212,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 			if o.Exactly <= 0 {
-				_, err = grpcstate[i].clientH.Check(outCtx, &grpcstate[i].reqH)
+				_, err = grpcstate[i].clientH.Check(outCtx, &grpcstate[i].reqH, co)
 			}
 		}
 		if !o.AllowInitialErrors && err != nil {
