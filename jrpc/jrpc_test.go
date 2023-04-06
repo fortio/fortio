@@ -83,7 +83,7 @@ func TestJPRC(t *testing.T) {
 			}
 			return
 		}
-		req, err := jrpc.HandleCall[Request](r)
+		req, err := jrpc.HandleCall[Request](w, r)
 		if err != nil {
 			err = jrpc.ReplyError(w, "request error", err)
 			if err != nil {
@@ -352,7 +352,7 @@ func (ErrReader) Read(_ []byte) (n int, err error) {
 
 func TestHandleCallError(t *testing.T) {
 	r, _ := http.NewRequest(http.MethodGet, "/", ErrReader{})
-	_, err := jrpc.HandleCall[jrpc.ServerReply](r)
+	_, err := jrpc.ProcessRequest[jrpc.ServerReply](r)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -422,7 +422,7 @@ func TestJPRCSlices(t *testing.T) {
 	mux, addr := fhttp.HTTPServer("test3", "0")
 	port := addr.(*net.TCPAddr).Port
 	mux.HandleFunc("/test-api-array", func(w http.ResponseWriter, r *http.Request) {
-		req, err := jrpc.HandleCall[SliceRequest](r)
+		req, err := jrpc.ProcessRequest[SliceRequest](r)
 		if err != nil {
 			err = jrpc.ReplyError(w, "request error", err)
 			if err != nil {
