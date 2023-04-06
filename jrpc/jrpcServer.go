@@ -89,7 +89,7 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 //	if err != nil {
 //	    _ = jrpc.ReplyError(w, "request error", err)
 //	}
-func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
+func HandleCall[Q any](r *http.Request) (*Q, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err

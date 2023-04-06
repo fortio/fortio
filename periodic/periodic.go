@@ -688,11 +688,12 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 
 // Before each Run().
 func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) context.Context {
+	log.Debugf("fileAccessLogger start thread %d iter %d, %v", threadID, iter, startTime)
 	return ctx
 }
 
 // Report logs a single request to a file.
-func (a *fileAccessLogger) Report(ctx context.Context, thread ThreadID, iter int64, time time.Time,
+func (a *fileAccessLogger) Report(_ context.Context, thread ThreadID, iter int64, time time.Time,
 	latency float64, status bool, details string,
 ) {
 	a.mu.Lock()

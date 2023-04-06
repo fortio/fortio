@@ -82,7 +82,7 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 	return r
 }
 
-func hookTest(ho *fhttp.HTTPOptions, ro *periodic.RunnerOptions) {
+func hookTest(_ *fhttp.HTTPOptions, _ *periodic.RunnerOptions) {
 	// TODO: find something to mutate/test
 }
 
