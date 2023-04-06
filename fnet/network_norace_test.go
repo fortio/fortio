@@ -42,6 +42,9 @@ func TestTCPEchoServerEOF(t *testing.T) {
 		eofStopFlag := (i%2 == 0)
 		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
 		var out ErroringWriter
-		fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
+		err := fnet.NetCat(ctx, "localhost"+port, in, &out, eofStopFlag)
+		if err == nil {
+			t.Errorf("NetCat expected to get error %v %v", eofStopFlag, err)
+		}
 	}
 }

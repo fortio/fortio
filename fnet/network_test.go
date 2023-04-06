@@ -302,6 +302,7 @@ func TestNetCatErrors(t *testing.T) {
 func TestSetSocketBuffersError(t *testing.T) {
 	c := &net.UnixConn{}
 	fnet.SetSocketBuffers(c, 512, 256) // triggers 22:11:14 V network.go:245> Not setting socket options on non tcp socket <nil>
+	t.Logf("SetSocketBuffers on non tcp socket %v", c)
 }
 
 func TestSmallReadUntil(t *testing.T) {
@@ -584,6 +585,7 @@ func TestDNSCacheConcurrency(t *testing.T) {
 	}
 	wg.Wait()
 	fnet.FlagResolveIPType.Set("ip4")
+	t.Log("TestDNSCacheConcurrency done")
 }
 
 func TestBadValueForDNSMethod(t *testing.T) {

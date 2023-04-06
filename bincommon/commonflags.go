@@ -188,11 +188,7 @@ func TLSInsecure() bool {
 // and set in httpOpts.
 func ConnectionReuseRangeValidator(httpOpts *fhttp.HTTPOptions) func(string) error {
 	return func(value string) error {
-		if err := httpOpts.ValidateAndSetConnectionReuseRange(value); err != nil {
-			return err
-		}
-
-		return nil
+		return httpOpts.ValidateAndSetConnectionReuseRange(value)
 	}
 }
 

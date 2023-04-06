@@ -82,17 +82,22 @@ func ReplyError(w http.ResponseWriter, extraMsg string, err error) error {
 	return ReplyClientError(w, NewErrorReply(extraMsg, err))
 }
 
-// HandleCall deserializes the expected type from the request body.
+// ProcessRequest deserializes the expected type from the request body.
 // Sample usage code:
 //
-//	req, err := jrpc.HandleCall[Request](w, r)
+//	req, err := jrpc.ProcessRequest[Request](w, r)
 //	if err != nil {
 //	    _ = jrpc.ReplyError(w, "request error", err)
 //	}
-func HandleCall[Q any](w http.ResponseWriter, r *http.Request) (*Q, error) {
+func ProcessRequest[Q any](r *http.Request) (*Q, error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 	return Deserialize[Q](data)
+}
+
+// Deprecated: use ProcessRequest instead.
+func HandleCall[Q any](_ http.ResponseWriter, r *http.Request) (*Q, error) {
+	return ProcessRequest[Q](r)
 }

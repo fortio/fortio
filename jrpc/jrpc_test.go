@@ -346,13 +346,13 @@ type ErrReader struct{}
 
 const ErrReaderMessage = "simulated IO error"
 
-func (ErrReader) Read(p []byte) (n int, err error) {
+func (ErrReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New(ErrReaderMessage)
 }
 
 func TestHandleCallError(t *testing.T) {
 	r, _ := http.NewRequest(http.MethodGet, "/", ErrReader{})
-	_, err := jrpc.HandleCall[jrpc.ServerReply](nil, r)
+	_, err := jrpc.ProcessRequest[jrpc.ServerReply](r)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -422,7 +422,7 @@ func TestJPRCSlices(t *testing.T) {
 	mux, addr := fhttp.HTTPServer("test3", "0")
 	port := addr.(*net.TCPAddr).Port
 	mux.HandleFunc("/test-api-array", func(w http.ResponseWriter, r *http.Request) {
-		req, err := jrpc.HandleCall[SliceRequest](w, r)
+		req, err := jrpc.ProcessRequest[SliceRequest](r)
 		if err != nil {
 			err = jrpc.ReplyError(w, "request error", err)
 			if err != nil {
