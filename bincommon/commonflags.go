@@ -211,7 +211,12 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	if *PayloadStreamFlag {
 		httpOpts.PayloadReader = os.Stdin
 	} else {
+		// Returns nil if file read error, an empty but non nil slice if no payload is requested.
 		httpOpts.Payload = fnet.GeneratePayload(*PayloadFileFlag, *PayloadSizeFlag, *PayloadFlag)
+		if httpOpts.Payload == nil {
+			// Error already logged
+			os.Exit(1)
+		}
 	}
 	httpOpts.UnixDomainSocket = *unixDomainSocketFlag
 	if *followRedirectsFlag {

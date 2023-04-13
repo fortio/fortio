@@ -621,11 +621,12 @@ func ReadFileForPayload(payloadFilePath string) ([]byte, error) {
 
 // GeneratePayload generates a payload with given inputs.
 // First tries filePath, then random payload, at last payload.
+// Returns nil if file read error, an empty but non nil slice if no payload is requested.
 func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []byte {
 	if len(payloadFilePath) > 0 {
 		p, err := ReadFileForPayload(payloadFilePath)
 		if err != nil {
-			log.Warnf("File read operation failed %v", err)
+			log.Errf("Payload file read operation failed: %v", err)
 			return nil
 		}
 		return p

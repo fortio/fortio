@@ -270,18 +270,25 @@ func (h *Histogram) RecordN(v float64, n int) {
 
 // Records v value to count times.
 func (h *Histogram) record(v float64, count int) {
-	// Scaled value to bucketize - we subtract epsilon because the interval
+	// Scaled value to bucketize - we used to subtract epsilon because the interval
 	// is open to the left ] start, end ] so when exactly on start it has
-	// to fall on the previous bucket. TODO add boundary tests
-	scaledVal := (v-h.Offset)/h.Divider - 0.0001
+	// to fall on the previous bucket: which is more correctly done using
+	// math.Ceil()-1 but that doesn't work... so back to epsilon distance check
+	scaledVal := (v - h.Offset) / h.Divider
 	var idx int
 	if scaledVal <= firstValue {
 		idx = 0
 	} else if scaledVal > lastValue {
 		idx = numBuckets - 1 // last bucket is for > last value
 	} else {
-		// else we look it up
-		idx = lookUpIdx(int(scaledVal))
+		// else we look it up (with the open interval adjustment)
+		svInt := int(scaledVal)
+		delta := scaledVal - float64(svInt)
+		if delta < 1e-12 {
+			svInt--
+		}
+		log.Debugf("v %f -> scaledVal %.17f ceil %f delta %g - svInt %d", v, scaledVal, math.Ceil(scaledVal), delta, svInt)
+		idx = lookUpIdx(svInt)
 	}
 	h.Hdata[idx] += int32(count)
 }
