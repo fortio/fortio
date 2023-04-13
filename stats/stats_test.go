@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"fortio.org/assert"
 	"fortio.org/log"
@@ -72,7 +73,7 @@ func TestCounter(t *testing.T) {
 	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
-		t.Errorf("unexpected1:\n%s\nvs:\n%s\n", actual, expected)
+		t.Errorf("unexpected1:\n%s\nvs expected:\n%s\n", actual, expected)
 	}
 	b.Reset()
 	c.Log("testLogH", nil)
@@ -85,7 +86,7 @@ func TestCounter(t *testing.T) {
 > 1022 <= 1023 , 1022.5 , 100.00, 1
 `
 	if actual != expected {
-		t.Errorf("unexpected2:\n%s\nvs:\n%s\n", actual, expected)
+		t.Errorf("unexpected2:\n%s\nvs expected:\n%s\n", actual, expected)
 	}
 	log.SetOutput(os.Stderr)
 }
@@ -268,7 +269,7 @@ func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 	var sum int64
 	for i := 0; i < n; i++ {
 		b := e.Data[i]
-		assert.Assert(t, b.Start <= b.End, "End should always be after Start")
+		assert.Assert(t, b.Start <= b.End, "End %f should always be after Start %f", b.End, b.Start)
 		assert.Assert(t, b.Count > 0, "Every exported bucket should have data")
 		assert.Assert(t, b.Percent > 0, "Percentage should always be positive")
 		sum += b.Count
@@ -359,22 +360,32 @@ func TestHistogramExport1(t *testing.T) {
 }
 
 const (
-	NumRandomHistogram = 2000
+	NumRandomHistogram = 10000
 )
 
+func TestHistogramNegativeOffset(t *testing.T) {
+	// Check case where offset is negative and min value also negative
+	h := NewHistogram(-453.726, 94.80)
+	h.Record(-453.721)
+	h.Record(252)
+	CheckGenericHistogramDataProperties(t, h.Export())
+}
+
 func TestHistogramExportRandom(t *testing.T) {
+	seed := time.Now().UnixNano()
+	r := rand.New(rand.NewSource(seed))
 	for i := 0; i < NumRandomHistogram; i++ {
 		// offset [-500,500[  divisor ]0,100]
-		offset := (rand.Float64() - 0.5) * 1000
-		div := 100 * (1 - rand.Float64())
-		numEntries := 1 + rand.Int31n(10000)
+		offset := (r.Float64() - 0.5) * 1000
+		div := 100 * (1 - r.Float64())
+		numEntries := 1 + r.Int31n(10000)
 		// fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
 		h := NewHistogram(offset, div)
 		var n int32
 		var min float64
 		var max float64
 		for ; n < numEntries; n++ {
-			v := 3000 * (rand.Float64() - 0.25)
+			v := 3000 * (r.Float64() - 0.25)
 			if n == 0 {
 				min = v
 				max = v
@@ -394,6 +405,11 @@ func TestHistogramExportRandom(t *testing.T) {
 		assert.CheckEquals(t, h.Max, max, "Max should match")
 		assert.CheckEquals(t, e.Percentiles[0].Value, min, "p0 should be min")
 		assert.CheckEquals(t, e.Percentiles[2].Value, max, "p100 should be max")
+		if t.Failed() {
+			t.Logf("Failed seed %v iter %d, offset %v, div %v, numEntries %v", seed, i, offset, div, numEntries)
+			t.Logf("%v", e)
+			t.FailNow()
+		}
 	}
 }
 
