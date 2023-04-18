@@ -202,14 +202,15 @@ type HistogramData struct {
 // NewHistogram creates a new histogram (sets up the buckets).
 // Divider value can not be zero, otherwise returns zero.
 func NewHistogram(offset float64, divider float64) *Histogram {
-	h := new(Histogram)
-	h.Offset = offset
 	if divider == 0 {
 		return nil
 	}
-	h.Divider = divider
-	h.Hdata = make([]int32, numBuckets)
-	return h
+	h := Histogram{
+		Offset:  offset,
+		Divider: divider,
+		Hdata:   make([]int32, numBuckets),
+	}
+	return &h
 }
 
 // Val2Bucket values are kept in two different structure

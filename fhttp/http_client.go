@@ -447,8 +447,8 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 // (where we don't care about the data and only the stats)
 // Deprecated: use StreamFetch instead.
 func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
-	buf := &bytes.Buffer{}
-	c.dataWriter = buf
+	var buf bytes.Buffer
+	c.dataWriter = &buf
 	status, _, _ := c.StreamFetch(ctx)
 	return status, buf.Bytes(), 0
 }
@@ -647,8 +647,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 // Deprecated: use StreamURL instead.
 func FetchURL(url string) (int, []byte) {
-	w := &bytes.Buffer{}
-	code := StreamURL(url, w)
+	var w bytes.Buffer
+	code := StreamURL(url, &w)
 	return code, w.Bytes()
 }
 
@@ -665,8 +665,8 @@ func StreamURL(url string, w io.Writer) int {
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 // Deprecated: use StreamFetch instead.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
-	w := &bytes.Buffer{}
-	httpOptions.DataWriter = w
+	var w bytes.Buffer
+	httpOptions.DataWriter = &w
 	return StreamFetch(httpOptions), w.Bytes()
 }
 
