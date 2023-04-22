@@ -885,7 +885,7 @@ func TestPayloadForClient(t *testing.T) {
 			}
 			continue
 		}
-		buf := new(bytes.Buffer)
+		var buf bytes.Buffer // A Buffer needs no initialization. https://pkg.go.dev/bytes#Buffer
 		buf.ReadFrom(body)
 		payload := buf.Bytes()
 		if !bytes.Equal(payload, test.payload) {
