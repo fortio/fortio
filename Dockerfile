@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v57@sha256:12761387fdf486cad3b1b5c0a4a0ef44c6aaec4bf09e78f0027e60bc4d67d478 as build
+FROM docker.io/fortio/fortio.build:v58@sha256:84ab73744546c1b27e2f08143e2c080114c4f1864f760b9fca3908683259d3c4 as build
 WORKDIR /build
 COPY --chown=build:build . fortio
 ARG MODE=install
