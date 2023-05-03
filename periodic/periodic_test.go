@@ -556,7 +556,7 @@ func TestGetJitter(t *testing.T) {
 		t.Errorf("getJitter < 5 got %v instead of expected 0", d)
 	}
 	sum := 0.
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		d = getJitter(6)
 		a := math.Abs(float64(d))
 		// only valid values are -1, 0, 1
@@ -566,8 +566,10 @@ func TestGetJitter(t *testing.T) {
 		// make sure we don't always get 0
 		sum += a
 	}
-	if sum <= 60 {
-		t.Errorf("getJitter 6 got %v sum of abs value instead of expected > 60 at -1/+1", sum)
+	// in theory should be 2/3 of the time 1 or -1 so 666 but we'll be happy with >= 600
+	t.Logf("sum of abs value %v", sum)
+	if sum < 600 {
+		t.Errorf("getJitter 6 got %v sum of abs value instead of expected >= 600 at -1/+1", sum)
 	}
 }
 
