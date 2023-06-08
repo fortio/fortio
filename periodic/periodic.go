@@ -404,7 +404,7 @@ func (r *periodicRunner) runQPSSetup(extra string) (requestedDuration string, re
 		// Always print that as we need ^C to interrupt, in that case the user need to notice
 		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted%s\n",
 			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), extra)
-		return
+		return //nolint:nakedret // it's fine/cleaner to not repeat all the parameters we just set/we return.
 	}
 	// else:
 	requestedDuration = fmt.Sprint(r.Duration)
