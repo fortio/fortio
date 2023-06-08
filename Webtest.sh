@@ -140,7 +140,7 @@ fi
 PPROF_URL="$BASE_URL/debug/pprof/heap?debug=1"
 $CURL "$PPROF_URL" | grep -i TotalAlloc # should find this in memory profile
 # creating dummy container to hold a volume for test certs due to remote docker bind mount limitation.
-DOCKERCURLID=$(docker run -d -v $TEST_CERT_VOL --net host --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v58@sha256:84ab73744546c1b27e2f08143e2c080114c4f1864f760b9fca3908683259d3c4 sleep 120)
+DOCKERCURLID=$(docker run -d -v $TEST_CERT_VOL --net host --name $DOCKERSECVOLNAME docker.io/fortio/fortio.build:v59@sha256:735db577fe940063725cdac8dd2723875f147434f266cbdf0e6970b4fd9b1a07 sleep 120)
 # while we have something with actual curl binary do
 # Test for h2c upgrade (#562)
 docker exec $DOCKERSECVOLNAME /usr/bin/curl -v --http2 -m 10 -d foo42 http://localhost:8080/debug | tee >(cat 1>&2) | grep foo42
