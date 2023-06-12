@@ -22,7 +22,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # pin@v3
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # pin@v3
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18 # pin@v2
