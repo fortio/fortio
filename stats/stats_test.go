@@ -43,6 +43,7 @@ func TestCounter(t *testing.T) {
 	c.Print(w, "test1h", []float64{50.0})
 	expected += "test1h : no data\n"
 	log.Config.LogFileAndLine = false
+	log.Config.JSON = false
 	log.SetFlags(0)
 	log.SetOutput(w)
 	c.Export().CalcPercentile(50)
