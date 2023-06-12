@@ -45,14 +45,6 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).FErrf
     enable-all: true
     disable-all: false
-  depguard:
-    list-type: blacklist
-    include-go-root: false
-    packages:
-      - github.com/sirupsen/logrus
-    packages-with-error-message:
-      # specify an error message to output when a blacklisted package is used
-      - github.com/sirupsen/logrus: "logging is allowed only by fortio.log"
   lll:
     # max line length, lines longer will be reported. Default is 120.
     # '\t' is counted as 1 character by default, and can be changed with the tab-width option
@@ -115,6 +107,7 @@ linters:
     - cyclop
     - forcetypeassert
     - ireturn
+    - depguard
   enable-all: true
   disable-all: false
   # Must not use fast: true in newer golangci-lint or it'll just skip a bunch of linter instead of doing caching like before (!)

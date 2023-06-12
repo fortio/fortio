@@ -80,7 +80,7 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
 	if !useCache {
 		var b bytes.Buffer
-		b.Write([]byte("TsvHttpData-1.0\n"))
+		b.WriteString("TsvHttpData-1.0\n")
 		for _, e := range DataList() {
 			fname := e + ".json"
 			f, err := os.Open(path.Join(dataDir, fname))
@@ -96,13 +96,13 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 				log.Errf("Copy/read error for %s: %v", fname, err)
 				continue
 			}
-			b.Write([]byte(urlPrefix))
-			b.Write([]byte(fname))
-			b.Write([]byte("\t"))
-			b.Write([]byte(strconv.FormatInt(sz, 10)))
-			b.Write([]byte("\t"))
-			b.Write([]byte(base64.StdEncoding.EncodeToString(h.Sum(nil))))
-			b.Write([]byte("\n"))
+			b.WriteString(urlPrefix)
+			b.WriteString(fname)
+			b.WriteString("\t")
+			b.WriteString(strconv.FormatInt(sz, 10))
+			b.WriteString("\t")
+			b.WriteString(base64.StdEncoding.EncodeToString(h.Sum(nil)))
+			b.WriteString("\n")
 		}
 		gTSVCache.cachedDirTime = info.ModTime()
 		gTSVCache.cachedResult = b.Bytes()
