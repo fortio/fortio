@@ -33,7 +33,7 @@ A recent addition is the new `jrpc` JSON Remote Procedure Calls library package 
 
 We also have moved some of the library to their own toplevel package, like:
 - Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag#fortio-dynamic-flags)
-- Logger: [fortio.org/log](https://github.com/fortio/log#log)
+- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4.
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 - CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
