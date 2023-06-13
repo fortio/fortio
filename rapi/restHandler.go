@@ -231,6 +231,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	durStr := FormValue(r, jd, "t")
 	jitter := (FormValue(r, jd, "jitter") == "on")
 	uniform := (FormValue(r, jd, "uniform") == "on")
+	logErrors := (FormValue(r, jd, "log-errors") == "on")
 	nocatchup := (FormValue(r, jd, "nocatchup") == "on")
 	stdClient := (FormValue(r, jd, "stdclient") == "on")
 	h2 := (FormValue(r, jd, "h2") == "on")
@@ -285,6 +286,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve
 	httpopts.H2 = h2
+	httpopts.LogErrors = logErrors
 	// Set the connection reuse range.
 	err = bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
