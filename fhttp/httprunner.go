@@ -94,10 +94,11 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 
 	connReuseMsg := ""
 	if o.ConnReuseRange != [2]int{0, 0} {
-		connReuseMsg = fmt.Sprintf(", with connection reuse [%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
+		connReuseMsg = fmt.Sprintf("[%d, %d]", o.ConnReuseRange[0], o.ConnReuseRange[1])
 	}
-	log.Infof("Starting http test for %s with %d threads at %.1f qps and %s warmup%s",
-		o.URL, o.NumThreads, o.QPS, warmupMode, connReuseMsg)
+	log.S(log.Info, "Starting http test", log.Attr("run", o.RunID), log.Str("url", o.URL),
+		log.Attr("threads", o.NumThreads), log.Str("qps", fmt.Sprintf("%.1f", o.QPS)), log.Str("warmup", warmupMode),
+		log.Str("conn-reuse", connReuseMsg))
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	if o.HTTPOptions.Resolution <= 0 {
 		// Set both connect histogram params when Resolution isn't set explicitly on the HTTP options
@@ -107,6 +108,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // can change during run for c > 2 n
+	o.HTTPOptions.UniqueID = o.RunnerOptions.RunID
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	total := HTTPRunnerResults{

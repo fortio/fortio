@@ -561,6 +561,8 @@ func (r *periodicRunner) Run() RunnerResults {
 	actualQPS := float64(functionDuration.Count) / elapsed.Seconds()
 	if log.Log(log.Warning) {
 		_, _ = fmt.Fprintf(r.Out, "Ended after %v : %d calls. qps=%.5g\n", elapsed, functionDuration.Count, actualQPS)
+		log.S(log.Info, "Run ended", log.Attr("run", r.RunID), log.Attr("elapsed", elapsed),
+			log.Attr("calls", functionDuration.Count), log.Attr("qps", actualQPS))
 	}
 	if useQPS { //nolint:nestif
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)

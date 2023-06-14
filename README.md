@@ -1,4 +1,4 @@
-<!-- 1.54.3 -->
+<!-- 1.55.0 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -33,7 +33,7 @@ A recent addition is the new `jrpc` JSON Remote Procedure Calls library package 
 
 We also have moved some of the library to their own toplevel package, like:
 - Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag#fortio-dynamic-flags)
-- Logger: [fortio.org/log](https://github.com/fortio/log#log)
+- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4.
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 - CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
@@ -60,13 +60,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.54.3/fortio-linux_amd64-1.54.3.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.55.0/fortio-linux_amd64-1.55.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.54.3/fortio_1.54.3_amd64.deb
-dpkg -i fortio_1.54.3_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.55.0/fortio_1.55.0_amd64.deb
+dpkg -i fortio_1.55.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.54.3/fortio-1.54.3-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.55.0/fortio-1.55.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -76,7 +76,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.54.3/fortio_win_1.54.3.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.55.0/fortio_win_1.55.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -127,7 +127,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.54.3 usage:
+Φορτίο 1.55.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -238,6 +238,8 @@ unset.
   -json path
         Json output to provided file path or '-' for stdout (empty = no json output,
 unless -a is used)
+  -json-log
+        Log in JSON format, use -json-log=false to disable (default true)
   -k    Do not verify certs in https/tls/grpc connections
   -keepalive
         Keep connection alive (only for fast http 1.1) (default true)

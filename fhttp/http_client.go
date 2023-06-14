@@ -203,6 +203,7 @@ type HTTPOptions struct {
 	Payload          []byte        // body for http request, implies POST if not empty.
 	LogErrors        bool          // whether to log non 2xx code as they occur or not
 	ID               int           `json:"-"` // thread/connect id to use for logging (thread id when used as a runner)
+	UniqueID         int64         `json:"-"` // Run identifier when used through a runner, copied from RunnerOptions.RunID
 	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
 	// When false, re-resolve the DNS name when the connection breaks.
@@ -409,6 +410,7 @@ type Client struct {
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
 	id                   int
+	runID                int64
 	ipAddrUsage          *stats.Occurrence
 	connectStats         *stats.Histogram
 	clientTrace          CreateClientTrace
@@ -521,7 +523,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	code := resp.StatusCode
 	log.Debugf("[%d] Got %d : %s for %s %s - response is %d bytes", c.id, code, resp.Status, req.Method, c.url, len(data))
 	if c.logErrors && !codeIsOK(code) {
-		log.Warnf("[%d] Non ok http code %d", c.id, code)
+		log.S(log.Warning, "Non ok http code", log.Attr("code", code), log.Attr("thread", c.id), log.Attr("run", c.runID))
 	}
 	return code, n, 0
 }
@@ -573,6 +575,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		connectStats: stats.NewHistogram(o.Offset.Seconds(), o.Resolution),
 		clientTrace:  o.ClientTrace,
 		dataWriter:   o.DataWriter,
+		runID:        o.UniqueID,
 	}
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		// redirect all connections to resolved ip, and use cn as sni host
@@ -702,6 +705,7 @@ type FastClient struct {
 	uuidMarkers  [][]byte
 	logErrors    bool
 	id           int
+	runID        int64
 	https        bool
 	tlsConfig    *tls.Config
 	// Resolve the DNS name for each connection
@@ -784,7 +788,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	// note: Host includes the port
 	bc := FastClient{
 		url: o.URL, host: url.Host, hostname: url.Hostname(), port: url.Port(),
-		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID,
+		http10: o.HTTP10, halfClose: o.AllowHalfClose, logErrors: o.LogErrors, id: o.ID, runID: o.UniqueID,
 		https: o.https, connReuseRange: o.ConnReuseRange, connReuse: connReuse,
 		resolve: o.Resolve, noResolveEachConn: o.NoResolveEachConn, ipAddrUsage: stats.NewOccurrence(),
 		// Keep track of timing for connection (re)establishment.
@@ -1055,7 +1059,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			// TODO handle 100 Continue, make the "ok" codes configurable
 			if !codeIsOK(c.code) {
 				if c.logErrors {
-					log.Warnf("[%d] Non ok http code %d (%v)", c.id, c.code, string(c.buffer[:retcodeOffset+3]))
+					log.S(log.Warning, "Non ok http code", log.Attr("code", c.code), log.Str("status", string(c.buffer[:retcodeOffset+3])),
+						log.Attr("thread", c.id), log.Attr("run", c.runID))
 				}
 				break
 			}
