@@ -659,7 +659,6 @@ func TestRunnerErrors(t *testing.T) {
 	opts.AllowInitialErrors = true
 	opts.NumThreads = 1
 	opts.LogErrors = true
-	opts.HTTPOptions.DisableFastClient = true
 	_, err = RunHTTPTest(&opts)
 	if err != nil {
 		t.Errorf("Expecting no error because of allowing initial errors, got: %v", err)
