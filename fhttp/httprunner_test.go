@@ -283,6 +283,7 @@ func TestAccessLogAndTrace(t *testing.T) {
 	traceFactory := func(ctx context.Context) *httptrace.ClientTrace { return trace }
 	opts.DisableFastClient = true
 	opts.ClientTrace = traceFactory
+	opts.LogErrors = true
 	for _, format := range []string{"json", "influx"} {
 		dir := t.TempDir()
 		fname := path.Join(dir, "access.log")
@@ -657,6 +658,8 @@ func TestRunnerErrors(t *testing.T) {
 	log.SetLogLevel(log.Verbose)
 	opts.AllowInitialErrors = true
 	opts.NumThreads = 1
+	opts.LogErrors = true
+	opts.HTTPOptions.DisableFastClient = true
 	_, err = RunHTTPTest(&opts)
 	if err != nil {
 		t.Errorf("Expecting no error because of allowing initial errors, got: %v", err)
