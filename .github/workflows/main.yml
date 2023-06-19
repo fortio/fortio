@@ -35,7 +35,7 @@ jobs:
         run: echo ${{ steps.buildx.outputs.platforms }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a # pin@v2
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # pin@v2
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
