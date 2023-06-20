@@ -6,7 +6,7 @@ require (
 	fortio.org/assert v1.2.0
 	fortio.org/cli v1.1.0
 	fortio.org/dflag v1.5.2
-	fortio.org/log v1.4.0
+	fortio.org/log v1.4.1
 	fortio.org/scli v1.5.0
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.3
