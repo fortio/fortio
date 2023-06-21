@@ -371,7 +371,9 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
 	if err != nil {
-		log.Errf("[%d] Unable to make %s request for %s : %v", o.ID, method, o.URL, err)
+		log.S(log.Error, "Unable to make request",
+			log.Attr("method", method), log.Attr("url", o.URL), log.Attr("err", err),
+			log.Attr("thread", o.ID), log.Attr("run", o.UniqueID))
 		return nil, err
 	}
 	req.Header = o.GenerateHeaders()
@@ -387,7 +389,8 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	}
 	bytes, err := httputil.DumpRequestOut(req, false)
 	if err != nil {
-		log.Errf("[%d] Unable to dump request: %v", o.ID, err)
+		log.S(log.Error, "Unable to dump request",
+			log.Attr("err", err), log.Attr("thread", o.ID), log.Attr("run", o.UniqueID))
 	} else {
 		log.Debugf("[%d] For URL %s, sending:\n%s", o.ID, o.URL, bytes)
 	}
@@ -427,7 +430,7 @@ func (c *Client) Close() {
 	if c.req != nil {
 		if c.req.Body != nil {
 			if err := c.req.Body.Close(); err != nil {
-				log.Warnf("[%d] Error closing std client body: %v", c.id, err)
+				log.S(log.Warning, "Error closing std client body", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 			}
 		}
 		c.req = nil
@@ -494,13 +497,15 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
-		log.Errf("[%d] Unable to send %s request for %s : %v", c.id, req.Method, c.url, err)
+		log.S(log.Error, "Unable to send request",
+			log.Attr("method", req.Method), log.Attr("url", c.url), log.Attr("err", err),
+			log.Attr("thread", c.id), log.Attr("run", c.runID))
 		return -1, -1, 0
 	}
 	var data []byte
 	if log.LogDebug() {
 		if data, err = httputil.DumpResponse(resp, false); err != nil {
-			log.Errf("[%d] Unable to dump response %v", c.id, err)
+			log.S(log.Error, "Unable to dump response", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		} else {
 			log.Debugf("[%d] For URL %s, received:\n%s", c.id, c.url, data)
 		}
@@ -512,11 +517,12 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	n, err = io.Copy(c.dataWriter, resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Errf("[%d] Unable to read response for %s : %v", c.id, c.url, err)
+		log.S(log.Error, "Unable to read response",
+			log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		code := resp.StatusCode
 		if codeIsOK(code) {
 			code = http.StatusNoContent
-			log.Warnf("[%d] Ok code despite read error, switching code to %d", c.id, code)
+			log.S(log.Warning, "Ok code despite read error, switching code to 204", log.Attr("thread", c.id), log.Attr("run", c.runID))
 		}
 		return code, n, 0
 	}
@@ -592,7 +598,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			newRemoteAddress := conn.RemoteAddr().String()
 			// No change when it wasn't set before (first time) and when the value isn't actually changing either.
 			if req.RemoteAddr != "" && newRemoteAddress != req.RemoteAddr {
-				log.Infof("[%d] Standard client IP address changed from %s to %s", client.id, req.RemoteAddr, newRemoteAddress)
+				log.S(log.Info, "Standard client IP address changed", log.Attr("thread", client.id), log.Attr("run", client.runID),
+					log.Str("from", req.RemoteAddr), log.Str("new", newRemoteAddress))
 			}
 			req.RemoteAddr = newRemoteAddress
 			client.ipAddrUsage.Record(req.RemoteAddr)
@@ -734,7 +741,8 @@ func (c *FastClient) Close() {
 	log.Debugf("[%d] Closing %p %s socket count %d", c.id, c, c.url, c.socketCount)
 	if c.socket != nil {
 		if err := c.socket.Close(); err != nil {
-			log.Warnf("[%d] Error closing fast client's socket: %v", c.id, err)
+			log.S(log.Warning, "Error closing fast client's socket",
+				log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		}
 		c.socket = nil
 	}
@@ -771,7 +779,8 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {
-		log.Errf("[%d] Bad url %q : %v", o.ID, urlString, err)
+		log.S(log.Error, "Bad url", log.Str("url", urlString), log.Attr("err", err),
+			log.Attr("thread", o.ID), log.Attr("run", o.UniqueID))
 		return nil, err
 	}
 
@@ -808,7 +817,8 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	}
 	var addr net.Addr
 	if o.UnixDomainSocket != "" {
-		log.Infof("[%d] Using unix domain socket %v instead of %v %v", bc.id, o.UnixDomainSocket, bc.hostname, bc.port)
+		log.S(log.Info, "Using unix domain socket", log.Attr("path", o.UnixDomainSocket),
+			log.Attr("thread", bc.id), log.Attr("run", bc.runID))
 		uds := &net.UnixAddr{Name: o.UnixDomainSocket, Net: fnet.UnixDomainSocket}
 		addr = uds
 	} else {
@@ -885,7 +895,8 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 		c.dest, err = resolve(ctx, c.hostname, c.port, c.resolve, c.ipAddrUsage)
 		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
 		if err != nil {
-			log.Errf("[%d] Unable to resolve hostname %v: %v", c.id, c.hostname, err)
+			log.S(log.Error, "Unable to resolve hostname", log.Str("hostname", c.hostname), log.Attr("err", err),
+				log.Attr("thread", c.id), log.Attr("run", c.runID))
 			return nil
 		}
 	}
@@ -896,14 +907,16 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
 		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
-			log.Errf("[%d] Unable to TLS connect to %v : %v", c.id, c.dest, err)
+			log.S(log.Error, "Unable to TLS connect", log.Attr("dest", c.dest), log.Attr("err", err),
+				log.Attr("thread", c.id), log.Attr("run", c.runID))
 			return nil
 		}
 	} else {
 		socket, err = d.Dial(c.dest.Network(), c.dest.String())
 		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
-			log.Errf("[%d] Unable to connect to %v : %v", c.id, c.dest, err)
+			log.S(log.Error, "Unable to connect", log.Attr("dest", c.dest), log.Attr("err", err),
+				log.Attr("thread", c.id), log.Attr("run", c.runID))
 			return nil
 		}
 	}
@@ -966,28 +979,30 @@ func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	if err != nil || conErr != nil {
 		if canReuse {
 			// it's ok for the (idle) socket to die once, auto reconnect:
-			log.Infof("[%d] Closing dead socket %v (%v)", c.id, c.dest, err)
+			log.S(log.Info, "Closing dead socket", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 			conn.Close()
 			c.errorCount++
 			return c.StreamFetch(ctx) // recurse once
 		}
-		log.Errf("[%d] Unable to write to %v : %v", c.id, c.dest, err)
+		log.S(log.Error, "Unable to write", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		return c.returnRes()
 	}
 	if n != len(c.req) {
-		log.Errf("[%d] Short write to %v : %d instead of %d", c.id, c.dest, n, len(c.req))
+		log.S(log.Error, "Short write", log.Attr("err", err), log.Attr("actual", n), log.Attr("expected", len(c.req)),
+			log.Attr("thread", c.id), log.Attr("run", c.runID))
 		return c.returnRes()
 	}
 	if !c.keepAlive && c.halfClose { //nolint:nestif
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {
-				log.Errf("[%d] Unable to close write to %v : %v", c.id, c.dest, err)
+				log.S(log.Error, "Unable to close write", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 				return c.returnRes()
 			} // else:
 			log.Debugf("[%d] Half closed ok after sending request %v", c.id, c.dest)
 		} else {
-			log.Warnf("[%d] Unable to close write non tcp connection %v", c.id, c.dest)
+			log.S(log.Warning, "Unable to close write non tcp connection",
+				log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		}
 	}
 	// Read the response:
@@ -1027,11 +1042,12 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			if err != nil {
 				if reusedSocket && c.size == 0 {
 					// Ok for reused socket to be dead once (close by server)
-					log.Infof("[%d] Closing dead socket %v (err %v at first read)", c.id, c.dest, err)
+					log.S(log.Info, "Closing dead socket (err at first read)",
+						log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 					c.errorCount++
 					err = conn.Close() // close the previous one
 					if err != nil {
-						log.Warnf("[%d] Error closing dead socket %v: %v", c.id, c.dest, err)
+						log.S(log.Warning, "Error closing dead socket", log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 					c.code = RetryOnce // special "retry once" code
 					return
@@ -1040,7 +1056,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					// handled below as possibly normal end of stream after we read something
 					break
 				}
-				log.Errf("[%d] Read error for %v %d : %v", c.id, c.dest, c.size, err)
+				log.S(log.Error, "Read error", log.Attr("err", err), log.Attr("size", c.size),
+					log.Attr("thread", c.id), log.Attr("run", c.runID))
 				c.code = SocketError
 				break
 			}
@@ -1096,7 +1113,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 						// Content-Length mode:
 						contentLength = ParseDecimal(c.buffer[offset+len(contentLengthHeader) : c.headerLen])
 						if contentLength < 0 {
-							log.Warnf("[%d] Warning: content-length unparsable %s", c.id, string(c.buffer[offset+2:offset+len(contentLengthHeader)+4]))
+							log.S(log.Warning, "Content-length unparsable", log.Str("cl", string(c.buffer[offset+2:offset+len(contentLengthHeader)+4])),
+								log.Attr("thread", c.id), log.Attr("run", c.runID))
 							keepAlive = false
 							break
 						}
@@ -1124,22 +1142,26 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							if log.LogVerbose() {
 								log.LogVf("[%d] Warning: content-length missing in %q", c.id, string(c.buffer[:c.headerLen]))
 							} else {
-								log.Warnf("[%d] Warning: content-length missing (%d bytes headers)", c.id, c.headerLen)
+								log.S(log.Warning, "Content-length missing",
+									log.Attr("header_len", c.headerLen), log.Attr("thread", c.id), log.Attr("run", c.runID))
 							}
 							keepAlive = false // can't keep keepAlive
 							break
 						}
 					} // end of content-length section
 					if max > int64(len(c.buffer)) {
-						log.Warnf("[%d] Buffer is too small for headers %d + data %d - change -httpbufferkb flag to at least %d",
-							c.id, c.headerLen, contentLength, (int64(c.headerLen)+contentLength)/1024+1)
+						log.S(log.Warning, "Buffer is too small for headers + data - change -httpbufferkb flag",
+							log.Attr("header_len", c.headerLen),
+							log.Attr("content_length", contentLength),
+							log.Attr("buffer_needed", (int64(c.headerLen)+contentLength)/1024+1),
+							log.Attr("thread", c.id), log.Attr("run", c.runID))
 						// TODO: just consume the extra instead
 						// or rather use the dataWriter post headers
 						max = int64(len(c.buffer))
 					}
 					if checkConnectionClosedHeader {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
-							log.Infof("[%d] Server wants to close connection, no keep-alive!", c.id)
+							log.S(log.Info, "Server wants to close connection, no keep-alive!", log.Attr("thread", c.id), log.Attr("run", c.runID))
 							keepAlive = false
 							max = int64(len(c.buffer)) // reset to read as much as available
 						}
@@ -1149,10 +1171,12 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		} // end of big if parse header
 		if c.size >= max {
 			if !keepAlive {
-				log.Errf("[%d] More data is available but stopping after %d, increase -httpbufferkb", c.id, max)
+				log.S(log.Error, "More data is available but stopping after max, increase -httpbufferkb",
+					log.Attr("max", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
 			}
 			if !parsedHeaders && c.parseHeaders {
-				log.Errf("[%d] Buffer too small (%d) to even finish reading headers, increase -httpbufferkb to get all the data", c.id, max)
+				log.S(log.Error, "Buffer too small to even finish reading headers, increase -httpbufferkb to get all the data",
+					log.Attr("max", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
 				keepAlive = false
 			}
 			if chunkedMode {
@@ -1162,20 +1186,24 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					if c.size == max {
 						log.Debugf("[%d] Couldn't find next chunk size, reading more %d %d", c.id, max, c.size)
 					} else {
-						log.Infof("[%d] Partial chunk size (%s), reading more %d %d", c.id, DebugSummary(c.buffer[max:c.size], 20), max, c.size)
+						log.S(log.Info, "Partial chunk size, reading more",
+							log.Str("buf", DebugSummary(c.buffer[max:c.size], 20)), log.Attr("max", max), log.Attr("size", c.size),
+							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 					continue
 				} else if nextChunkLen == 0 {
 					log.Debugf("[%d] Found last chunk %d %d", c.id, max+dataStart, c.size)
 					if c.size != max+dataStart+2 || string(c.buffer[c.size-2:c.size]) != "\r\n" {
-						log.Errf("[%d] Unexpected mismatch at the end sz=%d expected %d; end of buffer %q",
-							c.id, c.size, max+dataStart+2, c.buffer[max:c.size])
+						log.S(log.Error, "Unexpected mismatch at the end",
+							log.Attr("size", c.size), log.Attr("expected", max+dataStart+2),
+							log.Attr("end-of_buffer", c.buffer[max:c.size]),
+							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 				} else {
 					max += dataStart + nextChunkLen + 2 // extra CR LF
 					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, max)
 					if max > int64(len(c.buffer)) {
-						log.Errf("[%d] Buffer too small for %d data", c.id, max)
+						log.S(log.Error, "Buffer too small for data", log.Attr("size", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
 					} else {
 						if max <= c.size {
 							log.Debugf("[%d] Enough data to reach next chunk, skipping a read", c.id)
@@ -1193,7 +1221,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		c.socket = conn // keep the open socket
 	} else {
 		if err := conn.Close(); err != nil {
-			log.Errf("[%d] Close error %v %d : %v", c.id, c.dest, c.size, err)
+			log.S(log.Error, "Close error", log.Attr("err", err), log.Attr("size", c.size),
+				log.Attr("thread", c.id), log.Attr("run", c.runID))
 		} else {
 			log.Debugf("[%d] Closed ok from %v after reading %d bytes", c.id, c.dest, c.size)
 		}
