@@ -1056,7 +1056,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					// handled below as possibly normal end of stream after we read something
 					break
 				}
-				log.S(log.Error, "Read error", log.Attr("err", err), log.Attr("size", c.size),
+				log.S(log.Error, "Read error", log.Attr("err", err), log.Attr("size", c.size), log.Attr("dest", c.dest), log.Str("url", c.url),
 					log.Attr("thread", c.id), log.Attr("run", c.runID))
 				c.code = SocketError
 				break

@@ -66,7 +66,8 @@ func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID
 	httpstate.headerSizes.Record(float64(headerSize))
 	if httpstate.AbortOn == code {
 		httpstate.aborter.Abort(false)
-		log.Infof("Aborted run because of code %d - data len %d", code, size)
+		log.S(log.Info, "Aborted run because of http code",
+			log.Attr("run", httpstate.RunID), log.Attr("code", code), log.Attr("size", size))
 	}
 	return codeIsOK(code), strconv.Itoa(code)
 }
