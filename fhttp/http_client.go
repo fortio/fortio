@@ -598,8 +598,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			newRemoteAddress := conn.RemoteAddr().String()
 			// No change when it wasn't set before (first time) and when the value isn't actually changing either.
 			if req.RemoteAddr != "" && newRemoteAddress != req.RemoteAddr {
-				log.S(log.Info, "Standard client IP address changed", log.Attr("thread", client.id), log.Attr("run", client.runID),
-					log.Str("from", req.RemoteAddr), log.Str("new", newRemoteAddress))
+				log.S(log.Info, "Standard client IP address changed", log.Str("dest", req.RemoteAddr), log.Str("new_ip", newRemoteAddress),
+					log.Attr("thread", client.id), log.Attr("run", client.runID))
 			}
 			req.RemoteAddr = newRemoteAddress
 			client.ipAddrUsage.Record(req.RemoteAddr)
