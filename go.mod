@@ -6,8 +6,8 @@ require (
 	fortio.org/assert v1.2.0
 	fortio.org/cli v1.1.0
 	fortio.org/dflag v1.5.2
-	fortio.org/log v1.4.1
-	fortio.org/scli v1.5.0
+	fortio.org/log v1.5.0
+	fortio.org/scli v1.6.0
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.0
@@ -32,5 +32,5 @@ require (
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 )
