@@ -1,4 +1,4 @@
-<!-- 1.55.1 -->
+<!-- 1.55.2 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -60,13 +60,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.55.1/fortio-linux_amd64-1.55.1.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.55.2/fortio-linux_amd64-1.55.2.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.55.1/fortio_1.55.1_amd64.deb
-dpkg -i fortio_1.55.1_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.55.2/fortio_1.55.2_amd64.deb
+dpkg -i fortio_1.55.2_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.55.1/fortio-1.55.1-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.55.2/fortio-1.55.2-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -76,7 +76,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.55.1/fortio_win_1.55.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.55.2/fortio_win_1.55.2.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -127,7 +127,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.55.1 usage:
+Φορτίο 1.55.2 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -238,8 +238,6 @@ unset.
   -json path
         Json output to provided file path or '-' for stdout (empty = no json output,
 unless -a is used)
-  -json-log
-        Log in JSON format, use -json-log=false to disable (default true)
   -k    Do not verify certs in https/tls/grpc connections
   -keepalive
         Keep connection alive (only for fast http 1.1) (default true)
@@ -250,6 +248,11 @@ unless -a is used)
 URL and hostname
   -log-errors
         Log http non 2xx/418 error codes as they occur (default true)
+  -logger-json
+        Log in JSON format, use -logger-json=false to disable (default true)
+  -logger-timestamp
+        Timestamps emitted in JSON logs, use -logger-timestamp=false to disable (default
+true)
   -loglevel level
         log level, one of [Debug Verbose Info Warning Error Critical Fatal] (default Info)
   -max-echo-delay value
