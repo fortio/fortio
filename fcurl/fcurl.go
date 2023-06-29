@@ -21,7 +21,7 @@ import (
 	"fortio.org/fortio/bincommon"
 )
 
-func main() {
+func Main() int {
 	cli.ProgramName = "Φορτίο fortio-curl"
 	cli.ArgsHelp = "url"
 	cli.MinArgs = 1
@@ -29,4 +29,9 @@ func main() {
 	cli.Main()
 	o := bincommon.SharedHTTPOptions()
 	bincommon.FetchURL(o)
+	return 0
+}
+
+func main() {
+
 }
