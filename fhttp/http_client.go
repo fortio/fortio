@@ -201,6 +201,7 @@ type HTTPOptions struct {
 	UserCredentials  string        // user credentials for authorization
 	ContentType      string        // indicates request body type, implies POST instead of GET
 	Payload          []byte        // body for http request, implies POST if not empty.
+	MethodOverride   string        // optional http method override. Otherwise GET or POST when a payload or ContentType is set.
 	LogErrors        bool          // whether to log non 2xx code as they occur or not
 	ID               int           `json:"-"` // thread/connect id to use for logging (thread id when used as a runner)
 	UniqueID         int64         `json:"-"` // Run identifier when used through a runner, copied from RunnerOptions.RunID
@@ -287,6 +288,9 @@ func (h *HTTPOptions) AllHeaders() http.Header {
 
 // Method returns the method of the http req.
 func (h *HTTPOptions) Method() string {
+	if len(h.MethodOverride) > 0 {
+		return h.MethodOverride
+	}
 	if len(h.Payload) > 0 || h.ContentType != "" {
 		return fnet.POST
 	}
@@ -317,9 +321,12 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 			log.Infof("Deleting default User-Agent: header.")
 			h.extraHeaders.Del(key)
 		} else {
-			log.Infof("User-Agent being Set to %q", value)
+			log.Infof("User-Agent being set to %q", value)
 			h.extraHeaders.Set(key, value)
 		}
+	case "content-type":
+		log.LogVf("Content-Type being set to %q", value)
+		h.ContentType = strings.TrimSpace(value)
 	default:
 		log.LogVf("Setting regular extra header %s: %s", key, value)
 		h.extraHeaders.Add(key, value)
@@ -362,6 +369,7 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 // newHttpRequest makes a new http GET request for url with User-Agent.
 func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	method := o.Method()
+	log.Debugf("newHTTPRequest %s %s", method, o.URL)
 	var body io.Reader
 	if o.PayloadReader != nil {
 		body = o.PayloadReader
@@ -753,6 +761,7 @@ func (c *FastClient) Close() {
 // the beginning and then reused many times.
 func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	method := o.Method()
+	log.Debugf("NewFastClient %s %s", method, o.URL)
 	payloadLen := len(o.Payload)
 	o.Init(o.URL)
 	proto := "1.1"

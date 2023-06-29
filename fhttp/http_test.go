@@ -867,12 +867,18 @@ func TestPayloadForClient(t *testing.T) {
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
 		hOptions.URL = "www.google.com"
-		hOptions.ContentType = test.contentType
+		err := hOptions.AddAndValidateExtraHeader("conTENT-tYPE: " + test.contentType)
+		if err != nil {
+			t.Errorf("Got error %v adding header", err)
+		}
+		if hOptions.ContentType != test.contentType {
+			t.Errorf("Got %q, expected %q as a content type from header addition", hOptions.ContentType, test.contentType)
+		}
 		hOptions.Payload = test.payload
 		client, _ := NewStdClient(&hOptions)
 		contentType := client.req.Header.Get("Content-Type")
 		if contentType != test.contentType {
-			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
+			t.Errorf("Got %q, expected %q as a content type", contentType, test.contentType)
 		}
 		method := client.req.Method
 		if method != test.expectedMethod {
