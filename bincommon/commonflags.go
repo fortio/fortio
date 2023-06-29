@@ -208,7 +208,10 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Insecure = TLSInsecure()
 	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
-	httpOpts.ContentType = *contentTypeFlag
+	if len(*contentTypeFlag) > 0 {
+		// only set content-type from flag if flag isn't empty as it can come also from -H content-type:...
+		httpOpts.ContentType = *contentTypeFlag
+	}
 	if *PayloadStreamFlag {
 		httpOpts.PayloadReader = os.Stdin
 	} else {

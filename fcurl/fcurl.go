@@ -17,8 +17,11 @@ package main
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"os"
+
 	"fortio.org/cli"
 	"fortio.org/fortio/bincommon"
+	"fortio.org/log"
 )
 
 func Main() int {
@@ -28,10 +31,11 @@ func Main() int {
 	bincommon.SharedMain()
 	cli.Main()
 	o := bincommon.SharedHTTPOptions()
+	log.Debugf("Running curl with %+v", o)
 	bincommon.FetchURL(o)
 	return 0
 }
 
 func main() {
-
+	os.Exit(Main())
 }
