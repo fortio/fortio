@@ -312,10 +312,12 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 	// No TrimSpace for the value, so we can set empty "" vs just whitespace " " which
 	// will get trimmed later but treated differently: not emitted vs emitted empty for User-Agent.
 	value := s[1]
+	// 2 headers need trimmed to not have extra spaces:
+	trimmedValue := strings.TrimSpace(value)
 	switch strings.ToLower(key) {
 	case "host":
-		log.LogVf("Will be setting special Host header to %s", value)
-		h.hostOverride = strings.TrimSpace(value) // This one needs to be trimmed
+		log.LogVf("Will be setting special Host header to %s", trimmedValue)
+		h.hostOverride = trimmedValue // This one needs to be trimmed
 	case "user-agent":
 		if value == "" {
 			log.Infof("Deleting default User-Agent: header.")
@@ -325,8 +327,8 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 			h.extraHeaders.Set(key, value)
 		}
 	case "content-type":
-		log.LogVf("Content-Type being set to %q", value)
-		h.ContentType = strings.TrimSpace(value)
+		log.LogVf("Content-Type being set to %q", trimmedValue)
+		h.ContentType = trimmedValue
 	default:
 		log.LogVf("Setting regular extra header %s: %s", key, value)
 		h.extraHeaders.Add(key, value)

@@ -863,6 +863,16 @@ func TestPayloadForClient(t *testing.T) {
 			nil,
 			"GET",
 		},
+		{
+			"",
+			[]byte{},
+			"GET",
+		},
+		{
+			"Foo", // once we set a content-type we get a POST instead of GET (alternative to -X)
+			nil,
+			"POST",
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
@@ -896,6 +906,25 @@ func TestPayloadForClient(t *testing.T) {
 		payload := buf.Bytes()
 		if !bytes.Equal(payload, test.payload) {
 			t.Errorf("Got %s, expected %s as a body", string(payload), string(test.payload))
+		}
+	}
+}
+
+func TestMethodOverride(t *testing.T) {
+	_, addr := ServeTCP("0", "/debug")
+	// Un initialized http options:
+	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port), MethodOverride: "FOO"}
+	for _, fastClient := range []bool{true, false} {
+		o.DisableFastClient = !fastClient
+		cli, _ := NewClient(&o)
+		ctx := context.Background()
+		code, data, _ := cli.Fetch(ctx)
+		if code != 200 {
+			t.Errorf("Non ok code %d for debug override method %q", code, o.MethodOverride)
+		}
+		expected := []byte("FOO /debug HTTP/1.1")
+		if !bytes.Contains(data, expected) {
+			t.Errorf("Didn't method echoed back in fastClient %v client %s (expecting %s)", fastClient, DebugSummary(data, 512), expected)
 		}
 	}
 }
