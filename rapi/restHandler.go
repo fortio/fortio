@@ -224,6 +224,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	log.Infof("Starting API run %s load request from %v for %s", runner, r.RemoteAddr, url)
 	async := (FormValue(r, jd, "async") == "on")
 	payload := FormValue(r, jd, "payload")
+	methodOverride := FormValue(r, jd, "X")
 	labels := FormValue(r, jd, "labels")
 	resolution, _ := strconv.ParseFloat(FormValue(r, jd, "r"), 64)
 	percList, _ := stats.ParsePercentiles(FormValue(r, jd, "p"))
@@ -287,6 +288,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	httpopts.Resolve = resolve
 	httpopts.H2 = h2
 	httpopts.LogErrors = logErrors
+	httpopts.MethodOverride = methodOverride
 	// Set the connection reuse range.
 	err = bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).

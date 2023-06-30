@@ -122,6 +122,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Those only exist/make sense on run mode but go variable declaration...
 	payload := r.FormValue("payload")
+	methodOverride := r.FormValue("X")
 	labels := r.FormValue("labels")
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
@@ -197,6 +198,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	httpopts.Resolve = resolve
 	httpopts.H2 = h2
 	httpopts.LogErrors = logErrors
+	httpopts.MethodOverride = methodOverride
 	// Set the connection reuse range.
 	err := bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
