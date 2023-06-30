@@ -22,3 +22,9 @@ import "fortio.org/fortio/cli"
 func main() {
 	cli.FortioMain(nil /* no hook needed */)
 }
+
+// Same as real above but for testscript/txtar tests.
+func Main() int {
+	cli.FortioMain(nil /* no hook needed */)
+	return 0
+}
