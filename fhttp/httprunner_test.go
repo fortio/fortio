@@ -80,7 +80,7 @@ func TestHTTPRunner(t *testing.T) {
 	o1 = rawOpts
 	o1.URL = "http://www.doesnotexist.badtld/"
 	c, err := NewStdClient(&o1)
-	if err == nil {
+	if err == nil || c != nil {
 		t.Errorf("Std Client bad host should error early")
 	}
 	o1.URL = "http://debug.fortio.org" // should resolve fine

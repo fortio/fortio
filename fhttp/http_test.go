@@ -720,14 +720,19 @@ func TestBadURLStdClient(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
 	cli, err := NewStdClient(opts)
 	if cli != nil || err == nil {
-		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		t.Errorf("config1: got a client %v despite bogus url %q", cli, opts.URL)
 		cli.Close()
 	}
-
 	opts.URL = "http://doesnotexist.fortio.org"
 	cli, err = NewStdClient(opts)
 	if cli != nil || err == nil {
-		t.Errorf("config2: got a client %v despite bogus host in url %s", cli, opts.URL)
+		t.Errorf("config2: got a client %v despite bogus host in url %q", cli, opts.URL)
+		cli.Close()
+	}
+	opts.URL = ""
+	cli, err = NewStdClient(opts)
+	if cli != nil || err == nil {
+		t.Errorf("config3: got a client %v despite empty url %q", cli, opts.URL)
 		cli.Close()
 	}
 }
