@@ -629,3 +629,40 @@ func (r *SyncReader) Read(p []byte) (n int, err error) {
 
 	return r.reader.Read(p)
 }
+
+// CommonHTTPOptionsFromForm is used essentially in ui/uihandler.go but we want to reuse some options
+// for fetching URLs too. Also ideally would get refactored to work for rapi/.
+func CommonHTTPOptionsFromForm(r *http.Request) *HTTPOptions {
+	url := r.FormValue("url")
+	payload := r.FormValue("payload")
+	methodOverride := r.FormValue("X")
+	logErrors := (r.FormValue("log-errors") == "on")
+	h2 := (r.FormValue("h2") == "on")
+	httpsInsecure := (r.FormValue("https-insecure") == "on")
+	resolve := r.FormValue("resolve")
+	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
+	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
+	httpopts := &HTTPOptions{}
+	// to be normalized in init 0 replaced by default value only in http runner, not here as this could be a tcp or udp runner
+	httpopts.URL = url // fixes #651 - ie don't normalize here
+	httpopts.HTTPReqTimeOut = timeout
+	httpopts.Insecure = httpsInsecure
+	httpopts.Resolve = resolve
+	httpopts.H2 = h2
+	httpopts.LogErrors = logErrors
+	httpopts.MethodOverride = methodOverride
+	if len(payload) > 0 {
+		httpopts.Payload = []byte(payload)
+	}
+	for _, header := range r.Form["H"] {
+		if len(header) == 0 {
+			continue
+		}
+		log.LogVf("adding header %v", header)
+		err := httpopts.AddAndValidateExtraHeader(header)
+		if err != nil {
+			log.Errf("Error adding custom headers: %v", err)
+		}
+	}
+	return httpopts
+}

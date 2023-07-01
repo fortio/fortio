@@ -94,18 +94,25 @@ func CopyHeaders(req, r *http.Request, all bool) {
 
 // MakeSimpleRequest makes a new request for url but copies trace headers from input request r.
 // or all the headers if copyAllHeaders is true.
-func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.Request {
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, nil)
+func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.Request, *HTTPOptions) {
+	opts := CommonHTTPOptionsFromForm(r)
+	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, nil)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
-		return nil
+		return nil, opts
 	}
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
+	// Add the headers from the form/query args "H" arguments:
+	for k, v := range opts.extraHeaders {
+		for _, vv := range v {
+			req.Header.Add(k, vv)
+		}
+	}
 	if !copyAllHeaders {
 		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
-	return req
+	return req, opts
 }
 
 // TeeHandler common part between TeeSerialHandler and TeeParallelHandler.
@@ -132,7 +139,7 @@ func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Reque
 	if t.MirrorOrigin {
 		req = makeMirrorRequest(t.Destination, r, data)
 	} else {
-		req = MakeSimpleRequest(t.Destination, r, false)
+		req, _ = MakeSimpleRequest(t.Destination, r, false)
 	}
 	if req == nil {
 		// error already logged
