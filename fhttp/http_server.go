@@ -565,10 +565,10 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
 	opts := CommonHTTPOptionsFromForm(r)
-	opts.Init(url)
 	if opts.HTTPReqTimeOut == 0 {
 		opts.HTTPReqTimeOut = 1 * time.Minute
 	}
+	opts.Init(url)
 	OnBehalfOf(opts, r)
 	//nolint:contextcheck // TODO: yes we should plug an aborter in the http options that's based on this request's context.
 	client, _ := NewClient(opts)
