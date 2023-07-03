@@ -250,6 +250,9 @@ unless -a is used)
 URL and hostname
   -log-errors
         Log http non 2xx/418 error codes as they occur (default true)
+  -logger-file-line
+        Filename and line numbers emitted in JSON logs, use -logger-file-line=false to
+disable (default true)
   -logger-json
         Log in JSON format, use -logger-json=false to disable (default true)
   -logger-timestamp

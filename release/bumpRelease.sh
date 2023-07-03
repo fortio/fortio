@@ -16,8 +16,12 @@ if [ -z "$RELEASE" ]; then
     exit 1
 fi
 if [ "$CURRENT" = "$RELEASE" ]; then
-    echo "Release $RELEASE is already in $FILENAME"
-    exit 0
+    if [ "$2" = "-f" ]; then
+        echo "Forcing regen of same $CURRENT"
+    else
+        echo "Current release $CURRENT is the same as the requested, nothing to do, add -f to force"
+        exit 0
+    fi
 fi
 echo "Changing $FILENAME from $CURRENT to release $RELEASE and updating usage section"
 ./release/updateFlags.sh | sed -e "s/Φορτίο dev/Φορτίο $RELEASE/" > /tmp/fortio_flags.txt
