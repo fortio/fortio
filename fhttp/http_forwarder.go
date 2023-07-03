@@ -97,7 +97,7 @@ func CopyHeaders(req, r *http.Request, all bool) {
 func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.Request, *HTTPOptions) {
 	opts := CommonHTTPOptionsFromForm(r)
 	var body io.Reader
-	if len(opts.Payload) > 0  {
+	if len(opts.Payload) > 0 {
 		body = bytes.NewReader(opts.Payload)
 	}
 	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, body)
