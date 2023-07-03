@@ -103,13 +103,14 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.
 	}
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
-	// Add the headers from the form/query args "H" arguments:
-	for k, v := range opts.extraHeaders {
-		for _, vv := range v {
-			req.Header.Add(k, vv)
+	if copyAllHeaders {
+		// Add the headers from the form/query args "H" arguments: (only in trusted/copy all headers mode)
+		for k, v := range opts.extraHeaders {
+			for _, vv := range v {
+				req.Header.Add(k, vv)
+			}
 		}
-	}
-	if !copyAllHeaders {
+	} else {
 		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
 	return req, opts

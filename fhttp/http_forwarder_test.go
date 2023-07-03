@@ -115,5 +115,3 @@ func TestMultiProxyErrors(t *testing.T) {
 		}
 	}
 }
-
-// -- end of benchmark tests / end of this file

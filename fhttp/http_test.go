@@ -1326,10 +1326,23 @@ func TestFetch2(t *testing.T) {
 	}
 }
 
-func TestFetch2Header(t *testing.T) {
+func TestFetch2IncomingHeader(t *testing.T) {
 	mux, addr := ServeTCP("0", "")
 	mux.HandleFunc("/fetch2/", FetcherHandler2)
 	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/echo%%3fheader%%3dFoo:Bar", addr.Port, addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url})
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("Foo: Bar")) {
+		t.Errorf("Result %s doesn't contain expected Foo: Bar header", DebugSummary(data, 1024))
+	}
+}
+
+func TestFetch2OutgoingHeaders(t *testing.T) {
+	mux, addr := ServeTCP("0", "/debug")
+	mux.HandleFunc("/fetch2/", FetcherHandler2)
+	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug&H=foo:Bar", addr.Port, addr.Port)
 	code, data := Fetch(&HTTPOptions{URL: url})
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
