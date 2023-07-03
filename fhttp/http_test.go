@@ -863,16 +863,32 @@ func TestPayloadForClient(t *testing.T) {
 			nil,
 			"GET",
 		},
+		{
+			"",
+			[]byte{},
+			"GET",
+		},
+		{
+			"Foo", // once we set a content-type we get a POST instead of GET (alternative to -X)
+			nil,
+			"POST",
+		},
 	}
 	for _, test := range tests {
 		hOptions := HTTPOptions{}
 		hOptions.URL = "www.google.com"
-		hOptions.ContentType = test.contentType
+		err := hOptions.AddAndValidateExtraHeader("conTENT-tYPE: " + test.contentType)
+		if err != nil {
+			t.Errorf("Got error %v adding header", err)
+		}
+		if hOptions.ContentType != test.contentType {
+			t.Errorf("Got %q, expected %q as a content type from header addition", hOptions.ContentType, test.contentType)
+		}
 		hOptions.Payload = test.payload
 		client, _ := NewStdClient(&hOptions)
 		contentType := client.req.Header.Get("Content-Type")
 		if contentType != test.contentType {
-			t.Errorf("Got %s, expected %s as a content type", contentType, test.contentType)
+			t.Errorf("Got %q, expected %q as a content type", contentType, test.contentType)
 		}
 		method := client.req.Method
 		if method != test.expectedMethod {
@@ -890,6 +906,47 @@ func TestPayloadForClient(t *testing.T) {
 		payload := buf.Bytes()
 		if !bytes.Equal(payload, test.payload) {
 			t.Errorf("Got %s, expected %s as a body", string(payload), string(test.payload))
+		}
+	}
+}
+
+func TestMethodOverride(t *testing.T) {
+	_, addr := ServeTCP("0", "/debug")
+	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port), MethodOverride: "FOO"}
+	for _, fastClient := range []bool{true, false} {
+		o.DisableFastClient = !fastClient
+		cli, _ := NewClient(&o)
+		ctx := context.Background()
+		code, data, _ := cli.Fetch(ctx)
+		if code != 200 {
+			t.Errorf("Non ok code %d for debug override method %q", code, o.MethodOverride)
+		}
+		expected := []byte("FOO /debug HTTP/1.1")
+		if !bytes.Contains(data, expected) {
+			t.Errorf("Method not echoed back in fastClient %v client %s (expecting %s)", fastClient, DebugSummary(data, 512), expected)
+		}
+	}
+}
+
+func TestPostFromContentType(t *testing.T) {
+	_, addr := ServeTCP("0", "/debug")
+	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
+	o.AddAndValidateExtraHeader("content-type: foo/bar; xyz")
+	for _, fastClient := range []bool{true, false} {
+		o.DisableFastClient = !fastClient
+		cli, _ := NewClient(&o)
+		ctx := context.Background()
+		code, data, _ := cli.Fetch(ctx)
+		if code != 200 {
+			t.Errorf("Non ok code %d for debug override method %q", code, o.MethodOverride)
+		}
+		expected := []byte("POST /debug HTTP/1.1")
+		if !bytes.Contains(data, expected) {
+			t.Errorf("POST not found in fastClient %v client %s (expecting %s)", fastClient, DebugSummary(data, 512), expected)
+		}
+		expected = []byte("Content-Type: foo/bar; xyz")
+		if !bytes.Contains(data, expected) {
+			t.Errorf("Content-type not found in fastClient %v client %s (expecting %s)", fastClient, DebugSummary(data, 512), expected)
 		}
 	}
 }

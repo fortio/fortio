@@ -106,6 +106,7 @@ var (
 	// NoReResolveFlag is false if we want to resolve the DNS name for each new connection.
 	NoReResolveFlag = flag.Bool("no-reresolve", false, "Keep the initial DNS resolution and "+
 		"don't re-resolve when making new connections (because of error or reuse limit reached)")
+	MethodFlag = flag.String("X", "", "HTTP method to use instead of GET/POST depending on payload/content-type")
 )
 
 // SharedMain is the common part of main from fortio_main and fcurl.
@@ -207,7 +208,10 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.Insecure = TLSInsecure()
 	httpOpts.Resolve = *resolve
 	httpOpts.UserCredentials = *userCredentialsFlag
-	httpOpts.ContentType = *contentTypeFlag
+	if len(*contentTypeFlag) > 0 {
+		// only set content-type from flag if flag isn't empty as it can come also from -H content-type:...
+		httpOpts.ContentType = *contentTypeFlag
+	}
 	if *PayloadStreamFlag {
 		httpOpts.PayloadReader = os.Stdin
 	} else {
@@ -230,5 +234,6 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.LogErrors = *LogErrorsFlag
 	httpOpts.SequentialWarmup = *warmupFlag
 	httpOpts.NoResolveEachConn = *NoReResolveFlag
+	httpOpts.MethodOverride = *MethodFlag
 	return &httpOpts
 }

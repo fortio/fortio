@@ -17,16 +17,25 @@ package main
 // Do not add any external dependencies we want to keep fortio minimal.
 
 import (
+	"os"
+
 	"fortio.org/cli"
 	"fortio.org/fortio/bincommon"
+	"fortio.org/log"
 )
 
-func main() {
+func Main() int {
 	cli.ProgramName = "Φορτίο fortio-curl"
 	cli.ArgsHelp = "url"
 	cli.MinArgs = 1
 	bincommon.SharedMain()
 	cli.Main()
 	o := bincommon.SharedHTTPOptions()
+	log.Debugf("Running curl with %+v", o)
 	bincommon.FetchURL(o)
+	return 0
+}
+
+func main() {
+	os.Exit(Main())
 }
