@@ -96,7 +96,11 @@ func CopyHeaders(req, r *http.Request, all bool) {
 // or all the headers if copyAllHeaders is true.
 func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.Request, *HTTPOptions) {
 	opts := CommonHTTPOptionsFromForm(r)
-	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, nil)
+	var body io.Reader
+	if len(opts.Payload) > 0  {
+		body = bytes.NewReader(opts.Payload)
+	}
+	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, body)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
 		return nil, opts
