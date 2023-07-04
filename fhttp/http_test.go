@@ -720,15 +720,20 @@ func TestBadURLStdClient(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
 	cli, err := NewStdClient(opts)
 	if cli != nil || err == nil {
-		t.Errorf("config1: got a client %v despite bogus url %s", cli, opts.URL)
+		t.Errorf("config1: got a client %v despite bogus url %q", cli, opts.URL)
 		cli.Close()
 	}
-
 	opts.URL = "http://doesnotexist.fortio.org"
-	cli, _ = NewStdClient(opts)
-	code, _, _ := cli.Fetch(context.Background())
-	if code != -1 {
-		t.Errorf("config2: client can send request despite bogus url %s", opts.URL)
+	cli, err = NewStdClient(opts)
+	if cli != nil || err == nil {
+		t.Errorf("config2: got a client %v despite bogus host in url %q", cli, opts.URL)
+		cli.Close()
+	}
+	opts.URL = ""
+	cli, err = NewStdClient(opts)
+	if cli != nil || err == nil {
+		t.Errorf("config3: got a client %v despite empty url %q", cli, opts.URL)
+		cli.Close()
 	}
 }
 
@@ -1321,7 +1326,7 @@ func TestFetch2(t *testing.T) {
 	}
 }
 
-func TestFetch2Header(t *testing.T) {
+func TestFetch2IncomingHeader(t *testing.T) {
 	mux, addr := ServeTCP("0", "")
 	mux.HandleFunc("/fetch2/", FetcherHandler2)
 	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/echo%%3fheader%%3dFoo:Bar", addr.Port, addr.Port)
@@ -1331,6 +1336,34 @@ func TestFetch2Header(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("Foo: Bar")) {
 		t.Errorf("Result %s doesn't contain expected Foo: Bar header", DebugSummary(data, 1024))
+	}
+}
+
+func TestFetch2OutgoingHeaders(t *testing.T) {
+	mux, addr := ServeTCP("0", "/debug")
+	mux.HandleFunc("/fetch2/", FetcherHandler2)
+	// added &H= and &H=incomplete to cover these 2 error cases
+	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug"+
+		"&H=foo:Bar&payload=a-test&H=&H=IncompleteHeader&H=Content-TYPE:foo/bar42",
+		addr.Port, addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url, Payload: []byte("a-longer-different-payload")})
+	if code != http.StatusOK {
+		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
+	}
+	if !bytes.Contains(data, []byte("Foo: Bar")) {
+		t.Errorf("Result %s doesn't contain expected Foo: Bar header", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("POST /debug HTTP/1.1")) {
+		t.Errorf("Passing payload should mean POST - got %s", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("body:\n\na-test\n")) {
+		t.Errorf("Passing payload be echoed - got %s", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("Content-Length: 6\n")) {
+		t.Errorf("Payload length should be the right one - got %s", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("Content-Type: foo/bar42\n")) {
+		t.Errorf("Payload length should be the right one - got %s", DebugSummary(data, 1024))
 	}
 }
 

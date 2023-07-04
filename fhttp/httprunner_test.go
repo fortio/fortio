@@ -79,7 +79,15 @@ func TestHTTPRunner(t *testing.T) {
 	}
 	o1 = rawOpts
 	o1.URL = "http://www.doesnotexist.badtld/"
-	c, _ := NewStdClient(&o1)
+	c, err := NewStdClient(&o1)
+	if err == nil || c != nil {
+		t.Errorf("Std Client bad host should error early")
+	}
+	o1.URL = "http://debug.fortio.org" // should resolve fine
+	c, err = NewStdClient(&o1)
+	if err != nil {
+		t.Errorf("Unexpected error once url is fixed: %v", err)
+	}
 	c.ChangeURL(rawOpts.URL)
 	if r, _, _ := c.Fetch(context.Background()); r != http.StatusOK {
 		t.Errorf("Std Client with raw option should still work with warning in logs")

@@ -99,14 +99,15 @@ const (
 // Handler is the main UI handler creating the web forms and processing them.
 // TODO: refactor common option/args/flag parsing between restHandle.go and this.
 //
-//nolint:funlen, gocognit, gocyclo, nestif, maintidx // should be refactored indeed (TODO)
+//nolint:funlen, gocognit, nestif // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	log.LogRequest(r, "UI")
 	mode := menu
 	JSONOnly := false
-	url := r.FormValue("url")
 	runid := int64(0)
 	runner := r.FormValue("runner")
+	httpopts := fhttp.CommonHTTPOptionsFromForm(r)
+	url := httpopts.URL
 	if r.FormValue("load") == "Start" {
 		mode = run
 		if r.FormValue("json") == "on" {
@@ -121,8 +122,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mode = stop
 	}
 	// Those only exist/make sense on run mode but go variable declaration...
-	payload := r.FormValue("payload")
-	methodOverride := r.FormValue("X")
 	labels := r.FormValue("labels")
 	resolution, _ := strconv.ParseFloat(r.FormValue("r"), 64)
 	percList, _ := stats.ParsePercentiles(r.FormValue("p"))
@@ -136,13 +135,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	uniform := (r.FormValue("uniform") == "on")
 	nocatchup := (r.FormValue("nocatchup") == "on")
 	stdClient := (r.FormValue("stdclient") == "on")
-	logErrors := (r.FormValue("log-errors") == "on")
-	h2 := (r.FormValue("h2") == "on")
 	sequentialWarmup := (r.FormValue("sequential-warmup") == "on")
-	httpsInsecure := (r.FormValue("https-insecure") == "on")
-	resolve := r.FormValue("resolve")
-	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
-	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
 	var dur time.Duration
 	if durStr == "on" || ((len(r.Form["t"]) > 1) && r.Form["t"][1] == "on") {
 		dur = -1
@@ -166,9 +159,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		out = fhttp.NewHTMLEscapeWriter(w)
 	}
 	n, _ := strconv.ParseInt(r.FormValue("n"), 10, 64)
-	if strings.TrimSpace(url) == "" {
-		url = "http://url.needed" // just because url validation doesn't like empty urls
-	}
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
 		Duration:    dur,
@@ -188,27 +178,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Infof("New run id %d", runid)
 		ro.RunID = runid
 	}
-	httpopts := &fhttp.HTTPOptions{}
-	// to be normalized in init 0 replaced by default value only in http runner, not here as this could be a tcp or udp runner
-	httpopts.URL = url // fixes #651
-	httpopts.HTTPReqTimeOut = timeout
 	httpopts.DisableFastClient = stdClient
 	httpopts.SequentialWarmup = sequentialWarmup
-	httpopts.Insecure = httpsInsecure
-	httpopts.Resolve = resolve
-	httpopts.H2 = h2
-	httpopts.LogErrors = logErrors
-	httpopts.MethodOverride = methodOverride
 	// Set the connection reuse range.
 	err := bincommon.ConnectionReuseRange.
 		WithValidator(bincommon.ConnectionReuseRangeValidator(httpopts)).
 		Set(connectionReuseRange)
 	if err != nil {
 		log.Errf("Fail to validate connection reuse range flag, err: %v", err)
-	}
-
-	if len(payload) > 0 {
-		httpopts.Payload = []byte(payload)
 	}
 	if !JSONOnly {
 		// Normal html mode
@@ -261,16 +238,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		rapi.StopByRunID(runid, false)
 	case run:
 		// mode == run case:
-		for _, header := range r.Form["H"] {
-			if len(header) == 0 {
-				continue
-			}
-			log.LogVf("adding header %v", header)
-			err := httpopts.AddAndValidateExtraHeader(header)
-			if err != nil {
-				log.Errf("Error adding custom headers: %v", err)
-			}
-		}
 		fhttp.OnBehalfOf(httpopts, r)
 		runWriter := w
 		if !JSONOnly {
@@ -493,7 +460,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small tsv this is fine.
 	// use std client to avoid chunked raw we can get with fast client:
-	client, _ := fhttp.NewStdClient(o)
+	client, _ := fhttp.NewStdClient(o) //nolint:contextcheck
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
 		// too late to write headers for real case but we do it anyway for the Sync() startup case

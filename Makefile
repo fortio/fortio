@@ -120,7 +120,7 @@ update-build-image-tag:
 	$(SED) --in-place=.bak -E -e 's!$(DOCKER_PREFIX).build:v[^ ]+!$(BUILD_IMAGE)!g' $(FILES_WITH_IMAGE)
 
 docker-default-platform:
-	@docker buildx --builder default inspect | tail -1 | sed -e "s/Platforms: //" -e "s/,//g" | awk '{print $$1}'
+	@docker buildx --builder default inspect | awk '/Platforms:/ {print $$2}' | sed -e 's/,//g'
 
 docker-version:
 	@echo "### Docker is `which docker`"

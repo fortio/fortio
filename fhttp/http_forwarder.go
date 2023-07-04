@@ -94,18 +94,37 @@ func CopyHeaders(req, r *http.Request, all bool) {
 
 // MakeSimpleRequest makes a new request for url but copies trace headers from input request r.
 // or all the headers if copyAllHeaders is true.
-func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) *http.Request {
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, nil)
+func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.Request, *HTTPOptions) {
+	opts := CommonHTTPOptionsFromForm(r)
+	var body io.Reader
+	if len(opts.Payload) > 0 {
+		body = bytes.NewReader(opts.Payload)
+	}
+	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, body)
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
-		return nil
+		return nil, opts
 	}
 	// Copy only trace headers or all of them:
 	CopyHeaders(req, r, copyAllHeaders)
-	if !copyAllHeaders {
+	if copyAllHeaders {
+		// Add the headers from the form/query args "H" arguments: (only in trusted/copy all headers mode)
+		for k, v := range opts.extraHeaders {
+			for _, vv := range v {
+				req.Header.Add(k, vv)
+			}
+			log.Debugf("Header %q is now %v", k, req.Header[k])
+		}
+		if opts.ContentType != "" {
+			req.Header.Set("Content-Type", opts.ContentType)
+			log.Debugf("Setting Content-Type to %q", opts.ContentType)
+		}
+		// force correct content length:
+		req.Header.Set("Content-Length", strconv.Itoa(len(opts.Payload)))
+	} else {
 		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
-	return req
+	return req, opts
 }
 
 // TeeHandler common part between TeeSerialHandler and TeeParallelHandler.
@@ -132,7 +151,7 @@ func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Reque
 	if t.MirrorOrigin {
 		req = makeMirrorRequest(t.Destination, r, data)
 	} else {
-		req = MakeSimpleRequest(t.Destination, r, false)
+		req, _ = MakeSimpleRequest(t.Destination, r, false)
 	}
 	if req == nil {
 		// error already logged

@@ -380,6 +380,20 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	}
 	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
+	if err == nil { //nolint:nestif
+		// Additional validation for the URL so we abort early on fatal errors even for the std client.
+		// fixes #784
+		if req.URL == nil || req.URL.Host == "" {
+			err = fmt.Errorf("invalid url '%s'", o.URL)
+		} else {
+			host := req.URL.Hostname()
+			if o.Resolve != "" {
+				host = o.Resolve
+			}
+			log.Debugf("Std client extra validation - host part of url (or resolve option) is %q", host)
+			_, err = fnet.ResolveAll(context.Background(), host, "ip")
+		}
+	}
 	if err != nil {
 		log.S(log.Error, "Unable to make request",
 			log.Attr("method", method), log.Attr("url", o.URL), log.Attr("err", err),

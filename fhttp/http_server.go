@@ -18,6 +18,7 @@ package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -513,12 +514,16 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
-	req := MakeSimpleRequest(url, r, Fetch2CopiesAllHeader.Get())
+	req, opts := MakeSimpleRequest(url, r, Fetch2CopiesAllHeader.Get())
 	if req == nil {
 		http.Error(w, "parsing url failed, invalid url", http.StatusBadRequest)
 		return
 	}
 	OnBehalfOfRequest(req, r)
+	tr := proxyClient.Transport.(*http.Transport)
+	if tr.TLSClientConfig == nil || tr.TLSClientConfig.InsecureSkipVerify != opts.Insecure {
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: opts.Insecure} //nolint:gosec // as requested by the options.
+	}
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %q: %v", url, err)
@@ -559,8 +564,11 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	// Stripped prefix gets replaced by ./ - sometimes...
 	url := strings.TrimPrefix(r.URL.String(), "./")
-	opts := NewHTTPOptions("http://" + url)
-	opts.HTTPReqTimeOut = 5 * time.Minute
+	opts := CommonHTTPOptionsFromForm(r)
+	if opts.HTTPReqTimeOut == 0 {
+		opts.HTTPReqTimeOut = 1 * time.Minute
+	}
+	opts.Init(url)
 	OnBehalfOf(opts, r)
 	//nolint:contextcheck // TODO: yes we should plug an aborter in the http options that's based on this request's context.
 	client, _ := NewClient(opts)
