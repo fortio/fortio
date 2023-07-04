@@ -1343,7 +1343,8 @@ func TestFetch2OutgoingHeaders(t *testing.T) {
 	mux, addr := ServeTCP("0", "/debug")
 	mux.HandleFunc("/fetch2/", FetcherHandler2)
 	// added &H= and &H=incomplete to cover these 2 error cases
-	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug&H=foo:Bar&payload=a-test&H=&H=IncompleteHeader&H=Content-TYPE:foo/bar42",
+	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug"+
+		"&H=foo:Bar&payload=a-test&H=&H=IncompleteHeader&H=Content-TYPE:foo/bar42",
 		addr.Port, addr.Port)
 	code, data := Fetch(&HTTPOptions{URL: url, Payload: []byte("a-longer-different-payload")})
 	if code != http.StatusOK {
