@@ -1343,9 +1343,9 @@ func TestFetch2OutgoingHeaders(t *testing.T) {
 	mux, addr := ServeTCP("0", "/debug")
 	mux.HandleFunc("/fetch2/", FetcherHandler2)
 	// added &H= and &H=incomplete to cover these 2 error cases
-	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug&H=foo:Bar&payload=a-test&H=&H=IncompleteHeader",
+	url := fmt.Sprintf("localhost:%d/fetch2/?url=http://localhost:%d/debug&H=foo:Bar&payload=a-test&H=&H=IncompleteHeader&H=Content-TYPE:foo/bar42",
 		addr.Port, addr.Port)
-	code, data := Fetch(&HTTPOptions{URL: url})
+	code, data := Fetch(&HTTPOptions{URL: url, Payload: []byte("a-longer-different-payload")})
 	if code != http.StatusOK {
 		t.Errorf("Got %d %s instead of ok for %s", code, DebugSummary(data, 256), url)
 	}
@@ -1357,6 +1357,12 @@ func TestFetch2OutgoingHeaders(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte("body:\n\na-test\n")) {
 		t.Errorf("Passing payload be echoed - got %s", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("Content-Length: 6\n")) {
+		t.Errorf("Payload length should be the right one - got %s", DebugSummary(data, 1024))
+	}
+	if !bytes.Contains(data, []byte("Content-Type: foo/bar42\n")) {
+		t.Errorf("Payload length should be the right one - got %s", DebugSummary(data, 1024))
 	}
 }
 

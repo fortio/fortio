@@ -113,7 +113,14 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.
 			for _, vv := range v {
 				req.Header.Add(k, vv)
 			}
+			log.Debugf("Header %q is now %v", k, req.Header[k])
 		}
+		if opts.ContentType != "" {
+			req.Header.Set("Content-Type", opts.ContentType)
+			log.Debugf("Setting Content-Type to %q", opts.ContentType)
+		}
+		// force correct content length:
+		req.Header.Set("Content-Length", strconv.Itoa(len(opts.Payload)))
 	} else {
 		req.Header.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
 	}
