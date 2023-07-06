@@ -4,16 +4,16 @@ go 1.18
 
 require (
 	fortio.org/assert v1.2.0
-	fortio.org/cli v1.1.0
+	fortio.org/cli v1.2.0
 	fortio.org/dflag v1.5.2
-	fortio.org/log v1.5.0
-	fortio.org/scli v1.7.0
+	fortio.org/log v1.6.0
+	fortio.org/scli v1.8.0
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.0
 	golang.org/x/net v0.12.0
-	google.golang.org/grpc v1.56.1
+	google.golang.org/grpc v1.56.2
 )
 
 // Local dev of dependencies changes
