@@ -1,4 +1,4 @@
-<!-- 1.56.0 -->
+<!-- 1.57.0 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -33,7 +33,7 @@ A recent addition is the new `jrpc` JSON Remote Procedure Calls library package 
 
 We also have moved some of the library to their own toplevel package, like:
 - Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag#fortio-dynamic-flags)
-- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4.
+- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4. In color since fortio 1.57 / log 1.6.
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 - CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
@@ -48,7 +48,7 @@ We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/pp
 For instance:
 ```shell
 docker run -p 8080:8080 -p 8079:8079 fortio/fortio server & # For the server
-docker run fortio/fortio load http://www.google.com/ # For a test run
+docker run fortio/fortio load -logger-force-color http://www.google.com/ # For a test run, forcing color instead of JSON log output
 ```
 
 You can install from source:
@@ -60,13 +60,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.56.0/fortio-linux_amd64-1.56.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.57.0/fortio-linux_amd64-1.57.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.56.0/fortio_1.56.0_amd64.deb
-dpkg -i fortio_1.56.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.57.0/fortio_1.57.0_amd64.deb
+dpkg -i fortio_1.57.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.56.0/fortio-1.56.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.57.0/fortio-1.57.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -76,7 +76,7 @@ On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.56.0/fortio_win_1.56.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.57.0/fortio_win_1.57.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -119,15 +119,16 @@ Most important flags for http load generation:
 | `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typicallly a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 | `-h2` |  Client calls will attempt to negotiate http/2.0 instead of http1.1, implies `-stdclient`|
-
-You can switch from http GET queries to POST by setting `-content-type` or passing one of the `-payload-*` option.
+| `-X method` | Change http method to the one specified instead of automatic http GET or POST based on `-payload-*` or `-content-type`|
+| `-logger-force-color` | For interactive runs for color instead of JSON output|
+| `-logger-no-color` | Force JSON output even when run from terminal|
 
 Full list of command line flags (`fortio help`):
 <details>
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.56.0 usage:
+Φορτίο 1.57.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -253,8 +254,12 @@ URL and hostname
   -logger-file-line
         Filename and line numbers emitted in JSON logs, use -logger-file-line=false to
 disable (default true)
+  -logger-force-color
+        Force color output even if stderr isn't a terminal
   -logger-json
         Log in JSON format, use -logger-json=false to disable (default true)
+  -logger-no-color
+        Prevent colorized output even if stderr is a terminal
   -logger-timestamp
         Timestamps emitted in JSON logs, use -logger-timestamp=false to disable (default
 true)
