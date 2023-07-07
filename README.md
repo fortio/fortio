@@ -33,7 +33,7 @@ A recent addition is the new `jrpc` JSON Remote Procedure Calls library package 
 
 We also have moved some of the library to their own toplevel package, like:
 - Dynamic flags: [fortio.org/dflag](https://github.com/fortio/dflag#fortio-dynamic-flags)
-- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4.
+- Logger: [fortio.org/log](https://github.com/fortio/log#log) - now using structured JSON logs for servers (vs text for CLIs) since fortio 1.55 / log 1.4. In color since fortio 1.57 / log 1.6.
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 - CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
@@ -48,7 +48,7 @@ We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/pp
 For instance:
 ```shell
 docker run -p 8080:8080 -p 8079:8079 fortio/fortio server & # For the server
-docker run fortio/fortio load http://www.google.com/ # For a test run
+docker run fortio/fortio load -logger-force-color http://www.google.com/ # For a test run, forcing color instead of JSON log output
 ```
 
 You can install from source:
@@ -119,8 +119,9 @@ Most important flags for http load generation:
 | `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typicallly a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 | `-h2` |  Client calls will attempt to negotiate http/2.0 instead of http1.1, implies `-stdclient`|
-
-You can switch from http GET queries to POST by setting `-content-type` or passing one of the `-payload-*` option.
+| `-X method` | Change http method to the one specified instead of automatic http GET or POST based on `-payload-*` or `-content-type`|
+| `-logger-force-color` | For interactive runs for color instead of JSON output|
+| `-logger-no-color` | Force JSON output even when run from terminal|
 
 Full list of command line flags (`fortio help`):
 <details>
