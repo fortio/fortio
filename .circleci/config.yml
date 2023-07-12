@@ -8,7 +8,7 @@ defaultEnv:
   &defaultEnv
   docker:
     # specify the version
-    - image: docker.io/fortio/fortio.build:v60@sha256:18c2427ade8e8867ec8e89a65702af479dd39fde15cee6899d08e387231fc090
+    - image: docker.io/fortio/fortio.build:v61@sha256:98038f5f81bdc65fcc1a99abcba1ff6a2e22f60d627d26ad75ad8d952888e8f7
   working_directory: /build/fortio
 
 jobs:
