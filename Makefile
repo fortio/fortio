@@ -7,8 +7,12 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v59@sha256:735db577fe940063725cdac8dd2723875f147434f266cbdf0e6970b4fd9b1a07
-BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+BUILD_IMAGE_TAG := v60@sha256:18c2427ade8e8867ec8e89a65702af479dd39fde15cee6899d08e387231fc090
+# We can add back linux/ppc64le once we stop getting weird
+# Failed to fetch https://download.docker.com/linux/debian/dists/bullseye/stable/binary-ppc64el/Packages.bz2 File has unexpected size (22003 != 22785)
+# errors
+# BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
 	BUILDX_POSTFIX = --load
