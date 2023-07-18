@@ -110,7 +110,11 @@ function makeTitle (res) {
   percStr += ', max ' + myRound(1000.0 * res.DurationHistogram.Max, 3) + ' ms'
   const total = res.DurationHistogram.Count
   let errStr = 'no error'
-  if (res.ErrorsDurationHistogram != null) {
+  if (res.error) {
+    errStr = 'ERROR: ' + res.message + ' - ' + res.exception
+    title.push(errStr)
+    return title
+  } else if (res.ErrorsDurationHistogram != null) {
     // Newer simpler calculation when we have the ErrorsDurationHistogram:
     const statusNotOk = res.ErrorsDurationHistogram.Count
     if (statusNotOk !== 0) {

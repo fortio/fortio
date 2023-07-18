@@ -331,8 +331,11 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		}
 	}
 	fhttp.OnBehalfOf(httpopts, r)
+	// Needed to reply the id, will be reused in Normalize() later as already set
+	// but we also do it early even for sync case so that the id is available to save JSON
+	// in case of init error.
+	ro.GenID()
 	if async {
-		ro.GenID() // Needed to reply the id, will be reused in Normalize() later as already set
 		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID, ResultURL: ID2URL(r, ro.ID)}
 		reply.Message = "started" //nolint:goconst
 		err := jrpc.ReplyOk(w, &reply)
@@ -420,9 +423,9 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	}
 	jsonStr := string(jsonData)
 	log.LogVf("Serialized to %s", jsonStr)
-	id := ro.ID
+	id := res.Result().ID
 	doSave := (FormValue(r, jd, "save") == "on")
-	if doSave {
+	if doSave && id != "" {
 		savedAs = SaveJSON(id, jsonData)
 	}
 	if err != nil {
