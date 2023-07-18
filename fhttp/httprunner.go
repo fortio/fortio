@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"sync"
 
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/log"
@@ -83,6 +84,17 @@ type HTTPRunnerOptions struct {
 	AbortOn int
 }
 
+func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunnerResults {
+	return &HTTPRunnerResults{
+		HTTPOptions: o.HTTPOptions,
+		RunnerResults: periodic.RunnerResults{
+			RunType:     o.RunType,
+			RunID:       o.RunID,
+			ServerReply: *jrpc.NewErrorReply(message, err),
+		},
+	}
+}
+
 // RunHTTPTest runs an http test and returns the aggregated stats.
 //
 //nolint:funlen, gocognit, gocyclo, maintidx
@@ -134,12 +146,13 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].client, err = NewClient(&o.HTTPOptions)
 		// nil check on interface doesn't work
 		if err != nil {
-			return nil, err
+			return NewErrorResult(o, "init error", err), err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
 			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				codeErr := fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				return NewErrorResult(o, "initial http error", codeErr), codeErr
 			}
 			if i == 0 && log.LogVerbose() {
 				log.LogVf("first hit of url %s: status %03d, headers %d, total %d", o.URL, code, headerSize, dataLen)
@@ -168,7 +181,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			})
 		}
 		if err := warmup.Wait(); err != nil {
-			return nil, err
+			return NewErrorResult(o, "warmup error", err), err
 		}
 	}
 	// TODO avoid copy pasta with grpcrunner

@@ -34,6 +34,7 @@ import (
 	"sync"
 	"time"
 
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/version"
 	"fortio.org/log"
@@ -239,6 +240,8 @@ type RunnerResults struct {
 	AccessLoggerInfo        string
 	// Same as RunnerOptions ID:  Unique 96 character ID used as reference to saved json file. Created during Normalize().
 	ID string
+	// If the run doesn't even start because of for instance an invalid host name, this will be set (all omitted on success)
+	jrpc.ServerReply
 }
 
 // HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
@@ -524,6 +527,7 @@ func (r *periodicRunner) Run() RunnerResults {
 			0, 0, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
 			errorsDuration.Export().CalcPercentiles(r.Percentiles),
 			r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
+			*jrpc.NewErrorReply("Aborted before even starting", nil),
 		}
 	}
 	if r.NumThreads <= 1 {
@@ -589,6 +593,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
 		errorsDuration.Export().CalcPercentiles(r.Percentiles),
 		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
+		jrpc.ServerReply{Error: false},
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")

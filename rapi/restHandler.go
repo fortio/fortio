@@ -413,6 +413,18 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		aborter.StartChan <- false
 		log.LogVf("REST run %d really done - after channel write", ro.RunID)
 	}()
+	savedAs := ""
+	jsonData, jerr := json.MarshalIndent(res, "", "  ")
+	if jerr != nil {
+		log.Fatalf("Unable to json serialize result: %v", jerr) //nolint:gocritic // gocritic doesn't know fortio's log.Fatalf does pani
+	}
+	jsonStr := string(jsonData)
+	log.LogVf("Serialized to %s", jsonStr)
+	id := ro.ID
+	doSave := (FormValue(r, jd, "save") == "on")
+	if doSave {
+		savedAs = SaveJSON(id, jsonData)
+	}
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		if !htmlMode {
@@ -420,31 +432,19 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		}
 		return res, "", nil, err
 	}
-	json, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err) //nolint:gocritic // gocritic doesn't know fortio's log.Fatalf does pani
-	}
-	jsonStr := string(json)
-	log.LogVf("Serialized to %s", jsonStr)
-	id := res.Result().ID
-	doSave := (FormValue(r, jd, "save") == "on")
-	savedAs := ""
-	if doSave {
-		savedAs = SaveJSON(id, json)
-	}
 	if w == nil {
 		// async or html but nil w (no json output): no result to output
-		return res, savedAs, json, nil
+		return res, savedAs, jsonData, nil
 	}
 	if htmlMode {
 		// Already set in api mode but not in html mode
 		w.Header().Set("Content-Type", "application/json")
 	}
-	_, err = w.Write(json)
+	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 	}
-	return res, savedAs, json, nil
+	return res, savedAs, jsonData, nil
 }
 
 // RESTStatusHandler will print the state of the runs.

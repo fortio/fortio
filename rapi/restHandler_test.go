@@ -68,6 +68,9 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
 	}
+	if r == nil {
+		t.Fatalf("Unexpected nil error reply")
+	}
 	if !r.Error {
 		t.Error("Success field should be false for errors")
 	}
@@ -510,6 +513,45 @@ func TestRESTStopTimeBased(t *testing.T) {
 	expected := fmt.Sprintf("<li><a href=\"%s.json\">%s</a>", fileID, fileID)
 	if !strings.Contains(dataStr, expected) {
 		t.Errorf("Can't find expected html %s in %s", expected, dataStr)
+	}
+}
+
+// Test the bad host case #796.
+func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
+	log.SetLogLevel(log.Verbose)
+	mux, addr := fhttp.DynamicHTTPServer(false)
+	uiPath := "/f/"
+	AddHandlers(nil, mux, "", uiPath, ".")
+
+	// Error with bad host
+	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
+
+	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/foo/bar")
+
+	errObj := GetErrorResult(t, runURL, "")
+	if errObj.Exception != "lookup doesnotexist.fortio.org: no such host" {
+		t.Errorf("Didn't get the expected dns error, got %+v", errObj)
+	}
+	// Same with async:
+	runURL += "&async=on&save=on"
+	asyncRes := GetAsyncResult(t, runURL, "")
+	dataURL := asyncRes.ResultURL
+	if dataURL == "" {
+		t.Errorf("Expected a result URL, got %+v", asyncRes)
+	}
+	runID := asyncRes.RunID
+	if runID < 1 {
+		t.Errorf("Expected a run id, got %+v", asyncRes)
+	}
+	// It fails "almost" right away... so... sleep // TODO: somehow using stop with wait doesn't work while it should
+	time.Sleep(1 * time.Second)
+	// And stop it (just to avoid race condition/so data is here when this returns)
+	//	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
+	//	asyncRes = GetAsyncResult(t, stopURL, "")
+	// Fetch the json result:
+	res := GetResult(t, dataURL, "")
+	if res.Exception != "lookup doesnotexist.fortio.org: no such host" {
+		t.Errorf("Didn't get the expected dns error in result file url %s, got %+v", asyncRes.ResultURL, errObj)
 	}
 }
 
