@@ -529,7 +529,9 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/foo/bar")
 
 	errObj := GetErrorResult(t, runURL, "")
-	if errObj.Exception != "lookup doesnotexist.fortio.org: no such host" {
+	// we get either `lookup doesnotexist.fortio.org: no such host` or `lookup doesnotexist.fortio.org on 127.0.0.11:53: no such host`
+	// so check just for prefix
+	if strings.HasPrefix(errObj.Exception, "lookup doesnotexist.fortio.org") {
 		t.Errorf("Didn't get the expected dns error, got %+v", errObj)
 	}
 	// Same with async:
@@ -550,7 +552,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	//	asyncRes = GetAsyncResult(t, stopURL, "")
 	// Fetch the json result:
 	res := GetResult(t, dataURL, "")
-	if res.Exception != "lookup doesnotexist.fortio.org: no such host" {
+	if strings.HasPrefix(res.Exception, "lookup doesnotexist.fortio.org") {
 		t.Errorf("Didn't get the expected dns error in result file url %s, got %+v", asyncRes.ResultURL, errObj)
 	}
 }
