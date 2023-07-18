@@ -86,7 +86,7 @@ type HTTPRunnerOptions struct {
 }
 
 func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunnerResults {
-	empty := stats.NewHistogram(o.RunnerOptions.Offset.Seconds(), o.RunnerOptions.Resolution)
+	empty := stats.NewHistogram(0, periodic.DefaultRunnerOptions.Resolution)
 	empty.Record(0.)
 	empty.Record(0.001) // 2 points to generate a big red block when visualized in browse UI.
 	return &HTTPRunnerResults{
