@@ -476,6 +476,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	waitStr := strings.ToLower(r.FormValue("wait"))
 	wait := (waitStr != "" && waitStr != "off" && waitStr != "false")
 	i, rid := StopByRunID(runid, wait)
+	log.Debugf("REST Stop completed, stopped %d runs, rid %s", i, rid)
 	reply := AsyncReply{RunID: runid, Count: i, ResultID: rid, ResultURL: ID2URL(r, rid)}
 	if wait && i == 1 {
 		reply.Message = StateStopped.String()
@@ -514,6 +515,7 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	}
 	// else: Stop one
 	v, found := runs[runid]
+	log.Debugf("Interrupting runid %d, found %v : %+v", runid, found, v)
 	if !found {
 		uiRunMapMutex.Unlock()
 		log.Infof("Runid %d not found to interrupt", runid)

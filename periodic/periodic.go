@@ -91,6 +91,7 @@ type Aborter struct {
 	stopRequested bool
 }
 
+// Note this can cause data race if called without holding the lock. TODO: maybe use reentrant lock. but this is for debug only.
 func (a *Aborter) String() string {
 	return fmt.Sprintf("{Aborter %p stopChan %v startChan %v hasStarted %v stopRequested %v}",
 		a, a.StopChan, a.StartChan, a.hasStarted, a.stopRequested)
@@ -137,6 +138,19 @@ func (a *Aborter) Abort(wait bool) {
 		a.StopChan = nil
 	}
 	a.Unlock()
+}
+
+// RecordStart records the start of the run. (used by httprunner in error cases to fake start so rapi stop and wait can work).
+func (a *Aborter) RecordStart() (chan struct{}, bool) {
+	a.Lock()
+	a.hasStarted = true
+	startedChan := a.StartChan
+	runnerChan := a.StopChan // need a copy to not race with assignment to nil
+	shouldAbort := a.stopRequested
+	log.LogVf("RUNNER starting... can now be Abort()ed, telling %v - %v", a, startedChan)
+	a.Unlock()
+	startedChan <- true
+	return runnerChan, shouldAbort
 }
 
 // Reset returns the aborter to original state, for (unit test) reuse.
@@ -366,7 +380,7 @@ func (r *RunnerOptions) Normalize() {
 // to nil under lock so it can be called multiple times and not create panic for
 // already closed channel.
 func (r *RunnerOptions) Abort() {
-	log.LogVf("Abort called for %p %+v", r, r)
+	log.LogVf("Abort called for %p", r)
 	if r.Stop != nil {
 		r.Stop.Abort(false)
 	}
@@ -476,14 +490,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 // Run starts the runner.
 func (r *periodicRunner) Run() RunnerResults {
 	aborter := r.Stop
-	aborter.Lock()
-	runnerChan := aborter.StopChan // need a copy to not race with assignment to nil
-	startedChan := aborter.StartChan
-	aborter.hasStarted = true
-	shouldAbort := aborter.stopRequested
-	aborter.Unlock()
-	log.LogVf("RUNNER starting... can now be Abort()ed, telling %v - %v", aborter, startedChan)
-	startedChan <- true
+	runnerChan, shouldAbort := aborter.RecordStart()
 	useQPS := (r.QPS > 0)
 	// r.Exactly is > 0 if we use Exactly iterations instead of the duration.
 	useExactly := (r.Exactly > 0)

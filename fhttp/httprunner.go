@@ -86,6 +86,7 @@ type HTTPRunnerOptions struct {
 }
 
 func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunnerResults {
+	log.LogVf("New error result %s: %v", message, err)
 	empty := stats.NewHistogram(0, periodic.DefaultRunnerOptions.Resolution)
 	empty.Record(0.)
 	empty.Record(0.001) // 2 points to generate a big red block when visualized in browse UI.
@@ -132,6 +133,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.HTTPOptions.UniqueID = o.RunnerOptions.RunID
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
+	aborter := r.Options().Stop
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
@@ -139,7 +141,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,
-		aborter:     r.Options().Stop,
+		aborter:     aborter,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
 	// First build all the clients sequentially. This ensures we do not have data races when
@@ -154,12 +156,14 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].client, err = NewClient(&o.HTTPOptions)
 		// nil check on interface doesn't work
 		if err != nil {
+			aborter.RecordStart() // virtual/fake start so when we use the start chan later to wait it doesn't hang
 			return NewErrorResult(o, "init error", err), err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
 			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
 				codeErr := fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				aborter.RecordStart()
 				return NewErrorResult(o, "initial http error", codeErr), codeErr
 			}
 			if i == 0 && log.LogVerbose() {
