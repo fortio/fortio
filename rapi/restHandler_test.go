@@ -619,7 +619,7 @@ func TestNextGet(t *testing.T) {
 	}
 	list := GetAllRuns()
 	if len(list) != 1 {
-		t.Errorf("Expected 1 run got %d", len(list))
+		t.Errorf("Expected 1 run got %v", list)
 	}
 }
 
