@@ -518,22 +518,20 @@ func TestRESTStopTimeBased(t *testing.T) {
 
 // Test the bad host case #796.
 func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
-	log.SetLogLevel(log.Debug)
+	log.SetLogLevel(log.Debug) // needed to debug if this test starts failing
+	// otherwise log.SetLogLevel(log.Info)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	uiPath := "/f/"
 	AddHandlers(nil, mux, "", uiPath, ".")
 	// Error with bad host
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
-
+	// sync first:
 	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/foo/bar")
-
-	if false {
-		errObj := GetErrorResult(t, runURL, "")
-		// we get either `lookup doesnotexist.fortio.org: no such host` or `lookup doesnotexist.fortio.org on 127.0.0.11:53: no such host`
-		// so check just for prefix
-		if !strings.HasPrefix(errObj.Exception, "lookup doesnotexist.fortio.org") {
-			t.Errorf("Didn't get the expected dns error, got %+v", errObj)
-		}
+	errObj := GetErrorResult(t, runURL, "")
+	// we get either `lookup doesnotexist.fortio.org: no such host` or `lookup doesnotexist.fortio.org on 127.0.0.11:53: no such host`
+	// so check just for prefix
+	if !strings.HasPrefix(errObj.Exception, "lookup doesnotexist.fortio.org") {
+		t.Errorf("Didn't get the expected dns error, got %+v", errObj)
 	}
 	// Same with async:
 	runURL += "&async=on&save=on"
@@ -618,8 +616,12 @@ func TestNextGet(t *testing.T) {
 		t.Errorf("Expected json %s got %s", expected, str)
 	}
 	list := GetAllRuns()
+	t.Logf("expecting only %d", id)
+	for _, r := range list {
+		t.Logf("run %d: %+v", r.RunID, r)
+	}
 	if len(list) != 1 {
-		t.Errorf("Expected 1 run got %v", list)
+		t.Errorf("Expected 1 run got %d", len(list))
 	}
 }
 
