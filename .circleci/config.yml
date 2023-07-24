@@ -32,13 +32,13 @@ jobs:
       - checkout
       # If ran with default we get random errors because OOM killer kills some linters
       - run: make local-lint DEBUG_LINTERS="--concurrency=2"
-  codecov:
-    <<: *defaultEnv
-    steps:
-      - checkout
-      - run: make coverage
-    # The resource_class feature allows configuring CPU and RAM resources for each job. Different resource classes are available for different executors. https://circleci.com/docs/2.0/configuration-reference/#resourceclass
-    resource_class: large
+  # codecov:
+  #   <<: *defaultEnv
+  #   steps:
+  #     - checkout
+  #     - run: make coverage
+  #   # The resource_class feature allows configuring CPU and RAM resources for each job. Different resource classes are available for different executors. https://circleci.com/docs/2.0/configuration-reference/#resourceclass
+  #   resource_class: large
 
 workflows:
   version: 2
