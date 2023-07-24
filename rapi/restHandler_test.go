@@ -40,7 +40,7 @@ import (
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
 	r, err := jrpc.Fetch[T](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err != nil {
-		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
+		t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
 	return r
 }
@@ -572,6 +572,7 @@ func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunn
 }
 
 func TestOtherRunnersRESTApi(t *testing.T) {
+	log.SetLogLevel(log.Info)
 	iPort := fgrpc.PingServerTCP("0", "bar", 0, &fhttp.TLSOptions{})
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 
