@@ -332,7 +332,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	// add one more with bad url
-	badURL := fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, "http://doesnotexist.fortio.org/")
+	badURL := fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, "http://doesnotexist.fortio.org/TestHTTPRunnerRESTApi")
 	asyncObj = GetAsyncResult(t, badURL, jsonData)
 	runID = asyncObj.RunID
 	if asyncObj.Message != "started" || runID <= savedID+5 { // 1+1+3 jobs before this one
@@ -526,7 +526,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	// Error with bad host
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	// sync first:
-	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/foo/bar")
+	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/TestHTTPRunnerRESTApiBadHost/foo/bar")
 	errObj := GetErrorResult(t, runURL, "")
 	// we get either `lookup doesnotexist.fortio.org: no such host` or `lookup doesnotexist.fortio.org on 127.0.0.11:53: no such host`
 	// so check just for prefix
@@ -546,7 +546,10 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	}
 	// And stop it (with wait to avoid race condition/so data is here when this returns and avoid a sleep)
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
+	prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
 	asyncRes = GetAsyncResult(t, stopURL, "")
+	// Restore previous one (60s). Note we could also change GetAsyncResult to take a jrpc.Destination with timeout but that's more change for just a test.
+	jrpc.SetCallTimeout(prevTimeout)
 	if asyncRes.ResultURL != dataURL {
 		t.Errorf("Expected same result URL, got %+v", asyncRes)
 	}
