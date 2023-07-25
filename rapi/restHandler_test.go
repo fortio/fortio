@@ -579,8 +579,10 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	AddHandlers(nil, mux, "", "/fortio/", ".")
 	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
-
-	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)
+	qps := 3.0
+	dur := "2s"
+	c := 1
+	runURL := fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d&runner=grpc", restURL, qps, iDest, dur, c)
 
 	res := FetchResult[fgrpc.GRPCRunnerResults](t, runURL, "")
 	totalReq := res.DurationHistogram.Count
@@ -592,19 +594,19 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 
 	tAddr := fnet.TCPEchoServer("test-echo-runner-tcp", ":0")
 	tDest := fmt.Sprintf("tcp://localhost:%d/", tAddr.(*net.TCPAddr).Port)
-	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=2", restURL, 10, tDest)
+	runURL = fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d", restURL, qps, tDest, dur, c)
 
 	tRes := FetchResult[tcprunner.RunnerResults](t, runURL, "")
-	if tRes.ActualQPS < 8 || tRes.ActualQPS > 10.1 {
+	if tRes.ActualQPS < qps*.75 || tRes.ActualQPS > qps*1.25 {
 		t.Errorf("Unexpected tcp qps %f", tRes.ActualQPS)
 	}
 
 	uAddr := fnet.UDPEchoServer("test-echo-runner-udp", ":0", false)
 	uDest := fmt.Sprintf("udp://localhost:%d/", uAddr.(*net.UDPAddr).Port)
-	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=1", restURL, 5, uDest)
+	runURL = fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d", restURL, qps, uDest, dur, c)
 
 	uRes := FetchResult[udprunner.RunnerResults](t, runURL, "")
-	if uRes.ActualQPS < 4 || uRes.ActualQPS > 5.1 {
+	if uRes.ActualQPS < qps*.75 || uRes.ActualQPS > qps*1.25 {
 		t.Errorf("Unexpected udp qps %f", tRes.ActualQPS)
 	}
 }
