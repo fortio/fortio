@@ -554,11 +554,14 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	}
 	// And stop it (with wait to avoid race condition/so data is here when this returns and avoid a sleep)
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
-	//prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
+	// Using go test -test.count=1 -timeout 8s -run "^TestHTTPRunnerRESTApiBadHost$" ./rapi  is a better way
+	// to debug the issue and get all the thread dumps, before the timeout triggers but for functional test
+	// (immediate response to stop) this would be better:
+	// prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
 	asyncRes = GetAsyncResult(t, stopURL, "")
 	// Restore previous one (60s). Note we could also change GetAsyncResult to take a jrpc.Destination
 	// with timeout but that's more change for just a test.
-	//jrpc.SetCallTimeout(prevTimeout)
+	// jrpc.SetCallTimeout(prevTimeout)
 	if asyncRes.ResultURL != dataURL {
 		t.Errorf("Expected same result URL, got %+v", asyncRes)
 	}
