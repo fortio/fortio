@@ -16,6 +16,7 @@
 package rapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -39,8 +40,14 @@ import (
 // Generics ftw.
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
 	r, err := jrpc.Fetch[T](jrpc.NewDestination(url), []byte(jsonPayload))
+	// check if it is a timeout error
 	if err != nil {
-		t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
+		if errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("Got unexpected timeout error for URL %s: %v", url, err)
+			panic("debugging timeout error for " + url)
+		} else {
+			t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
+		}
 	}
 	return r
 }
@@ -547,11 +554,11 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	}
 	// And stop it (with wait to avoid race condition/so data is here when this returns and avoid a sleep)
 	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
-	prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
+	//prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
 	asyncRes = GetAsyncResult(t, stopURL, "")
 	// Restore previous one (60s). Note we could also change GetAsyncResult to take a jrpc.Destination
 	// with timeout but that's more change for just a test.
-	jrpc.SetCallTimeout(prevTimeout)
+	//jrpc.SetCallTimeout(prevTimeout)
 	if asyncRes.ResultURL != dataURL {
 		t.Errorf("Expected same result URL, got %+v", asyncRes)
 	}
