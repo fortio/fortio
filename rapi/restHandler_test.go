@@ -16,6 +16,7 @@
 package rapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -39,8 +40,14 @@ import (
 // Generics ftw.
 func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
 	r, err := jrpc.Fetch[T](jrpc.NewDestination(url), []byte(jsonPayload))
+	// check if it is a timeout error
 	if err != nil {
-		t.Errorf("Got unexpected error for URL %s: %v - %v", url, err, r)
+		if errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("Got unexpected timeout error for URL %s: %v", url, err)
+			panic("debugging timeout error for " + url)
+		} else {
+			t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
+		}
 	}
 	return r
 }
@@ -67,6 +74,9 @@ func GetErrorResult(t *testing.T, url string, jsonPayload string) *jrpc.ServerRe
 	r, err := jrpc.Fetch[jrpc.ServerReply](jrpc.NewDestination(url), []byte(jsonPayload))
 	if err == nil {
 		t.Errorf("Got unexpected no error for URL %s: %v", url, r)
+	}
+	if r == nil {
+		t.Fatalf("Unexpected nil error reply")
 	}
 	if !r.Error {
 		t.Error("Success field should be false for errors")
@@ -329,7 +339,8 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	// add one more with bad url
-	badURL := fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL, "http://doesnotexist.fortio.org/")
+	badURL := fmt.Sprintf("%s?jsonPath=.metadata&qps=1&t=on&url=%s&async=on", restURL,
+		"http://doesnotexist.fortio.org/TestHTTPRunnerRESTApi")
 	asyncObj = GetAsyncResult(t, badURL, jsonData)
 	runID = asyncObj.RunID
 	if asyncObj.Message != "started" || runID <= savedID+5 { // 1+1+3 jobs before this one
@@ -513,6 +524,58 @@ func TestRESTStopTimeBased(t *testing.T) {
 	}
 }
 
+// Test the bad host case #796.
+func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
+	log.SetLogLevel(log.Debug) // needed to debug if this test starts failing
+	// log.Config.ForceColor = true
+	// log.Config.JSON = true
+	// log.Config.NoTimestamp = true
+	// log.SetColorMode()
+	// otherwise log.SetLogLevel(log.Info)
+	mux, addr := fhttp.DynamicHTTPServer(false)
+	uiPath := "/f/"
+	AddHandlers(nil, mux, "", uiPath, ".")
+	// Error with bad host
+	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
+	// sync first:
+	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s", restURL, 100, "http://doesnotexist.fortio.org/TestHTTPRunnerRESTApiBadHost/foo/bar")
+	errObj := GetErrorResult(t, runURL, "")
+	// we get either `lookup doesnotexist.fortio.org: no such host` or `lookup doesnotexist.fortio.org on 127.0.0.11:53: no such host`
+	// so check just for prefix
+	if !strings.HasPrefix(errObj.Exception, "lookup doesnotexist.fortio.org") {
+		t.Errorf("Didn't get the expected dns error, got %+v", errObj)
+	}
+	// Same with async:
+	runURL += "&async=on&save=on"
+	asyncRes := GetAsyncResult(t, runURL, "")
+	dataURL := asyncRes.ResultURL
+	if dataURL == "" {
+		t.Errorf("Expected a result URL, got %+v", asyncRes)
+	}
+	runID := asyncRes.RunID
+	if runID < 1 {
+		t.Errorf("Expected a run id, got %+v", asyncRes)
+	}
+	// And stop it (with wait to avoid race condition/so data is here when this returns and avoid a sleep)
+	stopURL := fmt.Sprintf("http://localhost:%d%s%s?runid=%d&wait=true", addr.Port, uiPath, RestStopURI, runID)
+	// Using go test -test.count=1 -timeout 8s -run "^TestHTTPRunnerRESTApiBadHost$" ./rapi  is a better way
+	// to debug the issue and get all the thread dumps, before the timeout triggers but for functional test
+	// (immediate response to stop) this would be better:
+	// prevTimeout := jrpc.SetCallTimeout(1 * time.Second) // Stopping a failed to start run should be almost instant
+	asyncRes = GetAsyncResult(t, stopURL, "")
+	// Restore previous one (60s). Note we could also change GetAsyncResult to take a jrpc.Destination
+	// with timeout but that's more change for just a test.
+	// jrpc.SetCallTimeout(prevTimeout)
+	if asyncRes.ResultURL != dataURL {
+		t.Errorf("Expected same result URL, got %+v", asyncRes)
+	}
+	// Fetch the json result:
+	res := GetResult(t, dataURL, "")
+	if !strings.HasPrefix(res.Exception, "lookup doesnotexist.fortio.org") {
+		t.Errorf("Didn't get the expected dns error in result file url %s, got %+v", asyncRes.ResultURL, res)
+	}
+}
+
 // If jsonPayload isn't empty we POST otherwise get the url.
 func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunnerResults {
 	r, err := jrpc.Fetch[fgrpc.GRPCRunnerResults](jrpc.NewDestination(url), []byte(jsonPayload))
@@ -523,14 +586,17 @@ func GetGRPCResult(t *testing.T, url string, jsonPayload string) *fgrpc.GRPCRunn
 }
 
 func TestOtherRunnersRESTApi(t *testing.T) {
+	log.SetLogLevel(log.Info)
 	iPort := fgrpc.PingServerTCP("0", "bar", 0, &fhttp.TLSOptions{})
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	AddHandlers(nil, mux, "", "/fortio/", ".")
 	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
-
-	runURL := fmt.Sprintf("%s?qps=%d&url=%s&t=2s&runner=grpc", restURL, 10, iDest)
+	qps := 3.0
+	dur := "2s"
+	c := 1
+	runURL := fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d&runner=grpc", restURL, qps, iDest, dur, c)
 
 	res := FetchResult[fgrpc.GRPCRunnerResults](t, runURL, "")
 	totalReq := res.DurationHistogram.Count
@@ -542,19 +608,19 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 
 	tAddr := fnet.TCPEchoServer("test-echo-runner-tcp", ":0")
 	tDest := fmt.Sprintf("tcp://localhost:%d/", tAddr.(*net.TCPAddr).Port)
-	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=2", restURL, 10, tDest)
+	runURL = fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d", restURL, qps, tDest, dur, c)
 
 	tRes := FetchResult[tcprunner.RunnerResults](t, runURL, "")
-	if tRes.ActualQPS < 8 || tRes.ActualQPS > 10.1 {
+	if tRes.ActualQPS < qps*.75 || tRes.ActualQPS > qps*1.25 {
 		t.Errorf("Unexpected tcp qps %f", tRes.ActualQPS)
 	}
 
 	uAddr := fnet.UDPEchoServer("test-echo-runner-udp", ":0", false)
 	uDest := fmt.Sprintf("udp://localhost:%d/", uAddr.(*net.UDPAddr).Port)
-	runURL = fmt.Sprintf("%s?qps=%d&url=%s&t=2s&c=1", restURL, 5, uDest)
+	runURL = fmt.Sprintf("%s?qps=%f&url=%s&t=%s&c=%d", restURL, qps, uDest, dur, c)
 
 	uRes := FetchResult[udprunner.RunnerResults](t, runURL, "")
-	if uRes.ActualQPS < 4 || uRes.ActualQPS > 5.1 {
+	if uRes.ActualQPS < qps*.75 || uRes.ActualQPS > qps*1.25 {
 		t.Errorf("Unexpected udp qps %f", tRes.ActualQPS)
 	}
 }
@@ -572,6 +638,10 @@ func TestNextGet(t *testing.T) {
 		t.Errorf("Expected json %s got %s", expected, str)
 	}
 	list := GetAllRuns()
+	t.Logf("expecting only %d", id)
+	for _, r := range list {
+		t.Logf("run %d: %+v", r.RunID, r)
+	}
 	if len(list) != 1 {
 		t.Errorf("Expected 1 run got %d", len(list))
 	}

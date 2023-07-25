@@ -23,7 +23,9 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
+	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/stats"
 	"fortio.org/log"
@@ -83,6 +85,25 @@ type HTTPRunnerOptions struct {
 	AbortOn int
 }
 
+func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunnerResults {
+	log.LogVf("New error result %s: %v", message, err)
+	empty := stats.NewHistogram(0, periodic.DefaultRunnerOptions.Resolution)
+	empty.Record(0.)
+	empty.Record(0.001) // 2 points to generate a big red block when visualized in browse UI.
+	return &HTTPRunnerResults{
+		HTTPOptions: o.HTTPOptions,
+		RunnerResults: periodic.RunnerResults{
+			StartTime:               time.Now(),
+			RunType:                 o.RunType,
+			RunID:                   o.RunID,
+			ID:                      o.RunnerOptions.ID,
+			ServerReply:             *jrpc.NewErrorReply(message, err),
+			DurationHistogram:       empty.Export(),
+			ErrorsDurationHistogram: empty.Export(),
+		},
+	}
+}
+
 // RunHTTPTest runs an http test and returns the aggregated stats.
 //
 //nolint:funlen, gocognit, gocyclo, maintidx
@@ -112,6 +133,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.HTTPOptions.UniqueID = o.RunnerOptions.RunID
 	o.HTTPOptions.Init(o.URL)
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
+	aborter := r.Options().Stop
 	total := HTTPRunnerResults{
 		HTTPOptions: o.HTTPOptions,
 		RetCodes:    make(map[int]int64),
@@ -119,7 +141,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		sizes:       stats.NewHistogram(0, 100),
 		headerSizes: stats.NewHistogram(0, 5),
 		AbortOn:     o.AbortOn,
-		aborter:     r.Options().Stop,
+		aborter:     aborter,
 	}
 	httpstate := make([]HTTPRunnerResults, numThreads)
 	// First build all the clients sequentially. This ensures we do not have data races when
@@ -134,12 +156,15 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		httpstate[i].client, err = NewClient(&o.HTTPOptions)
 		// nil check on interface doesn't work
 		if err != nil {
-			return nil, err
+			aborter.RecordStart() // virtual/fake start so when we use the start chan later to wait it doesn't hang
+			return NewErrorResult(o, "init error", err), err
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
 			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
-				return nil, fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				codeErr := fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				aborter.RecordStart()
+				return NewErrorResult(o, "initial http error", codeErr), codeErr
 			}
 			if i == 0 && log.LogVerbose() {
 				log.LogVf("first hit of url %s: status %03d, headers %d, total %d", o.URL, code, headerSize, dataLen)
@@ -168,7 +193,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 			})
 		}
 		if err := warmup.Wait(); err != nil {
-			return nil, err
+			return NewErrorResult(o, "warmup error", err), err
 		}
 	}
 	// TODO avoid copy pasta with grpcrunner

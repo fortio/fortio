@@ -86,7 +86,7 @@ webtest: release-test
 
 coverage: dependencies
 	./.circleci/coverage.sh
-	curl -s https://codecov.io/bash | bash
+#	curl -s https://codecov.io/bash | bash
 
 # Short cut for pulling/updating to latest of the current branch
 pull:

@@ -331,8 +331,11 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		}
 	}
 	fhttp.OnBehalfOf(httpopts, r)
+	// Needed to reply the id, will be reused in Normalize() later as already set
+	// but we also do it early even for sync case so that the id is available to save JSON
+	// in case of init error.
+	ro.GenID()
 	if async {
-		ro.GenID() // Needed to reply the id, will be reused in Normalize() later as already set
 		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID, ResultURL: ID2URL(r, ro.ID)}
 		reply.Message = "started" //nolint:goconst
 		err := jrpc.ReplyOk(w, &reply)
@@ -413,6 +416,18 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		aborter.StartChan <- false
 		log.LogVf("REST run %d really done - after channel write", ro.RunID)
 	}()
+	savedAs := ""
+	jsonData, jerr := json.MarshalIndent(res, "", "  ")
+	if jerr != nil {
+		log.Fatalf("Unable to json serialize result: %v", jerr) //nolint:gocritic // gocritic doesn't know fortio's log.Fatalf does pani
+	}
+	jsonStr := string(jsonData)
+	log.LogVf("Serialized to %s", jsonStr)
+	id := res.Result().ID
+	doSave := (FormValue(r, jd, "save") == "on")
+	if doSave && id != "" {
+		savedAs = SaveJSON(id, jsonData)
+	}
 	if err != nil {
 		log.Errf("Init error for %s mode with url %s and options %+v : %v", runner, url, ro, err)
 		if !htmlMode {
@@ -420,31 +435,19 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		}
 		return res, "", nil, err
 	}
-	json, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		log.Fatalf("Unable to json serialize result: %v", err) //nolint:gocritic // gocritic doesn't know fortio's log.Fatalf does pani
-	}
-	jsonStr := string(json)
-	log.LogVf("Serialized to %s", jsonStr)
-	id := res.Result().ID
-	doSave := (FormValue(r, jd, "save") == "on")
-	savedAs := ""
-	if doSave {
-		savedAs = SaveJSON(id, json)
-	}
 	if w == nil {
 		// async or html but nil w (no json output): no result to output
-		return res, savedAs, json, nil
+		return res, savedAs, jsonData, nil
 	}
 	if htmlMode {
 		// Already set in api mode but not in html mode
 		w.Header().Set("Content-Type", "application/json")
 	}
-	_, err = w.Write(json)
+	_, err = w.Write(jsonData)
 	if err != nil {
 		log.Errf("Unable to write json output for %v: %v", r.RemoteAddr, err)
 	}
-	return res, savedAs, json, nil
+	return res, savedAs, jsonData, nil
 }
 
 // RESTStatusHandler will print the state of the runs.
@@ -473,6 +476,7 @@ func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	waitStr := strings.ToLower(r.FormValue("wait"))
 	wait := (waitStr != "" && waitStr != "off" && waitStr != "false")
 	i, rid := StopByRunID(runid, wait)
+	log.Debugf("REST Stop completed, stopped %d runs, rid %s", i, rid)
 	reply := AsyncReply{RunID: runid, Count: i, ResultID: rid, ResultURL: ID2URL(r, rid)}
 	if wait && i == 1 {
 		reply.Message = StateStopped.String()
@@ -511,6 +515,7 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	}
 	// else: Stop one
 	v, found := runs[runid]
+	log.Debugf("Interrupting runid %d, found %v : %+v", runid, found, v)
 	if !found {
 		uiRunMapMutex.Unlock()
 		log.Infof("Runid %d not found to interrupt", runid)
@@ -528,8 +533,8 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	v.aborter.Abort(wait)
 	if wait {
 		log.LogVf("REST stop, wait requested, reading additional channel signal")
-		<-v.aborter.StartChan
-		log.LogVf("REST stop, received all done signal")
+		b := <-v.aborter.StartChan
+		log.LogVf("REST stop, received all done signal got %v", b)
 	}
 	log.LogVf("Returning from Abort %d call with wait %v", runid, wait)
 	return 1, rid
