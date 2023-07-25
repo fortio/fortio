@@ -533,8 +533,8 @@ func StopByRunID(runid int64, wait bool) (int, string) {
 	v.aborter.Abort(wait)
 	if wait {
 		log.LogVf("REST stop, wait requested, reading additional channel signal")
-		<-v.aborter.StartChan
-		log.LogVf("REST stop, received all done signal")
+		b := <-v.aborter.StartChan
+		log.LogVf("REST stop, received all done signal got %v", b)
 	}
 	log.LogVf("Returning from Abort %d call with wait %v", runid, wait)
 	return 1, rid

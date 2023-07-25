@@ -112,31 +112,37 @@ func (a *Aborter) Abort(wait bool) {
 	a.stopRequested = true
 	started := a.hasStarted
 	if started || !wait {
-		log.LogVf("ABORT Closing %v", a)
+		log.LogVf("ABORT Closing already started or not waiting %v", a)
 		close(a.StopChan)
 		a.StopChan = nil
 		a.Unlock()
 		if started {
 			log.LogVf("ABORT reading start channel")
-			// shouldn't block/hang, just purging/resetting
-			<-a.StartChan
+			// shouldn't block/hang, just purging/resetting - but another aborter (line 137 might have consumed it already)
+			select {
+			case b := <-a.StartChan:
+				log.LogVf("ABORT done reading start channel, got %v", b)
+			default:
+				log.LogVf("ABORT start channel empty (not quite expected)")
+			}
 			a.Lock()
 			a.hasStarted = false
 			a.Unlock()
 		}
 		return
 	}
+	// Wait & not started case:
 	a.Unlock()
 	log.LogVf("ABORT Waiting for start")
-	<-a.StartChan
-	log.LogVf("ABORT Done waiting for start")
+	b := <-a.StartChan
+	log.LogVf("ABORT Done waiting for start, got %v", b)
 	a.Lock()
-	a.hasStarted = false
 	if a.StopChan != nil {
-		log.LogVf("ABORT Closing %+v", a)
+		log.LogVf("ABORT Closing wasn't started %+v", a)
 		close(a.StopChan)
 		a.StopChan = nil
 	}
+	a.hasStarted = false
 	a.Unlock()
 }
 

@@ -527,6 +527,10 @@ func TestRESTStopTimeBased(t *testing.T) {
 // Test the bad host case #796.
 func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	log.SetLogLevel(log.Debug) // needed to debug if this test starts failing
+	// log.Config.ForceColor = true
+	// log.Config.JSON = true
+	// log.Config.NoTimestamp = true
+	// log.SetColorMode()
 	// otherwise log.SetLogLevel(log.Info)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	uiPath := "/f/"
