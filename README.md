@@ -416,6 +416,8 @@ There is also the GRPC health and ping servers, as well as the http->https redir
 
 ## Example use and output
 
+Note that recent versions of fortio, when run on the console, have colorized output (and JSON when ran in server environment). What's below is plain text from older versions.
+
 ### Start the internal servers
 
 ```Shell
