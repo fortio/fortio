@@ -450,12 +450,12 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 		log.Debugf("read %d from %+v: %v", nr, src, er)
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
-			log.Debugf("wrote %d (expected %d) to %+v: %v", nw, nr, dst, ew)
+			log.Debugf("wrote %d (expected %d) to %p: %v", nw, nr, dst, ew)
 			if nw > 0 {
 				written += int64(nw)
 			}
 			if ew != nil {
-				log.Errf("copy: %+v -> %+v write error: %v", src, dst, ew)
+				log.Errf("copy: %p -> %p write error: %v", src, dst, ew)
 				err = ew
 				break
 			}
@@ -468,10 +468,10 @@ func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 			if os.IsTimeout(er) {
 				// return but not log as error (for UDPNetCat use case)
 				err = er
-				log.LogVf("copy: %+v -> %+v timeout/read error: %v", src, dst, er)
+				log.LogVf("copy: %p -> %p timeout/read error: %v", src, dst, er)
 			} else if !errors.Is(er, io.EOF) {
 				err = er
-				log.Errf("copy: %+v -> %+v read error: %v", src, dst, er)
+				log.Errf("copy: %p -> %p read error: %v", src, dst, er)
 			}
 			break
 		}
