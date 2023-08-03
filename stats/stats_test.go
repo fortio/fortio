@@ -47,7 +47,7 @@ func TestCounter(t *testing.T) {
 	log.SetFlags(0)
 	log.SetOutput(w)
 	c.Export().CalcPercentile(50)
-	expected += "E > Unexpected call to CalcPercentile(50) with no data\n"
+	expected += "[E]> Unexpected call to CalcPercentile(50) with no data\n"
 	c.Record(23.1)
 	c.Counter.Print(w, "test2")
 	expected += "test2 : count 1 avg 23.1 +/- 0 min 23.1 max 23.1 sum 23.1\n"
@@ -70,7 +70,7 @@ func TestCounter(t *testing.T) {
 	log.Config.LogFileAndLine = false
 	log.Config.LogPrefix = ""
 	c.Counter.Log("testLogC")
-	expected += "I testLogC" + finalExpected
+	expected += "[I] testLogC" + finalExpected
 	_ = w.Flush()
 	actual := b.String()
 	if actual != expected {
@@ -80,7 +80,7 @@ func TestCounter(t *testing.T) {
 	c.Log("testLogH", nil)
 	_ = w.Flush()
 	actual = b.String()
-	expected = "I testLogH" + finalExpected + `# range, mid point, percentile, count
+	expected = "[I] testLogH" + finalExpected + `# range, mid point, percentile, count
 >= -977 <= 22 , -477.5 , 16.67, 1
 > 22.8 <= 22.9 , 22.85 , 50.00, 2
 > 23 <= 23.1 , 23.05 , 83.33, 2
