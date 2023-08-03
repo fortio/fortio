@@ -26,7 +26,8 @@ fi
 echo "Changing $FILENAME from $CURRENT to release $RELEASE and updating usage section"
 ./release/updateFlags.sh | sed -e "s/Φορτίο dev/Φορτίο $RELEASE/" > /tmp/fortio_flags.txt
 cp README.md README.md.bak
-sed -e "s/$CURRENT/$RELEASE/g" README.md.bak | \
+SEARCH=${CURRENT//\./\\.} # escape dots so we don't go and replace 12534 in a timestamp when looking for 1.5.4
+sed -e "s/$SEARCH/$RELEASE/g" README.md.bak | \
    awk '/USAGE_START/ {print $0; skip=1; system("cat /tmp/fortio_flags.txt")} /USAGE_END/ {skip=0} {if (!skip) print $0}' \
    > README.md
 echo "DONE. Check the diff:"
