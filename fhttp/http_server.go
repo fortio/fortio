@@ -241,6 +241,7 @@ func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr
 		ReadHeaderTimeout: ServerIdleTimeout.Get(),
 		IdleTimeout:       ServerIdleTimeout.Get(),
 		Handler:           h2c.NewHandler(hdlr, h2s),
+		ErrorLog:          log.NewStdLogger("http2c srv "+name, log.Error),
 	}
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
@@ -270,6 +271,7 @@ func HTTPSServer(name string, port string, to *TLSOptions) (*http.ServeMux, net.
 		IdleTimeout:       ServerIdleTimeout.Get(),
 		Handler:           m,
 		TLSConfig:         tlsConfig,
+		ErrorLog:          log.NewStdLogger("http srv "+name, log.Error),
 	}
 	go func() {
 		err := s.ServeTLS(listener, to.Cert, to.Key)
