@@ -549,6 +549,13 @@ func TestTLS(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
+	// If we change the client, we should be back to errors again
+	d1.Client = &http.Client{}
+	_, err = jrpc.Get[struct{}](d1)
+	if err == nil {
+		t.Errorf("expected error, got nil - should have complained about TLS when passing a new client")
+	}
+	d1.Client = nil
 	d1.URL += "?status=417" // tea pot
 	_, err = jrpc.Get[struct{}](d1)
 	if err == nil {

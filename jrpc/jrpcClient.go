@@ -88,10 +88,13 @@ type Destination struct {
 	Context context.Context
 	// ClientTrace to use if set.
 	ClientTrace *httptrace.ClientTrace
-	// TLSConfig to use if set. Note that setting this implies a new http.Client each call where this is set.
+	// TLSConfig to use if set. This is ignored if HTTPClient is set.
+	// Otherwise that setting this implies a new http.Client each call where this is set.
 	TLSConfig *tls.Config
 	// Ok codes. If nil (default) then 200, 201, 202 are ok.
 	OkCodes sets.Set[int]
+	// Only use this if all the options above are not enough. Defaults to http.DefaultClient.
+	Client *http.Client
 }
 
 func (d *Destination) GetContext() context.Context {
@@ -244,11 +247,15 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	}
 	SetHeaderIfMissing(req.Header, "Accept", "application/json")
 	SetHeaderIfMissing(req.Header, UserAgentHeader, UserAgent)
-	client := http.DefaultClient
-	if dest.TLSConfig != nil {
+	var client *http.Client
+	if dest.Client != nil {
+		client = dest.Client
+	} else if dest.TLSConfig != nil {
 		transport := http.DefaultTransport.(*http.Transport).Clone() // Let it crash/panic if somehow DefaultTransport is not a Transport
 		transport.TLSClientConfig = dest.TLSConfig
 		client = &http.Client{Transport: transport}
+	} else {
+		client = http.DefaultClient
 	}
 	var resp *http.Response
 	resp, err = client.Do(req)
