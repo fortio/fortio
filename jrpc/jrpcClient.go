@@ -74,6 +74,8 @@ type FetchError struct {
 }
 
 // Destination is the URL and optional additional headers.
+// Depending on your needs consider also https://pkg.go.dev/fortio.org/multicurl/mc#MultiCurl
+// and its configuration https://pkg.go.dev/fortio.org/multicurl/mc#Config object.
 type Destination struct {
 	URL string
 	// Default is nil, which means no additional headers.
