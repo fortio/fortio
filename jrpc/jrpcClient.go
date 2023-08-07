@@ -27,6 +27,7 @@ package jrpc // import "fortio.org/fortio/jrpc"
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,6 +36,7 @@ import (
 	"time"
 
 	"fortio.org/fortio/version"
+	"fortio.org/sets"
 )
 
 // Client side and common code.
@@ -72,6 +74,8 @@ type FetchError struct {
 }
 
 // Destination is the URL and optional additional headers.
+// Depending on your needs consider also https://pkg.go.dev/fortio.org/multicurl/mc#MultiCurl
+// and its configuration https://pkg.go.dev/fortio.org/multicurl/mc#Config object.
 type Destination struct {
 	URL string
 	// Default is nil, which means no additional headers.
@@ -86,6 +90,13 @@ type Destination struct {
 	Context context.Context
 	// ClientTrace to use if set.
 	ClientTrace *httptrace.ClientTrace
+	// TLSConfig to use if set. This is ignored if HTTPClient is set.
+	// Otherwise that setting this implies a new http.Client each call where this is set.
+	TLSConfig *tls.Config
+	// Ok codes. If nil (default) then 200, 201, 202 are ok.
+	OkCodes sets.Set[int]
+	// Only use this if all the options above are not enough. Defaults to http.DefaultClient.
+	Client *http.Client
 }
 
 func (d *Destination) GetContext() context.Context {
@@ -170,8 +181,13 @@ func Fetch[Q any](url *Destination, bytes []byte) (*Q, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 200, 201, 202 are ok
-	ok := (code >= http.StatusOK && code <= http.StatusAccepted)
+	var ok bool
+	if url.OkCodes != nil {
+		ok = url.OkCodes.Has(code)
+	} else {
+		// Default is 200, 201, 202 are ok
+		ok = (code >= http.StatusOK && code <= http.StatusAccepted)
+	}
 	result, err := Deserialize[Q](bytes)
 	if err != nil {
 		if ok {
@@ -233,8 +249,18 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	}
 	SetHeaderIfMissing(req.Header, "Accept", "application/json")
 	SetHeaderIfMissing(req.Header, UserAgentHeader, UserAgent)
+	var client *http.Client
+	if dest.Client != nil {
+		client = dest.Client
+	} else if dest.TLSConfig != nil {
+		transport := http.DefaultTransport.(*http.Transport).Clone() // Let it crash/panic if somehow DefaultTransport is not a Transport
+		transport.TLSClientConfig = dest.TLSConfig
+		client = &http.Client{Transport: transport}
+	} else {
+		client = http.DefaultClient
+	}
 	var resp *http.Response
-	resp, err = http.DefaultClient.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		return -1, res, err
 	}

@@ -17,6 +17,7 @@ package jrpc_test
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"fortio.org/assert"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/jrpc"
+	"fortio.org/sets"
 )
 
 func TestDebugSummary(t *testing.T) {
@@ -518,5 +520,56 @@ func TestContext(t *testing.T) {
 	ctx = dest.GetContext()
 	if ctx != newCtx {
 		t.Errorf("expected newCtx, got %v", ctx)
+	}
+}
+
+// Semi copied from fhttp/https_server_test.go - to avoid circular dependencies
+// TODO move these path to shared test package.
+var (
+	// Generated from "make cert".
+	svrCrt     = "../cert-tmp/server.crt"
+	svrKey     = "../cert-tmp/server.key"
+	tlsOptions = &fhttp.TLSOptions{Cert: svrCrt, Key: svrKey}
+)
+
+func TestTLS(t *testing.T) {
+	// log.SetLogLevel(log.Debug)
+	m, a := fhttp.ServeTLS("0", "", tlsOptions)
+	if m == nil || a == nil {
+		t.Errorf("Failed to create server %v %v", m, a)
+	}
+	url := fmt.Sprintf("https://localhost:%d/", a.(*net.TCPAddr).Port)
+	d1 := &jrpc.Destination{URL: url}
+	_, err := jrpc.Get[struct{}](d1)
+	if err == nil {
+		t.Errorf("expected error, got nil - should have complained about TLS")
+	}
+	d1.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	_, err = jrpc.Get[struct{}](d1)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	// If we change the client, we should be back to errors again
+	d1.Client = &http.Client{}
+	_, err = jrpc.Get[struct{}](d1)
+	if err == nil {
+		t.Errorf("expected error, got nil - should have complained about TLS when passing a new client")
+	}
+	d1.Client = nil
+	d1.URL += "?status=417" // tea pot
+	_, err = jrpc.Get[struct{}](d1)
+	if err == nil {
+		t.Errorf("expected error, got nil - should have complained about return code 417")
+	}
+	d1.OkCodes = sets.New(233, 417)
+	_, err = jrpc.Get[struct{}](d1)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	// 200 should error again
+	d1.URL = url
+	_, err = jrpc.Get[struct{}](d1)
+	if err == nil {
+		t.Errorf("expected error, got nil - should have complained about return code 200")
 	}
 }

@@ -8,6 +8,7 @@ require (
 	fortio.org/dflag v1.5.3
 	fortio.org/log v1.10.0
 	fortio.org/scli v1.11.0
+	fortio.org/sets v1.0.3
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.2
 	github.com/golang/protobuf v1.5.3
@@ -27,7 +28,6 @@ require (
 //)
 
 require (
-	fortio.org/sets v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/sys v0.11.0 // indirect
