@@ -159,7 +159,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if pll > 0 {
 		o.RunType += fmt.Sprintf(" PayloadLength=%d", pll)
 	}
-	log.Infof("Starting %s test for %s with %d*%d threads at %.1f qps, compression: %v", o.RunType, o.Destination, o.Streams, o.NumThreads, o.QPS, o.GrpcCompression)
+	log.Infof("Starting %s test for %s with %d*%d threads at %.1f qps, compression: %v",
+		o.RunType, o.Destination, o.Streams, o.NumThreads, o.QPS, o.GrpcCompression)
 	o.NumThreads *= o.Streams
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
