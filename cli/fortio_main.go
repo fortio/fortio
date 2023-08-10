@@ -106,6 +106,7 @@ var (
 	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, <1 doesn't change the default")
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use GRPC (health check by default, add -ping for ping) for load testing")
+	grpcCompression = flag.Bool("grpc-compression", false, "Enable grpc compression")
 	echoPortFlag    = flag.String("http-port", "8080",
 		"http echo server port. Can be in the form of host:port, ip:port, `port` or /unix/domain/path or \""+disabled+"\".")
 	tcpPortFlag = flag.String("tcp-port", "8078",
@@ -437,6 +438,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 			Delay:              *pingDelayFlag,
 			UsePing:            *doPingLoadFlag,
 			Metadata:           httpHeader2grpcMetadata(httpOpts.AllHeaders()),
+			GrpcCompression:    *grpcCompression,
 		}
 		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
