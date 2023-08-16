@@ -439,6 +439,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 			UsePing:            *doPingLoadFlag,
 			Metadata:           httpHeader2grpcMetadata(httpOpts.AllHeaders()),
 			GrpcCompression:    *grpcCompression,
+			Profiler:           *profileFlag,
 		}
 		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
