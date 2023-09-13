@@ -197,8 +197,10 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		}
 	}
 	// TODO avoid copy pasta with grpcrunner
+	var fc *os.File
 	if o.Profiler != "" {
-		fc, err := os.Create(o.Profiler + ".cpu")
+		var err error
+		fc, err = os.Create(o.Profiler + ".cpu")
 		if err != nil {
 			log.Critf("Unable to create .cpu profile: %v", err)
 			return nil, err
@@ -210,6 +212,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	total.RunnerResults = r.Run()
 	if o.Profiler != "" {
 		pprof.StopCPUProfile()
+		fc.Close()
 		fm, err := os.Create(o.Profiler + ".mem")
 		if err != nil {
 			log.Critf("Unable to create .mem profile: %v", err)
