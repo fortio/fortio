@@ -99,7 +99,7 @@ const (
 // Handler is the main UI handler creating the web forms and processing them.
 // TODO: refactor common option/args/flag parsing between restHandle.go and this.
 //
-//nolint:funlen, gocognit, nestif // should be refactored indeed (TODO)
+//nolint:funlen, nestif // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	log.LogRequest(r, "UI")
 	mode := menu
