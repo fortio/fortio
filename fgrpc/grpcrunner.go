@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 )
@@ -132,6 +133,7 @@ type GRPCRunnerOptions struct {
 	Metadata           metadata.MD       // input metadata that will be added to the request
 	dialOptions        []grpc.DialOption // grpc dial options extracted from Metadata (authority and user-agent extracted)
 	filteredMetadata   metadata.MD       // filtered version of Metadata metadata (without authority and user-agent)
+	GrpcCompression    bool              // enable grpc compression
 }
 
 // RunGRPCTest runs an http test and returns the aggregated stats.
@@ -157,12 +159,19 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if pll > 0 {
 		o.RunType += fmt.Sprintf(" PayloadLength=%d", pll)
 	}
-	log.Infof("Starting %s test for %s with %d*%d threads at %.1f qps", o.RunType, o.Destination, o.Streams, o.NumThreads, o.QPS)
+	log.Infof("Starting %s test for %s with %d*%d threads at %.1f qps, compression: %v",
+		o.RunType, o.Destination, o.Streams, o.NumThreads, o.QPS, o.GrpcCompression)
 	o.NumThreads *= o.Streams
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	defer r.Options().Abort()
 	numThreads := r.Options().NumThreads // may change
 	o.dialOptions, o.filteredMetadata = extractDialOptionsAndFilter(o.Metadata)
+
+	callOptions := make([]grpc.CallOption, 0)
+	if o.GrpcCompression {
+		callOptions = append(callOptions, grpc.UseCompressor(gzip.Name))
+	}
+
 	total := GRPCRunnerResults{
 		RetCodes:    make(HealthResultMap),
 		Destination: o.Destination,
@@ -200,7 +209,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
 			if o.Exactly <= 0 {
-				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP)
+				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP, callOptions...)
 			}
 		} else {
 			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)

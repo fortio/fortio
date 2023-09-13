@@ -534,7 +534,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	// otherwise log.SetLogLevel(log.Info)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	uiPath := "/f/"
-	AddHandlers(nil, mux, "", uiPath, ".")
+	AddHandlers(nil, mux, "", uiPath, "/tmp")
 	// Error with bad host
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	// sync first:
