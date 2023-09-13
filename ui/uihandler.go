@@ -102,6 +102,10 @@ const (
 //nolint:funlen, nestif // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	log.LogRequest(r, "UI")
+	if r.Method != http.MethodPost && r.Method != http.MethodGet {
+		// method is already logged by LogRequest so we just return (for HEAD etc... see Issue#830)
+		return
+	}
 	mode := menu
 	JSONOnly := false
 	runid := int64(0)
