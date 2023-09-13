@@ -253,7 +253,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		}
 	}
 	c, _ := strconv.Atoi(FormValue(r, jd, "c"))
-	out := io.Writer(os.Stderr)
+	out := io.Writer(os.Stdout)
 	if len(percList) == 0 && !strings.Contains(r.URL.RawQuery, "p=") {
 		percList = DefaultPercentileList
 	}
