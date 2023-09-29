@@ -44,7 +44,7 @@ if [[ $? == 124 || $? == 0 ]]; then
   exit 1
 fi
 
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT -pprof)
 function cleanup {
   set +e # errors are ok during cleanup
 #  docker logs "$DOCKERID" # uncomment to debug
@@ -149,7 +149,7 @@ docker exec $DOCKERSECVOLNAME /usr/bin/curl -v --http2 -m 10 -d foo42 http://loc
 for f in ca.crt server.crt server.key; do docker cp "$PWD/cert-tmp/$f" "$DOCKERSECVOLNAME:$TEST_CERT_VOL/$f"; done
 # start server in secure grpc mode. uses non-default ports to avoid conflicts with fortio_server container.
 # mounts certs volume from dummy container.
-DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --volumes-from $DOCKERSECVOLNAME fortio/fortio:webtest server -cacert $TEST_CERT_VOL/ca.crt -cert $TEST_CERT_VOL/server.crt -key $TEST_CERT_VOL/server.key -grpc-port 8097 -http-port 8098 -redirect-port 8090 -loglevel $LOGLEVEL -pprof)
+DOCKERSECID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERSECNAME --volumes-from $DOCKERSECVOLNAME fortio/fortio:webtest server -cacert $TEST_CERT_VOL/ca.crt -cert $TEST_CERT_VOL/server.crt -key $TEST_CERT_VOL/server.key -grpc-port 8097 -http-port 8098 -redirect-port 8090 -loglevel $LOGLEVEL)
 # run secure grpcping and load tests
 docker exec $DOCKERSECNAME $FORTIO_BIN_PATH grpcping -cacert $TEST_CERT_VOL/ca.crt localhost:8097
 docker exec $DOCKERSECNAME $FORTIO_BIN_PATH load -grpc -cacert $TEST_CERT_VOL/ca.crt localhost:8097
