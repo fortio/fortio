@@ -179,6 +179,7 @@ var (
 	accessLogFileFormat = flag.String("access-log-format", "json",
 		"`format` for access log. Supported values: [json, influx]")
 	calcQPS = flag.Bool("calc-qps", false, "Calculate the qps based on number of requests (-n) and duration (-t)")
+	pprofOn = flag.Bool("pprof", false, "Enable pprof http endpoint in the Web UI handler server")
 )
 
 // serverArgCheck always returns true after checking arguments length.
@@ -251,6 +252,7 @@ func FortioMain(hook bincommon.FortioHook) {
 		}
 	case "server":
 		isServer = serverArgCheck()
+		tlsOptions := &bincommon.SharedHTTPOptions().TLSOptions
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
 		}
@@ -258,13 +260,23 @@ func FortioMain(hook bincommon.FortioHook) {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
-			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, uint32(*maxStreamsFlag), &bincommon.SharedHTTPOptions().TLSOptions)
+			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, uint32(*maxStreamsFlag), tlsOptions)
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
 		}
 		if *echoPortFlag != disabled {
-			if !ui.Serve(hook, baseURL, *echoPortFlag, *echoDbgPathFlag, *uiPathFlag, *dataDirFlag, percList()) {
+			uiCfg := ui.ServerConfig{
+				BaseURL:        baseURL,
+				Port:           *echoPortFlag,
+				DebugPath:      *echoDbgPathFlag,
+				UIPath:         *uiPathFlag,
+				DataDir:        *dataDirFlag,
+				PProfOn:        *pprofOn,
+				PercentileList: percList(),
+				TLSOptions:     tlsOptions,
+			}
+			if !ui.Serve(hook, &uiCfg) {
 				os.Exit(1) // error already logged
 			}
 		}

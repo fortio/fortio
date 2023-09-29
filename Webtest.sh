@@ -44,7 +44,7 @@ if [[ $? == 124 || $? == 0 ]]; then
   exit 1
 fi
 
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT)
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --net host --name $DOCKERNAME fortio/fortio:webtest server -ui-path $FORTIO_UI_PREFIX -loglevel $LOGLEVEL -maxpayloadsizekb $MAXPAYLOAD -timeout=$TIMEOUT -pprof)
 function cleanup {
   set +e # errors are ok during cleanup
 #  docker logs "$DOCKERID" # uncomment to debug
@@ -157,7 +157,8 @@ docker exec $DOCKERSECNAME $FORTIO_BIN_PATH load -grpc -cacert $TEST_CERT_VOL/ca
 docker stop "$DOCKERID"
 docker rm $DOCKERNAME
 DOCKERNAME=fortio_report
-DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest report -loglevel $LOGLEVEL)
+# Even with pprof the report mode won't have pprof endpoint
+DOCKERID=$(docker run -d --ulimit nofile=$FILE_LIMIT --name $DOCKERNAME fortio/fortio:webtest report -loglevel $LOGLEVEL -pprof)
 docker ps
 CURL="docker exec $DOCKERNAME $FORTIO_BIN_PATH curl -loglevel $LOGLEVEL"
 if $CURL "$PPROF_URL" ; then
