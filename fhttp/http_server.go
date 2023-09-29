@@ -486,6 +486,7 @@ func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 
 // SetupPPROF add pprof to the mux (mirror the init() of http pprof).
 func SetupPPROF(mux *http.ServeMux) {
+	log.Warnf("pprof endpoints enabled on /debug/pprof/*")
 	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
 	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
 	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))

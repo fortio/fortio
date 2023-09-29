@@ -644,29 +644,38 @@ func getMetricsPath(debugPath string) string {
 	return strings.TrimSuffix(debugPath, "/") + "/metrics"
 }
 
+type ServerConfig struct {
+	BaseURL, Port, DebugPath, UIPath, DataDir string
+	PProfOn                                   bool
+	PercentileList                            []float64
+	TLSOptions                                *fhttp.TLSOptions
+}
+
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
-func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir string, percentileList []float64) bool {
+func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
 	startTime = time.Now()
-	// Kinda ugly that we get most params past in but we get the tls stuff from flags directly,
-	// it avoids making an already too long list of string params longer. probably should make a FortioConfig struct.
-	mux, addr := fhttp.ServeTLS(port, debugpath, &bincommon.SharedHTTPOptions().TLSOptions)
+	mux, addr := fhttp.ServeTLS(cfg.Port, cfg.DebugPath, cfg.TLSOptions)
 	if addr == nil {
 		return false // Error already logged
 	}
-	if uipath == "" {
+	if cfg.UIPath == "" {
 		return true
 	}
-	fhttp.SetupPPROF(mux)
-	uiPath = uipath
+	if cfg.PProfOn {
+		fhttp.SetupPPROF(mux) // This now logs a warning as it's a potential risk
+	} else {
+		log.LogVf("Not serving pprof endpoint.")
+	}
+	uiPath = cfg.UIPath
 	if uiPath[len(uiPath)-1] != '/' {
 		log.Warnf("Adding missing trailing / to UI path '%s'", uiPath)
 		uiPath += "/"
 	}
-	debugPath = debugpath
-	echoPath = fhttp.EchoDebugPath(debugpath)
-	metricsPath = getMetricsPath(debugpath)
+	debugPath = cfg.DebugPath
+	echoPath = fhttp.EchoDebugPath(debugPath)
+	metricsPath = getMetricsPath(debugPath)
 	mux.HandleFunc(uiPath, Handler)
 	fetchPath = uiPath + fetchURI
 	// For backward compatibility with http:// only fetcher
@@ -676,8 +685,8 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	// New REST apis (includes the data/ handler)
-	rapi.AddHandlers(hook, mux, baseurl, uiPath, datadir)
-	rapi.DefaultPercentileList = percentileList
+	rapi.AddHandlers(hook, mux, cfg.BaseURL, uiPath, cfg.DataDir)
+	rapi.DefaultPercentileList = cfg.PercentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
@@ -719,7 +728,7 @@ func Serve(hook bincommon.FortioHook, baseurl, port, debugpath, uipath, datadir 
 		debugPath, echoPath, dflagsPath, metricsPath)
 	mux.HandleFunc(metricsPath, metrics.Exporter)
 
-	urlHostPort = fnet.NormalizeHostPort(port, addr)
+	urlHostPort = fnet.NormalizeHostPort(cfg.Port, addr)
 	uiMsg := "\t UI started - visit:\n\t\t"
 	if strings.Contains(urlHostPort, "-unix-socket=") {
 		uiMsg += fmt.Sprintf("fortio curl %s http://localhost%s", urlHostPort, uiPath)
