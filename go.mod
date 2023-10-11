@@ -13,7 +13,7 @@ require (
 	fortio.org/version v1.0.3
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.1
-	golang.org/x/net v0.16.0
+	golang.org/x/net v0.17.0
 	google.golang.org/grpc v1.58.2
 )
 
