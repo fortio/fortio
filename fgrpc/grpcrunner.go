@@ -99,7 +99,7 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 		var r *grpc_health_v1.HealthCheckResponse
 		r, err = grpcstate.clientH.Check(outCtx, &grpcstate.reqH)
 		if r != nil {
-			status = r.Status
+			status = r.GetStatus()
 			res = r
 		}
 	}

@@ -595,7 +595,7 @@ func SaveJSON(name string, json []byte) string {
 		log.Infof("Not saving because data-path is unset")
 		return ""
 	}
-	name += ".json"
+	name += JSONExtension
 	log.Infof("Saving %s in %s", name, dataDir)
 	err := os.WriteFile(path.Join(dataDir, name), json, 0o644) //nolint:gosec // we do want 644
 	if err != nil {
@@ -603,7 +603,7 @@ func SaveJSON(name string, json []byte) string {
 		return ""
 	}
 	// Return the relative path from the /fortio/ UI
-	return "data/" + name
+	return DataDir + name
 }
 
 func NextRunID() int64 {

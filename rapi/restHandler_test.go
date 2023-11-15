@@ -45,9 +45,8 @@ func FetchResult[T any](t *testing.T, url string, jsonPayload string) *T {
 		if errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("Got unexpected timeout error for URL %s: %v", url, err)
 			panic("debugging timeout error for " + url)
-		} else {
-			t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
 		}
+		t.Fatalf("Got unexpected error for URL %s: %v - %v", url, err, r)
 	}
 	return r
 }

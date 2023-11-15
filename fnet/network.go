@@ -630,11 +630,11 @@ func GeneratePayload(payloadFilePath string, payloadSize int, payload string) []
 			return nil
 		}
 		return p
-	} else if payloadSize > 0 {
-		return GenerateRandomPayload(payloadSize)
-	} else {
-		return []byte(payload)
 	}
+	if payloadSize > 0 {
+		return GenerateRandomPayload(payloadSize)
+	}
+	return []byte(payload)
 }
 
 // GetUniqueUnixDomainPath returns a path to be used for unix domain socket.

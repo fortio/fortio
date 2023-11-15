@@ -587,8 +587,8 @@ func OnBehalfOfRequest(to *http.Request, from *http.Request) {
 	}
 }
 
-// AddHTTPS replaces "http://" in url with "https://" or prepends "https://"
-// if url does not contain prefix "http://".
+// AddHTTPS replaces http:// in url with https:// or prepends https:///
+// if url does not contain the http:// prefix.
 func AddHTTPS(url string) string {
 	if len(url) > len(fnet.PrefixHTTP) {
 		if strings.EqualFold(url[:len(fnet.PrefixHTTP)], fnet.PrefixHTTP) {

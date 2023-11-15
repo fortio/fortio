@@ -45,10 +45,10 @@ type Fetcher interface {
 	// Fetch returns http code, data, offset of body (for client which returns
 	// headers)
 	// Deprecated: use StreamFetch with a DataWriter (nil if you don't need the data) instead.
-	Fetch(context.Context) (int, []byte, int)
+	Fetch(ctx context.Context) (int, []byte, int)
 	// StreamFetch returns http code and body bytes read
 	// (body is streamed to Dest writer or null),and header size for the fast client.
-	StreamFetch(context.Context) (int, int64, uint)
+	StreamFetch(ctx context.Context) (int, int64, uint)
 	// HasBuffer is true for the fast client and false for golang standard library based client.
 	// it's used to know if calling Fetch() is actually better (fast client with headers to stderr)
 	HasBuffer() bool
@@ -157,7 +157,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		log.Infof("H2 requested, switching to std client")
 		h.DisableFastClient = true
 	}
-	hs := "https://" // longer of the 2 prefixes
+	hs := fnet.PrefixHTTPS // longer of the 2 prefixes
 	lcURL := h.URL
 	if len(lcURL) > len(hs) {
 		lcURL = strings.ToLower(h.URL[:len(hs)]) // no need to tolower more than we check
@@ -166,9 +166,9 @@ func (h *HTTPOptions) URLSchemeCheck() {
 		h.https = true
 		return // url is good
 	}
-	if !strings.HasPrefix(lcURL, "http://") {
+	if !strings.HasPrefix(lcURL, fnet.PrefixHTTP) {
 		log.Warnf("Assuming http:// on missing scheme for '%s'", h.URL)
-		h.URL = "http://" + h.URL
+		h.URL = fnet.PrefixHTTP + h.URL
 	}
 }
 

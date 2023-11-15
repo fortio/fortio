@@ -60,10 +60,10 @@ func TestPingServer(t *testing.T) {
 	if latency, err := PingClientCall(iAddr, 1, "", 0, TLSSecure, nil); err == nil {
 		t.Errorf("Should have had an error instead of result %f for secure ping to insecure port", latency)
 	}
-	if _, err := PingClientCall("https://"+sAddr, 1, "", 0, TLSInsecure, nil); err != nil {
+	if _, err := PingClientCall(fnet.PrefixHTTPS+sAddr, 1, "", 0, TLSInsecure, nil); err != nil {
 		t.Errorf("Should have had no error for secure with bad cert and insecure flag: %v", err)
 	}
-	if latency, err := PingClientCall("https://"+sAddr, 1, "", 0, TLSSecureMissingCert, nil); err == nil {
+	if latency, err := PingClientCall(fnet.PrefixHTTPS+sAddr, 1, "", 0, TLSSecureMissingCert, nil); err == nil {
 		t.Errorf("Should have had error for secure with bad cert and no insecure flag: %v", latency)
 	}
 	if latency, err := PingClientCall(sAddr, 1, "", 0, TLSInsecure, nil); err == nil {

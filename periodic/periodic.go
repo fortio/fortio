@@ -59,7 +59,7 @@ type Runnable interface {
 	// Run returns a boolean, true for normal/success, false otherwise.
 	// with details being an optional string that can be put in the access logs.
 	// Statistics are split into two sets.
-	Run(context.Context, ThreadID) (status bool, details string)
+	Run(ctx context.Context, id ThreadID) (status bool, details string)
 }
 
 // MakeRunners creates an array of NumThreads identical Runnable instances

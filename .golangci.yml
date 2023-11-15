@@ -129,6 +129,7 @@ issues:
         - forcetypeassert
         - nosnakecase
         - noctx
+        - goconst
 
     # Exclude lll issues for long lines with go:generate
     - linters:
