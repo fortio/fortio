@@ -299,9 +299,9 @@ func MultiServer(port string, cfg *MultiServerConfig) (*http.ServeMux, net.Addr)
 		if t.MirrorOrigin {
 			t.Destination = strings.TrimSuffix(t.Destination, "/") // remove trailing / because we will concatenate the request URI
 		}
-		if !strings.HasPrefix(t.Destination, "https://") && !strings.HasPrefix(t.Destination, "http://") {
+		if !strings.HasPrefix(t.Destination, fnet.PrefixHTTPS) && !strings.HasPrefix(t.Destination, fnet.PrefixHTTP) {
 			log.Infof("Assuming http:// on missing scheme for '%s'", t.Destination)
-			t.Destination = "http://" + t.Destination
+			t.Destination = fnet.PrefixHTTP + t.Destination
 		}
 	}
 	log.Infof("Multi-server on %s running with %+v", aStr, cfg)

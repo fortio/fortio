@@ -602,7 +602,7 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 
 func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Client, name string, u string) {
 	log.Infof("downloadOne(%s,%s)", name, u)
-	if !strings.HasSuffix(name, ".json") {
+	if !strings.HasSuffix(name, rapi.JSONExtension) {
 		_, _ = w.Write([]byte("<td>skipped (not json)"))
 		return
 	}

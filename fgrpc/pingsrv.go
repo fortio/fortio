@@ -49,8 +49,8 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 	log.LogVf("Ping called %+v (meta %+v)", *in, md)
 	out := *in // copy the input including the payload etc
 	out.Ts = time.Now().UnixNano()
-	if in.DelayNanos > 0 {
-		s := time.Duration(in.DelayNanos)
+	if in.GetDelayNanos() > 0 {
+		s := time.Duration(in.GetDelayNanos())
 		log.LogVf("GRPC ping: sleeping for %v", s)
 		time.Sleep(s)
 	}
@@ -149,10 +149,10 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 			log.Errf("grpc error from Ping1 iter %d: %v", i, err)
 			return -1, err
 		}
-		t1b := res1.Ts
+		t1b := res1.GetTs()
 		res2, err := cli.Ping(outCtx, msg)
 		t3a := time.Now().UnixNano()
-		t2b := res2.Ts
+		t2b := res2.GetTs()
 		if err != nil {
 			log.Errf("grpc error from Ping2 iter %d: %v", i, err)
 			return -1, err
@@ -207,7 +207,7 @@ func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOption
 			log.Errf("grpc error from Check %v", err)
 			return nil, err
 		}
-		statuses[res.Status.String()]++
+		statuses[res.GetStatus().String()]++
 		rttHistogram.Record(dur.Seconds() * 1000000.)
 	}
 	rttHistogram.Print(os.Stdout, "RTT histogram usec", []float64{50})

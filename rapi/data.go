@@ -32,6 +32,11 @@ import (
 	"fortio.org/log"
 )
 
+const (
+	JSONExtension = ".json"
+	DataDir       = "data/"
+)
+
 // DataList returns the .json files/entries in data dir.
 func DataList() (dataList []string) {
 	files, err := os.ReadDir(dataDir)
@@ -42,7 +47,7 @@ func DataList() (dataList []string) {
 	// Newest files at the top:
 	for i := len(files) - 1; i >= 0; i-- {
 		name := files[i].Name()
-		ext := ".json"
+		ext := JSONExtension
 		if !strings.HasSuffix(name, ext) || files[i].IsDir() {
 			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
@@ -82,7 +87,7 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 		var b bytes.Buffer
 		b.WriteString("TsvHttpData-1.0\n")
 		for _, e := range DataList() {
-			fname := e + ".json"
+			fname := e + JSONExtension
 			f, err := os.Open(path.Join(dataDir, fname))
 			if err != nil {
 				log.Errf("Open error for %s: %v", fname, err)
@@ -144,14 +149,14 @@ func GetDataURL(r *http.Request) string {
 		}
 		url = proto + "://" + r.Host
 	}
-	return url + uiPath + "data/" // base has been cleaned of trailing / in fortio_main
+	return url + uiPath + DataDir // base has been cleaned of trailing / in fortio_main
 }
 
 func ID2URL(r *http.Request, id string) string {
 	if id == "" {
 		return ""
 	}
-	return GetDataURL(r) + id + ".json"
+	return GetDataURL(r) + id + JSONExtension
 }
 
 // LogAndFilterDataRequest logs the data request.
@@ -171,7 +176,7 @@ func LogAndFilterDataRequest(h http.Handler) http.Handler {
 			SendTSVDataIndex(urlPrefix, w)
 			return
 		}
-		if !strings.HasSuffix(path, ".json") {
+		if !strings.HasSuffix(path, JSONExtension) {
 			log.Warnf("Filtering request for non .json '%s'", path)
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -192,7 +197,7 @@ func AddDataHandler(mux *http.ServeMux, baseurl, uipath, datadir string) {
 		log.Infof("No data dir so no handler for data")
 	}
 	fs := http.FileServer(http.Dir(datadir))
-	mux.Handle(uiPath+"data/", LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
+	mux.Handle(uiPath+DataDir, LogAndFilterDataRequest(http.StripPrefix(uiPath+"data", fs)))
 	if datadir == "." {
 		var err error
 		datadir, err = os.Getwd()

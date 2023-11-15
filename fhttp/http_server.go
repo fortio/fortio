@@ -514,8 +514,8 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing url value", http.StatusBadRequest)
 		return
 	}
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = "http://" + url
+	if !strings.HasPrefix(url, fnet.PrefixHTTP) && !strings.HasPrefix(url, fnet.PrefixHTTPS) {
+		url = fnet.PrefixHTTP + url
 	}
 	req, opts := MakeSimpleRequest(url, r, Fetch2CopiesAllHeader.Get())
 	if req == nil {
@@ -590,7 +590,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToHTTPSHandler handler sends a redirect to same URL with https.
 func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
-	dest := "https://" + r.Host + r.URL.String()
+	dest := fnet.PrefixHTTPS + r.Host + r.URL.String()
 	log.LogRequest(r, "Redirecting to "+dest)
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }

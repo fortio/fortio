@@ -36,6 +36,7 @@ import (
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
@@ -406,7 +407,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	if labels == "" {
 		hname, _ := os.Hostname()
 		shortURL := url
-		for _, p := range []string{"https://", "http://"} {
+		for _, p := range []string{fnet.PrefixHTTPS, fnet.PrefixHTTP} {
 			if strings.HasPrefix(url, p) {
 				shortURL = url[len(p):]
 				break
@@ -508,7 +509,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 			jsonFileName = "stdout"
 		} else {
 			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID+".json")
+				jsonFileName = path.Join(*dataDirFlag, rr.ID+rapi.JSONExtension)
 			}
 			f, err = os.Create(jsonFileName)
 			if err != nil {
