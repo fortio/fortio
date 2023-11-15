@@ -5,9 +5,9 @@ go 1.18
 require (
 	fortio.org/assert v1.2.0
 	fortio.org/cli v1.4.2
-	fortio.org/dflag v1.6.0
+	fortio.org/dflag v1.7.0
 	fortio.org/log v1.11.0
-	fortio.org/scli v1.12.0
+	fortio.org/scli v1.12.1
 	fortio.org/sets v1.0.3
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.3
@@ -28,9 +28,9 @@ require (
 //)
 
 require (
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c // indirect
