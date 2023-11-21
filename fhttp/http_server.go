@@ -487,11 +487,11 @@ func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 // SetupPPROF add pprof to the mux (mirror the init() of http pprof).
 func SetupPPROF(mux *http.ServeMux) {
 	log.Warnf("pprof endpoints enabled on /debug/pprof/*")
-	mux.HandleFunc("/debug/pprof/", LogAndCall("pprof:index", pprof.Index))
-	mux.HandleFunc("/debug/pprof/cmdline", LogAndCall("pprof:cmdline", pprof.Cmdline))
-	mux.HandleFunc("/debug/pprof/profile", LogAndCall("pprof:profile", pprof.Profile))
-	mux.HandleFunc("/debug/pprof/symbol", LogAndCall("pprof:symbol", pprof.Symbol))
-	mux.HandleFunc("/debug/pprof/trace", LogAndCall("pprof:trace", pprof.Trace))
+	mux.HandleFunc("/debug/pprof/", log.LogAndCall("pprof:index", pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", log.LogAndCall("pprof:cmdline", pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", log.LogAndCall("pprof:profile", pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", log.LogAndCall("pprof:symbol", pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", log.LogAndCall("pprof:trace", pprof.Trace))
 }
 
 // -- Fetch er (simple http proxy) --
@@ -601,18 +601,15 @@ func RedirectToHTTPS(port string) net.Addr {
 	return HTTPServerWithHandler("https redirector", port, http.HandlerFunc(RedirectToHTTPSHandler))
 }
 
-// LogAndCall wraps an HTTP handler to log the request first.
+// Deprecated: use fortio.org/log.LogAndCall().
 func LogAndCall(msg string, hf http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.LogRequest(r, msg)
-		hf(w, r)
-	})
+	return log.LogAndCall(msg, hf)
 }
 
 // LogAndCallNoArg is LogAndCall for functions not needing the response/request args.
+// Short cut for:
+//
+//	log.LogAndCall(msg, func(_ http.ResponseWriter, _ *http.Request) { f() })
 func LogAndCallNoArg(msg string, f func()) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.LogRequest(r, msg)
-		f()
-	})
+	return log.LogAndCall(msg, func(_ http.ResponseWriter, _ *http.Request) { f() })
 }

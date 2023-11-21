@@ -18,6 +18,7 @@ h1 {
 <h1>Φορτίο (fortio) v{{.Version}}{{.Extra}}</h1>
 <script src="{{.Version}}/static/js/fortio_chart.js"></script>
 <script>
+const RAPI_DATA_DIR='data/'
 var res
 var data
 function fortio_load(url) {
@@ -30,7 +31,7 @@ function fortio_load(url) {
     return
   }
   if (list.length == 1) {
-    fetch(rapi.DataDir+url).then(doc => doc.json()).then((out) => {
+    fetch(RAPI_DATA_DIR+url).then(doc => doc.json()).then((out) => {
       res = out
       data = fortioResultToJsChartData(res)
       showChart(data)
@@ -42,12 +43,12 @@ function fortio_load(url) {
     urldiv.innerHTML = "Multiple runs (URL is a permalink)..."
     if (list.length == 2) {
       var urlA = list[0].value
-      var dataPromiseA = fetch(rapi.DataDir+urlA)
+      var dataPromiseA = fetch(RAPI_DATA_DIR+urlA)
           .then(response => response.json())
           .then(fortioResult => fortioResultToJsChartData(fortioResult))
 
       var urlB = list[1].value
-      var dataPromiseB = fetch(rapi.DataDir+urlB)
+      var dataPromiseB = fetch(RAPI_DATA_DIR+urlB)
           .then(response => response.json())
           .then(fortioResult => fortioResultToJsChartData(fortioResult))
 
@@ -62,7 +63,7 @@ function fortio_load(url) {
       for (var i = 0, len = list.length; i < len; i++) {
         var v = list[len-i-1].value;
         (function (idx, u) {
-          promises.push(fetch(rapi.DataDir+u).then(doc => doc.json()).then((out) => {
+          promises.push(fetch(RAPI_DATA_DIR+u).then(doc => doc.json()).then((out) => {
             fortioAddToMultiResult(idx, out)
           }))
         })(i, v)
