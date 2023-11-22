@@ -147,7 +147,11 @@ func GetDataURL(r *http.Request) string {
 		if len(proto) == 0 {
 			proto = "http"
 		}
-		url = proto + "://" + r.Host
+		fwdHost := r.Header.Get("X-Forwarded-Host")
+		if len(fwdHost) == 0 {
+			fwdHost = r.Host
+		}
+		url = proto + "://" + fwdHost
 	}
 	return url + uiPath + DataDir // base has been cleaned of trailing / in fortio_main
 }

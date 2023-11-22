@@ -101,9 +101,9 @@ const (
 //
 //nolint:funlen, nestif // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
-	log.LogRequest(r, "UI")
+	// logging of request and response is done by log.LogAndCall in mux setup
 	if r.Method != http.MethodPost && r.Method != http.MethodGet {
-		// method is already logged by LogRequest so we just return (for HEAD etc... see Issue#830)
+		// method will be logged by LogAndCall so we just return (for HEAD etc... see Issue#830)
 		return
 	}
 	mode := menu
@@ -323,7 +323,7 @@ type ChartOptions struct {
 
 // BrowseHandler handles listing and rendering the JSON results.
 func BrowseHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogRequest(r, "Browse")
+	// logging of request and response is done by log.LogAndCall in mux setup
 	path := r.URL.Path
 	if (path != uiPath) && (path != (uiPath + "browse")) {
 		if strings.HasPrefix(path, "/fortio") {
@@ -387,8 +387,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 
 // LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
 func LogAndAddCacheControl(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.LogRequest(r, "Static")
+	return log.LogAndCall("static", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == faviconPath {
 			r.URL.Path = "/static/img" + faviconPath // fortio/version expected to be stripped already
@@ -439,7 +438,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 
 // SyncHandler handles syncing/downloading from tsv url.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
-	log.LogRequest(r, "Sync")
+	// logging of request and response is done by log.LogAndCall in mux setup
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		log.Fatalf("expected http.ResponseWriter to be an http.Flusher")
@@ -518,6 +517,7 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
+	_, _ = w.Write([]byte("</table><p>All done!\n"))
 }
 
 // ListBucketResult is the minimum we need out of s3 xml results.
@@ -676,7 +676,7 @@ func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
 	debugPath = cfg.DebugPath
 	echoPath = fhttp.EchoDebugPath(debugPath)
 	metricsPath = getMetricsPath(debugPath)
-	mux.HandleFunc(uiPath, Handler)
+	mux.HandleFunc(uiPath, log.LogAndCall("UI", Handler))
 	fetchPath = uiPath + fetchURI
 	// For backward compatibility with http:// only fetcher
 	mux.Handle(fetchPath, http.StripPrefix(fetchPath, http.HandlerFunc(fhttp.FetcherHandler)))
@@ -709,13 +709,13 @@ func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
 	if err != nil {
 		log.Critf("Unable to parse browse template: %v", err)
 	} else {
-		mux.HandleFunc(uiPath+"browse", BrowseHandler)
+		mux.HandleFunc(uiPath+"browse", log.LogAndCall("browse", BrowseHandler))
 	}
 	syncTemplate, err = template.ParseFS(templateFS, "templates/sync.html", "templates/header.html")
 	if err != nil {
 		log.Critf("Unable to parse sync template: %v", err)
 	} else {
-		mux.HandleFunc(uiPath+"sync", SyncHandler)
+		mux.HandleFunc(uiPath+"sync", log.LogAndCall("Sync", SyncHandler))
 	}
 	dflagsPath := uiPath + "flags"
 	dflagSetURL := dflagsPath + "/set"
