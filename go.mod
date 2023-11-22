@@ -4,10 +4,10 @@ go 1.18
 
 require (
 	fortio.org/assert v1.2.0
-	fortio.org/cli v1.4.3-0.20231122031611-b56aa0e139af
+	fortio.org/cli v1.5.0
 	fortio.org/dflag v1.7.0
-	fortio.org/log v1.11.1-0.20231122031455-08c39b67f0de
-	fortio.org/scli v1.12.1
+	fortio.org/log v1.12.0
+	fortio.org/scli v1.13.0
 	fortio.org/sets v1.0.3
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.3
@@ -34,6 +34,6 @@ require (
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
