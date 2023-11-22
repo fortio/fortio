@@ -517,6 +517,7 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
 		flusher.Flush()
 	}
+	_, _ = w.Write([]byte(fmt.Sprintf("</table><p>All done!\n")))
 }
 
 // ListBucketResult is the minimum we need out of s3 xml results.
