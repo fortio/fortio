@@ -1445,6 +1445,21 @@ func TestLogAndCallNoArg(t *testing.T) {
 	}
 }
 
+func TestLogAndCallDeprecated(t *testing.T) {
+	mux, addrN := HTTPServer("test call no arg", "0")
+	called := false
+	mux.HandleFunc("/testing123/logAndCall", LogAndCall("test log and call", func(http.ResponseWriter, *http.Request) { called = true }))
+	addr := addrN.(*net.TCPAddr)
+	url := fmt.Sprintf("localhost:%d/testing123/logAndCall", addr.Port)
+	code, data := Fetch(&HTTPOptions{URL: url})
+	if code != 200 {
+		t.Errorf("error fetching %s: %v %s", url, code, DebugSummary(data, 256))
+	}
+	if !called {
+		t.Errorf("handler side effect not detected")
+	}
+}
+
 func TestRedirector(t *testing.T) {
 	addr := RedirectToHTTPS(":0")
 	relativeURL := "/foo/bar?some=param&anotherone"
