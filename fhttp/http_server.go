@@ -93,7 +93,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 		})(w, r)
 		return
 	}
-	EchoHandler(w, r)
+	echoHandler(w, r)
 }
 
 func echoHandler(w http.ResponseWriter, r *http.Request) {
