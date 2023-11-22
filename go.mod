@@ -4,9 +4,9 @@ go 1.18
 
 require (
 	fortio.org/assert v1.2.0
-	fortio.org/cli v1.4.2
+	fortio.org/cli v1.4.3-0.20231122031611-b56aa0e139af
 	fortio.org/dflag v1.7.0
-	fortio.org/log v1.11.1-0.20231121235628-a4e21bc00e4f
+	fortio.org/log v1.11.1-0.20231122031455-08c39b67f0de
 	fortio.org/scli v1.12.1
 	fortio.org/sets v1.0.3
 	fortio.org/testscript v0.3.1
