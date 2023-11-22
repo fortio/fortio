@@ -86,9 +86,17 @@ func QueryArg(r *http.Request, key string) string {
 
 // EchoHandler is an http server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
+	// EchoHandler is an http server handler echoing back the input.
 	if log.LogVerbose() {
-		log.LogRequest(r, "Echo") // will also print headers
+		log.LogAndCall("Echo", func(w http.ResponseWriter, r *http.Request) {
+			echoHandler(w, r)
+		})(w, r)
+		return
 	}
+	EchoHandler(w, r)
+}
+
+func echoHandler(w http.ResponseWriter, r *http.Request) {
 	defaultParams := DefaultEchoServerParams.Get()
 	hasQuestionMark := strings.Contains(r.RequestURI, "?")
 	if !hasQuestionMark && len(defaultParams) > 0 {
