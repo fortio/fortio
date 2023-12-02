@@ -527,10 +527,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 
 	if c.bodyContainsNOWUTC {
 		nowUTC := nowFn().UTC()
-		body := string(c.body)
-		for strings.Contains(body, nowUTCToken) {
-			body = strings.Replace(body, nowUTCToken, nowUTC.String(), 1)
-		}
+		body := strings.ReplaceAll(string(c.body), nowUTCToken, nowUTC.String())
 		bodyBytes := []byte(body)
 		req.ContentLength = int64(len(bodyBytes))
 		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
