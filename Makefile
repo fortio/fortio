@@ -51,7 +51,7 @@ TEST_TIMEOUT:=90s
 
 # Local test
 test: dependencies
-	go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES) -count=1
+	go test -timeout $(TEST_TIMEOUT) -race -count=1 $(PACKAGES)
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"

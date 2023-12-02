@@ -517,6 +517,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 		for strings.Contains(body, uuidToken) {
 			body = strings.Replace(body, uuidToken, generateUUID(), 1)
 		}
+		c.body = []byte(body)
 		bodyBytes := []byte(body)
 		req.ContentLength = int64(len(bodyBytes))
 		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
@@ -818,6 +819,12 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	if len(uuidStrings) > 0 {
 		o.Payload = []byte(payload)
 	}
+
+	nowUTC := nowFn().UTC()
+	if strings.Contains(payload, nowUTCToken) {
+		o.Payload = []byte(strings.ReplaceAll(payload, nowUTCToken, nowUTC.String()))
+	}
+
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {
