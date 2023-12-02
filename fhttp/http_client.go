@@ -60,8 +60,11 @@ type Fetcher interface {
 }
 
 const (
-	uuidToken = "{uuid}"
+	uuidToken   = "{uuid}"
+	nowUTCToken = "{nowUTC}"
 )
+
+var nowFn = time.Now
 
 var (
 	// BufferSizeKb size of the buffer (max data) for optimized client in kilobytes defaults to 128k.
@@ -435,6 +438,7 @@ type Client struct {
 	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
 	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
+	bodyContainsNOWUTC   bool // if body contains the "{nowUTC}" pattern (lowercase)
 	logErrors            bool
 	id                   int
 	runID                int64
@@ -513,12 +517,22 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 		for strings.Contains(body, uuidToken) {
 			body = strings.Replace(body, uuidToken, generateUUID(), 1)
 		}
+		c.body = []byte(body)
 		bodyBytes := []byte(body)
 		req.ContentLength = int64(len(bodyBytes))
 		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	} else if len(c.body) > 0 {
 		req.Body = io.NopCloser(bytes.NewReader(c.body))
 	}
+
+	if c.bodyContainsNOWUTC {
+		nowUTC := nowFn().UTC()
+		body := strings.ReplaceAll(string(c.body), nowUTCToken, nowUTC.String())
+		bodyBytes := []byte(body)
+		req.ContentLength = int64(len(bodyBytes))
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.S(log.Error, "Unable to send request",
@@ -594,6 +608,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		rawQueryContainsUUID: strings.Contains(req.URL.RawQuery, uuidToken),
 		body:                 o.Payload,
 		bodyContainsUUID:     strings.Contains(string(o.Payload), uuidToken),
+		bodyContainsNOWUTC:   strings.Contains(string(o.Payload), nowUTCToken),
 		req:                  req,
 		client: &http.Client{
 			Timeout: o.HTTPReqTimeOut,
@@ -801,6 +816,12 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	if len(uuidStrings) > 0 {
 		o.Payload = []byte(payload)
 	}
+
+	nowUTC := nowFn().UTC()
+	if strings.Contains(payload, nowUTCToken) {
+		o.Payload = []byte(strings.ReplaceAll(payload, nowUTCToken, nowUTC.String()))
+	}
+
 	// Parse the url, extract components.
 	url, err := url.Parse(urlString)
 	if err != nil {

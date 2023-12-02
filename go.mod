@@ -1,6 +1,6 @@
 module fortio.org/fortio
 
-go 1.18
+go 1.19
 
 require (
 	fortio.org/assert v1.2.0
@@ -13,7 +13,7 @@ require (
 	fortio.org/version v1.0.3
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.4.0
-	golang.org/x/net v0.18.0
+	golang.org/x/net v0.19.0
 	google.golang.org/grpc v1.59.0
 )
 
@@ -30,10 +30,11 @@ require (
 require (
 	fortio.org/struct2env v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
+	golang.org/x/tools v0.16.0 // indirect
+	google.golang.org/genproto v0.0.0-20231120223509-83a465c0220f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )

@@ -1041,6 +1041,100 @@ func TestUUIDPayloadFastClient(t *testing.T) {
 	}
 }
 
+func TestNOWUTCNowPayloadFastClient(t *testing.T) {
+	// Given
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// set the request to the response for assertion in this test
+		reqBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("error setting response body: %s", err.Error())
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(reqBytes)
+	})
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: false,
+		Payload:           []byte("[\"{nowUTC}\", \"{nowUTC}\"]"),
+	}
+	// make deterministic time
+	nowTime := time.Now()
+	nowFn = func() time.Time {
+		return nowTime
+	}
+	client, _ := NewClient(&o)
+
+	// When
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+
+	// THen
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+
+	expectedData := fmt.Sprintf("[%q, %q]", nowTime.UTC(), nowTime.UTC())
+	if !strings.Contains(string(data), expectedData) {
+		t.Errorf("Got %s instead of %s", string(data), expectedData)
+	}
+}
+
+func TestUUIDAndUTCNowPayloadFastClient(t *testing.T) {
+	// Given
+	m, a := DynamicHTTPServer(false)
+	interpolatedPayload := []byte{}
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// set the request to the response for assertion in this test
+		reqBytes, err := io.ReadAll(r.Body)
+		t.Log(string(reqBytes))
+		if err != nil {
+			t.Fatalf("error setting response body: %s", err.Error())
+		}
+		w.WriteHeader(http.StatusOK)
+		interpolatedPayload = reqBytes
+	})
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: false,
+		Payload:           []byte("[\"{uuid}\", \"{nowUTC}\"]"),
+	}
+	// make deterministic time
+	nowTime := time.Now()
+	nowFn = func() time.Time {
+		return nowTime
+	}
+
+	client, _ := NewClient(&o)
+
+	// When
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+
+	// Then
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+	var sliceString []string
+	err := json.NewDecoder(bytes.NewReader(interpolatedPayload)).Decode(&sliceString)
+	if err != nil {
+		t.Fatalf("problem deserializing data: %s", err.Error())
+	}
+	if len(sliceString) != 2 {
+		t.Fatalf("Got len %d want 2", len(sliceString))
+	}
+
+	if _, err := uuid.Parse(sliceString[0]); err != nil {
+		t.Fatalf("%s is not a valid uuid", sliceString[0])
+	}
+
+	if sliceString[1] != nowTime.UTC().String() {
+		t.Fatalf("Got %s want %s", sliceString[1], nowTime.UTC().String())
+	}
+}
+
 func TestQueryUUIDFastClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateUUIDQueryParam)
@@ -1124,6 +1218,100 @@ func TestUUIDPayloadClient(t *testing.T) {
 	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 	if code != 200 {
 		t.Errorf("Got %d instead of 200", code)
+	}
+}
+
+func TestNOWUTCPayloadClient(t *testing.T) {
+	// Given
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// set the request to the response for assertion in this test
+		reqBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("error setting response body: %s", err.Error())
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(reqBytes)
+	})
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: true,
+		Payload:           []byte("[\"{nowUTC}\", \"{nowUTC}\"]"),
+	}
+	// make deterministic time
+	nowTime := time.Now()
+	nowFn = func() time.Time {
+		return nowTime
+	}
+	client, _ := NewClient(&o)
+
+	// When
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+
+	// Then
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+
+	expectedDataString := fmt.Sprintf("[%q, %q]", nowTime.UTC(), nowTime.UTC())
+	if string(data) != expectedDataString {
+		t.Errorf("Got %s instead of %s", string(data), expectedDataString)
+	}
+}
+
+func TestUUIDAndNOWUTCPayloadClient(t *testing.T) {
+	// Given
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// set the request to the response for assertion in this test
+		reqBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("error setting response body: %s", err.Error())
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(reqBytes)
+	})
+	url := fmt.Sprintf("http://localhost:%d/", a.Port)
+	o := HTTPOptions{
+		URL:               url,
+		DisableFastClient: true,
+		Payload:           []byte("[\"{uuid}\", \"{nowUTC}\"]"),
+	}
+	// make deterministic time
+	nowTime := time.Now()
+	nowFn = func() time.Time {
+		return nowTime
+	}
+
+	client, _ := NewClient(&o)
+
+	// When
+	code, data, header := client.Fetch(context.Background())
+	t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
+
+	// Then
+	if code != 200 {
+		t.Errorf("Got %d instead of 200", code)
+	}
+
+	// layout := "2006-01-02 15:04:05"
+	var sliceString []string
+	err := json.NewDecoder(bytes.NewReader(data)).Decode(&sliceString)
+	if err != nil {
+		t.Fatalf("problem deserializing data: %s", err.Error())
+	}
+	if len(sliceString) != 2 {
+		t.Fatalf("Got len %d want 2", len(sliceString))
+	}
+
+	if _, err := uuid.Parse(sliceString[0]); err != nil {
+		t.Fatalf("%s is not a valid uuid", sliceString[0])
+	}
+
+	if sliceString[1] != nowTime.UTC().String() {
+		t.Fatalf("Got %s want %s", sliceString[1], nowTime.UTC().String())
 	}
 }
 
