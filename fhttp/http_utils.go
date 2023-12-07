@@ -47,6 +47,10 @@ type TLSOptions struct {
 	UnixDomainSocket string // `Path`` of unix domain socket to use instead of host:port
 }
 
+func (to *TLSOptions) DoTLS() bool {
+	return to.Cert != "" && to.Key != ""
+}
+
 // TLSConfig creates a tls.Config based on input TLSOptions.
 // For https, ServerName is set later (once host is determined after URL parsing
 // and depending on hostOverride). Used for both client and server TLS config.

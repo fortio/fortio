@@ -464,7 +464,7 @@ func ServeTLS(port, debugPath string, to *TLSOptions) (*http.ServeMux, net.Addr)
 	startTime = time.Now()
 	var mux *http.ServeMux
 	var addr net.Addr
-	if to.Cert != "" && to.Key != "" {
+	if to.DoTLS() {
 		mux, addr = HTTPSServer("https-echo", port, to)
 	} else {
 		mux, addr = HTTPServer("http-echo", port)
