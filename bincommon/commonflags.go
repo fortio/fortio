@@ -194,7 +194,7 @@ func ConnectionReuseRangeValidator(httpOpts *fhttp.HTTPOptions) func(string) err
 }
 
 // SharedHTTPOptions is the flag->httpoptions transfer code shared between
-// fortio_main and fcurl.
+// fortio_main and fcurl. It also sets fhttp.DefaultHTTPOptions.
 func SharedHTTPOptions() *fhttp.HTTPOptions {
 	url := strings.TrimLeft(flag.Arg(0), " \t\r\n")
 	httpOpts.URL = url
@@ -235,5 +235,6 @@ func SharedHTTPOptions() *fhttp.HTTPOptions {
 	httpOpts.SequentialWarmup = *warmupFlag
 	httpOpts.NoResolveEachConn = *NoReResolveFlag
 	httpOpts.MethodOverride = *MethodFlag
+	fhttp.DefaultHTTPOptions = &httpOpts
 	return &httpOpts
 }
