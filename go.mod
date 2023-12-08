@@ -1,6 +1,6 @@
 module fortio.org/fortio
 
-go 1.18
+go 1.19 // As a library the current version of fortio works with 1.18 (first version with generics) but tests use 1.19 features
 
 require (
 	fortio.org/assert v1.2.0
@@ -30,10 +30,10 @@ require (
 require (
 	fortio.org/struct2env v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
+	golang.org/x/tools v0.16.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
