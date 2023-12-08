@@ -227,7 +227,8 @@ type HTTPOptions struct {
 // DefaultHTTPOptions is meant to be set by the main() from bincommon.SharedHTTPOptions() and used
 // as a starting point for CommonHTTPOptionsFromForm which is used for FetchHandler and forwarder as
 // well as the UI.
-var DefaultHTTPOptions *HTTPOptions
+// Initialized to empty to avoid nil pointer deref in unit tests that do not call bincommon.SharedHTTPOptions().
+var DefaultHTTPOptions = &HTTPOptions{}
 
 type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
 
