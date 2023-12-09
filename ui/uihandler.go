@@ -733,7 +733,11 @@ func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
 	if strings.Contains(urlHostPort, "-unix-socket=") {
 		uiMsg += fmt.Sprintf("fortio curl %s http://localhost%s", urlHostPort, uiPath)
 	} else {
-		uiMsg += fmt.Sprintf("http://%s%s", urlHostPort, uiPath)
+		isHTTPS := ""
+		if cfg.TLSOptions.DoTLS() {
+			isHTTPS = "s"
+		}
+		uiMsg += fmt.Sprintf("http%s://%s%s", isHTTPS, urlHostPort, uiPath)
 		if strings.Contains(urlHostPort, "localhost") {
 			uiMsg += "\n\t (or any host/ip reachable on this server)"
 		}

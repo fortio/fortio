@@ -179,6 +179,7 @@ const (
 )
 
 // HTTPOptions holds the common options of both http clients and the headers.
+// Careful when adding fields that this gets shallow copied through DefaultHTTPOptions copies.
 type HTTPOptions struct {
 	TLSOptions
 	URL               string
@@ -222,6 +223,12 @@ type HTTPOptions struct {
 	PayloadReader io.Reader `json:"-"` // if set, Payload is ignored and this is used instead.
 	DataWriter    io.Writer `json:"-"` // if set, the response body is written to this writer.
 }
+
+// DefaultHTTPOptions is meant to be set by the main() from bincommon.SharedHTTPOptions() and used
+// as a starting point for CommonHTTPOptionsFromForm which is used for FetchHandler and forwarder as
+// well as the UI.
+// Initialized to empty to avoid nil pointer deref in unit tests that do not call bincommon.SharedHTTPOptions().
+var DefaultHTTPOptions = &HTTPOptions{}
 
 type CreateClientTrace func(ctx context.Context) *httptrace.ClientTrace
 

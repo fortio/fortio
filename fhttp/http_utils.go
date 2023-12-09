@@ -47,6 +47,10 @@ type TLSOptions struct {
 	UnixDomainSocket string // `Path`` of unix domain socket to use instead of host:port
 }
 
+func (to *TLSOptions) DoTLS() bool {
+	return to.Cert != "" && to.Key != ""
+}
+
 // TLSConfig creates a tls.Config based on input TLSOptions.
 // For https, ServerName is set later (once host is determined after URL parsing
 // and depending on hostOverride). Used for both client and server TLS config.
@@ -642,7 +646,7 @@ func CommonHTTPOptionsFromForm(r *http.Request) *HTTPOptions {
 	resolve := r.FormValue("resolve")
 	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
 	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
-	httpopts := &HTTPOptions{}
+	httpopts := *DefaultHTTPOptions
 	// to be normalized in init 0 replaced by default value only in http runner, not here as this could be a tcp or udp runner
 	httpopts.URL = url // fixes #651 - ie don't normalize here
 	httpopts.HTTPReqTimeOut = timeout
@@ -664,5 +668,5 @@ func CommonHTTPOptionsFromForm(r *http.Request) *HTTPOptions {
 			log.Errf("Error adding custom headers: %v", err)
 		}
 	}
-	return httpopts
+	return &httpopts
 }
