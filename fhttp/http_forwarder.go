@@ -260,18 +260,28 @@ func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http
 	}
 }
 
+func setClientOptions(client *http.Client, opts *HTTPOptions) {
+	log.Debugf("Setting client options to %+v", opts)
+	client.Timeout = opts.HTTPReqTimeOut
+	tls, _ := opts.TLSConfig()
+	client.Transport = &http.Transport{
+		// TODO make configurable, should be fine for now for most but extreme -c values
+		MaxIdleConnsPerHost: 128, // must be more than incoming parallelization; divided by number of fan out if using parallel mode
+		MaxIdleConns:        256,
+		// This avoids Accept-Encoding: gzip being added to outgoing requests when no encoding accept is specified
+		// yet if passed by request, it will do gzip end to end. Issue #624.
+		DisableCompression:  true,
+		Proxy:               http.ProxyFromEnvironment,
+		TLSHandshakeTimeout: DefaultHTTPOptions.HTTPReqTimeOut,
+		TLSClientConfig:     tls,
+	}
+}
+
 // CreateProxyClient http client for connection reuse.
 func CreateProxyClient() *http.Client {
-	client := &http.Client{
-		Transport: &http.Transport{
-			// TODO make configurable, should be fine for now for most but extreme -c values
-			MaxIdleConnsPerHost: 128, // must be more than incoming parallelization; divided by number of fan out if using parallel mode
-			MaxIdleConns:        256,
-			// This avoids Accept-Encoding: gzip being added to outgoing requests when no encoding accept is specified
-			// yet if passed by request, it will do gzip end to end. Issue #624.
-			DisableCompression: true,
-		},
-	}
+	log.Debugf("Creating proxy client")
+	client := &http.Client{}
+	setClientOptions(client, DefaultHTTPOptions)
 	return client
 }
 
