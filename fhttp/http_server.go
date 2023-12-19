@@ -18,7 +18,6 @@ package fhttp // import "fortio.org/fortio/fhttp"
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -29,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -504,7 +504,17 @@ func SetupPPROF(mux *http.ServeMux) {
 
 // -- Fetch er (simple http proxy) --
 
-var proxyClient = CreateProxyClient()
+var (
+	sharedProxyClient *http.Client
+	once              sync.Once
+)
+
+func getProxyClient() *http.Client {
+	once.Do(func() {
+		sharedProxyClient = CreateProxyClient()
+	})
+	return sharedProxyClient
+}
 
 // FetcherHandler2 is the handler for the fetcher/proxy that supports h2 input and makes a
 // new request with all headers copied (allows to test sticky routing)
@@ -531,10 +541,8 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	OnBehalfOfRequest(req, r)
-	tr := proxyClient.Transport.(*http.Transport)
-	if tr.TLSClientConfig == nil || tr.TLSClientConfig.InsecureSkipVerify != opts.Insecure {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: opts.Insecure} //nolint:gosec // as requested by the options.
-	}
+	proxyClient := getProxyClient()
+	setClientOptions(proxyClient, opts)
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %q: %v", url, err)
