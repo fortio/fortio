@@ -4,9 +4,6 @@
 
 # all available settings of specific linters
 linters-settings:
-  gocritic:
-    disabled-checks:
-      - ifElseChain
   dupl:
     # tokens count to trigger issue, 150 by default
     threshold: 100

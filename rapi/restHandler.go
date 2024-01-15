@@ -364,7 +364,8 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	if hook != nil {
 		hook(httpopts, ro)
 	}
-	if runner == ModeGRPC { //nolint:nestif
+	switch {
+	case runner == ModeGRPC:
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
 		grpcPing := (FormValue(r, jd, "ping") == "on")
 		grpcPingDelay, _ := time.ParseDuration(FormValue(r, jd, "grpc-ping-delay"))
@@ -382,7 +383,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		aborter = UpdateRun(&o.RunnerOptions)
 		// TODO: ReqTimeout: timeout
 		res, err = fgrpc.RunGRPCTest(&o)
-	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
+	case strings.HasPrefix(url, tcprunner.TCPURLPrefix):
 		// TODO: copy pasta from fortio_main
 		o := tcprunner.RunnerOptions{
 			RunnerOptions: *ro,
@@ -392,7 +393,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		o.Payload = httpopts.Payload
 		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = tcprunner.RunTCPTest(&o)
-	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
+	case strings.HasPrefix(url, udprunner.UDPURLPrefix):
 		// TODO: copy pasta from fortio_main
 		o := udprunner.RunnerOptions{
 			RunnerOptions: *ro,
@@ -402,7 +403,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		o.Payload = httpopts.Payload
 		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = udprunner.RunUDPTest(&o)
-	} else {
+	default:
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpopts,
 			RunnerOptions:      *ro,

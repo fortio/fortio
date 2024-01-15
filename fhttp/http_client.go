@@ -1214,7 +1214,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 			if chunkedMode {
 				// Next chunk:
 				dataStart, nextChunkLen := ParseChunkSize(c.buffer[max:c.size])
-				if nextChunkLen == -1 {
+				switch nextChunkLen {
+				case -1:
 					if c.size == max {
 						log.Debugf("[%d] Couldn't find next chunk size, reading more %d %d", c.id, max, c.size)
 					} else {
@@ -1223,7 +1224,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 					continue
-				} else if nextChunkLen == 0 {
+				case 0:
 					log.Debugf("[%d] Found last chunk %d %d", c.id, max+dataStart, c.size)
 					if c.size != max+dataStart+2 || string(c.buffer[c.size-2:c.size]) != "\r\n" {
 						log.S(log.Error, "Unexpected mismatch at the end",
@@ -1231,7 +1232,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							log.Attr("end-of_buffer", c.buffer[max:c.size]),
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
-				} else {
+				default:
 					max += dataStart + nextChunkLen + 2 // extra CR LF
 					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, max)
 					if max > int64(len(c.buffer)) {
