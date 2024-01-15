@@ -46,12 +46,13 @@ func (c *Counter) Record(v float64) {
 func (c *Counter) RecordN(v float64, n int) {
 	isFirst := (c.Count == 0)
 	c.Count += int64(n)
-	if isFirst {
+	switch {
+	case isFirst:
 		c.Min = v
 		c.Max = v
-	} else if v < c.Min {
+	case v < c.Min:
 		c.Min = v
-	} else if v > c.Max {
+	case v > c.Max:
 		c.Max = v
 	}
 	s := v * float64(n)
@@ -277,11 +278,12 @@ func (h *Histogram) record(v float64, count int) {
 	// math.Ceil()-1 but that doesn't work... so back to epsilon distance check
 	scaledVal := (v - h.Offset) / h.Divider
 	var idx int
-	if scaledVal <= firstValue {
+	switch {
+	case scaledVal <= firstValue:
 		idx = 0
-	} else if scaledVal > lastValue {
+	case scaledVal > lastValue:
 		idx = numBuckets - 1 // last bucket is for > last value
-	} else {
+	default:
 		// else we look it up (with the open interval adjustment)
 		svInt := int(scaledVal)
 		delta := scaledVal - float64(svInt)

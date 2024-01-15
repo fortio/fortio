@@ -683,11 +683,12 @@ func (r *RunnerOptions) AddAccessLogger(filePath, format string) error {
 func NewFileAccessLogger(filePath, format string) (AccessLogger, error) {
 	var t AccessLoggerType
 	fl := strings.ToLower(format)
-	if fl == "json" {
+	switch fl {
+	case "json":
 		t = AccessJSON
-	} else if fl == "influx" {
+	case "influx":
 		t = AccessInflux
-	} else {
+	default:
 		err := fmt.Errorf("invalid format %q, should be \"json\" or \"influx\"", format)
 		log.Errf("%v", err)
 		return nil, err

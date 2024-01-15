@@ -202,11 +202,12 @@ func ParseChunkSize(inp []byte) (int64, int64) {
 		if inDigits { //nolint:nestif
 			b := toUpper(inp[off])
 			var digit int64
-			if b >= 'A' && b <= 'F' {
+			switch {
+			case b >= 'A' && b <= 'F':
 				digit = 10 + int64(b-'A')
-			} else if b >= '0' && b <= '9' {
+			case b >= '0' && b <= '9':
 				digit = int64(b - '0')
-			} else {
+			default:
 				inDigits = false
 				if res == -1 {
 					log.Errf("Didn't find hex number %q", inp)

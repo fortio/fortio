@@ -250,13 +250,14 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	SetHeaderIfMissing(req.Header, "Accept", "application/json")
 	SetHeaderIfMissing(req.Header, UserAgentHeader, UserAgent)
 	var client *http.Client
-	if dest.Client != nil {
+	switch {
+	case dest.Client != nil:
 		client = dest.Client
-	} else if dest.TLSConfig != nil {
+	case dest.TLSConfig != nil:
 		transport := http.DefaultTransport.(*http.Transport).Clone() // Let it crash/panic if somehow DefaultTransport is not a Transport
 		transport.TLSClientConfig = dest.TLSConfig
 		client = &http.Client{Transport: transport}
-	} else {
+	default:
 		client = http.DefaultClient
 	}
 	var resp *http.Response

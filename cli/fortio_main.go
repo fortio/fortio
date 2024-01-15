@@ -362,7 +362,7 @@ func fortioNC() {
 	}
 }
 
-//nolint:funlen, gocognit // maybe refactor/shorten later.
+//nolint:funlen // maybe refactor/shorten later.
 func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	if len(flag.Args()) != 1 {
 		cli.ErrUsage("Error: fortio load/curl needs a url or destination")
@@ -440,7 +440,8 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	if hook != nil {
 		hook(httpOpts, &ro)
 	}
-	if *grpcFlag {
+	switch {
+	case *grpcFlag:
 		o := fgrpc.GRPCRunnerOptions{
 			RunnerOptions:      ro,
 			Destination:        url,
@@ -456,7 +457,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		}
 		o.TLSOptions = httpOpts.TLSOptions
 		res, err = fgrpc.RunGRPCTest(&o)
-	} else if strings.HasPrefix(url, tcprunner.TCPURLPrefix) {
+	case strings.HasPrefix(url, tcprunner.TCPURLPrefix):
 		o := tcprunner.RunnerOptions{
 			RunnerOptions: ro,
 		}
@@ -464,7 +465,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = tcprunner.RunTCPTest(&o)
-	} else if strings.HasPrefix(url, udprunner.UDPURLPrefix) {
+	case strings.HasPrefix(url, udprunner.UDPURLPrefix):
 		o := udprunner.RunnerOptions{
 			RunnerOptions: ro,
 		}
@@ -472,7 +473,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		o.Destination = url
 		o.Payload = httpOpts.Payload
 		res, err = udprunner.RunUDPTest(&o)
-	} else {
+	default:
 		o := fhttp.HTTPRunnerOptions{
 			HTTPOptions:        *httpOpts,
 			RunnerOptions:      ro,
