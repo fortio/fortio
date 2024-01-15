@@ -306,6 +306,20 @@ func TestAccessLogs(t *testing.T) {
 	r.Options().ReleaseRunners()
 }
 
+func TestAccessLogFileInvalidFormat(t *testing.T) {
+	o := RunnerOptions{}
+
+	err := o.AddAccessLogger("foo.log", "unknown")
+	if err == nil {
+		t.Fatalf("expected error for unknown format")
+	}
+	expected := `invalid format "unknown", should be "json" or "influx"`
+	actual := err.Error()
+	if actual != expected {
+		t.Errorf("unexpected error message: %q vs %q", actual, expected)
+	}
+}
+
 func TestAccessLogFile(t *testing.T) {
 	var count int64
 	var lock sync.Mutex
