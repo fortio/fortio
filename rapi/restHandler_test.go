@@ -660,3 +660,22 @@ func TestDataDir(t *testing.T) {
 	}
 	SetDataDir(oldDir)
 }
+
+func TestStateEnum(t *testing.T) {
+	// Test the unknown and error cases
+	var se StateEnum
+	actual := se.String()
+	expected := "unknown"
+	if actual != expected {
+		t.Errorf("Expected %q got %q", expected, actual)
+	}
+	se = StateEnum(1000)
+	// handle panic:
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic for unknown state, got nil")
+		}
+	}()
+	actual = se.String()
+	t.Errorf("Expected panic, got %q", actual)
+}
