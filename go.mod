@@ -12,7 +12,7 @@ require (
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.3
 	github.com/golang/protobuf v1.5.3
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.20.0
 	google.golang.org/grpc v1.61.0
 )
