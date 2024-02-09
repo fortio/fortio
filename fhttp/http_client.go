@@ -351,7 +351,7 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 
 	reuseRangeString := strings.Split(inp, ":")
 	if len(reuseRangeString) > 2 {
-		return fmt.Errorf("more than two integers were provided in the connection reuse range")
+		return errors.New("more than two integers were provided in the connection reuse range")
 	}
 	reuseRangeInt := make([]int, 2)
 	for i, input := range reuseRangeString {
@@ -662,7 +662,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		}
 		tr2 := &http2.Transport{
 			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 				return dialCtx(ctx, network, addr)
 			},
 			DisableCompression: !o.Compression,
@@ -676,7 +676,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	client.client.Transport = rt
 	if !o.FollowRedirects {
 		// Lets us see the raw response instead of auto following redirects.
-		client.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		client.client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
 	}

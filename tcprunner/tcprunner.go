@@ -96,9 +96,9 @@ var (
 	TCPURLPrefix = "tcp://"
 	// TCPStatusOK is the map key on success.
 	TCPStatusOK  = "OK"
-	errShortRead = fmt.Errorf("short read")
-	errLongRead  = fmt.Errorf("bug: long read")
-	errMismatch  = fmt.Errorf("read not echoing writes")
+	errShortRead = errors.New("short read")
+	errLongRead  = errors.New("bug: long read")
+	errMismatch  = errors.New("read not echoing writes")
 )
 
 // GeneratePayload generates a default 24 bytes unique payload for each runner thread and message sent

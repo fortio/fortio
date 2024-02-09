@@ -386,7 +386,7 @@ func TestUnixDomain(t *testing.T) {
 		t.Fatalf("Nil socket in unix socket proxy listen")
 	}
 	hp := fnet.NormalizeHostPort("", addr)
-	expected := fmt.Sprintf("-unix-socket=%s", fname)
+	expected := "-unix-socket=" + fname
 	if hp != expected {
 		t.Errorf("Got %s, expected %s from fnet.NormalizeHostPort(%v)", hp, expected, addr)
 	}

@@ -506,7 +506,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	// AccessLogger info check
 	extra := ""
 	if r.AccessLogger != nil {
-		extra = fmt.Sprintf(" with access logger %s", r.AccessLogger.Info())
+		extra = " with access logger " + r.AccessLogger.Info()
 	}
 	requestedQPS := "max"
 	if useQPS {
