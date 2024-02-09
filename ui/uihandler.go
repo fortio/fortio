@@ -250,7 +250,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		// A bit awkward api because of trying to reuse yet be compatible from old UI code with
 		// new `rapi` code.
-		//nolint:contextcheck // we use the internal Aborter to cancel run through api/stop button in UI.
 		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*html mode*/)
 		if err != nil {
 			_, _ = w.Write([]byte(fmt.Sprintf(
