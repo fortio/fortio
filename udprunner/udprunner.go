@@ -17,6 +17,7 @@ package udprunner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -98,10 +99,10 @@ var (
 	UDPURLPrefix = "udp://"
 	// UDPStatusOK is the map key on success.
 	UDPStatusOK  = "OK"
-	errTimeout   = fmt.Errorf("timeout")
-	errShortRead = fmt.Errorf("short read")
-	errLongRead  = fmt.Errorf("bug: long read")
-	errMismatch  = fmt.Errorf("read not echoing writes")
+	errTimeout   = errors.New("timeout")
+	errShortRead = errors.New("short read")
+	errLongRead  = errors.New("bug: long read")
+	errMismatch  = errors.New("read not echoing writes")
 )
 
 // NewUDPClient creates and initialize and returns a client based on the UDPOptions.

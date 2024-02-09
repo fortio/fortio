@@ -92,7 +92,7 @@ func dnsMethodValidator(inp string) error {
 	if valid[inp] {
 		return nil
 	}
-	return fmt.Errorf("invalid value for dns method, should be one of cached-rr, first, rnd or rr")
+	return errors.New("invalid value for dns method, should be one of cached-rr, first, rnd or rr")
 }
 
 //nolint:gochecknoinits // needed here (unit change)
@@ -415,7 +415,7 @@ func ResolveAll(ctx context.Context, host, resolveType string) ([]net.IP, error)
 		host = host[1 : len(host)-1]
 	}
 	if host == "" {
-		return nil, fmt.Errorf("can't resolve empty host")
+		return nil, errors.New("can't resolve empty host")
 	}
 	isAddr := net.ParseIP(host)
 	if isAddr != nil {
@@ -519,7 +519,7 @@ func transfer(wg *sync.WaitGroup, dst net.Conn, src net.Conn) {
 }
 
 // ErrNilDestination returned when trying to proxy to a nil address.
-var ErrNilDestination = fmt.Errorf("nil destination")
+var ErrNilDestination = errors.New("nil destination")
 
 func handleProxyRequest(conn net.Conn, dest net.Addr) {
 	err := ErrNilDestination
@@ -577,7 +577,7 @@ func ProxyToDestination(ctx context.Context, listenPort string, destination stri
 func NormalizeHostPort(inputPort string, addr net.Addr) string {
 	urlHostPort := addr.String()
 	if addr.Network() == UnixDomainSocket {
-		urlHostPort = fmt.Sprintf("-unix-socket=%s", urlHostPort)
+		urlHostPort = "-unix-socket=" + urlHostPort
 	} else if strings.HasPrefix(inputPort, ":") || !strings.Contains(inputPort, ":") {
 		urlHostPort = fmt.Sprintf("localhost:%d", addr.(*net.TCPAddr).Port)
 	}

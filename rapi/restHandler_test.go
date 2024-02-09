@@ -163,7 +163,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 
 	// Check payload is used and that query arg overrides payload
 	jsonData := fmt.Sprintf("{\"metadata\": {\"url\":%q, \"save\":\"on\", \"n\":\"200\", \"payload\": \"test payload\"}}", echoURL)
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=100", restURL)
+	runURL = restURL + "?jsonPath=.metadata&qps=100&n=100"
 	res = GetResult(t, runURL, jsonData)
 	totalReq = res.DurationHistogram.Count
 	httpOk = res.RetCodes[http.StatusOK]
@@ -179,33 +179,33 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 
 	// Send a bad (missing unit) duration (test error return)
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata&qps=100&n=10&t=42", restURL)
+	runURL = restURL + "?jsonPath=.metadata&qps=100&n=10&t=42"
 	errObj := GetErrorResult(t, runURL, jsonData)
 	if errObj.Message != "parsing duration" || errObj.Exception != "time: missing unit in duration \"42\"" {
 		t.Errorf("Didn't get the expected duration parsing error, got %+v", errObj)
 	}
 	// bad json path: doesn't exist
-	runURL = fmt.Sprintf("%s?jsonPath=.foo", restURL)
+	runURL = restURL + "?jsonPath=.foo"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Exception != "\"foo\" not found in json" {
 		t.Errorf("Didn't get the expected json body access error, got %+v", errObj)
 	}
 	// bad json path: wrong type
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata.url", restURL)
+	runURL = restURL + "?jsonPath=.metadata.url"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Exception != "\"url\" path is not a map" {
 		t.Errorf("Didn't get the expected json type mismatch error, got %+v", errObj)
 	}
 	// missing url and a few other cases
 	jsonData = `{"metadata": {"n": 200}}`
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata", restURL)
+	runURL = restURL + "?jsonPath=.metadata"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Message != "URL is required" {
 		t.Errorf("Didn't get the expected url missing error, got %+v", errObj)
 	}
 	// not well formed json
 	jsonData = `{"metadata": {"n":`
-	runURL = fmt.Sprintf("%s?jsonPath=.metadata", restURL)
+	runURL = restURL + "?jsonPath=.metadata"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Exception != "unexpected end of JSON input" {
 		t.Errorf("Didn't get the expected error for truncated/invalid json, got %+v", errObj)

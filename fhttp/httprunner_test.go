@@ -287,7 +287,7 @@ func TestAccessLogAndTrace(t *testing.T) {
 			atomic.AddInt64(&numTrace, 1)
 		},
 	}
-	traceFactory := func(ctx context.Context) *httptrace.ClientTrace { return trace }
+	traceFactory := func(_ context.Context) *httptrace.ClientTrace { return trace }
 	opts.DisableFastClient = true
 	opts.ClientTrace = traceFactory
 	opts.LogErrors = true
