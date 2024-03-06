@@ -11,17 +11,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4
         with:
           fetch-depth: 2
       - name: Set up Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@v4
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@v5
         with:
           go-version: '1.21'
           check-latest: true
       - name: Run coverage
         run: make coverage
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab # pin@v4
+        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # pin@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
