@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.21.7@sha256:b7bac393658f891b69189cfd98111525f951ac0fec8bab97a1990fe43c85d342
+FROM golang:1.21.8@sha256:c82d4ad02c062cf2b393bf0374df26638c6fed3dfe52cdbd3635d4a7befab86e
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -16,10 +16,10 @@ RUN golangci-lint version
 
 # Docker:
 RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
-    curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add; \
-    echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get -y update && apt-get install --no-install-recommends -y docker-ce docker-buildx-plugin; \
-    fi
+  curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add; \
+  echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list && \
+  apt-get -y update && apt-get install --no-install-recommends -y docker-ce docker-buildx-plugin; \
+  fi
 
 # govulncheck
 RUN go install golang.org/x/vuln/cmd/govulncheck@latest
