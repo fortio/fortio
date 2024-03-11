@@ -22,6 +22,6 @@ jobs:
       - name: Run coverage
         run: make coverage
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # pin@v3
+        uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab # pin@v3
 #        with:
 #          token: ${{ secrets.CODECOV_TOKEN }}
