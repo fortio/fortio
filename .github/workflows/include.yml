@@ -2,13 +2,13 @@
 name: "Shared cli/server fortio workflows"
 on:
     push:
-      branches: [ main ]
+      branches: [ master ]
       tags:
         # so a vX.Y.Z-test1 doesn't trigger build
         - 'v[0-9]+.[0-9]+.[0-9]+'
         - 'v[0-9]+.[0-9]+.[0-9]+-pre*'
     pull_request:
-      branches: [ main ]
+      branches: [ master ]
 
 jobs:
     call-gochecks:
