@@ -1,3 +1,5 @@
+# linter config now comes from shared workflows
+.golangci.yml
 tmp/
 coverage.txt
 *.bak

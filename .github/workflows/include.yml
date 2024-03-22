@@ -1,0 +1,32 @@
+# Main fortio still use its own build image for now (including linux/ppc64le,linux/s390x additional platforms)
+name: "Shared cli/server fortio workflows"
+on:
+    push:
+      branches: [ main ]
+      tags:
+        # so a vX.Y.Z-test1 doesn't trigger build
+        - 'v[0-9]+.[0-9]+.[0-9]+'
+        - 'v[0-9]+.[0-9]+.[0-9]+-pre*'
+    pull_request:
+      branches: [ main ]
+
+jobs:
+    call-gochecks:
+        uses: fortio/workflows/.github/workflows/gochecks.yml@main
+    call-codecov:
+        uses: fortio/workflows/.github/workflows/codecov.yml@main
+    call-codeql:
+        uses: fortio/workflows/.github/workflows/codeql-analysis.yml@main
+        permissions:
+            actions: read
+            contents: read
+            security-events: write
+#    call-releaser:
+#        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+#        uses: fortio/workflows/.github/workflows/releaser.yml@main
+#        with:
+#            description: "Fortio load testing library, command line tool, advanced echo server and web UI in go (golang)"
+#        secrets:
+#            GH_PAT: ${{ secrets.GH_PAT }}
+#            DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+#            DOCKER_USER: ${{ secrets.DOCKER_USER }}
