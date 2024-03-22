@@ -21,12 +21,14 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Common Setup
+        id: common_setup
         uses: fortio/workflows/.github/actions/common_setup@main
         with:
           DOCKER_USER: ${{ secrets.DOCKER_USER }}
           DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
       - name: Available platforms
-        run: echo ${{ steps.buildx.outputs.platforms }}
+        run: |
+          echo "Build platforms: ${{ steps.common_setup.outputs.platforms }}"
       - name: Build
         id: build
         run: |
