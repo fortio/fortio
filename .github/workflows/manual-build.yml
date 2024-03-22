@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "tag is ${{ github.event.inputs.tag }}"
 
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v3
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # pin@v3
         with:
           ref: ${{ github.event.inputs.tag }}
 
