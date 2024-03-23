@@ -56,14 +56,17 @@ test: dependencies
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
 
-local-lint:
+.golangci.yml: Makefile
+	curl -fsS -o .golangci.yml https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml
+
+local-lint: .golangci.yml
 	govulncheck $(LINT_PACKAGES)
 	golangci-lint version
 	golangci-lint --timeout 120s $(DEBUG_LINTERS) run $(LINT_PACKAGES)
 
 # Lint everything by default but ok to "make lint LINT_PACKAGES=./fhttp"
 LINT_PACKAGES:=./...
-lint:
+lint: .golangci.yml
 	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c \
 		"cd /build/fortio \
 		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
@@ -85,8 +88,7 @@ release-test: docker-version
 webtest: release-test
 
 coverage: dependencies
-	./.circleci/coverage.sh
-#	curl -s https://codecov.io/bash | bash
+	go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # Short cut for pulling/updating to latest of the current branch
 pull:
