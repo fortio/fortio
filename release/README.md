@@ -1,6 +1,6 @@
 # How to make a fortio release
 
-- All the builds and docker, except the build image updates, are now fully automated through github actions based on tags
+- All the builds and docker, except the build image updates, are now fully automated through github actions based on tags and most if shared from org wide https://github.com/fortio/workflows#workflows except for goreleaser which isn't used here and we maintain our own build image (see for instance fortiotel for newer build fully using the shared workflows)
 
 - Make sure to use the same git tag format (e.g "v0.7.1" - note that there is `v` prefix in the tag, like many projects). Docker and internal version/tag is "0.7.1", the `v` is only for git tags.
 
@@ -22,7 +22,7 @@
 
 - To update the command line flags in the ../README.md; run the new `release/bumpRelease.sh 1.53.0` for instance
 
-- Update the homebrew tap `brew bump-formula-pr --tag v1.2.3 fortio`
+- Update the homebrew tap `brew bump-formula-pr --tag v1.2.3 fortio` (brew team usually does this fairly often on their own)
 
 
 ## How to change the build image
@@ -50,8 +50,8 @@ make update-build-image-tag SED=gsed
 
 Check the diff and make lint, webtest, etc and PR
 
-Regularly update pinned github actions
-using https://github.com/mheap/pin-github-action
+Dependabot will regularly update pinned github actions - to pin a new dependency:
+Use https://github.com/mheap/pin-github-action
 ```
 npm install -g pin-github-action
 ```
