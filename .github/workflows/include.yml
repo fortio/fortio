@@ -14,7 +14,7 @@ jobs:
     call-gochecks:
         uses: fortio/workflows/.github/workflows/gochecks.yml@main
     call-codecov:
-        uses: fortio/workflows/.github/workflows/codecov.yml@main
+        uses: fortio/workflows/.github/workflows/codecov.yml@dependabot/github_actions/codecov/codecov-action-4
     call-codeql:
         uses: fortio/workflows/.github/workflows/codeql-analysis.yml@main
         permissions:
