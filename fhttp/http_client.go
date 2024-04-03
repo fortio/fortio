@@ -1089,7 +1089,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					break
 				}
 				errMsg := "Read error"
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				var netErr net.Error
+				if errors.As(err, &netErr) && netErr.Timeout() {
 					errMsg = "Timeout error (incomplete/invalid response)"
 				}
 				log.S(log.Error, errMsg, log.Attr("err", err), log.Attr("size", c.size), log.Attr("header_len", c.headerLen),
