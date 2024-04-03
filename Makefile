@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v69@sha256:c21ecd49fd232a4c184a04607f339c18d13151480aee779a047358f2f23e287e
+BUILD_IMAGE_TAG := v70@sha256:a1a0c03170d4be21a94d62b7e0b5dd966135e8888e8b2bf97eb8511eb6ee778e
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -68,7 +68,7 @@ local-lint: .golangci.yml
 LINT_PACKAGES:=./...
 lint: .golangci.yml
 	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c \
-		"cd /build/fortio \
+		"cd /build/fortio; chown build:build . \
 		&& time make local-lint DEBUG_LINTERS=\"$(DEBUG_LINTERS)\" LINT_PACKAGES=\"$(LINT_PACKAGES)\""
 
 docker-test:

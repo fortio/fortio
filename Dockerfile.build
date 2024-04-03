@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.21.8@sha256:c82d4ad02c062cf2b393bf0374df26638c6fed3dfe52cdbd3635d4a7befab86e
+FROM golang:1.22.2@sha256:c4fb952e712efd8f787bcd8e53fd66d1d83b7dc26adabc218e9eac1dbf776bdf
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -24,7 +24,7 @@ RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
 # govulncheck
 RUN go install golang.org/x/vuln/cmd/govulncheck@latest
 WORKDIR /build
-COPY .golangci.yml .
+ADD https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml .golangci.yml
 VOLUME /build
 RUN useradd -m build -d /build
 RUN chown -R build:build /build
