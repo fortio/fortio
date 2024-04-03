@@ -59,7 +59,7 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 		}))
 	}
 	opts = append(opts, o.dialOptions...)
-	conn, err := grpc.Dial(serverAddr, opts...)
+	conn, err := grpc.NewClient(serverAddr, opts...)
 	if err != nil {
 		log.Errf("failed to connect to %s with certificate %s and override %s: %v", serverAddr, o.CACert, o.CertOverride, err)
 	}
