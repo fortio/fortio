@@ -592,6 +592,22 @@ func TestPayloadWithEchoBack(t *testing.T) {
 	}
 }
 
+// Exercise the code for https://github.com/fortio/fortio/pull/914
+func TestReadtimeout(t *testing.T) {
+	// in theory we'd also redirect the log output to check we do see "Timeout error (incomplete/invalid response)"
+	// but the logger has it's own tests
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", EchoHandler)
+	url := fmt.Sprintf("http://localhost:%d/?delay=1s", a.Port)
+	opts := NewHTTPOptions(url)
+	opts.HTTPReqTimeOut = 100 * time.Millisecond
+	cli, _ := NewClient(opts)
+	code, _, _ := cli.Fetch(context.Background())
+	if code != -1 {
+		t.Errorf("Unexpected code %d", code)
+	}
+}
+
 // Test Post request with std client and the socket close after answering.
 func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
