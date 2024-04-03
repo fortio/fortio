@@ -595,7 +595,7 @@ func TestPayloadWithEchoBack(t *testing.T) {
 // Exercise the code for https://github.com/fortio/fortio/pull/914
 func TestReadtimeout(t *testing.T) {
 	// in theory we'd also redirect the log output to check we do see "Timeout error (incomplete/invalid response)"
-	// but the logger has it's own tests
+	// but the logger has its own tests and the switch from not covered to covered shows it's working/exercised by this test.
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
 	url := fmt.Sprintf("http://localhost:%d/?delay=1s", a.Port)
