@@ -1088,7 +1088,12 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 					// handled below as possibly normal end of stream after we read something
 					break
 				}
-				log.S(log.Error, "Read error", log.Attr("err", err), log.Attr("size", c.size), log.Attr("dest", c.dest), log.Str("url", c.url),
+				errMsg := "Read error"
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					errMsg = "Timeout error (incomplete/invalid response)"
+				}
+				log.S(log.Error, errMsg, log.Attr("err", err), log.Attr("size", c.size), log.Attr("header_len", c.headerLen),
+					log.Attr("dest", c.dest), log.Str("url", c.url),
 					log.Attr("thread", c.id), log.Attr("run", c.runID))
 				c.code = SocketError
 				break
