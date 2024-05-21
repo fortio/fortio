@@ -337,8 +337,10 @@ func TestJPRCHeaders(t *testing.T) {
 		t.Errorf("failed Call: %v", err)
 	}
 	// order etc is preserved, keys are not case sensitive (kinda tests go http api too)
+	//nolint:canonicalheader // we want to test case insensitivity
 	assert.Equal(t, res.Values("test1"), []string{"ValT1.1", "ValT1.2"}, "Expecting echoed back Test1 multi valued header")
-	assert.CheckEquals(t, res.Get("test2"), "ValT2", "Expecting echoed back Test2 header")
+	//nolint:canonicalheader // we want to test case insensitivity
+	assert.CheckEquals(t, res.Get("tESt2"), "ValT2", "Expecting echoed back Test2 header")
 	if !gotFirstByte {
 		t.Errorf("expected trace callback to have been called")
 	}

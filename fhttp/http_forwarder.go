@@ -158,7 +158,7 @@ func setupRequest(r *http.Request, i int, t TargetConf, data []byte) *http.Reque
 		return nil
 	}
 	OnBehalfOfRequest(req, r)
-	req.Header.Add("X-Fortio-Multi-ID", strconv.Itoa(i+1))
+	req.Header.Add("X-Fortio-Multi-Id", strconv.Itoa(i+1))
 	log.LogVf("Going to %s", req.URL.String())
 	return req
 }
