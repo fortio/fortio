@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v70@sha256:a1a0c03170d4be21a94d62b7e0b5dd966135e8888e8b2bf97eb8511eb6ee778e as build
+FROM docker.io/fortio/fortio.build:v71@sha256:bc92fd7448b68ad363720250d128a7586a6e2cfccd42fe84809e5c47618b4c36 as build
 WORKDIR /build
 COPY . fortio
 RUN make -C fortio official-build-version BUILD_DIR=/build OFFICIAL_TARGET=fortio.org/fortio/echosrv

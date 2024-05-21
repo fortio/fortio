@@ -783,7 +783,7 @@ MainLoop:
 				break
 			}
 		}
-		ctx2 = ctx
+		ctx2 = ctx //nolint:fatcontext // only potentially mutate the original if there is an access logger (yes in the loop).
 		if r.AccessLogger != nil {
 			ctx2 = r.AccessLogger.Start(ctx, id, i, fStart)
 		}

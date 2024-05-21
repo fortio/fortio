@@ -4,7 +4,7 @@ module fortio.org/fortio
 // Note we will switch soon to 1.22 for the linters
 go 1.19
 
-// toolchain go1.22.2 // this shouldn't be necessary - see https://github.com/golang/go/issues/66175#issuecomment-2010343876
+// toolchain go1.22.3 // this shouldn't be necessary - see https://github.com/golang/go/issues/66175#issuecomment-2010343876
 
 require (
 	fortio.org/assert v1.2.1
