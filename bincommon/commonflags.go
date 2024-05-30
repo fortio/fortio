@@ -95,7 +95,7 @@ var (
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
 	// HelpFlag is true if help/usage is being requested by the user.
 	warmupFlag = flag.Bool("sequential-warmup", false,
-		"http(s) runner warmup done in parallel instead of sequentially. When set, restores pre 1.21 behavior")
+		"http(s) runner warmup done sequentially instead of parallel. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
 		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
 	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.

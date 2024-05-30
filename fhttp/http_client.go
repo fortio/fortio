@@ -36,6 +36,7 @@ import (
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/stats"
 	"fortio.org/log"
+	"fortio.org/scli"
 	"github.com/google/uuid"
 	"golang.org/x/net/http2"
 )
@@ -948,6 +949,7 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
 			log.S(log.Error, "Unable to connect", log.Attr("dest", c.dest), log.Attr("err", err),
+				log.Attr("numfd", scli.NumFD()),
 				log.Attr("thread", c.id), log.Attr("run", c.runID))
 			return nil
 		}

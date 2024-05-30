@@ -162,7 +162,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if o.SequentialWarmup && o.Exactly <= 0 {
 			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 			if !o.AllowInitialErrors && !codeIsOK(code) {
-				codeErr := fmt.Errorf("error %d for %s (%d body bytes)", code, o.URL, dataLen)
+				codeErr := fmt.Errorf("error %d for %s (%d body bytes), thread# %d", code, o.URL, dataLen, i)
 				aborter.RecordStart()
 				return NewErrorResult(o, "initial http error", codeErr), codeErr
 			}
