@@ -186,7 +186,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	ts := time.Now().UnixNano()
 	for i := 0; i < numThreads; i++ {
 		r.Options().Runners[i] = &grpcstate[i]
-		if (i % o.Streams) == 0 {
+		newConn := i%o.Streams == 0
+		if newConn {
 			conn, err = Dial(o)
 			if err != nil {
 				log.Errf("Error in grpc dial for %s %v", o.Destination, err)
@@ -202,13 +203,14 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			outCtx = metadata.NewOutgoingContext(outCtx, o.filteredMetadata)
 			grpcstate[i].Metadata = o.filteredMetadata // the one used to send
 		}
+		// TODO: support parallel warmup(implemented in http)
 		if o.UsePing { //nolint:nestif
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
 			}
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
-			if o.Exactly <= 0 {
+			if newConn && o.Exactly <= 0 {
 				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP, callOptions...)
 			}
 		} else {
@@ -217,7 +219,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 				return nil, fmt.Errorf("unable to create health client %d for %s", i, o.Destination)
 			}
 			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
-			if o.Exactly <= 0 {
+			if newConn && o.Exactly <= 0 {
 				_, err = grpcstate[i].clientH.Check(outCtx, &grpcstate[i].reqH)
 			}
 		}
