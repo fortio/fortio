@@ -26,12 +26,13 @@ jobs:
           version: 20.10.12
       - checkout
       - run: make release-test
-  linters:
-    <<: *defaultEnv
-    steps:
-      - checkout
+# linters are now part of gochecks shared github action workflows (go checks)
+#  linters:
+    #<<: *defaultEnv
+    #steps:
+      #- checkout
       # If ran with default we get random errors because OOM killer kills some linters
-      - run: make local-lint DEBUG_LINTERS="--concurrency=2"
+      #- run: make local-lint DEBUG_LINTERS="--concurrency=2"
   # codecov:
   #   <<: *defaultEnv
   #   steps:
@@ -47,4 +48,4 @@ workflows:
       - unit-tests
       - release-tests
 #      - codecov
-      - linters
+#      - linters
