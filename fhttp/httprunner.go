@@ -124,7 +124,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	r := periodic.NewPeriodicRunner(&o.RunnerOptions)
 	if o.HTTPOptions.Resolution <= 0 {
 		// Set both connect histogram params when Resolution isn't set explicitly on the HTTP options
-		// (that way you can set the offet to 0 in connect and to something else for the call)
+		// (that way you can set the offset to 0 in connect and to something else for the call)
 		o.HTTPOptions.Resolution = r.Options().Resolution
 		o.HTTPOptions.Offset = r.Options().Offset
 	}

@@ -401,7 +401,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		}
 	}
 	if qps <= 0 {
-		qps = -1 // 0==unitialized struct == default duration, -1 (0 for flag) is max
+		qps = -1 // 0==uninitialized struct == default duration, -1 (0 for flag) is max
 	}
 	labels := *labelsFlag
 	if labels == "" {
@@ -561,7 +561,7 @@ func grpcClient() {
 	}
 }
 
-// httpHeader2grpcMetadata covert md's key to lowercase and filter invalid key.
+// httpHeader2grpcMetadata converts md's key to lowercase and filter invalid key.
 func httpHeader2grpcMetadata(headers map[string][]string) map[string][]string {
 	ret := make(map[string][]string)
 	for k, v := range headers {

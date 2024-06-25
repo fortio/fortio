@@ -201,7 +201,7 @@ func TestFoldFind1(t *testing.T) {
 func TestFoldFind2(t *testing.T) {
 	var haystack [1]byte
 	var needle [1]byte
-	// we don't mind for these to map to eachother in exchange for 30% perf gain
+	// we don't mind for these to map to each other in exchange for 30% perf gain
 	okExceptions := "@[\\]^_`{|}~"
 	for i := 0; i < 127; i++ { // skipping 127 too, matches _
 		haystack[0] = byte(i)

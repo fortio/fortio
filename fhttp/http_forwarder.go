@@ -45,7 +45,7 @@ var (
 // TargetConf is the structure to configure one of the multiple targets for MultiServer.
 type TargetConf struct {
 	Destination  string // Destination URL or base
-	MirrorOrigin bool   // wether to use the incoming request as URI and data params to outgoing one (proxy like)
+	MirrorOrigin bool   // whether to use the incoming request as URI and data params to outgoing one (proxy like)
 	//	Return       bool   // Will return the result of this target
 }
 

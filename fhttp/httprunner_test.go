@@ -418,7 +418,7 @@ func TestServe(t *testing.T) {
 	c4, _ := NewClient(o4)
 	code4, data4, header := c4.Fetch(ctx)
 	if code4 != http.StatusOK {
-		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url4, code4)
+		t.Errorf("Unexpected non 200 ret code for debug echo gzipped url %s : %d", url4, code4)
 	}
 	if string(data4[header:]) == expected4 {
 		t.Errorf("Unexpected that %s with Accept-Encoding: gzip and ?gzip=true is a plain echo server, got %q", url4, string(data4))
@@ -436,7 +436,7 @@ func TestServe(t *testing.T) {
 	c5, _ := NewClient(o5)
 	code5, data5, header := c5.Fetch(ctx)
 	if code5 != http.StatusOK {
-		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code5)
+		t.Errorf("Unexpected non 200 ret code for debug echo gzipped url %s : %d", url5, code5)
 	}
 	expected6 := data5[header:] // when we actually compress we should get same as this after gunzip
 	if len(data5)-header != 400 {
@@ -447,7 +447,7 @@ func TestServe(t *testing.T) {
 	c6, _ := NewClient(o5)
 	code6, data6, header := c6.Fetch(ctx)
 	if code6 != http.StatusOK {
-		t.Errorf("Unexpected non 200 ret code for debug echo gziped url %s : %d", url5, code6)
+		t.Errorf("Unexpected non 200 ret code for debug echo gzipped url %s : %d", url5, code6)
 	}
 	data6unzip := gUnzipData(t, data6[header:])
 	if !bytes.Equal(data6unzip, expected6) {
@@ -554,17 +554,17 @@ func TestValidateConnectionReuse(t *testing.T) {
 
 	err := httpOpts.ValidateAndSetConnectionReuseRange("1:2:3:4")
 	if err == nil {
-		t.Errorf("Shoud fail when more than two values are provided for connection reuse range.")
+		t.Errorf("Should fail when more than two values are provided for connection reuse range.")
 	}
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("foo")
 	if err == nil {
-		t.Errorf("Shoud fail when non integer value is provided for connection reuse range.")
+		t.Errorf("Should fail when non integer value is provided for connection reuse range.")
 	}
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("")
 	if err != nil {
-		t.Errorf("Expect no error when no value is privided, got err: %v.", err)
+		t.Errorf("Expect no error when no value is provided, got err: %v.", err)
 	}
 
 	if httpOpts.ConnReuseRange != [2]int{0, 0} {
@@ -573,7 +573,7 @@ func TestValidateConnectionReuse(t *testing.T) {
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("10")
 	if err != nil {
-		t.Errorf("Expect no error when single value is privided, got err: %v.", err)
+		t.Errorf("Expect no error when single value is provided, got err: %v.", err)
 	}
 
 	if httpOpts.ConnReuseRange != [2]int{10, 10} {
@@ -582,7 +582,7 @@ func TestValidateConnectionReuse(t *testing.T) {
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("20:10")
 	if err != nil {
-		t.Errorf("Expect no error when two values are privided, got err: %v.", err)
+		t.Errorf("Expect no error when two values are provided, got err: %v.", err)
 	}
 
 	if httpOpts.ConnReuseRange != [2]int{10, 20} {
@@ -591,7 +591,7 @@ func TestValidateConnectionReuse(t *testing.T) {
 
 	err = httpOpts.ValidateAndSetConnectionReuseRange("10:20")
 	if err != nil {
-		t.Errorf("Expect no error when two values are privided, got err: %v", err)
+		t.Errorf("Expect no error when two values are provided, got err: %v", err)
 	}
 
 	if httpOpts.ConnReuseRange != [2]int{10, 20} {

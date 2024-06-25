@@ -58,7 +58,7 @@ func TestNormalizePort(t *testing.T) {
 	for _, tc := range tests {
 		port := fnet.NormalizePort(tc.input)
 		if port != tc.output {
-			t.Errorf("Test case %s failed to normailze port %s\n\texpected: %s\n\t  actual: %s",
+			t.Errorf("Test case %s failed to normalize port %s\n\texpected: %s\n\t  actual: %s",
 				tc.name,
 				tc.input,
 				tc.output,
@@ -458,7 +458,7 @@ func TestResolveBW(t *testing.T) {
 	}
 	addr, err = fnet.ResolveDestination(ctx, "8.8.4.4:domain")
 	if err != nil {
-		t.Errorf("should hav enot  errored out but got %v", err)
+		t.Errorf("should have not errored out but got %v", err)
 	}
 	if addr.String() != expecting {
 		t.Errorf("expecting %q got %q", expecting, addr.String())
