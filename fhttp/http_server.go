@@ -314,7 +314,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 }
 
 /*
-// DebugHandlerTemplate returns debug/useful info on the http requet.
+// DebugHandlerTemplate returns debug/useful info on the http request.
 // slower heavier but nicer source code version of DebugHandler
 func DebugHandlerTemplate(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)

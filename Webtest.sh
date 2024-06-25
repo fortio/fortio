@@ -40,7 +40,7 @@ fi
 # for timeout) - #652
 timeout 3 docker run fortio/fortio:webtest server -loglevel debug extra-arg
 if [[ $? == 124 || $? == 0 ]]; then
-  echo "Unrecognized extra args/typo in flags should error out immediatly"
+  echo "Unrecognized extra args/typo in flags should error out immediately"
   exit 1
 fi
 

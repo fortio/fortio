@@ -23,7 +23,7 @@ function cleanup {
 }
 trap cleanup EXIT
 set -o pipefail
-# docker cp will create 2 level of dir if first one exists, make sure it doesnt
+# docker cp will create 2 level of dir if first one exists, make sure it doesn't
 rm -f release/tgz/*
 rmdir release/tgz || true
 docker cp -a fortio_release:/tgz/ release/tgz

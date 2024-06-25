@@ -283,7 +283,7 @@ func ResultToJsData(w io.Writer, json []byte) {
 	_, _ = w.Write([]byte("\nvar data = fortioResultToJsChartData(res)\nshowChart(data)\n"))
 }
 
-// SelectableValue represets an entry in the <select> of results.
+// SelectableValue represents an entry in the <select> of results.
 type SelectableValue struct {
 	Value    string
 	Selected bool
@@ -384,7 +384,7 @@ func BrowseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LogAndAddCacheControl logs the request and wrapps an HTTP handler to add a Cache-Control header for static files.
+// LogAndAddCacheControl logs the request and wraps an HTTP handler to add a Cache-Control header for static files.
 func LogAndAddCacheControl(h http.Handler) http.Handler {
 	return log.LogAndCall("static", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path

@@ -98,7 +98,7 @@ It can also fetch a single URL's for debugging when using the `curl` command (or
 Likewise you can establish a single TCP (or unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
 You can run just the redirector with `redirect` or just the tcp echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
-The `version` command will print the short print versiob. `fortio buildinfo` will print the full
+The `version` command will print the short print version. `fortio buildinfo` will print the full
 build information.
 Lastly, you can learn which flags are available using `help` command.
 
@@ -116,7 +116,7 @@ Most important flags for http load generation:
 | `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e 1ms), use 1/10th of your expected typical latency |
 | `-H "header: value"` | Can be specified multiple times to add headers (including Host:) |
 | `-a`     |  Automatically save JSON result with filename based on labels and timestamp |
-| `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typicallly a better option)|
+| `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typically a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 | `-h2` |  Client calls will attempt to negotiate http/2.0 instead of http1.1, implies `-stdclient`|
 | `-X method` | Change http method to the one specified instead of automatic http GET or POST based on `-payload-*` or `-content-type`|
@@ -445,7 +445,7 @@ I fortio_main.go:293> All fortio X.Y.Z  goM.m.p arm64 darwin servers started!
 
 ### Sample of the graphing UI
 
-With the 2 histograms - total and errors overlayed:
+With the 2 histograms - total and errors overlaid:
 
 ![Graphical result](https://user-images.githubusercontent.com/3664595/165001248-33e180d5-fd6b-4389-b73e-79a21e76d5b0.png)
 

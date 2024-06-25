@@ -264,7 +264,7 @@ type RunnerResults struct {
 	jrpc.ServerReply
 }
 
-// HasRunnerResult is the interface implictly implemented by HTTPRunnerResults
+// HasRunnerResult is the interface implicitly implemented by HTTPRunnerResults
 // and GrpcRunnerResults so the common results can ge extracted irrespective
 // of the type.
 type HasRunnerResult interface {
@@ -338,7 +338,7 @@ func (r *RunnerOptions) Normalize() {
 	}
 	// nil aborter (last normalization step:)
 	r.Stop = NewAborter()
-	runnerChan := r.Stop.StopChan // need a copy to not race with assignement to nil
+	runnerChan := r.Stop.StopChan // need a copy to not race with assignment to nil
 	go func() {
 		gAbortMutex.Lock()
 		gOutstandingRuns++
