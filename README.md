@@ -14,16 +14,16 @@ Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load test
 
 Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
 
-Fortio runs at a specified query per second (qps) and records an histogram of execution time
-and calculates percentiles (e.g. p99 ie the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
+Fortio runs at a specified query per second (qps) and records a histogram of execution time
+and calculates percentiles (e.g., p99 i.e., the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
 
-The name fortio comes from greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
+The name fortio comes from Greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (4Mb docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (4Mb Docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and REST API to trigger run and see graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
-Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, tcp echoing, tcp proxying, http fan out/scatter and gather proxy server, GRPC echo/health in addition to http, etc...
+Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, TCP echoing, TCP proxying, HTTP fan out/scatter and gather proxy server, gRPC echo/health in addition to HTTP, etc...
 
 Fortio is quite mature and very stable with no known major bugs (lots of possible improvements if you want to contribute though!),
 and when bugs are found they are fixed quickly, so after 1 year of development and 42 incremental releases, we reached 1.0 in June 2018.
@@ -37,13 +37,13 @@ We also have moved some of the library to their own toplevel package, like:
 - Version helper: [fortio.org/version](https://github.com/fortio/version#version)
 - CLI helpers integrating the above to reduce toil making new tools [fortio.org/cli](https://github.com/fortio/cli#cli) and servers [fortio.org/scli](https://github.com/fortio/scli#scli) for arguments, flags, usage, dynamic config, etc...
 
-If you want to connect to fortio using https and fortio to provide real TLS certificates, or to multiplex grpc and regular http behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
+If you want to connect to fortio using HTTPS and fortio to provide real TLS certificates, or to multiplex gRPC and regular HTTP behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
 If you want fortio to generate detailed Open Telemetry traces use [Fortiotel](https://github.com/fortio/fortiotel#fortiotel).
 
 ## Installation
 
-We publish a multi architecture docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
+We publish a multi architecture Docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
 
 For instance:
 ```shell
@@ -70,7 +70,7 @@ rpm -i https://github.com/fortio/fortio/releases/download/v1.65.0/fortio-1.65.0-
 # and more, see assets in release page
 ```
 
-On a MacOS you can also install Fortio using [Homebrew](https://brew.sh/):
+On a macOS you can also install fortio using [Homebrew](https://brew.sh/):
 
 ```shell
 brew install fortio
@@ -80,7 +80,7 @@ On Windows, download https://github.com/fortio/fortio/releases/download/v1.65.0/
 ```
 fortio.exe server
 ```
-(at the prompt, allow the windows firewall to let connections in)
+(at the prompt, allow the Windows firewall to let connections in)
 
 Once `fortio server` is running, you can visit its web UI at [http://localhost:8080/fortio/](http://localhost:8080/fortio/)
 
@@ -91,39 +91,39 @@ and on [istio.io/docs/performance-and-scalability/synthetic-benchmarks/](https:/
 
 ## Command line arguments
 
-Fortio can be an http or grpc load generator, gathering statistics using the `load` subcommand,
-or start simple http and grpc ping servers, as well as a basic web UI, result graphing, tcp/udp echo, proxies, https redirector,
-with the `server` command or issue grpc ping messages using the `grpcping` command.
+Fortio can be a HTTP or gRPC load generator, gathering statistics using the `load` subcommand,
+or start simple HTTP and gRPC ping servers, as well as a basic web UI, result graphing, TCP/UDP echo, proxies, https redirector,
+with the `server` command or issue gRPC ping messages using the `grpcping` command.
 It can also fetch a single URL's for debugging when using the `curl` command (or the `-curl` flag to the load command).
-Likewise you can establish a single TCP (or unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
-You can run just the redirector with `redirect` or just the tcp echo with `tcp-echo`.
+Likewise you can establish a single TCP (or Unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
+You can run just the redirector with `redirect` or just the TCP echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
 The `version` command will print the short print version. `fortio buildinfo` will print the full
 build information.
 Lastly, you can learn which flags are available using `help` command.
 
-Most important flags for http load generation:
+Most important flags for HTTP load generation:
 
 | Flag         | Description, example |
 | -------------|----------------------|
 | `-qps rate` | Total Queries Per Seconds across all connections/threads or 0 for no wait/max qps |
 | `-nocatchup` | Do not try to reach the target qps by going faster when the service falls behind and then recovers. Makes QPS an absolute ceiling even if the service has some spikes in latency, fortio will not compensate (but also won't stress the target more than the set qps). Recommended to use jointly with `-uniform`. |
 | `-c connections` | Number of parallel simultaneous connections (and matching go routine) |
-| `-t duration` | How long to run the test  (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |
+| `-t duration` | How long to run the test (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |
 | `-n numcalls` | Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). |
 | `-payload str` or `-payload-file fname` | Switch to using POST with the given payload (see also `-payload-size` for random payload)|
 | `-uniform` | Spread the calls in time across threads for a more uniform call distribution. Works even better in conjunction with `-nocatchup`. |
-| `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e 1ms), use 1/10th of your expected typical latency |
+| `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e, 1ms), use 1/10th of your expected typical latency |
 | `-H "header: value"` | Can be specified multiple times to add headers (including Host:) |
 | `-a`     |  Automatically save JSON result with filename based on labels and timestamp |
-| `-json filename` | Filename or `-` for stdout to output json result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typically a better option)|
+| `-json filename` | Filename or `-` for stdout to output JSON result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typically a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
-| `-h2` |  Client calls will attempt to negotiate http/2.0 instead of http1.1, implies `-stdclient`|
-| `-X method` | Change http method to the one specified instead of automatic http GET or POST based on `-payload-*` or `-content-type`|
+| `-h2` |  Client calls will attempt to negotiate HTTP/2 instead of HTTP/1.1, implies `-stdclient`|
+| `-X method` | Change HTTP method to the one specified instead of automatic HTTP GET or POST based on `-payload-*` or `-content-type`|
 | `-logger-force-color` | For interactive runs for color instead of JSON output|
 | `-logger-no-color` | Force JSON output even when run from terminal|
 
-Changing the http options like the TLS options `-cert`, `-key`, `-cacert` when launching an echo/UI/rapi server will make these options the default for runs initiated from that server (or fetches/proxies etc).
+Changing the HTTP options like the TLS options `-cert`, `-key`, `-cacert` when launching an echo/UI/rapi server will make these options the default for runs initiated from that server (or fetches/proxies etc.).
 
 Full list of command line flags (`fortio help`):
 <details>
@@ -379,7 +379,7 @@ See also the FAQ entry about [fortio flags for best results](https://github.com/
 
 ## Server URLs and features
 
-Fortio `server` has the following feature for the http listening on 8080 (all paths and ports are configurable through flags above):
+Fortio `server` has the following feature for the HTTP listening on 8080 (all paths and ports are configurable through flags above):
 
 * A simple echo server which will echo back posted data (for any path not mentioned below).
 
@@ -387,38 +387,38 @@ Fortio `server` has the following feature for the http listening on 8080 (all pa
 
 | Parameter | Usage, example |
 |-----------|----------------|
-| delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
-| status    | http status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
-| size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the rest defaults to echoing back. |
-| close     | close the socket after answering e.g `close=true` to close after all requests or `close=5.3` to close after approximately 5.3% of requests|
-| header    | header(s) to add to the reply e.g. `&header=Foo:Bar&header=X:Y` |
+| delay     | duration to delay the response by. Can be a single value or a comma separated list of probabilities, e.g, `delay=150us:10,2ms:5,0.5s:1` for 10% of chance of a 150 us delay, 5% of a 2ms delay and 1% of a 1/2 second delay |
+| status    | HTTP status to return instead of 200. Can be a single value or a comma separated list of probabilities, e.g, `status=404:10,503:5,429:1` for 10% of chance of a 404 status, 5% of a 503 status and 1% of a 429 status |
+| size      | size of the payload to reply instead of echoing input. Also works as probabilities list. `size=1024:10,512:5` 10% of response will be 1k and 5% will be 512 bytes payload and the REST defaults to echoing back. |
+| close     | close the socket after answering e.g, `close=true` to close after all requests or `close=5.3` to close after approximately 5.3% of requests|
+| header    | header(s) to add to the reply e.g., `&header=Foo:Bar&header=X:Y` |
 | gzip      | If `Accept-Encoding: gzip` is passed in headers by the caller/client; and `gzip=true` is in the query args, all response will be gzipped; or if `gzip=42.7` is passed, approximately 42.7% will|
 
 `delay`, `close` and `header` query arguments are also supported for the `debug` endpoint which echoes back the request (gzip is always done if `Accept-Encoding: gzip` is present, status is always 200, and the payload is the echo back debug information).
 
 You can set a default value for all these by passing `-echo-server-default-params` to the server command line, for instance:
-`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with http 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a yaml nor the dynamicflag url for instance.
+`fortio server -echo-server-default-params="delay=0.5s:50,1s:40&status=418"` will make the server respond with HTTP 418 and a delay of either 0.5s half of the time, 1s 40% and no delay in 10% of the calls; unless any `?` query args is passed by the client. Note that the quotes (&quot;) are for the shell to escape the ampersand (&amp;) but should not be put in a YAML nor the dynamic flag URL for instance.
 
 * `/debug` will echo back the request in plain text for human debugging.
 
 * `/fortio/` A UI to
   * Run/Trigger tests and graph the results.
-  * A UI to browse saved results and single graph or multi graph them (comparative graph of min,avg, median, p75, p99, p99.9 and max).
+  * A UI to browse saved results and single graph or multi graph them (comparative graph of min, avg, median, p75, p99, p99.9 and max).
   * Proxy/fetch other URLs.
-  * `/fortio/data/index.tsv` an tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
+  * `/fortio/data/index.tsv` a tab separated value file conforming to Google cloud storage [URL list data transfer format](https://cloud.google.com/storage/transfer/create-url-list) so you can export/backup local results to the cloud.
   * Download/sync peer to peer JSON results files from other Fortio servers (using their `index.tsv` URLs).
   * Download/sync from an Amazon S3 or Google Cloud compatible bucket listings [XML URLs](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html).
 
-* API to trigger and cancel runs from the running server (like the form ui but more directly and with `async=on` option)
-  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the json object, for instance `jsonPath=metadata` allows to use the flagger webhook meta data for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
-  * `/fortio/rest/stop` stops all current run or by run id (passing `runid=` query argument).
+* API to trigger and cancel runs from the running server (like the form UI, but more directly and with `async=on` option)
+  * `/fortio/rest/run` starts a run; the arguments are either from the command line or from POSTed JSON; `jsonPath` can be provided to look for in a subset of the JSON object, for instance `jsonPath=metadata` allows using the flagger webhook metadata for fortio run parameters (see [Remote Triggered load test section below](#remote-triggered-load-test-server-mode-rest-api)).
+  * `/fortio/rest/stop` stops all current run or by run ID (passing `runid=` query argument).
   * `/fortio/rest/status` lists the current runs (or the options of a single one if `runid` is passed).
 
-* DNS api for troubleshooting latency based records / view of the DNS where fortio server is running. `/fortio/rest/dns?name=x` resolves all the IPs for `x`.
+* DNS API for troubleshooting latency based records / view of the DNS where fortio server is running. `/fortio/rest/dns?name=x` resolves all the IPs for `x`.
 
-The `report` mode is a readonly subset of the above directly on `/`.
+The `report` mode is a read-only subset of the above directly on `/`.
 
-There is also the GRPC health and ping servers, as well as the http->https redirector.
+There is also the gRPC health and ping servers, as well as the HTTP->HTTPS redirector.
 
 ## Example use and output
 
@@ -466,7 +466,7 @@ Fortio X.Y.Z echo server listening on port 10.10.10.10:8088
 
 ### Unix domain sockets
 
-You can use unix domain socket for any server/client:
+You can use Unix domain socket for any server/client:
 
 ```Shell
 $ fortio server --http-port /tmp/fortio-uds-http &
@@ -554,9 +554,9 @@ udp OK : 100000 (100.0 %)
 All done 100000 calls (plus 0 warmup) 0.039 ms avg, 103012.5 qps
 ```
 
-### GRPC
+### gRPC
 
-#### Simple grpc ping
+#### Simple gRPC ping
 
 ```Shell
 $ fortio grpcping -n 5 localhost
@@ -583,7 +583,7 @@ RTT histogram usec : count 15 avg 144.73333 +/- 44.48 min 101 max 259 sum 2171
 # target 50% 130
 ```
 
-#### Change the target port for grpc
+#### Change the target port for gRPC
 
 The value of `-grpc-port` (default 8079) is used when specifying a hostname or an IP address in `grpcping`. Add `:port` to the `grpcping` destination to
 change this behavior:
@@ -604,7 +604,7 @@ RTT histogram usec : count 3 avg 305.334 +/- 27.22 min 279.517 max 342.97 sum 91
 
 #### `grpcping` using TLS
 
-Note that since 1.40 the same applies to the main http server port, it will listen on TLS if `-cert` and `-key` flags are provided.
+Note that since 1.40 the same applies to the main HTTP server port, it will listen on TLS if `-cert` and `-key` flags are provided.
 
 For testing use `make certs` to generate self signed test certificates.
 
@@ -645,9 +645,9 @@ RTT histogram usec : count 3 avg 501.45233 +/- 94.7 min 371.828 max 595.441 sum 
 # target 50% 523.86
 ```
 
-#### GRPC to standard https service
+#### gRPC to standard HTTPS service
 
-`grpcping` can connect to a non-Fortio TLS server by prefacing the destination with `https://`:
+`grpcping` can connect to a non-fortio TLS server by prefacing the destination with `https://`:
 
 ```Shell
 $ fortio grpcping https://grpc.fortio.org
@@ -695,13 +695,13 @@ All done 40 calls (plus 4 warmup) 60.588 ms avg, 7.9 qps
 ```
 
 
-### Remote triggered load test (server mode rest API)
+### Remote triggered load test (server mode REST API)
 
 New since 1.18 the server has a `fortio/rest/run` endpoint similar to what the form UI submit in `fortio/` to start a run.
-  - plus `async` query arg or json value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result);
-  - plus read all the run configuration from either query args or jsonPath POSTed info;
+  - plus `async` query arg or JSON value `"on"` will make the run asynchronous (returns just the runid of the run instead of waiting for the result);
+  - plus read all the run configuration from either query args or JSONPath POSTed info;
   - compatible with [flagger](https://github.com/fluxcd/flagger) and other webhooks;
-  - New in 1.22: use `headers` json array to send headers (or multiple `&H=` query args).
+  - New in 1.22: use `headers` JSON array to send headers (or multiple `&H=` query args).
 
 Examples:
 
@@ -710,7 +710,7 @@ $ curl -v -d '{"metadata": {"url":"localhost:8080", "c":"1", "n":"1", "async":"o
      "localhost:8080/fortio/rest/run?jsonPath=.metadata"
 {"started": 3}
 ```
-makes a 1 connection 1 query run for localhost:8080 url asynchronously and saves results
+makes a 1 connection 1 query run for localhost:8080 URL asynchronously and saves results
 
 or minimally:
 ```shell
@@ -873,7 +873,7 @@ and you get in result.json:
 
 - There is also the `fortio/rest/stop` endpoint to stop a run by its id or all runs if not specified.
 
-### DNS Rest api example
+### DNS REST API example
 
 ```bash
 $ curl -s localhost:8080/fortio/rest/dns?name=debug.fortio.org | jq
@@ -897,7 +897,7 @@ Returns
 
 ### GRPC load test
 
-Uses `-s` to use multiple (h2/grpc) streams per connection (`-c`), request to hit the fortio ping grpc endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the json result:
+Uses `-s` to use multiple (h2/gRPC) streams per connection (`-c`), request to hit the fortio ping gRPC endpoint with a delay in replies of 0.25s and an extra payload for 10 bytes and auto save the JSON result:
 
 ```bash
 $ fortio load -a -grpc -ping -grpc-ping-delay 0.25s -payload "01234567890" -c 2 -s 4 https://fortio-stage.istio.io
@@ -996,7 +996,7 @@ Next, run the `load` command with the `-cacert` flag:
 fortio load -cacert /etc/ssl/certs/ca.crt -grpc localhost:8079
 ```
 
-### Curl like (single request) mode
+### cURL like (single request) mode
 
 ```Shell
 $ fortio load -curl -H Foo:Bar http://localhost:8080/debug
@@ -1020,11 +1020,11 @@ body:
 
 ```
 
-Note: if you do not want the default fortio User-Agent to be sent pass `-H user-agent:`. If you want to send a present yet empty User-Agent: header, pass `-H "user-agent: "` (ie only whitespace sends empty one, empty value doesn't send any).
+Note: if you do not want the default fortio User-Agent to be sent pass `-H user-agent:`. If you want to send a present yet empty User-Agent: header, pass `-H "user-agent: "` (i.e., only whitespace sends empty one, empty value doesn't send any).
 
 ### Report only UI
 
-If you have json files saved from running the full UI or downloaded, using the `-sync` option, from an amazon or google cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
+If you have JSON files saved from running the full UI or downloaded, using the `-sync` option, from an Amazon or Google Cloud storage bucket or from a peer fortio server (to synchronize from a peer fortio, use `http://`_peer_`:8080/data/index.tsv` as the sync URL). You can then serve just the reports:
 
 ```Shell
 $ fortio report -sync-interval 15m -sync "https://storage.googleapis.com/fortio-data?prefix=fortio.istio.io/"
@@ -1085,7 +1085,7 @@ body:
 
 a test
 ```
-There are 2 flags to further control the behaviour of the multi server proxies:
+There are 2 flags to further control the behavior of the multi-server proxies:
 
 - pass `-mirrorOriginFlag=false` to not mirror all headers and request type to targets.
 - pass `-multi-serial-mode` to stream request response serially instead of fetching in parallel and writing combined data after completion.
@@ -1094,7 +1094,7 @@ Also remember you can pass multiple `-M`.
 
 ### Using the TCP proxy server(s) feature
 
-Example: open 2 additional listening ports and forward all requests received on 8888 and 8889 (ipv6) to 8080 (regular http server)
+Example: open 2 additional listening ports and forward all requests received on 8888 and 8889 (IPv6) to 8080 (regular HTTP server)
 
 ```Shell
 $ fortio server -P "8888 [::1]:8080" -P "[::1]:8889 [::1]:8080"
@@ -1111,14 +1111,14 @@ Fortio X.Y.Z proxy for [::1]:8080 server listening on [::1]:8889
 
 ## Implementation details
 
-Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [http](fhttp/httprunner.go) and [grpc](fgrpc/grpcrunner.go).
-The [fhttp/](fhttp/) package includes a very high performance specialized http 1.1 client.
+Fortio is written in the [Go](https://golang.org) language and includes a scalable semi log histogram in [stats.go](stats/stats.go) and a periodic runner engine in [periodic.go](periodic/periodic.go) with specializations for [HTTP](fhttp/httprunner.go) and [gRPC](fgrpc/grpcrunner.go).
+The [fhttp/](fhttp/) package includes a very high performance specialized HTTP 1.1 client.
 You may find fortio's [logger](log/logger.go) useful as well.
 
-You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo http server in [echosrv/](echosrv/), or both the http echo and GRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
+You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo HTTP server in [echosrv/](echosrv/), or both the HTTP echo and gRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
 
-There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light http client without grpc or server side).
-A matching tiny (2Mb compressed) docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/).
+There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light HTTP client without gRPC or server side).
+A matching tiny (2Mb compressed) Docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/).
 
 ## More examples
 
@@ -1191,7 +1191,7 @@ Or graphically (through the [http://localhost:8080/fortio/](http://localhost:808
 
 Simple form/UI:
 
-Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated http errors:
+Sample requests with responses delayed by 250us and 0.5% of 503 and 1.5% of 429 simulated HTTP errors:
 
 ![Web UI form screenshot](https://user-images.githubusercontent.com/3664595/41430618-53d911d4-6fc5-11e8-8e35-d4f5fea4426a.png)
 
@@ -1225,7 +1225,7 @@ make lint
 make release-test
 ```
 
-When modifying Javascript, check with [standard](https://github.com/standard/standard):
+When modifying JavaScript, check with [standard](https://github.com/standard/standard):
 
 ```Shell
 standard --fix ui/static/js/fortio_chart.js
