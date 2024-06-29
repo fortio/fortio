@@ -50,7 +50,7 @@ type RunnerResults struct {
 	aborter       *periodic.Aborter
 }
 
-// Run tests udp request fetching. Main call being run at the target QPS.
+// Run tests UDP request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (udpstate *RunnerResults) Run(_ context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
@@ -71,14 +71,14 @@ type UDPOptions struct {
 	ReqTimeout  time.Duration
 }
 
-// RunnerOptions includes the base RunnerOptions plus udp specific
+// RunnerOptions includes the base RunnerOptions plus UDP specific
 // options.
 type RunnerOptions struct {
 	periodic.RunnerOptions
 	UDPOptions // Need to call Init() to initialize
 }
 
-// UDPClient is the client used for udp echo testing.
+// UDPClient is the client used for UDP echo testing.
 type UDPClient struct {
 	buffer        []byte
 	req           []byte
@@ -95,7 +95,7 @@ type UDPClient struct {
 }
 
 var (
-	// UDPURLPrefix is the URL prefix for triggering udp load.
+	// UDPURLPrefix is the URL prefix for triggering UDP load.
 	UDPURLPrefix = "udp://"
 	// UDPStatusOK is the map key on success.
 	UDPStatusOK  = "OK"
@@ -220,7 +220,7 @@ func (c *UDPClient) Close() int {
 	return c.socketCount
 }
 
-// RunUDPTest runs an udp test and returns the aggregated stats.
+// RunUDPTest runs a UDP test and returns the aggregated stats.
 // Some refactoring to avoid copy-pasta between the now 3 runners would be good.
 func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	o.RunType = "UDP"
@@ -251,13 +251,13 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 				log.LogVf("first hit of %s: err %v, received %d: %q", o.Destination, err, len(data), data)
 			}
 		}
-		// Setup the stats for each 'thread'
+		// Set up the stats for each 'thread'
 		udpstate[i].aborter = total.aborter
 		udpstate[i].RetCodes = make(UDPResultMap)
 	}
 	total.RunnerResults = r.Run()
-	// Numthreads may have reduced but it should be ok to accumulate 0s from
-	// unused ones. We also must cleanup all the created clients.
+	// Numthreads may have reduced, but it should be ok to accumulate 0s from
+	// unused ones. We also must clean up all the created clients.
 	keys := []string{}
 	for i := 0; i < numThreads; i++ {
 		total.SocketCount += udpstate[i].client.Close()

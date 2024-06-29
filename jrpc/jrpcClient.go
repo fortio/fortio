@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Opiniated JSON RPC / REST style library. Facilitates web JSON calls,
+// Opiniated JSON-RPC / REST style library. Facilitates web JSON calls,
 // using generics to serialize/deserialize any type.
 package jrpc // import "fortio.org/fortio/jrpc"
 
-// This package is a true self contained library, that doesn't rely on our logger nor other packages
+// This package is a true self-contained library, that doesn't rely on our logger nor other packages
 // in fortio/ outside of version/ (which now also doesn't rely on logger or any other package).
 // Naming is hard, we have Call, Send, Get, Fetch and FetchBytes pretty much all meaning retrieving data
 // from a URL with the variants depending on whether we have something to serialize and if it's bytes
-// or struct based in and out. Additionally *URL() variants are for when no additional headers or options
-// are needed and the url is just a plain string. If golang supported multiple signatures it would be a single
+// or struct based in and out. Additionally, *URL() variants are for when no additional headers or options
+// are needed, and the URL is just a plain string. If golang supported multiple signatures it would be a single
 // method name instead of 8.
 
 import (
@@ -62,10 +62,10 @@ func SetCallTimeout(t time.Duration) time.Duration {
 	return previous
 }
 
-// FetchError is a custom error type that preserves http result code if obtained.
+// FetchError is a custom error type that preserves HTTP result code if obtained.
 type FetchError struct {
 	Message string
-	// HTTP code if present, -1 for other errors.
+	// HTTP status code if present, -1 for other errors.
 	Code int
 	// Original (wrapped) error if any
 	Err error
@@ -114,9 +114,9 @@ func (fe *FetchError) Unwrap() error {
 	return fe.Err
 }
 
-// Call calls the url endpoint, POSTing a serialized as json optional payload
-// (pass nil for a GET http request) and returns the result, deserializing
-// json into type Q. T can be inferred so we declare Response Q first.
+// Call calls the URL endpoint, POSTing a serialized as JSON optional payload
+// (pass nil for a GET HTTP request) and returns the result, deserializing
+// JSON into type Q. T can be inferred so we declare Response Q first.
 func Call[Q any, T any](url *Destination, payload *T) (*Q, error) {
 	var bytes []byte
 	var err error
@@ -135,14 +135,14 @@ func CallURL[Q any, T any](url string, payload *T) (*Q, error) {
 }
 
 // Get fetches and deserializes the JSON returned by the Destination into a Q struct.
-// Used when there is no json payload to send. Note that Get can be a different http
+// Used when there is no JSON payload to send. Note that Get can be a different http
 // method than GET, for instance if url.Method is set to "POST".
 func Get[Q any](url *Destination) (*Q, error) {
 	return Fetch[Q](url, []byte{})
 }
 
 // GetArray fetches and deserializes the JSON returned by the Destination into a slice of
-// Q struct (ie the response is a json array).
+// Q struct (ie the response is a JSON array).
 func GetArray[Q any](url *Destination) ([]Q, error) {
 	slicePtr, err := Fetch[[]Q](url, []byte{})
 	if slicePtr == nil {
@@ -161,7 +161,7 @@ func Serialize(obj interface{}) ([]byte, error) {
 	return json.Marshal(obj)
 }
 
-// Deserialize deserializes json as a new object of desired type.
+// Deserialize deserializes JSON as a new object of desired type.
 func Deserialize[Q any](bytes []byte) (*Q, error) {
 	var result Q
 	if len(bytes) == 0 {
@@ -210,8 +210,8 @@ func SetHeaderIfMissing(headers http.Header, name, value string) {
 	headers.Set(name, value)
 }
 
-// Send fetches the result from url and sends optional payload as a POST, GET if missing.
-// Returns the http code (if no other error before then, -1 if there are errors),
+// Send fetches the result from URL and sends optional payload as a POST, GET if missing.
+// Returns the HTTP status code (if no other error before then, -1 if there are errors),
 // the bytes from the reply and error if any.
 func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 	curTimeout := dest.Timeout

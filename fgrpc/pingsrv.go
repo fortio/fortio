@@ -57,10 +57,10 @@ func (s *pingSrv) Ping(c context.Context, in *PingMessage) (*PingMessage, error)
 	return &out, nil
 }
 
-// PingServer starts a grpc ping (and health) echo server.
+// PingServer starts a gRPC ping (and health) echo server.
 // returns the port being bound (useful when passing "0" as the port to
 // get a dynamic server). Pass the healthServiceName to use for the
-// grpc service name health check (or pass DefaultHealthServiceName)
+// gRPC service name health check (or pass DefaultHealthServiceName)
 // to be marked as SERVING. Pass maxConcurrentStreams > 0 to set that option.
 func PingServer(port, healthServiceName string, maxConcurrentStreams uint32, tlsOptions *fhttp.TLSOptions) net.Addr {
 	if healthServiceName == "" {
@@ -103,7 +103,7 @@ func PingServer(port, healthServiceName string, maxConcurrentStreams uint32, tls
 	return addr
 }
 
-// PingServerTCP is PingServer() assuming tcp instead of possible unix domain socket port, returns
+// PingServerTCP is PingServer() assuming TCP instead of possible Unix domain socket port, returns
 // the numeric port.
 func PingServerTCP(port, healthServiceName string, maxConcurrentStreams uint32, tlsOptions *fhttp.TLSOptions) int {
 	addr := PingServer(port, healthServiceName, maxConcurrentStreams, tlsOptions)
@@ -179,7 +179,7 @@ func PingClientCall(serverAddr string, n int, payload string, delay time.Duratio
 // HealthResultMap short cut for the map of results to count.
 type HealthResultMap map[string]int64
 
-// GrpcHealthCheck makes a grpc client call to the standard grpc health check
+// GrpcHealthCheck makes a gRPC client call to the standard gRPC health check
 // service.
 func GrpcHealthCheck(serverAddr, svcname string, n int, tlsOpts *fhttp.TLSOptions, md metadata.MD) (*HealthResultMap, error) {
 	log.Infof("GrpcHealthCheck for %s svc '%s', %d iterations", serverAddr, svcname, n)

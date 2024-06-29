@@ -28,7 +28,7 @@ import (
 )
 
 // Counter is a type whose instances record values
-// and calculate stats (count,average,min,max,stddev).
+// and calculate stats (count, average, min, max, and stddev).
 type Counter struct {
 	Count        int64
 	Min          float64
@@ -125,7 +125,7 @@ func (c *Counter) Transfer(src *Counter) {
 
 // Histogram - written in go with inspiration from https://github.com/facebook/wdt/blob/master/util/Stats.h
 
-// The intervals are ]prev,current] so for "90" (previous is 80) the values in that bucket are >80 and <=90
+// The intervals are [prev, current] so for "90" (previous is 80) the values in that bucket are >80 and <=90
 // that way a cumulative % up to that bucket means X% of the data <= 90 (or 100-X% > 90), works well for max too
 // There are 2 special buckets - the first one is from min to and including 0,
 // one after the last for value > last and up to max.
@@ -152,7 +152,7 @@ var (
 	maxArrayValueIndex = -1          // Index of maxArrayValue
 )
 
-// Histogram extends Counter and adds an histogram.
+// Histogram extends Counter and adds a histogram.
 // Must be created using NewHistogram or anotherHistogram.Clone()
 // and not directly.
 type Histogram struct {
@@ -167,7 +167,7 @@ type Histogram struct {
 
 // Interval is a range from start to end.
 // Interval are left closed, open right expect the last one which includes Max.
-// ie [Start, End[ with the next one being [PrevEnd, NextEnd[.
+// i.e., [Start, End] with the next one being [PrevEnd, NextEnd].
 type Interval struct {
 	Start float64
 	End   float64
@@ -275,7 +275,7 @@ func (h *Histogram) record(v float64, count int) {
 	// Scaled value to bucketize - we used to subtract epsilon because the interval
 	// is open to the left ] start, end ] so when exactly on start it has
 	// to fall on the previous bucket: which is more correctly done using
-	// math.Ceil()-1 but that doesn't work... so back to epsilon distance check
+	// math.Ceil()-1 but that doesn't work... so back to epsilon distance.
 	scaledVal := (v - h.Offset) / h.Divider
 	var idx int
 	switch {
@@ -297,7 +297,7 @@ func (h *Histogram) record(v float64, count int) {
 }
 
 // CalcPercentile returns the value for an input percentile
-// e.g. for 90. as input returns an estimate of the original value threshold
+// e.g., for 90. as input returns an estimate of the original value threshold
 // where 90.0% of the data is below said threshold.
 // with 3 data points 10, 20, 30; p0-p33.33 == 10, p 66.666 = 20, p100 = 30
 // p33.333 - p66.666 = linear between 10 and 20; so p50 = 15
@@ -358,7 +358,7 @@ func (h *Histogram) Export() *HistogramData {
 	// export the data of each bucket of the histogram
 	for i := 0; i <= lastIdx; i++ {
 		if h.Hdata[i] == 0 {
-			// empty bucket: skip it but update prev which is needed for next iter
+			// empty bucket: skip it, but update prev which is needed for next iteration
 			if i < numValues {
 				prev = histogramBucketValues[i]
 			}
@@ -389,7 +389,7 @@ func (h *Histogram) Export() *HistogramData {
 	return &res
 }
 
-// CalcPercentiles calculates the requested percentile and add them to the
+// CalcPercentiles calculates the requested percentile and adds them to the
 // HistogramData. Potential TODO: sort or assume sorting and calculate all
 // the percentiles in 1 pass (greater and greater values).
 func (e *HistogramData) CalcPercentiles(percentiles []float64) *HistogramData {
@@ -409,7 +409,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		_, _ = fmt.Fprintf(out, "%s : no data\n", msg)
 		return
 	}
-	// the base counter part:
+	// the base counterpart:
 	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n",
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
 	_, _ = fmt.Fprintln(out, "# range, mid point, percentile, count")
@@ -554,7 +554,7 @@ func Round(v float64) float64 {
 // Occurrence is a type that stores the occurrences of the keys.
 // Could be directly an alias for map[string]int but keeping the
 // outer struct for parity with Counter and Histogram and to keep
-// 1.38's api.
+// 1.38's API.
 type Occurrence struct {
 	m map[string]int
 }
@@ -582,7 +582,7 @@ func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
 		totals[k] += v
 		if onlyOne {
 			// Special case for single entry in the map, no [] form
-			// and the count is omitted (already printed in runner ip count case).
+			// and the count is omitted (already printed in runner IP count case).
 			return k
 		}
 		if first {

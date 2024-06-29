@@ -38,7 +38,7 @@ func NewErrorReply(message string, err error) *ServerReply {
 	return &res
 }
 
-// Reply a struct as json (or just writes desired code).
+// Reply a struct as JSON (or just writes desired HTTP status code).
 func Reply[T any](w http.ResponseWriter, code int, data *T) error {
 	var bytes []byte
 	var err error

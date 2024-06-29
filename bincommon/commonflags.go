@@ -46,8 +46,8 @@ func (f *headersFlagList) Set(value string) error {
 
 // -- end of functions for -H support
 
-// FortioHook is used in cli and rapi to customize the run and introduce for instance clienttrace
-// and otel access logger.
+// FortioHook is used in fortio/cli and fortio/rapi to customize the run and introduce for instance clienttrace
+// and fortiotel access logger.
 type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
 
 var (
@@ -89,10 +89,10 @@ var (
 		"`Path` to a custom CA certificate file to be used for the TLS client connections, "+
 			"if empty, use https:// prefix for standard internet/system CAs")
 	mTLS = flag.Bool("mtls", false, "Require client certificate signed by -cacert for client connections")
-	// LogErrorsFlag determines if the non ok http error codes get logged as they occur or not.
+	// LogErrorsFlag determines if the non-OK HTTP error codes get logged as they occur or not.
 	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
-	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
-	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
+	// RunIDFlag is optional RunID to be present in JSON results (and default JSON result filename if not 0).
+	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to JSON result and auto save filename, to match server mode")
 	// HelpFlag is true if help/usage is being requested by the user.
 	warmupFlag = flag.Bool("sequential-warmup", false,
 		"http(s) runner warmup done sequentially instead of parallel. When set, restores pre 1.21 behavior")
@@ -120,12 +120,12 @@ func SharedMain() {
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// FlagResolveIPType indicates which IP types to resolve.
-	// With round robin resolution now the default, you are likely to get ipv6 which may not work if
-	// use both type (`ip`). In particular some test environments like the CI do have ipv6
+	// With round-robin resolution now the default, you are likely to get IPv6 which may not work if
+	// use both type (`ip`). In particular some test environments like the CI do have IPv6
 	// for localhost but fail to connect. So we made the default ip4 only.
 	dflag.Flag("resolve-ip-type", fnet.FlagResolveIPType)
-	// FlagResolveMethod decides which method to use when multiple ips are returned for a given name
-	// default assumes one gets all the ips in the first call and does round robin across these.
+	// FlagResolveMethod decides which method to use when multiple IPs are returned for a given name
+	// default assumes one gets all the IPs in the first call and does round-robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
 	dflag.Flag("dns-method", fnet.FlagResolveMethod)
 	dflag.Flag("echo-server-default-params", fhttp.DefaultEchoServerParams)
@@ -140,8 +140,8 @@ func SharedMain() {
 // FetchURL is fetching url content and exiting with 1 upon error.
 // common part between fortio_main and fcurl.
 func FetchURL(o *fhttp.HTTPOptions) {
-	// keepAlive could be just false when making 1 fetch but it helps debugging
-	// the http client when making a single request if using the flags
+	// keepAlive could be just false when making 1 fetch, but it helps debugging
+	// the HTTP client when making a single request if using the flags
 	o.DataWriter = os.Stdout
 	client, _ := fhttp.NewClient(o)
 	// big gotcha that nil client isn't nil interface value (!)

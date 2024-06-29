@@ -254,7 +254,7 @@ func TestHistogramData(t *testing.T) {
 	h.Log("test multi count", percs)
 }
 
-// Checks properties that should be true for all non empty histograms.
+// Checks properties that should be true for all non-empty histograms.
 func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 	n := len(e.Data)
 	if n <= 0 {
@@ -415,7 +415,7 @@ func TestHistogramExportRandom(t *testing.T) {
 }
 
 func TestHistogramLastBucket(t *testing.T) {
-	// Use -1 offset so first bucket is negative values
+	// Use -1 offset, so first bucket is negative values
 	h := NewHistogram( /* offset */ -1 /*scale */, 1)
 	h.Record(-1)
 	h.Record(0)
@@ -852,7 +852,7 @@ func TestMultipleConnIPOccurrence(t *testing.T) {
 	_ = occurrenceOne.AggregateAndToString(totalMap)
 	_ = occurrenceTwo.AggregateAndToString(totalMap)
 
-	// The occurrence of ip one should be 5 and the occurrence of ip two should be 3.
+	// The occurrence of IP one should be 5 and the occurrence of IP two should be 3.
 	if totalMap[ipOne] != 5 || totalMap[ipTwo] != 3 {
 		t.Errorf("Incorrect total IP usage count.")
 	}
