@@ -72,8 +72,8 @@ var (
 	// default assumes one gets all the ips in the first call and does round robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
 	FlagResolveMethod = dflag.New("cached-rr",
-		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round robin, rnd for random, "+
-			"first for first answer (pre 1.30 behavior), rr for round robin.").WithValidator(dnsMethodValidator)
+		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round-robin, rnd for random, "+
+			"first for first answer (pre 1.30 behavior), rr for round-robin.").WithValidator(dnsMethodValidator)
 	// cache for cached-rr mode.
 	dnsMutex sync.Mutex
 	// all below are updated under lock.

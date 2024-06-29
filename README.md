@@ -136,28 +136,29 @@ where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
  tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),
  report (report only UI server), redirect (only the redirect server),
- proxies (only the -M and -P configured proxies), grpcping (grpc client),
+ proxies (only the -M and -P configured proxies), grpcping (gRPC client),
  or curl (single URL debug), or nc (single tcp or udp:// connection),
  or version (prints the full version and build details).
-where target is a url (http load tests) or host:port (grpc health test),
+where target is a URL (http load tests) or host:port (grpc health test),
  or tcp://host:port (tcp load test), or udp://host:port (udp load test).
 or 1 of the special arguments
         fortio {help|envhelp|version|buildinfo}
 flags:
   -H key:value
-        Additional http header(s) or grpc metadata. Multiple key:value pairs can be
+        Additional HTTP header(s) or gRPC metadata. Multiple key:value pairs can be
 passed using multiple -H.
   -L    Follow redirects (implies -std-client) - do not use for load test
   -M value
-        Http multi proxy to run, e.g -M "localport1 baseDestURL1 baseDestURL2" -M ...
+        HTTP multi proxy to run, e.g -M "localport1 baseDestURL1 baseDestURL2" -M ...
   -P value
-        Tcp proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
+        TCP proxies to run, e.g -P "localport1 dest_host1:dest_port1" -P "[::1]:0
 www.google.com:443" ...
   -X string
         HTTP method to use instead of GET/POST depending on payload/content-type
   -a    Automatically save JSON result with filename based on labels & timestamp
-  -abort-on code
-        Http code that if encountered aborts the run. e.g. 503 or -1 for socket errors.
+  -abort-on int
+        HTTP status code that if encountered aborts the run. e.g., 503 or -1 for socket
+errors.
   -access-log-file path
         file path to log all requests to. Maybe have performance impacts
   -access-log-format format
@@ -165,7 +166,7 @@ www.google.com:443" ...
   -allow-initial-errors
         Allow and don't abort on initial warmup errors
   -base-url URL
-        base URL used as prefix for data/index.tsv generation. (when empty, the url from
+        base URL used as prefix for data/index.tsv generation. (when empty, the URL from
 the first request is used)
   -c int
         Number of connections/goroutine/threads (default 4)
@@ -177,7 +178,7 @@ if empty, use https:// prefix for standard internet/system CAs
   -cert Path
         Path to the certificate file to be used for client or server TLS
   -compression
-        Enable http compression
+        Enable HTTP compression
   -config-dir directory
         Config directory to watch for dynamic flag changes
   -config-port port
@@ -187,19 +188,19 @@ if empty, use https:// prefix for standard internet/system CAs
 to unlimited. e.g. 10:30 means randomly choose a max connection reuse threshold between
 10 and 30 requests.
   -content-type string
-        Sets http content type. Setting this value switches the request method from GET
+        Sets HTTP content type. Setting this value switches the request method from GET
 to POST.
   -curl
         Just fetch the content once
   -curl-stdout-headers
-        Restore pre 1.22 behavior where http headers of the fast client are output to
+        Restore pre 1.22 behavior where HTTP headers of the fast client are output to
 stdout in curl mode. now stderr by default.
   -data-dir Directory
         Directory where JSON results are stored/read (default ".")
   -dns-method method
         When a name resolves to multiple ip, which method to pick: cached-rr for cached
-round robin, rnd for random, first for first answer (pre 1.30 behavior), rr for round
-robin. (default cached-rr)
+round-robin, rnd for random, first for first answer (pre 1.30 behavior), rr for
+round-robin. (default cached-rr)
   -echo-debug-path URI
         http echo server URI for debug, empty turns off that part (more secure) (default
 "/debug")
@@ -207,34 +208,34 @@ robin. (default cached-rr)
         Default parameters/querystring to use if there isn't one provided explicitly. E.g
 "status=404&delay=3s"
   -gomaxprocs int
-        Setting for runtime.GOMAXPROCS, &lt;1 doesn't change the default
+        Setting for runtime.GOMAXPROCS, &lt; 1 doesn't change the default
   -grpc
-        Use GRPC (health check by default, add -ping for ping) for load testing
+        Use gRPC (health check by default, add -ping for ping) for load testing
   -grpc-compression
-        Enable grpc compression
+        Enable gRPC compression
   -grpc-max-streams uint
-        MaxConcurrentStreams for the grpc server. Default (0) is to leave the option
+        MaxConcurrentStreams for the gRPC server. Default (0) is to leave the option
 unset.
   -grpc-ping-delay duration
-        grpc ping delay in response
+        gRPC ping delay in response
   -grpc-port port
         grpc server port. Can be in the form of host:port, ip:port or port or
-/unix/domain/path or "disabled" to not start the grpc server. (default "8079")
+/unix/domain/path or "disabled" to not start the gRPC server. (default "8079")
   -h2
-        Attempt to use http2.0 / h2 (instead of http 1.1) for both TLS and h2c
+        Attempt to use HTTP/2.0 / h2 (instead of HTTP/1.1) for both TLS and h2c
   -halfclose
         When not keepalive, whether to half close the connection (only for fast http)
   -health
-        grpc ping client mode: use health instead of ping
+        gRPC ping client mode: use health instead of ping
   -healthservice string
         which service string to pass to health check
   -http-port port
-        http echo server port. Can be in the form of host:port, ip:port, port or
+        http-echo server port. Can be in the form of host:port, ip:port, port or
 /unix/domain/path or "disabled". (default "8080")
   -http1.0
-        Use http1.0 (instead of http 1.1)
+        Use HTTP/1.0 (instead of HTTP/1.1)
   -httpbufferkb kbytes
-        Size of the buffer (max data size) for the optimized http client in kbytes
+        Size of the buffer (max data size) for the optimized HTTP client in kbytes
 (default 128)
   -httpccch
         Check for Connection: Close Header
@@ -243,18 +244,18 @@ unset.
   -jitter
         set to true to de-synchronize parallel clients' by 10%
   -json path
-        Json output to provided file path or '-' for stdout (empty = no json output,
+        JSON output to provided file path or '-' for stdout (empty = no json output,
 unless -a is used)
-  -k    Do not verify certs in https/tls/grpc connections
+  -k    Do not verify certs in HTTPS/TLS/gRPC connections
   -keepalive
-        Keep connection alive (only for fast http 1.1) (default true)
+        Keep connection alive (only for fast HTTP/1.1) (default true)
   -key Path
         Path to the key file matching the -cert
   -labels string
         Additional config data/labels to add to the resulting JSON, defaults to target
 URL and hostname
   -log-errors
-        Log http non 2xx/418 error codes as they occur (default true)
+        Log HTTP non-2xx/418 status codes as they occur (default true)
   -logger-file-line
         Filename and line numbers emitted in JSON logs, use -logger-file-line=false to
 disable (default true)
@@ -280,12 +281,12 @@ size= argument. In Kbytes. (default 256)
   -mtls
         Require client certificate signed by -cacert for client connections
   -multi-mirror-origin
-        Mirror the request url to the target for multi proxies (-M) (default true)
+        Mirror the request URL to the target for multi proxies (-M) (default true)
   -multi-serial-mode
         Multi server (-M) requests one at a time instead of parallel mode
   -n int
         Run for exactly this number of calls instead of duration. Default (0) is to use
-duration (-t). Default is 1 when used as grpc ping count.
+duration (-t). Default is 1 when used as gRPC ping count.
   -nc-dont-stop-on-eof
         in netcat (nc) mode, don't abort as soon as remote side closes
   -no-reresolve
@@ -301,14 +302,14 @@ fails to keep up temporarily
   -payload string
         Payload string to send along
   -payload-file path
-        File path to be use as payload (POST for http), replaces -payload when set.
+        File path to be use as payload (POST for HTTP), replaces -payload when set.
   -payload-size int
         Additional random payload size, replaces -payload when set > 0, must be smaller
-than -maxpayloadsizekb. Setting this switches http to POST.
+than -maxpayloadsizekb. Setting this switches HTTP to POST.
   -ping
-        grpc load test: use ping instead of health
+        gRPC load test: use ping instead of health
   -pprof
-        Enable pprof http endpoint in the Web UI handler server
+        Enable pprof HTTP endpoint in the Web UI handler server
   -profile file
         write .cpu and .mem profiles to file
   -proxy-all-headers
@@ -321,9 +322,9 @@ on the fetch2 ui/server endpoint (default true)
   -r float
         Resolution of the histogram lowest buckets in seconds (default 0.001)
   -redirect-port port
-        Redirect all incoming traffic to https URL (need ingress to work properly). Can
-be in the form of host:port, ip:port, port or "disabled" to disable the feature. (default
-"8081")
+        Redirect all incoming traffic to https:// URL (need ingress to work properly).
+Can be in the form of host:port, ip:port, port or "disabled" to disable the feature.
+(default "8081")
   -resolve IP
         Resolve host name to this IP
   -resolve-ip-type type
@@ -331,7 +332,7 @@ be in the form of host:port, ip:port, port or "disabled" to disable the feature.
   -runid int
         Optional RunID to add to json result and auto save filename, to match server mode
   -s int
-        Number of streams per grpc connection (default 1)
+        Number of streams per gRPC connection (default 1)
   -sequential-warmup
         http(s) runner warmup done sequentially instead of parallel. When set, restores
 pre 1.21 behavior
@@ -344,32 +345,32 @@ pre 1.21 behavior
   -stream
         Stream payload from stdin (only for fortio curl mode)
   -sync URL
-        index.tsv or s3/gcs bucket xml URL to fetch at startup for server modes.
+        index.tsv or s3/gcs bucket XML URL to fetch at startup for server modes.
   -sync-interval duration
-        Refresh the url every given interval (default, no refresh)
+        Refresh the URL every given interval (default, no refresh)
   -t duration
         How long to run the test or 0 to run until ^C (default 5s)
   -tcp-port port
-        tcp echo server port. Can be in the form of host:port, ip:port, port or
+        tcp-echo server port. Can be in the form of host:port, ip:port, port or
 /unix/domain/path or "disabled". (default "8078")
   -timeout duration
-        Connection and read timeout value (for http) (default 3s)
+        Connection and read timeout value (for HTTP) (default 3s)
   -udp-async
         if true, udp echo server will use separate go routine to reply
   -udp-port port
-        udp echo server port. Can be in the form of host:port, ip:port, port or
+        udp-echo server port. Can be in the form of host:port, ip:port, port or
 "disabled". (default "8078")
   -udp-timeout duration
         Udp timeout (default 750ms)
   -ui-path URI
-        http server URI for UI, empty turns off that part (more secure) (default
+        HTTP server URI for UI, empty turns off that part (more secure) (default
 "/fortio/")
   -uniform
         set to true to de-synchronize parallel clients' requests uniformly
   -unix-socket path
         Unix domain socket path to use for physical connection
   -user user:password
-        User credentials for basic authentication (for http). Input data format should be
+        User credentials for basic authentication (for HTTP). Input data format should be
 user:password
 <!-- USAGE_END -->
 </pre>
@@ -459,7 +460,7 @@ Use the `-http-port` flag to change this behavior:
 $ fortio server -http-port 10.10.10.10:8088
 UI starting - visit:
 http://10.10.10.10:8088/fortio/
-Https redirector running on :8081
+https redirector running on :8081
 Fortio X.Y.Z grpc ping server listening on port :8079
 Fortio X.Y.Z echo server listening on port 10.10.10.10:8088
 ```
@@ -617,7 +618,7 @@ you must provide:
 $ fortio server -cert /path/to/fortio/server.crt -key /path/to/fortio/server.key
 UI starting - visit:
 http://localhost:8080/fortio/
-Https redirector running on :8081
+https redirector running on :8081
 Fortio X.Y.Z grpc ping server listening on port :8079
 Fortio X.Y.Z echo server listening on port localhost:8080
 Using server certificate /path/to/fortio/server.crt to construct TLS credentials
@@ -1030,7 +1031,7 @@ If you have json files saved from running the full UI or downloaded, using the `
 $ fortio report -sync-interval 15m -sync "https://storage.googleapis.com/fortio-data?prefix=fortio.istio.io/"
 Browse only UI starting - visit:
 http://localhost:8080/
-Https redirector running on :8081
+https redirector running on :8081
 ```
 
 ### Using the HTTP fan out / multi proxy feature

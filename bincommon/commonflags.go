@@ -51,31 +51,31 @@ func (f *headersFlagList) Set(value string) error {
 type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
 
 var (
-	compressionFlag = flag.Bool("compression", false, "Enable http compression")
-	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast http 1.1)")
+	compressionFlag = flag.Bool("compression", false, "Enable HTTP compression")
+	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast HTTP/1.1)")
 	halfCloseFlag   = flag.Bool("halfclose", false,
 		"When not keepalive, whether to half close the connection (only for fast http)")
-	httpReqTimeoutFlag  = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for http)")
+	httpReqTimeoutFlag  = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for HTTP)")
 	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (slower but supports h2/h2c)")
-	http10Flag          = flag.Bool("http1.0", false, "Use http1.0 (instead of http 1.1)")
-	h2Flag              = flag.Bool("h2", false, "Attempt to use http2.0 / h2 (instead of http 1.1) for both TLS and h2c")
-	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in https/tls/grpc connections")
+	http10Flag          = flag.Bool("http1.0", false, "Use HTTP/1.0 (instead of HTTP/1.1)")
+	h2Flag              = flag.Bool("h2", false, "Attempt to use HTTP/2.0 / h2 (instead of HTTP/1.1) for both TLS and h2c")
+	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in HTTPS/TLS/gRPC connections")
 	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	resolve             = flag.String("resolve", "", "Resolve host name to this `IP`")
 	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
-	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for http). Input data format"+
+	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for HTTP). Input data format"+
 		" should be `user:password`")
 	contentTypeFlag = flag.String("content-type", "",
-		"Sets http content type. Setting this value switches the request method from GET to POST.")
+		"Sets HTTP content type. Setting this value switches the request method from GET to POST.")
 	// PayloadSizeFlag is the value of -payload-size.
 	PayloadSizeFlag = flag.Int("payload-size", 0, "Additional random payload size, replaces -payload when set > 0,"+
-		" must be smaller than -maxpayloadsizekb. Setting this switches http to POST.")
+		" must be smaller than -maxpayloadsizekb. Setting this switches HTTP to POST.")
 	// PayloadFlag is the value of -payload.
 	PayloadFlag = flag.String("payload", "", "Payload string to send along")
 	// PayloadFileFlag is the value of -paylaod-file.
-	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for http), replaces -payload when set.")
+	PayloadFileFlag = flag.String("payload-file", "", "File `path` to be use as payload (POST for HTTP), replaces -payload when set.")
 	// PayloadStreamFlag for streaming payload from stdin (curl only).
 	PayloadStreamFlag = flag.Bool("stream", false, "Stream payload from stdin (only for fortio curl mode)")
 	// UnixDomainSocket to use instead of regular host:port.
@@ -90,14 +90,14 @@ var (
 			"if empty, use https:// prefix for standard internet/system CAs")
 	mTLS = flag.Bool("mtls", false, "Require client certificate signed by -cacert for client connections")
 	// LogErrorsFlag determines if the non ok http error codes get logged as they occur or not.
-	LogErrorsFlag = flag.Bool("log-errors", true, "Log http non 2xx/418 error codes as they occur")
+	LogErrorsFlag = flag.Bool("log-errors", true, "Log HTTP non-2xx/418 status codes as they occur")
 	// RunIDFlag is optional RunID to be present in json results (and default json result filename if not 0).
 	RunIDFlag = flag.Int64("runid", 0, "Optional RunID to add to json result and auto save filename, to match server mode")
 	// HelpFlag is true if help/usage is being requested by the user.
 	warmupFlag = flag.Bool("sequential-warmup", false,
 		"http(s) runner warmup done sequentially instead of parallel. When set, restores pre 1.21 behavior")
 	curlHeadersStdout = flag.Bool("curl-stdout-headers", false,
-		"Restore pre 1.22 behavior where http headers of the fast client are output to stdout in curl mode. now stderr by default.")
+		"Restore pre 1.22 behavior where HTTP headers of the fast client are output to stdout in curl mode. now stderr by default.")
 	// ConnectionReuseRange Dynamic string flag to set the max connection reuse range.
 	ConnectionReuseRange = dflag.Flag("connection-reuse", dflag.New("",
 		"Range `min:max` for the max number of connections to reuse for each thread, default to unlimited. "+
@@ -114,9 +114,9 @@ var (
 // is now moved to the [fortio.org/cli] and [fortio.org/scli] packages.
 func SharedMain() {
 	flag.Var(&headersFlags, "H",
-		"Additional http header(s) or grpc metadata. Multiple `key:value` pairs can be passed using multiple -H.")
+		"Additional HTTP header(s) or gRPC metadata. Multiple `key:value` pairs can be passed using multiple -H.")
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
-		"Size of the buffer (max data size) for the optimized http client in `kbytes`")
+		"Size of the buffer (max data size) for the optimized HTTP client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
 		"Check for Connection: Close Header")
 	// FlagResolveIPType indicates which IP types to resolve.
