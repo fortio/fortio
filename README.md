@@ -70,7 +70,7 @@ rpm -i https://github.com/fortio/fortio/releases/download/v1.65.0/fortio-1.65.0-
 # and more, see assets in release page
 ```
 
-On a macOS you can also install fortio using [Homebrew](https://brew.sh/):
+On macOS you can also install Fortio using [Homebrew](https://brew.sh/):
 
 ```shell
 brew install fortio
