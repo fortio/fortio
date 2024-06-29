@@ -94,9 +94,9 @@ function makeTitle (res) {
   if (res.Labels !== '') {
     firstLine += res.Labels + ' - '
   }
-  if (res.URL) { // http results
+  if (res.URL) { // HTTP results
     firstLine += res.URL
-  } else { // grpc/tcp results
+  } else { // gRPC/TCP results
     firstLine += res.Destination
   }
   title.push(firstLine + ' - ' + formatDate(res.StartTime))
@@ -123,7 +123,7 @@ function makeTitle (res) {
   } else {
     // Old calculation (for older saved data)
     let statusOk = res.RetCodes[200]
-    if (!statusOk) { // grpc or tcp results
+    if (!statusOk) { // gRPC or TCP results
       statusOk = res.RetCodes.SERVING || res.RetCodes.OK
     }
     if (statusOk !== total) {

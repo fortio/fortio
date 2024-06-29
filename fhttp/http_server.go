@@ -84,9 +84,9 @@ func QueryArg(r *http.Request, key string) string {
 	return r.Form.Get(key)
 }
 
-// EchoHandler is an http server handler echoing back the input.
+// EchoHandler is an HTTP server handler echoing back the input.
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
-	// EchoHandler is an http server handler echoing back the input.
+	// EchoHandler is an HTTP server handler echoing back the input.
 	if log.LogVerbose() {
 		log.LogAndCall("Echo", func(w http.ResponseWriter, r *http.Request) {
 			echoHandler(w, r)
@@ -233,14 +233,14 @@ func closingServer(listener net.Listener) error {
 	return err
 }
 
-// HTTPServer creates an http server named name on address/port port.
+// HTTPServer creates an HTTP server named name on address/port.
 // Port can include binding address and/or be port 0.
 func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 	m := http.NewServeMux()
 	return m, HTTPServerWithHandler(name, port, m)
 }
 
-// HTTPServerWithHandler creates and h2c compatible server named name on address/port port.
+// HTTPServerWithHandler creates and h2c compatible server named name on address/port.
 // Port can include binding address and/or be port 0.
 // Takes in a handler.
 func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
@@ -290,12 +290,12 @@ func HTTPSServer(name string, port string, to *TLSOptions) (*http.ServeMux, net.
 	return m, addr
 }
 
-// DynamicHTTPServer listens on an available port, sets up an http or a closing
-// server simulating an https server (when closing is true) server on it and
+// DynamicHTTPServer listens on an available port, sets up an HTTP or a closing
+// server simulating an HTTPS server (when closing is true) server on it and
 // returns the listening port and mux to which one can attach handlers to.
 // Note: in a future version of istio, the closing will be actually be secure
-// on/off and create an https server instead of a closing server.
-// As this is a dynamic tcp socket server, the address is TCP.
+// on/off and create an HTTPS server instead of a closing server.
+// As this is a dynamic TCP socket server, the address is TCP.
 func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	if !closing {
 		mux, addr := HTTPServer("dynamic", "0")
@@ -314,7 +314,7 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 }
 
 /*
-// DebugHandlerTemplate returns debug/useful info on the http request.
+// DebugHandlerTemplate returns debug/useful info on the HTTP request.
 // slower heavier but nicer source code version of DebugHandler
 func DebugHandlerTemplate(w http.ResponseWriter, r *http.Request) {
 	log.LogVf("%v %v %v %v", r.Method, r.URL, r.Proto, r.RemoteAddr)
@@ -358,7 +358,7 @@ environment:
 }
 */
 
-// DebugHandler returns debug/useful info to http client.
+// DebugHandler returns debug/useful info to HTTP client.
 // Note this can be dangerous and shouldn't be exposed to the internet.
 // A safer version is available as part of fortio's proxy
 // https://github.com/fortio/proxy/blob/main/rp/reverse_proxy.go
@@ -450,16 +450,16 @@ func EchoDebugPath(debugPath string) string {
 	return strings.TrimSuffix(debugPath, "/") + "/echo/"
 }
 
-// Serve starts a debug / echo http server on the given port.
+// Serve starts a debug / echo HTTP server on the given port.
 // Returns the mux and addr where the listening socket is bound.
 // The .Port can be retrieved from it when requesting the 0 port as
-// input for dynamic http server.
+// input for dynamic HTTP server.
 func Serve(port, debugPath string) (*http.ServeMux, net.Addr) {
 	return ServeTLS(port, debugPath, &TLSOptions{})
 }
 
 // ServeTLS starts a debug / echo server on the given port,
-// using TLS if certPath and keyPath aren't not empty.
+// using TLS if certPath and keyPath aren't empty.
 func ServeTLS(port, debugPath string, to *TLSOptions) (*http.ServeMux, net.Addr) {
 	startTime = time.Now()
 	var mux *http.ServeMux
@@ -481,7 +481,7 @@ func ServeTLS(port, debugPath string, to *TLSOptions) (*http.ServeMux, net.Addr)
 }
 
 // ServeTCP is Serve() but restricted to TCP (return address is assumed
-// to be TCP - will panic for unix domain).
+// to be TCP - will panic for Unix domain).
 func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 	mux, addr := Serve(port, debugPath)
 	if addr == nil {
@@ -492,7 +492,7 @@ func ServeTCP(port, debugPath string) (*http.ServeMux, *net.TCPAddr) {
 
 // -- formerly in ui handler
 
-// SetupPPROF add pprof to the mux (mirror the init() of http pprof).
+// SetupPPROF add pprof to the mux (mirror the init() of HTTP pprof).
 func SetupPPROF(mux *http.ServeMux) {
 	log.Warnf("pprof endpoints enabled on /debug/pprof/*")
 	mux.HandleFunc("/debug/pprof/", log.LogAndCall("pprof:index", pprof.Index))
@@ -502,7 +502,7 @@ func SetupPPROF(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/trace", log.LogAndCall("pprof:trace", pprof.Trace))
 }
 
-// -- Fetch er (simple http proxy) --
+// -- Fetch er (simple HTTP proxy) --
 
 var (
 	sharedProxyClient *http.Client
@@ -589,7 +589,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	opts.Init(url)
 	OnBehalfOf(opts, r)
-	//nolint:contextcheck // TODO: yes we should plug an aborter in the http options that's based on this request's context.
+	//nolint:contextcheck // TODO: yes we should plug an aborter in the HTTP options that's based on this request's context.
 	client, _ := NewClient(opts)
 	if client == nil {
 		return // error logged already

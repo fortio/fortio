@@ -36,8 +36,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// Dial dials grpc using insecure or tls transport security when serverAddr
-// has prefixHTTPS or cert is provided. If override is set to a non empty string,
+// Dial dials gRPC using insecure or TLS transport security when serverAddr
+// has prefixHTTPS or cert is provided. If override is set to a non-empty string,
 // it will override the virtual host name of authority in requests.
 func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
@@ -66,7 +66,7 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 	return conn, err
 }
 
-// TODO: refactor common parts between http and grpc runners.
+// TODO: refactor common parts between HTTP and gRPC runners.
 
 // GRPCRunnerResults is the aggregated result of an GRPCRunner.
 // Also is the internal type used per thread/goroutine.
@@ -116,27 +116,27 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 	return false, status.String()
 }
 
-// GRPCRunnerOptions includes the base RunnerOptions plus grpc specific
+// GRPCRunnerOptions includes the base RunnerOptions plus gRPC specific
 // options.
 type GRPCRunnerOptions struct {
 	periodic.RunnerOptions
 	fhttp.TLSOptions
 	Destination        string
-	Service            string            // Service to be checked when using grpc health check
+	Service            string            // Service to be checked when using gRPC health check
 	Profiler           string            // file to save profiles to. defaults to no profiling
-	Payload            string            // Payload to be sent for grpc ping service
+	Payload            string            // Payload to be sent for gRPC ping service
 	Streams            int               // number of streams. total go routines and data streams will be streams*numthreads.
-	Delay              time.Duration     // Delay to be sent when using grpc ping service
+	Delay              time.Duration     // Delay to be sent when using gRPC ping service
 	CertOverride       string            // Override the cert virtual host of authority for testing
 	AllowInitialErrors bool              // whether initial errors don't cause an abort
-	UsePing            bool              // use our own Ping proto for grpc load instead of standard health check one.
+	UsePing            bool              // use our own Ping proto for gRPC load instead of standard health check one.
 	Metadata           metadata.MD       // input metadata that will be added to the request
-	dialOptions        []grpc.DialOption // grpc dial options extracted from Metadata (authority and user-agent extracted)
+	dialOptions        []grpc.DialOption // gRPC dial options extracted from Metadata (authority and user-agent extracted)
 	filteredMetadata   metadata.MD       // filtered version of Metadata metadata (without authority and user-agent)
-	GrpcCompression    bool              // enable grpc compression
+	GrpcCompression    bool              // enable gRPC compression
 }
 
-// RunGRPCTest runs an http test and returns the aggregated stats.
+// RunGRPCTest runs an HTTP test and returns the aggregated stats.
 //
 //nolint:funlen, gocognit, gocyclo
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
@@ -267,7 +267,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			}
 			total.RetCodes[k] += grpcstate[i].RetCodes[k]
 		}
-		// TODO: if grpc client needs 'cleanup'/Close like http one, do it on original NumThreads
+		// TODO: if gRPC client needs 'cleanup'/Close like HTTP one, do it on original NumThreads
 	}
 	// Cleanup state:
 	r.Options().ReleaseRunners()

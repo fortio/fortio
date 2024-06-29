@@ -14,11 +14,11 @@
 
 // Package periodic for fortio (from greek for load) is a set of utilities to
 // run a given task at a target rate (qps) and gather statistics - for instance
-// http requests.
+// HTTP requests.
 //
-// The main executable using the library is fortio but there
+// The main executable using the library is fortio, but there
 // is also ../histogram to use the stats from the command line and ../echosrv
-// as a very light http server that can be used to test proxies etc like
+// as a very light HTTP server that can be used to test proxies etc like
 // the Istio components.
 package periodic // import "fortio.org/fortio/periodic"
 
@@ -193,7 +193,7 @@ type RunnerOptions struct {
 	QPS float64
 	// How long to run the test for. Unless Exactly is specified.
 	Duration time.Duration
-	// Note that this actually maps to gorountines and not actual threads
+	// Note that this actually maps to gorountines and not actual threads,
 	// but threads seems like a more familiar name to use for non go users
 	// and in a benchmarking context
 	NumThreads int
@@ -231,7 +231,7 @@ type RunnerOptions struct {
 	AccessLogger AccessLogger `json:"-"`
 	// No catch-up: if true we will do exactly the requested QPS and not try to catch up if the target is temporarily slow.
 	NoCatchUp bool
-	// Unique 96 character ID used as reference to saved json file. Created during Normalize().
+	// Unique 96 character ID used as reference to saved JSON file. Created during Normalize().
 	ID string
 	// Time the object got first normalized, used to generate the unique ID above.
 	genTime *time.Time
@@ -258,14 +258,14 @@ type RunnerResults struct {
 	NoCatchUp               bool
 	RunID                   int64 // Echo back the optional run id
 	AccessLoggerInfo        string
-	// Same as RunnerOptions ID:  Unique 96 character ID used as reference to saved json file. Created during Normalize().
+	// Same as RunnerOptions ID:  Unique 96 character ID used as reference to saved JSON file. Created during Normalize().
 	ID string
 	// If the run doesn't even start because of for instance an invalid host name, this will be set (all omitted on success)
 	jrpc.ServerReply
 }
 
 // HasRunnerResult is the interface implicitly implemented by HTTPRunnerResults
-// and GrpcRunnerResults so the common results can ge extracted irrespective
+// and GrpcRunnerResults, so the common results can be extracted irrespective
 // of the type.
 type HasRunnerResult interface {
 	Result() *RunnerResults
@@ -634,7 +634,7 @@ func (r *periodicRunner) Run() RunnerResults {
 type AccessLoggerType int
 
 const (
-	// AccessJSON for json format of access log: {"latency":%f,"timestamp":%d,"thread":%d}.
+	// AccessJSON for JSON format of access log: {"latency":%f,"timestamp":%d,"thread":%d}.
 	AccessJSON AccessLoggerType = iota
 	// AccessInflux of influx format of access log.
 	// https://docs.influxdata.com/influxdb/v2.2/reference/syntax/line-protocol/

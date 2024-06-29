@@ -633,7 +633,7 @@ func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
 	}
 }
 
-// Many of the earlier http tests are through httprunner but new tests should go here
+// Many of the earlier HTTP tests are through httprunner but new tests should go here
 
 func TestUnixDomainHttp(t *testing.T) {
 	uds := fnet.GetUniqueUnixDomainPath("fortio-http-test-uds")
@@ -1530,7 +1530,7 @@ func TestNewHTMLEscapeWriterError(t *testing.T) {
 
 func TestDefaultHeadersAndOptionsInit(t *testing.T) {
 	_, addr := ServeTCP("0", "/debug")
-	// Un initialized http options:
+	// Un initialized HTTP options:
 	o := HTTPOptions{URL: fmt.Sprintf("http://localhost:%d/debug", addr.Port)}
 	o1 := o
 	cli1, _ := NewStdClient(&o1)
@@ -1661,7 +1661,7 @@ func TestInsecureRequestWithResolve(t *testing.T) {
 	}
 }
 
-// ValidateUUIDPath is an http server handler validating /{uuid}.
+// ValidateUUIDPath is an HTTP server handler validating /{uuid}.
 func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		log.LogRequest(r, "ValidateUUIDPath")
@@ -1678,7 +1678,7 @@ func ValidateUUIDPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ValidateUUIDQueryparam is an http server handler validating /?uuid={uuid}.
+// ValidateUUIDQueryparam is an HTTP server handler validating /?uuid={uuid}.
 func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {
 		log.LogRequest(r, "ValidateUUIDQueryParam")
@@ -1695,7 +1695,7 @@ func ValidateUUIDQueryParam(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ValidateManyUUID is an http server handler validating `/{uuid}?uuid={uuid}`,
+// ValidateManyUUID is an HTTP server handler validating `/{uuid}?uuid={uuid}`,
 // including payload in JSON following the format: ["{uuid}","{uuid}"].
 func ValidateManyUUID(w http.ResponseWriter, r *http.Request) {
 	if log.LogVerbose() {

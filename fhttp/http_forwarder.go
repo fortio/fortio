@@ -49,7 +49,7 @@ type TargetConf struct {
 	//	Return       bool   // Will return the result of this target
 }
 
-// MultiServerConfig configures the MultiServer and holds the http client it uses for proxying.
+// MultiServerConfig configures the MultiServer and holds the HTTP client it uses for proxying.
 type MultiServerConfig struct {
 	Targets []TargetConf
 	Serial  bool // Serialize or parallel queries
@@ -277,7 +277,7 @@ func setClientOptions(client *http.Client, opts *HTTPOptions) {
 	}
 }
 
-// CreateProxyClient http client for connection reuse.
+// CreateProxyClient HTTP client for connection reuse.
 func CreateProxyClient() *http.Client {
 	log.Debugf("Creating proxy client")
 	client := &http.Client{}
@@ -285,10 +285,10 @@ func CreateProxyClient() *http.Client {
 	return client
 }
 
-// MultiServer starts fan out http server on the given port.
+// MultiServer starts fan out HTTP server on the given port.
 // Returns the mux and addr where the listening socket is bound.
 // The port can be retrieved from it when requesting the 0 port as
-// input for dynamic http server.
+// input for dynamic HTTP server.
 func MultiServer(port string, cfg *MultiServerConfig) (*http.ServeMux, net.Addr) {
 	hName := cfg.Name
 	if hName == "" {
