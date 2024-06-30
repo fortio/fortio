@@ -80,7 +80,7 @@ shell:
 	docker run -ti -v $(CURDIR):/build/fortio $(BUILD_IMAGE)
 
 # This really also tests the release process and build on windows,mac,linux
-# and the docker images, not just "web" (ui) stuff that it also exercises.
+# and the Docker images, not just "web" (UI) stuff that it also exercises.
 release-test: docker-version
 	./Webtest.sh
 
@@ -206,8 +206,8 @@ official-build-version: official-build
 official-build-clean:
 	-$(RM) $(OFFICIAL_BIN) release/Makefile
 
-# Create a complete source tree with naming matching debian package conventions
-TAR ?= tar # on macos need gtar to get --owner
+# Create a complete source tree with naming matching Debian package conventions
+TAR ?= tar # on macOS need gtar to get --owner
 DIST_PATH:=release/fortio_$(DIST_VERSION).orig.tar
 
 .PHONY: dist dist-sign distclean

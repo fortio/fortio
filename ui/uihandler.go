@@ -44,7 +44,7 @@ import (
 	"fortio.org/log"
 )
 
-// TODO: move some of those in their own files/package (e.g data transfer TSV)
+// TODO: move some of those in their own files/package (e.g, data transfer TSV)
 // and add unit tests.
 
 var (
@@ -55,7 +55,7 @@ var (
 )
 
 var (
-	// UI and Debug prefix/paths (read in ui handler).
+	// UI and Debug prefix/paths (read in UI handler).
 	uiPath      string // absolute (base)
 	logoPath    string // relative
 	chartJSPath string // relative
@@ -86,7 +86,7 @@ const (
 
 type mode int
 
-// The main html has 3 principal modes.
+// The main HTML has 3 principal modes.
 const (
 	// Default: renders the forms/menus.
 	menu mode = iota
@@ -192,7 +192,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		log.Errf("Fail to validate connection reuse range flag, err: %v", err)
 	}
 	if !JSONOnly {
-		// Normal html mode
+		// Normal HTML mode
 		if mainTemplate == nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Critf("Nil template")
@@ -248,9 +248,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 			runWriter = nil // we don't want run to write json
 		}
-		// A bit awkward api because of trying to reuse yet be compatible from old UI code with
+		// A bit awkward API because of trying to reuse yet be compatible from old UI code with
 		// new `rapi` code.
-		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*html mode*/)
+		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*HTML mode*/)
 		if err != nil {
 			_, _ = w.Write([]byte(fmt.Sprintf(
 				"❌ Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
@@ -422,7 +422,7 @@ func (o outHTTPWriter) Flush() {
 	// nothing
 }
 
-// Sync is the non http equivalent of fortio/sync?url=u.
+// Sync is the non-HTTP equivalent of fortio/sync?url=u.
 func Sync(out io.Writer, u string, datadir string) bool {
 	rapi.SetDataDir(datadir)
 	v := url.Values{}
@@ -435,7 +435,7 @@ func Sync(out io.Writer, u string, datadir string) bool {
 	return (code == http.StatusOK)
 }
 
-// SyncHandler handles syncing/downloading from tsv url.
+// SyncHandler handles syncing/downloading from TSC URL.
 func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// logging of request and response is done by log.LogAndCall in mux setup
 	flusher, ok := w.(http.Flusher)
@@ -460,12 +460,12 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// Increase timeout:
 	o.HTTPReqTimeOut = 5 * time.Second
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
-	// and not do multiple passes over the same data, but for small tsv this is fine.
+	// and not do multiple passes over the same data, but for small TSV this is fine.
 	// use std client to avoid chunked raw we can get with fast client:
 	client, _ := fhttp.NewStdClient(o) //nolint:contextcheck
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
-		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		// too late to write headers for real case, but we do it anyway for the Sync() startup case
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -473,7 +473,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	defer client.Close()
 	if code != http.StatusOK {
 		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
-		// too late to write headers for real case but we do it anyway for the Sync() startup case
+		// too late to write headers for real case, but we do it anyway for the Sync() startup case
 		w.WriteHeader(code)
 		return
 	}
@@ -519,9 +519,9 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	_, _ = w.Write([]byte("</table><p>All done!\n"))
 }
 
-// ListBucketResult is the minimum we need out of s3 xml results.
+// ListBucketResult is the minimum we need out of S3 XML results.
 // https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
-// e.g. https://storage.googleapis.com/fortio-data?max-keys=2&prefix=fortio.istio.io/
+// e.g., https://storage.googleapis.com/fortio-data?max-keys=2&prefix=fortio.istio.io/
 type ListBucketResult struct {
 	NextMarker string   `xml:"NextMarker"`
 	Names      []string `xml:"Contents>Key"`
@@ -539,7 +539,7 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	err := xml.Unmarshal(data, &l)
 	if err != nil {
 		log.Errf("xml unmarshal error %v", err)
-		// don't show the error / would need html escape to avoid CSS attacks
+		// don't show the error / would need HTML escape to avoid CSS attacks
 		_, _ = w.Write([]byte("❌ xml parsing error, check logs<script>setPB(1,1)</script></body></html>\n"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return false
@@ -583,7 +583,7 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	q.Set("marker", l.NextMarker)
 	bu.RawQuery = q.Encode()
 	newBaseURL := bu.String()
-	// url already validated
+	// URL already validated
 	_, _ = w.Write([]byte("<tr><td>"))
 	_, _ = w.Write([]byte(template.HTMLEscapeString(newBaseURL)))
 	_, _ = w.Write([]byte("<td>"))
@@ -618,7 +618,7 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 		_, _ = w.Write([]byte("<td>❌ skipped (access error)"))
 		return
 	}
-	// url already validated
+	// URL already validated
 	_ = client.ChangeURL(u)
 	code1, data1, _ := client.Fetch(ctx)
 	if code1 != http.StatusOK {

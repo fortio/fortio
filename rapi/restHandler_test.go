@@ -184,19 +184,19 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if errObj.Message != "parsing duration" || errObj.Exception != "time: missing unit in duration \"42\"" {
 		t.Errorf("Didn't get the expected duration parsing error, got %+v", errObj)
 	}
-	// bad json path: doesn't exist
+	// bad JSON path: doesn't exist
 	runURL = restURL + "?jsonPath=.foo"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Exception != "\"foo\" not found in json" {
 		t.Errorf("Didn't get the expected json body access error, got %+v", errObj)
 	}
-	// bad json path: wrong type
+	// bad JSON path: wrong type
 	runURL = restURL + "?jsonPath=.metadata.url"
 	errObj = GetErrorResult(t, runURL, jsonData)
 	if errObj.Exception != "\"url\" path is not a map" {
 		t.Errorf("Didn't get the expected json type mismatch error, got %+v", errObj)
 	}
-	// missing url and a few other cases
+	// missing URL and a few other cases
 	jsonData = `{"metadata": {"n": 200}}`
 	runURL = restURL + "?jsonPath=.metadata"
 	errObj = GetErrorResult(t, runURL, jsonData)
@@ -568,7 +568,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	if asyncRes.ResultURL != dataURL {
 		t.Errorf("Expected same result URL, got %+v", asyncRes)
 	}
-	// Fetch the json result:
+	// Fetch the JSON result:
 	res := GetResult(t, dataURL, "")
 	if !strings.HasPrefix(res.Exception, "lookup doesnotexist.fortio.org") {
 		t.Errorf("Didn't get the expected dns error in result file url %s, got %+v", asyncRes.ResultURL, res)

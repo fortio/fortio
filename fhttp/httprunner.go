@@ -52,12 +52,12 @@ type HTTPRunnerResults struct {
 	SocketCount int64
 	// Connection Time stats
 	ConnectionStats *stats.HistogramData
-	// http code to abort the run on (-1 for connection or other socket error)
+	// HTTP status code to abort the run on (-1 for connection or other socket error)
 	AbortOn int
 	aborter *periodic.Aborter
 }
 
-// Run tests http request fetching. Main call being run at the target QPS.
+// Run tests HTTP request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
@@ -74,7 +74,7 @@ func (httpstate *HTTPRunnerResults) Run(ctx context.Context, t periodic.ThreadID
 	return codeIsOK(code), strconv.Itoa(code)
 }
 
-// HTTPRunnerOptions includes the base RunnerOptions plus http specific
+// HTTPRunnerOptions includes the base RunnerOptions plus HTTP specific
 // options.
 type HTTPRunnerOptions struct {
 	periodic.RunnerOptions
@@ -104,7 +104,7 @@ func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunner
 	}
 }
 
-// RunHTTPTest runs an http test and returns the aggregated stats.
+// RunHTTPTest runs an HTTP test and returns the aggregated stats.
 //
 //nolint:funlen, gocognit, gocyclo, maintidx
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {

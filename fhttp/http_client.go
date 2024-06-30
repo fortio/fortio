@@ -41,21 +41,21 @@ import (
 	"golang.org/x/net/http2"
 )
 
-// Fetcher is the Url content fetcher that the different client implements.
+// Fetcher is the URL content fetcher that the different client implements.
 type Fetcher interface {
-	// Fetch returns http code, data, offset of body (for client which returns
+	// Fetch returns HTTP Status code, data, offset of body (for client which returns
 	// headers)
 	// Deprecated: use StreamFetch with a DataWriter (nil if you don't need the data) instead.
 	Fetch(ctx context.Context) (int, []byte, int)
-	// StreamFetch returns http code and body bytes read
-	// (body is streamed to Dest writer or null),and header size for the fast client.
+	// StreamFetch returns HTTP Status code and body bytes read
+	// (body is streamed to Dest writer or null), and header size for the fast client.
 	StreamFetch(ctx context.Context) (int, int64, uint)
 	// HasBuffer is true for the fast client and false for golang standard library based client.
 	// it's used to know if calling Fetch() is actually better (fast client with headers to stderr)
 	HasBuffer() bool
 	// Close() cleans up connections and state - must be paired with NewClient calls.
 	Close()
-	// GetIPAddress() returns the occurrence of ip address used by this client connection,
+	// GetIPAddress() returns the occurrence of IP address used by this client connection,
 	// and the connection time histogram (which includes the count).
 	GetIPAddress() (*stats.Occurrence, *stats.Histogram)
 }
@@ -114,7 +114,7 @@ const (
 )
 
 // GenerateHeaders completes the header generation, including Content-Type/Length
-// and user credential coming from the http options in addition to extra headers
+// and user credential coming from the HTTP options in addition to extra headers
 // coming from flags and AddAndValidateExtraHeader().
 // Warning this gets called more than once, do not generate duplicate headers.
 func (h *HTTPOptions) GenerateHeaders() http.Header {
@@ -123,7 +123,7 @@ func (h *HTTPOptions) GenerateHeaders() http.Header {
 	}
 	allHeaders := h.extraHeaders.Clone()
 	payloadLen := len(h.Payload)
-	// If content-type isn't already specified and we have a payload, let's use the
+	// If content-type isn't already specified, and we have a payload, let's use the
 	// standard for binary content:
 	if payloadLen > 0 && len(h.ContentType) == 0 && len(allHeaders.Get(contentType)) == 0 {
 		h.ContentType = "application/octet-stream"
@@ -165,7 +165,7 @@ func (h *HTTPOptions) URLSchemeCheck() {
 	}
 	if strings.HasPrefix(lcURL, hs) {
 		h.https = true
-		return // url is good
+		return // URL is good
 	}
 	if !strings.HasPrefix(lcURL, fnet.PrefixHTTP) {
 		log.Warnf("Assuming http:// on missing scheme for '%s'", h.URL)
@@ -179,7 +179,7 @@ const (
 	HTTPReqTimeOutDefaultValue = 3 * time.Second
 )
 
-// HTTPOptions holds the common options of both http clients and the headers.
+// HTTPOptions holds the common options of both HTTP clients and the headers.
 // Careful when adding fields that this gets shallow copied through DefaultHTTPOptions copies.
 type HTTPOptions struct {
 	TLSOptions
@@ -194,20 +194,20 @@ type HTTPOptions struct {
 	FollowRedirects   bool // For the Std Client only: follow redirects.
 	initDone          bool
 	https             bool   // whether URLSchemeCheck determined this was an https:// call or not
-	Resolve           string // resolve Common Name to this ip when use CN as target url
+	Resolve           string // resolve Common Name to this IP when use CN as target URL
 	// extraHeaders to be added to each request (UserAgent and headers set through AddAndValidateExtraHeader()).
 	extraHeaders http.Header
 	// Host is treated specially, remember that virtual header separately.
 	hostOverride     string
-	HTTPReqTimeOut   time.Duration // timeout value for http request
+	HTTPReqTimeOut   time.Duration // timeout value for HTTP request
 	UserCredentials  string        // user credentials for authorization
 	ContentType      string        // indicates request body type, implies POST instead of GET
-	Payload          []byte        // body for http request, implies POST if not empty.
-	MethodOverride   string        // optional http method override. Otherwise GET or POST when a payload or ContentType is set.
+	Payload          []byte        // body for HTTP request, implies POST if not empty.
+	MethodOverride   string        // optional HTTP method override. Otherwise GET or POST when a payload or ContentType is set.
 	LogErrors        bool          // whether to log non 2xx code as they occur or not
 	ID               int           `json:"-"` // thread/connect id to use for logging (thread id when used as a runner)
 	UniqueID         int64         `json:"-"` // Run identifier when used through a runner, copied from RunnerOptions.RunID
-	SequentialWarmup bool          // whether to do http(s) runs warmup sequentially or in parallel (new default is //)
+	SequentialWarmup bool          // whether to do http(s):// runs warmup sequentially or in parallel (new default is //)
 	ConnReuseRange   [2]int        // range of max number of connection to reuse for each thread.
 	// When false, re-resolve the DNS name when the connection breaks.
 	NoResolveEachConn bool
@@ -242,7 +242,7 @@ func (h *HTTPOptions) ResetHeaders() {
 	h.hostOverride = ""
 }
 
-// InitHeaders initialize and/or resets the default headers (ie just User-Agent).
+// InitHeaders initialize and/or resets the default headers (i.e., just User-Agent).
 func (h *HTTPOptions) InitHeaders() {
 	h.ResetHeaders()
 	h.extraHeaders.Set(jrpc.UserAgentHeader, jrpc.UserAgent)
@@ -251,14 +251,14 @@ func (h *HTTPOptions) InitHeaders() {
 }
 
 // PayloadUTF8 returns the payload as a string. If payload is null return empty string
-// This is only needed due to grpc ping proto. It takes string instead of byte array.
+// This is only needed due to gRPG ping proto. It takes string instead of byte array.
 func (h *HTTPOptions) PayloadUTF8() string {
 	p := h.Payload
 	pl := len(p)
 	if pl == 0 {
 		return ""
 	}
-	// grpc doesn't like invalid utf-8 strings, get rid of them
+	// gRPC doesn't like invalid utf-8 strings, get rid of them
 	res := strings.ToValidUTF8(string(p), "")
 	l := len([]byte(res))
 	if l < pl {
@@ -271,7 +271,7 @@ func (h *HTTPOptions) PayloadUTF8() string {
 	return res
 }
 
-// ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to http header,
+// ValidateAndAddBasicAuthentication validates user credentials and adds basic authentication to HTTP header,
 // if user credentials are valid.
 func (h *HTTPOptions) ValidateAndAddBasicAuthentication(headers http.Header) error {
 	if len(h.UserCredentials) == 0 {
@@ -294,7 +294,7 @@ func (h *HTTPOptions) AllHeaders() http.Header {
 	return headers
 }
 
-// Method returns the method of the http req.
+// Method returns the method of the HTTP req.
 func (h *HTTPOptions) Method() string {
 	if len(h.MethodOverride) > 0 {
 		return h.MethodOverride
@@ -317,8 +317,8 @@ func (h *HTTPOptions) AddAndValidateExtraHeader(hdr string) error {
 		return fmt.Errorf("invalid extra header '%s', expecting Key: Value", hdr)
 	}
 	key := strings.TrimSpace(s[0])
-	// No TrimSpace for the value, so we can set empty "" vs just whitespace " " which
-	// will get trimmed later but treated differently: not emitted vs emitted empty for User-Agent.
+	// No TrimSpace for the value, so we can set empty "" vs. just whitespace " " which
+	// will get trimmed later but treated differently: not emitted vs. emitted empty for User-Agent.
 	value := s[1]
 	// 2 headers need trimmed to not have extra spaces:
 	trimmedValue := strings.TrimSpace(value)
@@ -376,7 +376,7 @@ func (h *HTTPOptions) ValidateAndSetConnectionReuseRange(inp string) error {
 	return nil
 }
 
-// newHttpRequest makes a new http GET request for url with User-Agent.
+// newHttpRequest makes a new HTTP GET request for URL with User-Agent.
 func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	method := o.Method()
 	log.Debugf("newHTTPRequest %s %s", method, o.URL)
@@ -430,7 +430,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 }
 
 // Client object for making repeated requests of the same URL using the same
-// http client (net/http).
+// HTTP client (net/http).
 // TODO: refactor common parts with FastClient.
 type Client struct {
 	url                  string
@@ -440,7 +440,7 @@ type Client struct {
 	req                  *http.Request
 	client               *http.Client
 	transport            Transport
-	pathContainsUUID     bool // if url contains the "{uuid}" pattern (lowercase)
+	pathContainsUUID     bool // if URL contains the "{uuid}" pattern (lowercase)
 	rawQueryContainsUUID bool // if any query params contains the "{uuid}" pattern (lowercase)
 	bodyContainsUUID     bool // if body contains the "{uuid}" pattern (lowercase)
 	logErrors            bool
@@ -490,7 +490,7 @@ func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 	return status, buf.Bytes(), 0
 }
 
-// StreamFetch fetches the byte and code for pre created std client.
+// StreamFetch fetches the byte and code for pre-created std client.
 // header length (3rd returned value) is always 0 for that client
 // and only available with the fastclient.
 func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
@@ -566,7 +566,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	return code, n, 0
 }
 
-// GetIPAddress get the ip address that DNS resolves to when using stdClient and connection stats.
+// GetIPAddress get the IP address that DNS resolves to when using stdClient and connection stats.
 func (c *Client) GetIPAddress() (*stats.Occurrence, *stats.Histogram) {
 	return c.ipAddrUsage, c.connectStats
 }
@@ -616,7 +616,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		runID:        o.UniqueID,
 	}
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
-		// redirect all connections to resolved ip, and use cn as sni host
+		// redirect all connections to resolved IP, and use Common Name (CN) as Server Name Indication (SNI) host
 		if o.Resolve != "" {
 			addr = o.Resolve + addr[strings.LastIndex(addr, ":"):]
 		}
@@ -684,8 +684,8 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 	return &client, nil
 }
 
-// FetchURL fetches the data at the given url using the standard client and default options.
-// Returns the http status code (http.StatusOK == 200 for success) and the data.
+// FetchURL fetches the data at the given URL using the standard client and default options.
+// Returns the HTTP status code (http.StatusOK == 200 for success) and the data.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 // Deprecated: use StreamURL instead.
 func FetchURL(url string) (int, []byte) {
@@ -703,7 +703,7 @@ func StreamURL(url string, w io.Writer) int {
 	return StreamFetch(o)
 }
 
-// Fetch creates a client an performs a fetch according to the http options passed in.
+// Fetch creates a client an performs a fetch according to the HTTP options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 // Deprecated: use StreamFetch instead.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
@@ -712,7 +712,7 @@ func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 	return StreamFetch(httpOptions), w.Bytes()
 }
 
-// Fetch creates a client an performs a fetch according to the http options passed in.
+// Fetch creates a client an performs a fetch according to the HTTP options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 func StreamFetch(httpOptions *HTTPOptions) int {
 	cli, _ := NewClient(httpOptions)
@@ -721,7 +721,7 @@ func StreamFetch(httpOptions *HTTPOptions) int {
 	return code
 }
 
-// FastClient is a fast, lockfree single purpose http 1.0/1.1 client.
+// FastClient is a fast, lockfree single purpose HTTP 1.0/1.1 client.
 type FastClient struct {
 	buffer       []byte
 	req          []byte
@@ -736,7 +736,7 @@ type FastClient struct {
 	host         string
 	hostname     string
 	port         string
-	http10       bool // http 1.0, simplest: no Host, forced no keepAlive, no parsing
+	http10       bool // HTTP 1.0, simplest: no Host, forced no keepAlive, no parsing
 	keepAlive    bool
 	parseHeaders bool // don't bother in http/1.0
 	halfClose    bool // allow/do half close when keepAlive is false
@@ -780,7 +780,7 @@ func (c *FastClient) Close() {
 	}
 }
 
-// NewFastClient makes a basic, efficient http 1.0/1.1 client.
+// NewFastClient makes a basic, efficient HTTP 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
 func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
@@ -845,7 +845,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	}
 	bc.buffer = make([]byte, BufferSizeKb*1024)
 	if bc.port == "" {
-		bc.port = url.Scheme // ie http which turns into 80 later
+		bc.port = url.Scheme // ie HTTP which turns into 80 later
 		log.LogVf("[%d] No port specified, using %s", bc.id, bc.port)
 	}
 	var addr net.Addr
@@ -880,7 +880,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 		buf.WriteString("Host: " + host + "\r\n")
 	}
 	if !bc.http10 {
-		// Rest of normal http 1.1 processing:
+		// Rest of normal HTTP 1.1 processing:
 		bc.parseHeaders = true
 		if !o.DisableKeepAlive {
 			bc.keepAlive = true
@@ -894,7 +894,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
 	_ = o.GenerateHeaders().Write(w)
 	w.Flush()
 	buf.WriteString("\r\n")
-	// Add the payload to http body
+	// Add the payload to HTTP body
 	if payloadLen > 0 {
 		buf.Write(o.Payload)
 	}
@@ -966,7 +966,7 @@ const (
 	RetryOnce = -2
 )
 
-// Fetch fetches the url content. Returns http code, data, offset of body.
+// Fetch fetches the URL content. Returns HTTP code, data, offset of body.
 func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	// We don't want to even use a writer as the buffer is there and fixed
 	// so we keep that path optimized.
@@ -976,7 +976,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	return code, c.buffer[:c.size], int(c.headerLen)
 }
 
-// Fetch fetches the url content. Returns http code, data written to the writer, length of headers.
+// Fetch fetches the URL content. Returns HTTP code, data written to the writer, length of headers.
 func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	c.code = SocketError
 	c.size = 0
@@ -1060,8 +1060,8 @@ func codeIsOK(code int) bool {
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	max := int64(len(c.buffer))
 	parsedHeaders := false
-	// TODO: safer to start with -1 / SocketError and fix ok for http 1.0
-	c.code = http.StatusOK // In http 1.0 mode we don't bother parsing anything
+	// TODO: safer to start with -1 / SocketError and fix ok for HTTP/1.0
+	c.code = http.StatusOK // In HTTP/1.0 mode we don't bother parsing anything
 	endofHeadersStart := retcodeOffset + 3
 	keepAlive := c.keepAlive
 	chunkedMode := false
@@ -1109,7 +1109,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 		}
 		skipRead = false
 		// Have not yet parsed the headers, need to parse the headers, and have enough data to
-		// at least parse the http retcode:
+		// at least parse the HTTP status code returned:
 		if !parsedHeaders && c.parseHeaders && c.size >= retcodeOffset+3 {
 			// even if the bytes are garbage we'll get a non 200 code (bytes are unsigned)
 			c.code = int(ParseDecimal(c.buffer[retcodeOffset : retcodeOffset+3])) // TODO do that only once...

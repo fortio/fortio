@@ -55,7 +55,7 @@ func TestDebugSummary(t *testing.T) {
 	}
 }
 
-// Rest is also tested in rapi/restHandler_tests.go but that doesn't count for coverage
+// Rest is also tested in rapi/restHandler_tests.go, but that doesn't count for coverage
 
 type Request struct {
 	SomeInt    int
@@ -105,13 +105,13 @@ func TestJPRC(t *testing.T) {
 			return
 		}
 		if req.SomeInt == -9 {
-			// simulate a bad reply, invalid json
+			// simulate a bad reply, invalid JSON
 			w.WriteHeader(747)
 			w.Write([]byte(`{bad}`))
 			return
 		}
 		if req.SomeInt == -10 {
-			// simulate a bad reply, invalid json but ok status
+			// simulate a bad reply, invalid JSON, but HTTP OK status code
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{notjson}`))
 			return
@@ -210,7 +210,7 @@ func TestJPRC(t *testing.T) {
 	if errReply.Exception != expected {
 		t.Errorf("expected Exception in body to be %q, got %+v", expected, errReply)
 	}
-	// bad json response, using GetURL()
+	// bad JSON response, using GetURL()
 	errReply, err = jrpc.GetURL[Response](url)
 	if err == nil {
 		t.Errorf("expected error %v", errReply)
@@ -252,7 +252,7 @@ func TestJPRC(t *testing.T) {
 	if res.Message != "simulated server error" {
 		t.Errorf("didn't get the error message expected for -8: %v: %v", res, err)
 	}
-	// trigger bad json response - and non ok code
+	// trigger bad JSON response - and non-OK HTTP status code
 	req.SomeInt = -9
 	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
@@ -277,7 +277,7 @@ func TestJPRC(t *testing.T) {
 	if err.Error() != expected {
 		t.Errorf("error string expected %q, got %q", expected, err.Error())
 	}
-	// trigger bad json response - and ok http code
+	// trigger bad JSON response - and HTTP OK status code
 	req.SomeInt = -10
 	res, err = jrpc.CallURL[Response](url, &req)
 	if err == nil {
@@ -336,7 +336,7 @@ func TestJPRCHeaders(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed Call: %v", err)
 	}
-	// order etc is preserved, keys are not case sensitive (kinda tests go http api too)
+	// order etc is preserved, keys are not case-sensitive (kinda tests go HTTP API too)
 	//nolint:canonicalheader // we want to test case insensitivity
 	assert.Equal(t, res.Values("test1"), []string{"ValT1.1", "ValT1.2"}, "Expecting echoed back Test1 multi valued header")
 	//nolint:canonicalheader // we want to test case insensitivity

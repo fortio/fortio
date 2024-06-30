@@ -46,7 +46,7 @@ type RunnerResults struct {
 	aborter       *periodic.Aborter
 }
 
-// Run tests tcp request fetching. Main call being run at the target QPS.
+// Run tests TCP request fetching. Main call being run at the target QPS.
 // To be set as the Function in RunnerOptions.
 func (tcpstate *RunnerResults) Run(_ context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
@@ -64,18 +64,18 @@ func (tcpstate *RunnerResults) Run(_ context.Context, t periodic.ThreadID) (bool
 type TCPOptions struct {
 	Destination      string
 	Payload          []byte // what to send (and check)
-	UnixDomainSocket string // Path of unix domain socket to use instead of host:port from URL
+	UnixDomainSocket string // Path of Unix domain socket to use instead of host:port from URL
 	ReqTimeout       time.Duration
 }
 
-// RunnerOptions includes the base RunnerOptions plus tcp specific
+// RunnerOptions includes the base RunnerOptions plus TCP specific
 // options.
 type RunnerOptions struct {
 	periodic.RunnerOptions
 	TCPOptions // Need to call Init() to initialize
 }
 
-// TCPClient is the client used for tcp echo testing.
+// TCPClient is the client used for TCP echo testing.
 type TCPClient struct {
 	buffer        []byte
 	req           []byte
@@ -92,7 +92,7 @@ type TCPClient struct {
 }
 
 var (
-	// TCPURLPrefix is the URL prefix for triggering tcp load.
+	// TCPURLPrefix is the URL prefix for triggering TCP load.
 	TCPURLPrefix = "tcp://"
 	// TCPStatusOK is the map key on success.
 	TCPStatusOK  = "OK"
@@ -232,7 +232,7 @@ func (c *TCPClient) Close() int {
 	return c.socketCount
 }
 
-// RunTCPTest runs an tcp test and returns the aggregated stats.
+// RunTCPTest runs a TCP test and returns the aggregated stats.
 // Some refactoring to avoid copy-pasta between the now 3 runners would be good.
 func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	o.RunType = "TCP"
@@ -263,13 +263,13 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 				log.LogVf("first hit of %s: err %v, received %d: %q", o.Destination, err, len(data), data)
 			}
 		}
-		// Setup the stats for each 'thread'
+		// Set up the stats for each 'thread'
 		tcpstate[i].aborter = total.aborter
 		tcpstate[i].RetCodes = make(TCPResultMap)
 	}
 	total.RunnerResults = r.Run()
-	// Numthreads may have reduced but it should be ok to accumulate 0s from
-	// unused ones. We also must cleanup all the created clients.
+	// Numthreads may have reduced, but it should be ok to accumulate 0s from
+	// unused ones. We also must clean up all the created clients.
 	keys := []string{}
 	for i := 0; i < numThreads; i++ {
 		total.SocketCount += tcpstate[i].client.Close()

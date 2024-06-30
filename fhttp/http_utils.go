@@ -44,7 +44,7 @@ type TLSOptions struct {
 	CACert           string // `Path` to a custom CA certificate file to be used
 	Cert             string // `Path` to the certificate file to be used
 	Key              string // `Path` to the key file used
-	UnixDomainSocket string // `Path`` of unix domain socket to use instead of host:port
+	UnixDomainSocket string // `Path`` of Unix domain socket to use instead of host:port
 }
 
 func (to *TLSOptions) DoTLS() bool {
@@ -99,7 +99,7 @@ func toUpper(b byte) byte {
 }
 
 // ASCIIToUpper returns a byte array equal to the input string but in lowercase.
-// Only works for ASCII, not meant for unicode.
+// Only works for ASCII, not meant for Unicode.
 func ASCIIToUpper(str string) []byte {
 	numChars := utf8.RuneCountInString(str)
 	if numChars != len(str) && log.LogVerbose() {
@@ -108,15 +108,15 @@ func ASCIIToUpper(str string) []byte {
 	res := make([]byte, numChars)
 	// less surprising if we only mangle the extended characters
 	i := 0
-	for _, c := range str { // Attention: _ here != i for unicode characters
+	for _, c := range str { // Attention: _ here != i for Unicode characters
 		res[i] = toUpper(byte(c))
 		i++
 	}
 	return res
 }
 
-// FoldFind searches the bytes assuming ascii, ignoring the lowercase bit
-// for testing. Not intended to work with unicode, meant for http headers
+// FoldFind searches the bytes assuming ASCII, ignoring the lowercase bit
+// for testing. Not intended to work with Unicode, meant for HTTP headers
 // and to be fast (see benchmark in test file).
 func FoldFind(haystack []byte, needle []byte) (bool, int) {
 	idx := 0
@@ -552,7 +552,7 @@ func Gzip(next http.Handler) http.Handler {
 
 // -- formerly in uihandler:
 
-// HTMLEscapeWriter is an io.Writer escaping the output for safe html inclusion.
+// HTMLEscapeWriter is an io.Writer escaping the output for safe HTML inclusion.
 type HTMLEscapeWriter struct {
 	NextWriter io.Writer
 	Flusher    http.Flusher
@@ -648,8 +648,8 @@ func CommonHTTPOptionsFromForm(r *http.Request) *HTTPOptions {
 	timeoutStr := strings.TrimSpace(r.FormValue("timeout"))
 	timeout, _ := time.ParseDuration(timeoutStr) // will be 0 if empty, which is handled by runner and opts
 	httpopts := *DefaultHTTPOptions
-	// to be normalized in init 0 replaced by default value only in http runner, not here as this could be a tcp or udp runner
-	httpopts.URL = url // fixes #651 - ie don't normalize here
+	// to be normalized in init 0 replaced by default value only in HTTP runner, not here as this could be a TCP or UDP runner
+	httpopts.URL = url // fixes #651 - i.e., don't normalize here
 	httpopts.HTTPReqTimeOut = timeout
 	httpopts.Insecure = httpsInsecure
 	httpopts.Resolve = resolve

@@ -99,10 +99,10 @@ type AsyncReply struct {
 	jrpc.ServerReply
 	RunID int64
 	Count int
-	// Object id to retrieve results (only usable if save=on).
+	// Object ID to retrieve results (only usable if save=on).
 	// Also returned when using stop as long as exactly 1 run is stopped.
 	ResultID string
-	// Result url, constructed from the ResultID and the incoming request URL, if available.
+	// Result URL, constructed from the ResultID and the incoming request URL, if available.
 	ResultURL string
 }
 
@@ -128,8 +128,8 @@ func Error(w http.ResponseWriter, msg string, err error) {
 }
 
 // GetConfigAtPath deserializes the bytes as JSON and
-// extracts the map at the given path (only supports simple expression:
-// . is all the json
+// extracts the map at the given path (only supports simple expression):
+// . is all the JSON
 // .foo.bar.blah will extract that part of the tree.
 func GetConfigAtPath(path string, data []byte) (map[string]interface{}, error) {
 	// that's what Unmarshal does anyway if you pass interface{} var, skips a cast even for dynamic/unknown json
@@ -164,8 +164,8 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	return getConfigAtPath(rest, mm)
 }
 
-// FormValue gets the value from the query arguments/url parameter or from the
-// provided map (json data).
+// FormValue gets the value from the query arguments/URL parameter or from the
+// provided map (JSON data).
 func FormValue(r *http.Request, json map[string]interface{}, key string) string {
 	// query args have priority
 	res := r.FormValue(key)
@@ -173,7 +173,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 		log.Debugf("key %q in query args so using that value %q", key, res)
 		return res
 	}
-	if json == nil { // When called from uihandler we don't have a json map.
+	if json == nil { // When called from uihandler we don't have a JSON map.
 		log.Debugf("no json data so returning empty string for key %q", key)
 		return ""
 	}
@@ -191,7 +191,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 	return res
 }
 
-// RESTRunHandler is api version of UI submit handler.
+// RESTRunHandler is API version of UI submit handler.
 // TODO: refactor common option/args/flag parsing between uihandler.go and this.
 func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	log.LogRequest(r, "REST Run call")
@@ -206,8 +206,8 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	jsonPath := r.FormValue("jsonPath")
 	var jd map[string]interface{}
 	if len(data) > 0 {
-		// Json input and deserialize options from that path, eg. for flagger:
-		// jsonPath=.metadata
+		// JSON input and deserialize options from that path, e.g., for flagger:
+		// JSONPath=.metadata
 		jd, err = GetConfigAtPath(jsonPath, data)
 		if err != nil {
 			log.Errf("Error deserializing %v", err)
@@ -353,7 +353,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 }
 
 // Run executes the run (can be called async or not, writer is nil for async mode).
-// Api is a bit awkward to be compatible with both this new now main REST code but
+// API is a bit awkward to be compatible with both this new now main REST code but
 // also the old one in ui/uihandler.go.
 func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	runner, url string, ro *periodic.RunnerOptions, httpopts *fhttp.HTTPOptions, htmlMode bool,
@@ -438,11 +438,11 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 		return res, "", nil, err
 	}
 	if w == nil {
-		// async or html but nil w (no json output): no result to output
+		// async or HTML but nil w (no JSON output): no result to output
 		return res, savedAs, jsonData, nil
 	}
 	if htmlMode {
-		// Already set in api mode but not in html mode
+		// Already set in API mode but not in HTML mode
 		w.Header().Set("Content-Type", "application/json")
 	}
 	_, err = w.Write(jsonData)
@@ -471,7 +471,7 @@ func RESTStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// RESTStopHandler is the api to stop a given run by runid or all the runs if unspecified/0.
+// RESTStopHandler is the API to stop a given run by runid or all the runs if unspecified/0.
 func RESTStopHandler(w http.ResponseWriter, r *http.Request) {
 	log.LogRequest(r, "REST Stop call")
 	runid, _ := strconv.ParseInt(r.FormValue("runid"), 10, 64)
@@ -575,7 +575,7 @@ func RESTDNSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AddHandlers adds the REST Api handlers for run, status and stop.
+// AddHandlers adds the REST API handlers for run, status and stop.
 // uiPath must end with a /.
 func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath, datadir string) {
 	hook = ahook
@@ -591,7 +591,7 @@ func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath
 	log.Printf("REST API on %s, %s, %s, %s", restRunPath, restStatusPath, restStopPath, dnsPath)
 }
 
-// SaveJSON save Json bytes to give file name (.json) in data-path dir.
+// SaveJSON save JSON bytes to give file name (.json) in data-path dir.
 func SaveJSON(name string, json []byte) string {
 	if dataDir == "" {
 		log.Infof("Not saving because data-path is unset")
@@ -646,9 +646,9 @@ func GetRun(id int64) *Status {
 }
 
 // GetAllRuns returns a copy of the status map
-// (note maps are always reference types so no copy is done when returning the map value).
+// (note maps are always reference types, so no copy is done when returning the map value).
 func GetAllRuns() StatusMap {
-	// make a copy - we could use the hint of the size but that would require locking
+	// make a copy - we could use the hint of the size, but that would require locking
 	res := make(StatusMap)
 	uiRunMapMutex.Lock()
 	for k, v := range runs {

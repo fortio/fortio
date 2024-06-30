@@ -209,7 +209,7 @@ func testClosingAndSocketCount(t *testing.T, o *HTTPRunnerOptions) {
 	URL := fmt.Sprintf("http://localhost:%d/echo42/?close=true", addr.Port)
 	o.Init(URL)
 	o.QPS = 10
-	numReq := int64(50) // can't do too many without running out of fds on mac
+	numReq := int64(50) // can't do too many without running out of file descriptors on macOS
 	o.Exactly = numReq
 	o.NumThreads = 5
 	res, err := RunHTTPTest(o)
@@ -238,7 +238,7 @@ func TestClosingAndSocketCountStdClient(t *testing.T) {
 }
 
 func TestHTTPRunnerBadServer(t *testing.T) {
-	// Using http to an https server (or the current 'close all' dummy https server)
+	// Using HTTP to an HTTPS server (or the current 'close all' dummy HTTPS server)
 	// should fail:
 	_, addr := DynamicHTTPServer(true)
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
@@ -278,7 +278,7 @@ func TestAccessLogAndTrace(t *testing.T) {
 	opts := HTTPRunnerOptions{}
 	opts.Init(URL)
 	opts.QPS = 10
-	numReq := int64(50) // can't do too many without running out of fds on mac
+	numReq := int64(50) // can't do too many without running out of file descriptors on macOS
 	opts.Exactly = numReq
 	opts.NumThreads = 5
 	numTrace := int64(0)
@@ -363,7 +363,7 @@ func TestAccessLogAndTrace(t *testing.T) {
 }
 
 // need to be the last test as it installs Serve() which would make
-// the error test for / url above fail:
+// the error test for / URL above fail:
 
 func TestServe(t *testing.T) {
 	_, addr := ServeTCP("0", "/debugx1")
