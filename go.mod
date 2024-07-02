@@ -4,9 +4,10 @@ module fortio.org/fortio
 // Note we will switch soon to 1.22 for the linters
 go 1.21
 
-toolchain go1.22.5 // force download as 1.22.5 isn't fully ready yet
-
-// toolchain go1.22.3 // this shouldn't be necessary - see https://github.com/golang/go/issues/66175#issuecomment-2010343876
+// Force download of July 2nd 2024 go security and bug fix release,
+// as 1.22.5 docker images isn't there yet:
+toolchain go1.22.5
+// But see also https://github.com/golang/go/issues/66175#issuecomment-2010343876
 
 require (
 	fortio.org/assert v1.2.1
