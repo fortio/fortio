@@ -98,7 +98,6 @@ func dnsMethodValidator(inp string) error {
 //nolint:gochecknoinits // needed here (unit change)
 func init() {
 	ChangeMaxPayloadSize(MaxPayloadSize)
-	rand.Seed(time.Now().UnixNano())
 }
 
 // ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content.
