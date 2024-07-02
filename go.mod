@@ -10,7 +10,7 @@ require (
 	fortio.org/assert v1.2.1
 	fortio.org/cli v1.6.0
 	fortio.org/dflag v1.7.2
-	fortio.org/log v1.12.2
+	fortio.org/log v1.14.0
 	fortio.org/scli v1.15.0
 	fortio.org/sets v1.1.1
 	fortio.org/testscript v0.3.1
