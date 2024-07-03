@@ -1,12 +1,12 @@
 module fortio.org/fortio
 
 // As a library the current version of fortio works with 1.18 (first version with generics) but tests use 1.19 features
-// Note we will switch soon to 1.22 for the linters
-go 1.21
+// Note we will switch soon to 1.22 for the linters, using 1.21 is neeed when using toolchain below
+go 1.19
 
-// Force download of July 2nd 2024 go security and bug fix release,
-// as 1.22.5 docker images isn't there yet:
-toolchain go1.22.5
+// When needed, ie to force download of July 2nd 2024 go security and bug fix release,
+// as 1.22.5 docker images were not there yet and ditto for action/setup-go
+// toolchain go1.22.5
 // But see also https://github.com/golang/go/issues/66175#issuecomment-2010343876
 
 require (
