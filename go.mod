@@ -1,8 +1,8 @@
 module fortio.org/fortio
 
 // As a library the current version of fortio works with 1.18 (first version with generics) but tests use 1.19 features
-// Note we will switch soon to 1.22 for the linters, using 1.21 is neeed when using toolchain below
-go 1.19
+// Note we will switch soon to 1.22 for the linters, using 1.21 is neeed when using toolchain below and because of grpc update
+go 1.21
 
 // When needed, ie to force download of July 2nd 2024 go security and bug fix release,
 // as 1.22.5 docker images were not there yet and ditto for action/setup-go
@@ -21,7 +21,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.26.0
-	google.golang.org/grpc v1.64.0
+	google.golang.org/grpc v1.65.0
 )
 
 // Local dev of dependencies changes
