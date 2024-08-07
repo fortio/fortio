@@ -11,16 +11,16 @@ go 1.21
 
 require (
 	fortio.org/assert v1.2.1
-	fortio.org/cli v1.7.0
+	fortio.org/cli v1.8.0
 	fortio.org/dflag v1.7.2
-	fortio.org/log v1.14.0
+	fortio.org/log v1.16.0
 	fortio.org/scli v1.15.1
-	fortio.org/sets v1.1.1
+	fortio.org/sets v1.2.0
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	golang.org/x/net v0.27.0
+	golang.org/x/net v0.28.0
 	google.golang.org/grpc v1.65.0
 )
 
@@ -37,11 +37,12 @@ require (
 require (
 	fortio.org/struct2env v0.4.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	golang.org/x/crypto/x509roots/fallback v0.0.0-20240626151235-a6a393ffd658 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
-	golang.org/x/tools v0.22.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
+	github.com/kortschak/goroutine v1.1.2 // indirect
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20240806160748-b2d3a6a4b4d3 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
+	golang.org/x/sys v0.23.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/tools v0.23.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240805194559-2c9e96a0b5d4 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )
