@@ -15,7 +15,7 @@ require (
 	fortio.org/dflag v1.7.2
 	fortio.org/log v1.14.0
 	fortio.org/scli v1.15.1
-	fortio.org/sets v1.1.1
+	fortio.org/sets v1.2.0
 	fortio.org/testscript v0.3.1
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
