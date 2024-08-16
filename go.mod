@@ -11,7 +11,7 @@ go 1.21
 
 require (
 	fortio.org/assert v1.2.1
-	fortio.org/cli v1.8.0
+	fortio.org/cli v1.9.0
 	fortio.org/dflag v1.7.2
 	fortio.org/log v1.16.0
 	fortio.org/scli v1.15.1
