@@ -41,7 +41,7 @@ certs: $(CERT_TEMP_DIR)/server.cert
 
 # Generate certs for unit and release tests.
 $(CERT_TEMP_DIR)/server.cert: cert-gen
-	./cert-gen
+	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c "cd /build/fortio;./cert-gen"
 
 # Remove certificates
 certs-clean:
