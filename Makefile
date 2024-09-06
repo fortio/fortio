@@ -41,7 +41,7 @@ certs: $(CERT_TEMP_DIR)/server.cert
 
 # Generate certs for unit and release tests.
 $(CERT_TEMP_DIR)/server.cert: cert-gen
-	docker run -v $(CURDIR):/build/fortio $(BUILD_IMAGE) bash -c "cd /build/fortio;./cert-gen"
+	./cert-gen
 
 # Remove certificates
 certs-clean:
@@ -49,9 +49,17 @@ certs-clean:
 
 TEST_TIMEOUT:=90s
 
+OS := $(shell uname -s)
+
 # Local test
+ifeq ($(OS), Windows_NT)
+test:
+	@echo "Skipping most tests on Windows until we can get cert-gen to work there."
+	go test go ./stats ./periodic
+else
 test: dependencies
 	go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
+endif
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"
