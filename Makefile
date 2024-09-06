@@ -50,10 +50,10 @@ certs-clean:
 
 TEST_TIMEOUT:=90s
 
-OS := $(shell uname -s)
+OS:=$(shell go env GOOS)
 
 # Local test
-ifeq ($(OS), Windows_NT)
+ifeq ($(OS),windows)
 test:
 	@echo "Skipping most tests on Windows until we can get cert-gen to work there."
 	go test go ./stats ./periodic
