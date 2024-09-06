@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v74@sha256:71c0bff67a488012143d15fd408e70db7f1b27877fbb2229d1c77154416ded99
+BUILD_IMAGE_TAG := v75@sha256:eb9a2c424c3e94c91e675a306f8ed2a088370e44788f4ec1ae646ceccb768fdc
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
