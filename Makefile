@@ -41,6 +41,7 @@ certs: $(CERT_TEMP_DIR)/server.cert
 
 # Generate certs for unit and release tests.
 $(CERT_TEMP_DIR)/server.cert: cert-gen
+	@echo "OS='$(OS)'"
 	./cert-gen
 
 # Remove certificates
