@@ -246,8 +246,8 @@ func init() {
 // lookUpIdx looks for scaledValue's index in histogramBucketValues
 // TODO: change linear time to O(log(N)) with binary search.
 func lookUpIdx(scaledValue int) int {
-	scaledValue32 := int32(scaledValue)
-	if scaledValue32 < maxArrayValue { // constant
+	scaledValue32 := int32(scaledValue) //nolint:gosec // we limit ourselves to 32 bits counts.
+	if scaledValue32 < maxArrayValue {  // constant
 		return val2Bucket[scaledValue]
 	}
 	for i := maxArrayValueIndex; i < numValues; i++ {
@@ -293,7 +293,7 @@ func (h *Histogram) record(v float64, count int) {
 		log.Debugf("v %f -> scaledVal %.17f ceil %f delta %g - svInt %d", v, scaledVal, math.Ceil(scaledVal), delta, svInt)
 		idx = lookUpIdx(svInt)
 	}
-	h.Hdata[idx] += int32(count)
+	h.Hdata[idx] += int32(count) //nolint:gosec // we limit ourselves to 32 bits counts.
 }
 
 // CalcPercentile returns the value for an input percentile

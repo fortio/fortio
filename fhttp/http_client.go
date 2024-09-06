@@ -973,7 +973,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	c.dataWriter = nil
 	// we're inlining the old returnRes() below so no need to capture the return values
 	code, _, _ := c.StreamFetch(ctx)
-	return code, c.buffer[:c.size], int(c.headerLen)
+	return code, c.buffer[:c.size], int(c.headerLen) //nolint:gosec // not practically overflowing.
 }
 
 // Fetch fetches the URL content. Returns HTTP code, data written to the writer, length of headers.
@@ -1056,9 +1056,9 @@ func codeIsOK(code int) bool {
 
 // Response reading:
 //
-//nolint:nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
+//nolint:nestif,funlen,gocognit,gocyclo,maintidx,gosec // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
-	max := int64(len(c.buffer))
+	maxV := int64(len(c.buffer))
 	parsedHeaders := false
 	// TODO: safer to start with -1 / SocketError and fix ok for HTTP/1.0
 	c.code = http.StatusOK // In HTTP/1.0 mode we don't bother parsing anything
@@ -1158,7 +1158,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							keepAlive = false
 							break
 						}
-						max = int64(c.headerLen) + contentLength
+						maxV = int64(c.headerLen) + contentLength
 						if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
 							log.Debugf("[%d] found content length %d", c.id, contentLength)
 						}
@@ -1171,13 +1171,13 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							if contentLength == -1 {
 								// chunk length not available yet
 								log.LogVf("[%d] chunk mode but no first chunk length yet, reading more", c.id)
-								max = int64(c.headerLen)
+								maxV = int64(c.headerLen)
 								continue
 							}
-							max = int64(c.headerLen) + dataStart + contentLength + 2 // extra CR LF
+							maxV = int64(c.headerLen) + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("[%d] chunk-length is %d (%s) setting max to %d",
 								c.id, contentLength, c.buffer[c.headerLen:int64(c.headerLen)+dataStart-2],
-								max)
+								maxV)
 						} else {
 							if log.LogVerbose() {
 								log.LogVf("[%d] Warning: content-length missing in %q", c.id, string(c.buffer[:c.headerLen]))
@@ -1189,7 +1189,7 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							break
 						}
 					} // end of content-length section
-					if max > int64(len(c.buffer)) {
+					if maxV > int64(len(c.buffer)) {
 						log.S(log.Warning, "Buffer is too small for headers + data - change -httpbufferkb flag",
 							log.Attr("header_len", c.headerLen),
 							log.Attr("content_length", contentLength),
@@ -1197,56 +1197,56 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 						// TODO: just consume the extra instead
 						// or rather use the dataWriter post headers
-						max = int64(len(c.buffer))
+						maxV = int64(len(c.buffer))
 					}
 					if checkConnectionClosedHeader {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
 							log.S(log.Info, "Server wants to close connection, no keep-alive!", log.Attr("thread", c.id), log.Attr("run", c.runID))
 							keepAlive = false
-							max = int64(len(c.buffer)) // reset to read as much as available
+							maxV = int64(len(c.buffer)) // reset to read as much as available
 						}
 					}
 				}
 			}
 		} // end of big if parse header
-		if c.size >= max {
+		if c.size >= maxV {
 			if !keepAlive {
 				log.S(log.Error, "More data is available but stopping after max, increase -httpbufferkb",
-					log.Attr("max", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
+					log.Attr("max", maxV), log.Attr("thread", c.id), log.Attr("run", c.runID))
 			}
 			if !parsedHeaders && c.parseHeaders {
 				log.S(log.Error, "Buffer too small to even finish reading headers, increase -httpbufferkb to get all the data",
-					log.Attr("max", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
+					log.Attr("max", maxV), log.Attr("thread", c.id), log.Attr("run", c.runID))
 				keepAlive = false
 			}
 			if chunkedMode {
 				// Next chunk:
-				dataStart, nextChunkLen := ParseChunkSize(c.buffer[max:c.size])
+				dataStart, nextChunkLen := ParseChunkSize(c.buffer[maxV:c.size])
 				switch nextChunkLen {
 				case -1:
-					if c.size == max {
-						log.Debugf("[%d] Couldn't find next chunk size, reading more %d %d", c.id, max, c.size)
+					if c.size == maxV {
+						log.Debugf("[%d] Couldn't find next chunk size, reading more %d %d", c.id, maxV, c.size)
 					} else {
 						log.S(log.Info, "Partial chunk size, reading more",
-							log.Str("buf", DebugSummary(c.buffer[max:c.size], 20)), log.Attr("max", max), log.Attr("size", c.size),
+							log.Str("buf", DebugSummary(c.buffer[maxV:c.size], 20)), log.Attr("max", maxV), log.Attr("size", c.size),
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 					continue
 				case 0:
-					log.Debugf("[%d] Found last chunk %d %d", c.id, max+dataStart, c.size)
-					if c.size != max+dataStart+2 || string(c.buffer[c.size-2:c.size]) != "\r\n" {
+					log.Debugf("[%d] Found last chunk %d %d", c.id, maxV+dataStart, c.size)
+					if c.size != maxV+dataStart+2 || string(c.buffer[c.size-2:c.size]) != "\r\n" {
 						log.S(log.Error, "Unexpected mismatch at the end",
-							log.Attr("size", c.size), log.Attr("expected", max+dataStart+2),
-							log.Attr("end-of_buffer", c.buffer[max:c.size]),
+							log.Attr("size", c.size), log.Attr("expected", maxV+dataStart+2),
+							log.Attr("end-of_buffer", c.buffer[maxV:c.size]),
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 					}
 				default:
-					max += dataStart + nextChunkLen + 2 // extra CR LF
-					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, max)
-					if max > int64(len(c.buffer)) {
-						log.S(log.Error, "Buffer too small for data", log.Attr("size", max), log.Attr("thread", c.id), log.Attr("run", c.runID))
+					maxV += dataStart + nextChunkLen + 2 // extra CR LF
+					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, maxV)
+					if maxV > int64(len(c.buffer)) {
+						log.S(log.Error, "Buffer too small for data", log.Attr("size", maxV), log.Attr("thread", c.id), log.Attr("run", c.runID))
 					} else {
-						if max <= c.size {
+						if maxV <= c.size {
 							log.Debugf("[%d] Enough data to reach next chunk, skipping a read", c.id)
 							skipRead = true
 						}
@@ -1288,12 +1288,12 @@ func generateUUID() string {
 }
 
 // Generate reuse threshold based on the min and max value in the flag.
-func generateReuseThreshold(min int, max int) int {
-	if min == max {
-		return min
+func generateReuseThreshold(minV int, maxV int) int {
+	if minV == maxV {
+		return minV
 	}
 
-	return min + rand.Intn(max-min+1) //nolint:gosec // we want fast not crypto
+	return minV + rand.Intn(maxV-minV+1) //nolint:gosec // we want fast not crypto
 }
 
 // Resolve the DNS hostname to ip address or assign the override IP.
