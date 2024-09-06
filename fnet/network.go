@@ -337,7 +337,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 		return
 	}
 	found = true
-	idx := dnsRoundRobin % uint32(len(dnsAddrs))
+	idx := dnsRoundRobin % uint32(len(dnsAddrs)) //nolint:gosec // not possible.
 	dnsRoundRobin++
 	res = dnsAddrs[idx]
 	dnsMutex.Unlock() // unlock before IOs
@@ -374,7 +374,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	if err != nil {
 		return nil, err // error already logged
 	}
-	l := uint32(len(addrs))
+	l := uint32(len(addrs)) //nolint:gosec // not possible.
 	if l > 1 {
 		switch dnsMethod {
 		case "cached-rr":
@@ -391,7 +391,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 			dnsMutex.Unlock()
 			log.Debugf("First time/new host for caching address for %s : %v", host, addrs)
 		case "rr":
-			idx = dnsRoundRobin % uint32(len(addrs))
+			idx = dnsRoundRobin % uint32(len(addrs)) //nolint:gosec // not possible.
 			dnsRoundRobin++
 			log.Debugf("Using rr address #%d for %s : %v", idx, host, addrs)
 		case "first":
@@ -656,10 +656,10 @@ func GetUniqueUnixDomainPath(prefix string) string {
 // SmallReadUntil will read one byte at a time until stopByte is found and up to max bytes total.
 // Returns what was read (without the stop byte when found), whether the stop byte was found, whether an error occurred (eof...).
 // Because we read one by one directly (no buffer) this should only be used for short variable length preamble type read.
-func SmallReadUntil(r io.Reader, stopByte byte, max int) ([]byte, bool, error) {
-	buf := make([]byte, max)
+func SmallReadUntil(r io.Reader, stopByte byte, maxV int) ([]byte, bool, error) {
+	buf := make([]byte, maxV)
 	i := 0
-	for i < max {
+	for i < maxV {
 		n, err := r.Read(buf[i : i+1])
 		if err != nil {
 			return buf[0:i], false, err
@@ -751,7 +751,7 @@ func UDPNetCat(ctx context.Context, dest string, in io.Reader, out io.Writer, st
 
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
-func DebugSummary(buf []byte, max int) string {
+func DebugSummary(buf []byte, maxV int) string {
 	// moved to jrpc package
-	return jrpc.DebugSummary(buf, max)
+	return jrpc.DebugSummary(buf, maxV)
 }

@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v74@sha256:71c0bff67a488012143d15fd408e70db7f1b27877fbb2229d1c77154416ded99
+BUILD_IMAGE_TAG := v75@sha256:eb9a2c424c3e94c91e675a306f8ed2a088370e44788f4ec1ae646ceccb768fdc
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -41,6 +41,7 @@ certs: $(CERT_TEMP_DIR)/server.cert
 
 # Generate certs for unit and release tests.
 $(CERT_TEMP_DIR)/server.cert: cert-gen
+	@echo "OS='$(OS)'"
 	./cert-gen
 
 # Remove certificates
@@ -49,9 +50,17 @@ certs-clean:
 
 TEST_TIMEOUT:=90s
 
+OS:=$(shell go env GOOS)
+
 # Local test
+ifeq ($(OS),windows)
+test:
+	@echo "Skipping most tests on Windows until we can get cert-gen to work there."
+	go test ./stats
+else
 test: dependencies
 	go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
+endif
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"

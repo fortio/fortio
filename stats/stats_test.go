@@ -383,18 +383,18 @@ func TestHistogramExportRandom(t *testing.T) {
 		// fmt.Printf("new histogram with offset %g, div %g - will insert %d entries\n", offset, div, numEntries)
 		h := NewHistogram(offset, div)
 		var n int32
-		var min float64
-		var max float64
+		var minV float64
+		var maxV float64
 		for ; n < numEntries; n++ {
 			v := 3000 * (r.Float64() - 0.25)
 			if n == 0 {
-				min = v
-				max = v
+				minV = v
+				maxV = v
 			} else {
-				if v < min {
-					min = v
-				} else if v > max {
-					max = v
+				if v < minV {
+					minV = v
+				} else if v > maxV {
+					maxV = v
 				}
 			}
 			h.Record(v)
@@ -402,10 +402,10 @@ func TestHistogramExportRandom(t *testing.T) {
 		e := h.Export().CalcPercentiles([]float64{0, 50, 100})
 		CheckGenericHistogramDataProperties(t, e)
 		assert.CheckEquals(t, h.Count, int64(numEntries), "num entries should match")
-		assert.CheckEquals(t, h.Min, min, "Min should match")
-		assert.CheckEquals(t, h.Max, max, "Max should match")
-		assert.CheckEquals(t, e.Percentiles[0].Value, min, "p0 should be min")
-		assert.CheckEquals(t, e.Percentiles[2].Value, max, "p100 should be max")
+		assert.CheckEquals(t, h.Min, minV, "Min should match")
+		assert.CheckEquals(t, h.Max, maxV, "Max should match")
+		assert.CheckEquals(t, e.Percentiles[0].Value, minV, "p0 should be min")
+		assert.CheckEquals(t, e.Percentiles[2].Value, maxV, "p100 should be max")
 		if t.Failed() {
 			t.Logf("Failed seed %v iter %d, offset %v, div %v, numEntries %v", seed, i, offset, div, numEntries)
 			t.Logf("%v", e)

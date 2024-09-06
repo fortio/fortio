@@ -44,7 +44,7 @@ type TLSOptions struct {
 	CACert           string // `Path` to a custom CA certificate file to be used
 	Cert             string // `Path` to the certificate file to be used
 	Key              string // `Path` to the key file used
-	UnixDomainSocket string // `Path`` of Unix domain socket to use instead of host:port
+	UnixDomainSocket string // `Path` of Unix domain socket to use instead of host:port
 }
 
 func (to *TLSOptions) DoTLS() bool {
@@ -236,9 +236,9 @@ func ParseChunkSize(inp []byte) (int64, int64) {
 
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
-func DebugSummary(buf []byte, max int) string {
+func DebugSummary(buf []byte, maxV int) string {
 	// moved to fnet package
-	return fnet.DebugSummary(buf, max)
+	return fnet.DebugSummary(buf, maxV)
 }
 
 // -- server utils

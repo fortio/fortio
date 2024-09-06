@@ -760,7 +760,7 @@ func Report(baseurl, port, datadir string) bool {
 	if !strings.Contains(port, ":") {
 		uiMsg += "   (or any host/ip reachable on this server)"
 	}
-	fmt.Printf(uiMsg + "\n")
+	fmt.Print(uiMsg + "\n")
 	uiPath = "/"
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"
 	chartJSPath = version.Short() + "/static/js/Chart.min.js"
@@ -779,9 +779,9 @@ func Report(baseurl, port, datadir string) bool {
 	return true
 }
 
-func parseConnectionReuseRange(min string, max string, value string) string {
-	if min != "" && max != "" {
-		return fmt.Sprintf("%s:%s", min, max)
+func parseConnectionReuseRange(minV string, maxV string, value string) string {
+	if minV != "" && maxV != "" {
+		return fmt.Sprintf("%s:%s", minV, maxV)
 	} else if value != "" {
 		return value
 	}

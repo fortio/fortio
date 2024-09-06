@@ -261,6 +261,7 @@ func FortioMain(hook bincommon.FortioHook) {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
+			//nolint:gosec // not practically overflowing.
 			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, uint32(*maxStreamsFlag), tlsOptions)
 		}
 		if *redirectFlag != disabled {

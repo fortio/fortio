@@ -298,11 +298,11 @@ func EscapeBytes(buf []byte) string {
 
 // DebugSummary returns a string with the size and escaped first max/2 and
 // last max/2 bytes of a buffer (or the whole escaped buffer if small enough).
-func DebugSummary(buf []byte, max int) string {
+func DebugSummary(buf []byte, maxV int) string {
 	l := len(buf)
-	if l <= max+3 { // no point in shortening to add ... if we could return those 3
+	if l <= maxV+3 { // no point in shortening to add ... if we could return those 3
 		return EscapeBytes(buf)
 	}
-	max /= 2
-	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:max]), EscapeBytes(buf[l-max:]))
+	maxV /= 2
+	return fmt.Sprintf("%d: %s...%s", l, EscapeBytes(buf[:maxV]), EscapeBytes(buf[l-maxV:]))
 }
