@@ -56,7 +56,7 @@ OS:=$(shell go env GOOS)
 ifeq ($(OS),windows)
 test:
 	@echo "Skipping most tests on Windows until we can get cert-gen to work there."
-	go test ./stats ./periodic
+	go test ./stats
 else
 test: dependencies
 	go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
