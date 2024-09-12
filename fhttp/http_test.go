@@ -763,7 +763,7 @@ func TestDefaultPort(t *testing.T) {
 	if code != expectedRedirect {
 		t.Errorf("unexpected code for %s: %d (expecting %d redirect to https)", url, code, expectedRedirect)
 	}
-	conn := cli.(*FastClient).connect(ctx)
+	conn, _ := cli.(*FastClient).connect(ctx)
 	if conn != nil {
 		p := conn.RemoteAddr().(*net.TCPAddr).Port
 		if p != 80 {

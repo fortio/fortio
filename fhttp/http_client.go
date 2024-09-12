@@ -727,6 +727,7 @@ type FastClient struct {
 	req          []byte
 	dest         net.Addr
 	socket       net.Conn
+	reader       *DelayedErrorReader
 	socketCount  int // number of sockets attempts, same as the new connectStats.Count() + DNS errors if any.
 	size         int64
 	code         int
@@ -772,10 +773,11 @@ func (c *FastClient) HasBuffer() bool {
 func (c *FastClient) Close() {
 	log.Debugf("[%d] Closing %p %s socket count %d", c.id, c, c.url, c.socketCount)
 	if c.socket != nil {
-		if err := c.socket.Close(); err != nil {
+		if err := c.reader.Close(); err != nil {
 			log.S(log.Warning, "Error closing fast client's socket",
 				log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
 		}
+		c.reader = nil
 		c.socket = nil
 	}
 }
@@ -918,7 +920,7 @@ func (c *FastClient) returnRes() (int, int64, uint) {
 }
 
 // connect to destination.
-func (c *FastClient) connect(ctx context.Context) net.Conn {
+func (c *FastClient) connect(ctx context.Context) (net.Conn, *DelayedErrorReader) {
 	c.socketCount++
 	var socket net.Conn
 	var err error
@@ -930,7 +932,7 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 		if err != nil {
 			log.S(log.Error, "Unable to resolve hostname", log.Str("hostname", c.hostname), log.Attr("err", err),
 				log.Attr("thread", c.id), log.Attr("run", c.runID))
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -942,7 +944,7 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 		if err != nil {
 			log.S(log.Error, "Unable to TLS connect", log.Attr("dest", c.dest), log.Attr("err", err),
 				log.Attr("thread", c.id), log.Attr("run", c.runID))
-			return nil
+			return nil, nil
 		}
 	} else {
 		socket, err = d.Dial(c.dest.Network(), c.dest.String())
@@ -951,11 +953,11 @@ func (c *FastClient) connect(ctx context.Context) net.Conn {
 			log.S(log.Error, "Unable to connect", log.Attr("dest", c.dest), log.Attr("err", err),
 				log.Attr("numfd", scli.NumFD()),
 				log.Attr("thread", c.id), log.Attr("run", c.runID))
-			return nil
+			return nil, nil
 		}
 	}
 	fnet.SetSocketBuffers(socket, len(c.buffer), len(c.req))
-	return socket
+	return socket, &DelayedErrorReader{r: socket}
 }
 
 // Extra error codes outside of the HTTP Status code ranges. ie negative.
@@ -983,6 +985,7 @@ func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	c.headerLen = 0
 	// Connect or reuse existing socket:
 	conn := c.socket
+	reader := c.reader
 	canReuse := conn != nil
 	if c.reachedReuseThreshold() {
 		c.connReuse = generateReuseThreshold(c.connReuseRange[0], c.connReuseRange[1])
@@ -991,7 +994,7 @@ func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	}
 
 	if conn == nil {
-		conn = c.connect(ctx)
+		conn, reader = c.connect(ctx)
 		c.reuseCount = 1
 		if conn == nil {
 			return c.returnRes()
@@ -1040,7 +1043,7 @@ func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 		}
 	}
 	// Read the response:
-	c.readResponse(conn, canReuse)
+	c.readResponse(reader, conn, canReuse)
 	if c.code == RetryOnce {
 		// Special "eof on reused socket" code
 		return c.StreamFetch(ctx) // recurse once
@@ -1054,10 +1057,38 @@ func codeIsOK(code int) bool {
 	return (code >= 200 && code <= 299) || code == http.StatusTeapot
 }
 
+// DelayedErrorReader is a reader that never returns an error along with a non 0 read.
+// It will return the error on the next read. In other words n > 0 is always ok and
+// n is always 0 if there is an error. This is useful to simplify code and deal
+// with readers that can return both an error and data (like go 1.23+ TLS conn.Read).
+type DelayedErrorReader struct {
+	r   io.Reader
+	err error
+}
+
+func (d *DelayedErrorReader) Read(p []byte) (int, error) {
+	if d.err != nil {
+		return 0, d.err
+	}
+	n, err := d.r.Read(p)
+	if n > 0 {
+		d.err = err
+		return n, nil
+	}
+	return n, err
+}
+
+func (d *DelayedErrorReader) Close() error {
+	if closer, ok := d.r.(io.Closer); ok {
+		return closer.Close()
+	}
+	return d.err
+}
+
 // Response reading:
 //
 //nolint:nestif,funlen,gocognit,gocyclo,maintidx,gosec // TODO: refactor - unwiedly/ugly atm.
-func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
+func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reusedSocket bool) {
 	maxV := int64(len(c.buffer))
 	parsedHeaders := false
 	// TODO: safer to start with -1 / SocketError and fix ok for HTTP/1.0
@@ -1259,7 +1290,8 @@ func (c *FastClient) readResponse(conn net.Conn, reusedSocket bool) {
 	} // end of big for loop
 	// Figure out whether to keep or close the socket:
 	if keepAlive && codeIsOK(c.code) && !c.reachedReuseThreshold() {
-		c.socket = conn // keep the open socket
+		c.socket = socket // keep the open socket
+		c.reader = conn
 	} else {
 		if err := conn.Close(); err != nil {
 			log.S(log.Error, "Close error", log.Attr("err", err), log.Attr("size", c.size),
