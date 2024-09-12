@@ -59,7 +59,7 @@ test:
 	go test ./stats
 else
 test: dependencies
-	CGO_ENABLED=0 go test -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
+	go test -tags netgo -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
 endif
 
 # To debug strange linter errors, uncomment
