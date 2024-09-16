@@ -647,6 +647,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 		DialContext:         dialCtx,
 		TLSHandshakeTimeout: o.HTTPReqTimeOut,
 		ForceAttemptHTTP2:   o.H2,
+		WriteBufferSize:     1048576,
 	}
 	client.transport = tr // internal transport, unwrapped (to close idle conns)
 	if o.https {
@@ -667,6 +668,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 				return dialCtx(ctx, network, addr)
 			},
 			DisableCompression: !o.Compression,
+			MaxReadFrameSize:   1048576,
 		}
 		client.transport = tr2
 	}
