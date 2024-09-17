@@ -31,6 +31,7 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/periodic"
 	"fortio.org/log"
+	"fortio.org/safecast"
 )
 
 // -- Support for multiple instances of -H flag on cmd line.
@@ -156,8 +157,8 @@ func FetchURL(o *fhttp.HTTPOptions) {
 		var data []byte
 		var headerI int
 		code, data, headerI = client.Fetch(context.Background())
-		dataLen = int64(len(data))
-		header = uint(headerI)
+		dataLen = safecast.MustConvert[int64](len(data))
+		header = safecast.MustConvert[uint](headerI)
 		if *curlHeadersStdout {
 			os.Stdout.Write(data)
 		} else {

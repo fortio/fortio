@@ -1165,7 +1165,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 						parsedHeaders = true
 						break
 					}
-					c.headerLen = uint(idx)
+					c.headerLen = safecast.MustConvert[uint](idx)
 					idx++
 				}
 				idx++
