@@ -43,6 +43,7 @@ import (
 	"fortio.org/fortio/ui"
 	"fortio.org/fortio/version"
 	"fortio.org/log"
+	"fortio.org/safecast"
 	"fortio.org/scli"
 )
 
@@ -261,8 +262,7 @@ func FortioMain(hook bincommon.FortioHook) {
 			fnet.UDPEchoServer("udp-echo", *udpPortFlag, *udpAsyncFlag)
 		}
 		if *grpcPortFlag != disabled {
-			//nolint:gosec // not practically overflowing.
-			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, uint32(*maxStreamsFlag), tlsOptions)
+			fgrpc.PingServer(*grpcPortFlag, *healthSvcFlag, safecast.MustConvert[uint32](*maxStreamsFlag), tlsOptions)
 		}
 		if *redirectFlag != disabled {
 			fhttp.RedirectToHTTPS(*redirectFlag)
