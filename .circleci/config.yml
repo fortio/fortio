@@ -23,7 +23,7 @@ jobs:
     <<: *defaultEnv
     steps:
       - setup_remote_docker:
-          version: 20.10.12
+          version: previous
       - checkout
       - run: make release-test
 # linters are now part of gochecks shared github action workflows (go checks)
