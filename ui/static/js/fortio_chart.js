@@ -134,10 +134,19 @@ function makeTitle (res) {
       }
     }
   }
-  title.push('Response time histogram at ' + res.RequestedQPS + ' target qps (' +
-    myRound(res.ActualQPS, 1) + ' actual) ' + res.NumThreads + ' connections for ' +
-    res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's), jitter: ' +
-    res.Jitter + ', uniform: ' + res.Uniform + ', ' + errStr)
+  let qpsLabel = 'qps'
+  if (res.QPSLabel !== undefined) {
+    qpsLabel = res.QPSLabel
+  }
+  let responseLabel = 'Response time'
+  if (res.ResponseLabel !== undefined) {
+    responseLabel = res.ResponseLabel
+  }
+  title.push(responseLabel + ' histogram at ' + res.RequestedQPS + ' target ' + qpsLabel + ' (' +
+    myRound(res.ActualQPS, 1) + ' actual) ' +
+    `${res.NumThreads ? res.NumThreads + ' connections for ' : ''}` +
+    res.RequestedDuration + ' (actual time ' + myRound(res.ActualDuration / 1e9, 1) + 's)' +
+    `${res.Jitter ? ', jitter: ' + res.Jitter + ', uniform: ' + res.Uniform : ''}` + ', ' + errStr)
   title.push(percStr)
   return title
 }
