@@ -50,6 +50,8 @@ var DefaultRunnerOptions = RunnerOptions{
 	NumThreads:  4,
 	Percentiles: []float64{90.0},
 	Resolution:  0.001, // milliseconds
+	// Not used unless Ramp is non zero, but if it is:
+	InitialNumThreads: 1,
 }
 
 type ThreadID int
@@ -191,12 +193,21 @@ type RunnerOptions struct {
 	Runners []Runnable `json:"-"`
 	// At which (target) rate to run the Runners across NumThreads.
 	QPS float64
+	// Initial QPS. Used if Ramp duration is specified, will increase the target from InitialQPS to QPS over Ramp duration.
+	InitialQPS float64
+	// Ramp duration. If specified, will increase the target from InitialQPS to QPS over Ramp duration.
+	// default is no ramp up.
+	Ramp time.Duration
 	// How long to run the test for. Unless Exactly is specified.
 	Duration time.Duration
 	// Note that this actually maps to gorountines and not actual threads,
 	// but threads seems like a more familiar name to use for non go users
-	// and in a benchmarking context
+	// and in a benchmarking context.
 	NumThreads int
+	// InitialNumThreads is the number of threads to start with when using Ramp.
+	// If Ramp is specified, will increase the number of threads from InitialNumThreads
+	// to NumThreads over Ramp duration.
+	InitialNumThreads int
 	// List of percentiles to calculate.
 	Percentiles []float64
 	// Divider to apply to duration data in seconds. Defaults to 0.001 or 1 millisecond.
