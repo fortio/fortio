@@ -126,7 +126,6 @@ func TestResolveDestination(t *testing.T) {
 	}
 	ctx := context.Background()
 	for _, tt := range tests {
-		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
 			got, _ := fnet.TCPResolveDestination(ctx, tt.destination)
 			gotStr := ""
@@ -160,7 +159,6 @@ func TestUDPResolveDestination(t *testing.T) {
 	}
 	ctx := context.Background()
 	for _, tt := range tests {
-		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
 			got, _ := fnet.UDPResolveDestination(ctx, tt.destination)
 			gotStr := ""
@@ -577,7 +575,7 @@ func TestDNSCacheConcurrency(t *testing.T) {
 	n := 20
 	wg.Add(n)
 	ctx := context.Background()
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			fnet.Resolve(ctx, "localhost", "80")
 			wg.Done()

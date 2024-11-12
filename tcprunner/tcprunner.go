@@ -249,7 +249,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	total.Destination = o.Destination
 	tcpstate := make([]RunnerResults, numThreads)
 	var err error
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		r.Options().Runners[i] = &tcpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
 		tcpstate[i].client, err = NewTCPClient(&o.TCPOptions)
@@ -271,7 +271,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	// Numthreads may have reduced, but it should be ok to accumulate 0s from
 	// unused ones. We also must clean up all the created clients.
 	keys := []string{}
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		total.SocketCount += tcpstate[i].client.Close()
 		total.BytesReceived += tcpstate[i].client.bytesReceived
 		total.BytesSent += tcpstate[i].client.bytesSent

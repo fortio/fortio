@@ -26,7 +26,7 @@ import (
 func TestMultiProxy(t *testing.T) {
 	_, debugAddr := ServeTCP("0", "/debug")
 	urlBase := fmt.Sprintf("localhost:%d/", debugAddr.Port)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		serial := (i == 0)
 		mcfg := MultiServerConfig{Serial: serial}
 		mcfg.Targets = []TargetConf{
@@ -97,7 +97,7 @@ func TestMultiProxy(t *testing.T) {
 }
 
 func TestMultiProxyErrors(t *testing.T) {
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		serial := (i == 0)
 		mcfg := MultiServerConfig{Serial: serial}
 		// No scheme in url to cause error

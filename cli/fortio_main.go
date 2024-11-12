@@ -337,7 +337,7 @@ func startProxies() int {
 		mcfg := fhttp.MultiServerConfig{Serial: *multiSerialFlag}
 		n := len(s) - 1
 		mcfg.Targets = make([]fhttp.TargetConf, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			mcfg.Targets[i].Destination = s[i+1]
 			mcfg.Targets[i].MirrorOrigin = *mirrorOriginFlag
 		}

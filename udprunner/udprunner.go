@@ -237,7 +237,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	total.Destination = o.Destination
 	udpstate := make([]RunnerResults, numThreads)
 	var err error
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		r.Options().Runners[i] = &udpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
 		udpstate[i].client, err = NewUDPClient(&o.UDPOptions)
@@ -259,7 +259,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	// Numthreads may have reduced, but it should be ok to accumulate 0s from
 	// unused ones. We also must clean up all the created clients.
 	keys := []string{}
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		total.SocketCount += udpstate[i].client.Close()
 		total.BytesReceived += udpstate[i].client.bytesReceived
 		total.BytesSent += udpstate[i].client.bytesSent

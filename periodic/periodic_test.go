@@ -570,7 +570,7 @@ func TestGetJitter(t *testing.T) {
 		t.Errorf("getJitter < 5 got %v instead of expected 0", d)
 	}
 	sum := 0.
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		d = getJitter(6)
 		a := math.Abs(float64(d))
 		// only valid values are -1, 0, 1

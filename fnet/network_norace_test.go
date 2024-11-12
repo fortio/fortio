@@ -38,7 +38,7 @@ func TestTCPEchoServerEOF(t *testing.T) {
 	// quite brittle but somehow we can get read: connection reset by peer and write: broken pipe
 	// with these timings (!)
 	ctx := context.Background()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		eofStopFlag := (i%2 == 0)
 		in := io.NopCloser(strings.NewReader(strings.Repeat("x", 50000)))
 		var out ErroringWriter

@@ -184,7 +184,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	var conn *grpc.ClientConn
 	var err error
 	ts := time.Now().UnixNano()
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		r.Options().Runners[i] = &grpcstate[i]
 		newConn := i%o.Streams == 0
 		if newConn {
@@ -259,7 +259,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	// Numthreads may have reduced
 	numThreads = r.Options().NumThreads
 	keys := []string{}
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		// Q: is there some copying each time stats[i] is used?
 		for k := range grpcstate[i].RetCodes {
 			if _, exists := total.RetCodes[k]; !exists {

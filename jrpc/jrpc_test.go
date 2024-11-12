@@ -447,7 +447,7 @@ func TestJPRCSlices(t *testing.T) {
 			n = 42 // for testing of GetArray
 		}
 		resp := make([]SliceOneResponse, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			resp[i] = SliceOneResponse{
 				Index: i,
 				Data:  fmt.Sprintf("data %d", i),
@@ -469,7 +469,7 @@ func TestJPRCSlices(t *testing.T) {
 	if len(slice) != 10 {
 		t.Errorf("expected 10 results, got %d", len(slice))
 	}
-	for i := 0; i < len(slice); i++ {
+	for i := range slice {
 		el := slice[i]
 		if el.Index != i {
 			t.Errorf("expected index %d, got %d", i, el.Index)
@@ -485,7 +485,7 @@ func TestJPRCSlices(t *testing.T) {
 	if len(slice) != 42 {
 		t.Errorf("expected 42 results, got %d", len(slice))
 	}
-	for i := 0; i < len(slice); i++ {
+	for i := range slice {
 		el := slice[i]
 		if el.Index != i {
 			t.Errorf("expected index %d, got %d", i, el.Index)
