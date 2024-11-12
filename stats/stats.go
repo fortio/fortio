@@ -231,7 +231,7 @@ func init() {
 		log.Fatalf("Bug boundary maxArrayValue=%d not found in bucket list %v", maxArrayValue, histogramBucketValues)
 	}
 	idx := 0
-	for i := int32(0); i < maxArrayValue; i++ {
+	for i := range maxArrayValue {
 		if i >= histogramBucketValues[idx] {
 			idx++
 		}

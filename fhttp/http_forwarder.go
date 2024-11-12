@@ -223,7 +223,7 @@ func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http
 	numTargets := len(mcfg.Targets)
 	ba := make([]bytes.Buffer, numTargets)
 	sa := make([]int, numTargets)
-	for i := 0; i < numTargets; i++ {
+	for i := range numTargets {
 		req := setupRequest(r, i, mcfg.Targets[i], data)
 		if req == nil {
 			continue
@@ -239,7 +239,7 @@ func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http
 	wg.Wait()
 	// Get overall status only ok if all OK, first non ok sets status
 	status := http.StatusOK
-	for i := 0; i < numTargets; i++ {
+	for i := range numTargets {
 		if sa[i] != http.StatusOK {
 			status = sa[i]
 			break
@@ -250,7 +250,7 @@ func (mcfg *MultiServerConfig) TeeParallelHandler(w http.ResponseWriter, r *http
 	}
 	w.WriteHeader(status)
 	// Send all the data back to back
-	for i := 0; i < numTargets; i++ {
+	for i := range numTargets {
 		bw, err := w.Write(ba[i].Bytes())
 		log.Debugf("For %d, wrote %d bytes - status %d", i, bw, sa[i])
 		if err != nil {

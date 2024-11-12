@@ -537,7 +537,7 @@ func TestConnectionReuseRange(t *testing.T) {
 	expectedSocketReuse := int64(2)
 	opts.ConnReuseRange = [2]int{5, 9}
 	// Check a few times that despite the range and random 2-9 we still always get 2 connections
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		res, err := RunHTTPTest(&opts)
 		if err != nil {
 			t.Error(err)

@@ -70,7 +70,7 @@ func (r *RunnerOptions) MakeRunners(rr Runnable) {
 		log.Infof("Resizing runners from %d to %d", len(r.Runners), r.NumThreads)
 		r.Runners = make([]Runnable, r.NumThreads)
 	}
-	for i := 0; i < r.NumThreads; i++ {
+	for i := range r.NumThreads {
 		r.Runners[i] = rr
 	}
 }
@@ -549,7 +549,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	} else {
 		var wg sync.WaitGroup
 		var fDs, eDs, sDs []*stats.Histogram
-		for t := 0; t < r.NumThreads; t++ {
+		for t := range r.NumThreads {
 			durP := functionDuration.Clone()
 			errP := errorsDuration.Clone()
 			sleepP := sleepTime.Clone()
@@ -568,7 +568,7 @@ func (r *periodicRunner) Run() RunnerResults {
 			}(ThreadID(t), durP, errP, sleepP)
 		}
 		wg.Wait()
-		for t := 0; t < r.NumThreads; t++ {
+		for t := range r.NumThreads {
 			functionDuration.Transfer(fDs[t])
 			errorsDuration.Transfer(eDs[t])
 			sleepTime.Transfer(sDs[t])

@@ -147,7 +147,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// First build all the clients sequentially. This ensures we do not have data races when
 	// constructing requests.
 	ctx := context.Background()
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
 		o.HTTPOptions.ID = i
@@ -179,8 +179,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	}
 	if o.Exactly <= 0 && !o.SequentialWarmup {
 		warmup := errgroup{}
-		for i := 0; i < numThreads; i++ {
-			i := i
+		for i := range numThreads {
 			warmup.Go(func() error {
 				code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
 				if !o.AllowInitialErrors && !codeIsOK(code) {
@@ -232,7 +231,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// But we also must cleanup all the created clients.
 	keys := []int{}
 	fmt.Fprintf(out, "# Socket and IP used for each connection:\n")
-	for i := 0; i < numThreads; i++ {
+	for i := range numThreads {
 		// Get the report on the IP address each thread use to send traffic
 		occurrence, connStats := httpstate[i].client.GetIPAddress()
 		currentSocketUsed := connStats.Count

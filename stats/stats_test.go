@@ -268,7 +268,7 @@ func CheckGenericHistogramDataProperties(t *testing.T, e *HistogramData) {
 	// All buckets in order
 	var prev Bucket
 	var sum int64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b := e.Data[i]
 		assert.Assert(t, b.Start <= b.End, "End %f should always be after Start %f", b.End, b.Start)
 		assert.Assert(t, b.Count > 0, "Every exported bucket should have data")
@@ -375,7 +375,7 @@ func TestHistogramNegativeOffset(t *testing.T) {
 func TestHistogramExportRandom(t *testing.T) {
 	seed := time.Now().UnixNano()
 	r := rand.New(rand.NewSource(seed))
-	for i := 0; i < NumRandomHistogram; i++ {
+	for i := range NumRandomHistogram {
 		// offset [-500,500[  divisor ]0,100]
 		offset := (r.Float64() - 0.5) * 1000
 		div := 100 * (1 - r.Float64())

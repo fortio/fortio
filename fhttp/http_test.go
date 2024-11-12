@@ -203,9 +203,9 @@ func TestFoldFind2(t *testing.T) {
 	var needle [1]byte
 	// we don't mind for these to map to each other in exchange for 30% perf gain
 	okExceptions := "@[\\]^_`{|}~"
-	for i := 0; i < 127; i++ { // skipping 127 too, matches _
+	for i := range 127 { // skipping 127 too, matches _
 		haystack[0] = byte(i)
-		for j := 0; j < 128; j++ {
+		for j := range 128 {
 			needle[0] = byte(j)
 			sh := string(haystack[:])
 			sn := string(needle[:])
@@ -443,7 +443,7 @@ func TestGenerateStatusDistribution(t *testing.T) {
 	log.SetLogLevel(log.Info)
 	str := "501:20,502:30,503:0.5"
 	m := make(map[int]int)
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		m[generateStatus(str)]++
 	}
 	if len(m) != 4 {
@@ -620,7 +620,7 @@ func TestPayloadWithStdClientAndClosedSocket(t *testing.T) {
 	opts.Payload = payload
 	cli, _ := NewClient(opts)
 	ctx := context.Background()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		code, body, header := cli.Fetch(ctx)
 
 		if code != 200 {
@@ -1074,10 +1074,10 @@ func TestManyUUIDsFastClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateManyUUID)
 	url := fmt.Sprintf("http://localhost:%d/{uuid}/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		o := HTTPOptions{URL: url, DisableFastClient: false}
 		client, _ := NewClient(&o)
-		for j := 0; j < 3; j++ {
+		for range 3 {
 			code, data, header := client.Fetch(context.Background())
 			t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 			if code != 200 {
@@ -1160,10 +1160,10 @@ func TestManyUUIDsClient(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", ValidateManyUUID)
 	url := fmt.Sprintf("http://localhost:%d/{uuid}/{uuid}?uuid={uuid}&uuid2={uuid}", a.Port)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		o := HTTPOptions{URL: url, DisableFastClient: true}
 		client, _ := NewClient(&o)
-		for j := 0; j < 3; j++ {
+		for range 3 {
 			code, data, header := client.Fetch(context.Background())
 			t.Logf("TestPayloadSize result code %d, data len %d, headerlen %d", code, len(data), header)
 			if code != 200 {
