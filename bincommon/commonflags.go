@@ -102,7 +102,7 @@ var (
 func SharedMain() {
 	flag.Func("H",
 		"Additional HTTP header(s) or gRPC metadata. Multiple `key:value` pairs can be passed using multiple -H.",
-		func(s string) error { return httpOpts.AddAndValidateExtraHeader(s) })
+		httpOpts.AddAndValidateExtraHeader)
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized HTTP client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
