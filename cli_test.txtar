@@ -23,3 +23,13 @@ stderr 'HTTP/1.1 200 OK'
 stdout 'Xyz: bar blah'
 stdout 'Content-Type: foo/bar'
 stdout 'POST /test-path HTTP/1.1'
+
+# HTTP multi proxy to run (-M flag)
+fortio curl -M '8088 http://fortio-c1-http:8080 http://fortio-c2-http:8080' https://debug.fortio.org/test-path
+stderr 'HTTP/1.1 200 OK'
+stdout 'GET /test-path HTTP/1.1'
+
+# TCP proxies to run (-P flag)
+fortio curl -P '8089 fortio-c-tcp:8078' -P '8090 fortio-c1-http:8080' https://debug.fortio.org/test-path
+stderr 'HTTP/1.1 200 OK'
+stdout 'GET /test-path HTTP/1.1'
