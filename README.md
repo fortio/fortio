@@ -1116,7 +1116,7 @@ Fortio is written in the [Go](https://golang.org) language and includes a scalab
 The [fhttp/](fhttp/) package includes a very high performance specialized HTTP 1.1 client.
 You may find fortio's [logger](log/logger.go) useful as well.
 
-You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo HTTP server in [echosrv/](echosrv/), or both the HTTP echo and gRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](fortio_main.go)
+You can run the histogram code standalone as a command line in [histogram/](histogram/), a basic echo HTTP server in [echosrv/](echosrv/), or both the HTTP echo and gRPC ping server through `fortio server`, the fortio command line interface lives in this top level directory [fortio_main.go](cli/fortio_main.go)
 
 There is also [fcurl/](fcurl/) which is the `fortio curl` part of the code (if you need a light HTTP client without gRPC or server side).
 A matching tiny (2Mb compressed) Docker image is [fortio/fortio.fcurl](https://hub.docker.com/r/fortio/fortio.fcurl/tags/).
