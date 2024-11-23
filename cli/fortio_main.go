@@ -47,34 +47,6 @@ import (
 	"fortio.org/scli"
 )
 
-// -- Start of support for multiple proxies (-P) flags on cmd line.
-type proxiesFlagList struct{}
-
-func (f *proxiesFlagList) String() string {
-	return ""
-}
-
-func (f *proxiesFlagList) Set(value string) error {
-	proxies = append(proxies, value)
-	return nil
-}
-
-// -- End of functions for -P support.
-
-// -- Same for -M.
-type httpMultiFlagList struct{}
-
-func (f *httpMultiFlagList) String() string {
-	return ""
-}
-
-func (f *httpMultiFlagList) Set(value string) error {
-	httpMulties = append(httpMulties, value)
-	return nil
-}
-
-// -- End of -M support.
-
 // fortio's help/args message.
 func helpArgsString() string {
 	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
@@ -129,13 +101,10 @@ var (
 		"Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname")
 	// do not remove the flag for backward compatibility.  Was absolute `path` to the dir containing the static files dir
 	// which is now embedded in the binary thanks to that support in golang 1.16.
-	_            = flag.String("static-dir", "", "Deprecated/unused `path`.")
-	dataDirFlag  = flag.String("data-dir", ".", "`Directory` where JSON results are stored/read")
-	proxiesFlags proxiesFlagList
-	proxies      = make([]string, 0)
-	// -M flag.
-	httpMultiFlags httpMultiFlagList
-	httpMulties    = make([]string, 0)
+	_           = flag.String("static-dir", "", "Deprecated/unused `path`.")
+	dataDirFlag = flag.String("data-dir", ".", "`Directory` where JSON results are stored/read")
+	proxies     = make([]string, 0)
+	httpMulties = make([]string, 0)
 
 	allowInitialErrorsFlag = flag.Bool("allow-initial-errors", false, "Allow and don't abort on initial warmup errors")
 	abortOnFlag            = flag.Int("abort-on", 0,
@@ -194,9 +163,18 @@ func serverArgCheck() bool {
 }
 
 func FortioMain(hook bincommon.FortioHook) {
-	flag.Var(&proxiesFlags, "P",
-		"TCP proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...")
-	flag.Var(&httpMultiFlags, "M", "HTTP multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...")
+	flag.Func("P",
+		"TCP proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...",
+		func(value string) error {
+			proxies = append(proxies, value)
+			return nil
+		})
+	flag.Func("M", "HTTP multi proxy to run, e.g -M \"localport1 baseDestURL1 baseDestURL2\" -M ...",
+		func(value string) error {
+			httpMulties = append(httpMulties, value)
+			return nil
+		})
+
 	bincommon.SharedMain()
 
 	// Use the new [fortio.org/cli] package to handle usage, arguments and flags parsing.

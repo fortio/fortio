@@ -34,19 +34,6 @@ import (
 	"fortio.org/safecast"
 )
 
-// -- Support for multiple instances of -H flag on cmd line.
-type headersFlagList struct{}
-
-func (f *headersFlagList) String() string {
-	return ""
-}
-
-func (f *headersFlagList) Set(value string) error {
-	return httpOpts.AddAndValidateExtraHeader(value)
-}
-
-// -- end of functions for -H support
-
 // FortioHook is used in fortio/cli and fortio/rapi to customize the run and introduce for instance clienttrace
 // and fortiotel access logger.
 type FortioHook func(*fhttp.HTTPOptions, *periodic.RunnerOptions)
@@ -63,7 +50,6 @@ var (
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in HTTPS/TLS/gRPC connections")
 	httpsInsecureFlagL  = flag.Bool("https-insecure", false, "Long form of the -k flag")
 	resolve             = flag.String("resolve", "", "Resolve host name to this `IP`")
-	headersFlags        headersFlagList
 	httpOpts            fhttp.HTTPOptions
 	followRedirectsFlag = flag.Bool("L", false, "Follow redirects (implies -std-client) - do not use for load test")
 	userCredentialsFlag = flag.String("user", "", "User credentials for basic authentication (for HTTP). Input data format"+
@@ -114,8 +100,9 @@ var (
 // It sets up the common flags, the rest of usage/argument/flag handling
 // is now moved to the [fortio.org/cli] and [fortio.org/scli] packages.
 func SharedMain() {
-	flag.Var(&headersFlags, "H",
-		"Additional HTTP header(s) or gRPC metadata. Multiple `key:value` pairs can be passed using multiple -H.")
+	flag.Func("H",
+		"Additional HTTP header(s) or gRPC metadata. Multiple `key:value` pairs can be passed using multiple -H.",
+		httpOpts.AddAndValidateExtraHeader)
 	flag.IntVar(&fhttp.BufferSizeKb, "httpbufferkb", fhttp.BufferSizeKb,
 		"Size of the buffer (max data size) for the optimized HTTP client in `kbytes`")
 	flag.BoolVar(&fhttp.CheckConnectionClosedHeader, "httpccch", fhttp.CheckConnectionClosedHeader,
