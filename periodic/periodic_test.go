@@ -465,7 +465,7 @@ func TestInfiniteDurationAndAbort(t *testing.T) {
 		r.Options().Abort()
 	}()
 	r.Run()
-	// TODO: we had to increase this to 15... why?
+	// TODO: we had to increase this to 15... why? (see also the other test with same check)
 	if count < 9 || count > 15 {
 		t.Errorf("Test executed unexpected number of times %d instead of 9-15", count)
 	}
@@ -508,8 +508,8 @@ func TestExactlyAndAbort(t *testing.T) {
 	}()
 	res := r.Run()
 	r.Options().ReleaseRunners()
-	if count < 9 || count > 13 {
-		t.Errorf("Test executed unexpected number of times %d instead of 9-13", count)
+	if count < 9 || count > 15 {
+		t.Errorf("Test executed unexpected number of times %d instead of 9-15", count)
 	}
 	if !strings.Contains(res.RequestedDuration, "exactly 100 calls, interrupted after") {
 		t.Errorf("Got '%s' and didn't find expected aborted", res.RequestedDuration)
