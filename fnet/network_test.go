@@ -174,10 +174,10 @@ func TestUDPResolveDestination(t *testing.T) {
 
 func TestResolveDestinationMultipleIps(t *testing.T) {
 	ctx := context.Background()
-	addr, err := fnet.TCPResolveDestination(ctx, "www.google.com:443")
-	t.Logf("Found google addr %+v err=%v", addr, err)
+	addr, err := fnet.TCPResolveDestination(ctx, "debug.fortio.org:443")
+	t.Logf("Found debug.fortio.org addr %+v err=%v", addr, err)
 	if addr == nil || err != nil {
-		t.Errorf("got nil address for google: %v", err)
+		t.Errorf("got nil address for debug.fortio.org: %v", err)
 	}
 }
 
@@ -424,7 +424,7 @@ func TestProxyErrors(t *testing.T) {
 		t.Errorf("didn't get expected error with proxy %d", n)
 	}
 	// 2nd proxy on same port should fail
-	addr2 := fnet.ProxyToDestination(ctx, fnet.GetPort(addr), "www.google.com:80")
+	addr2 := fnet.ProxyToDestination(ctx, fnet.GetPort(addr), "debug.fortio.org:80")
 	if addr2 != nil {
 		t.Errorf("Second proxy on same port should have failed, got %+v", addr2)
 	}
@@ -463,9 +463,8 @@ func TestResolveBW(t *testing.T) {
 	}
 }
 
-// This test relies on google answer 2 ips, first ipv4, second ipv6.
+// This test relies on debug.fortio.org answer different ips, first ipv4, second ipv6.
 // if that's not the case anymore or in the testing environment, this will fail.
-// TODO: switch to debug.fortio.org where we control the IPs.
 func TestDNSMethods(t *testing.T) {
 	ctx := context.Background()
 	err := fnet.FlagResolveMethod.Set("first")
@@ -473,30 +472,30 @@ func TestDNSMethods(t *testing.T) {
 		t.Errorf("unexpected error setting method to first: %v", err)
 	}
 	fnet.FlagResolveIPType.Set("ip4")
-	addr4, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addr4, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip4 resolving google: %v", err)
+		t.Errorf("error ip4 resolving debug.fortio.org: %v", err)
 	}
 	fnet.FlagResolveIPType.Set("ip6")
-	addr6, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addr6, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip6 resolving google: %v", err)
+		t.Errorf("error ip6 resolving debug.fortio.org: %v", err)
 	}
 	if addr4.String() == addr6.String() {
 		t.Errorf("ipv4 %v and ipv6 %v shouldn't be same", addr4, addr6)
 	}
 	fnet.FlagResolveIPType.Set("ip")
-	addrFirst, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrFirst, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving google: %v", err)
+		t.Errorf("error ip any resolving debug.fortio.org: %v", err)
 	}
 	if addrFirst.String() != addr4.String() {
 		// dns might change when not in cached mode
 		log.Warnf("first ip %v not ipv4 %v", addrFirst, addr4)
 	}
-	addrSecond, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrSecond, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving (2) google: %v", err)
+		t.Errorf("error ip any resolving (2) debug.fortio.org: %v", err)
 	}
 	if addrFirst.String() != addrSecond.String() {
 		log.Warnf("first ip %v not == second %v in first mode", addrFirst, addrSecond)
@@ -505,36 +504,36 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error setting back cached-rr mode: %v", err)
 	}
-	addrThird, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrThird, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving (3) google: %v", err)
+		t.Errorf("error ip any resolving (3) debug.fortio.org: %v", err)
 	}
 	if addrFirst.String() != addrThird.String() {
 		log.Warnf("first cached ip %v not == first %v in cached-rr mode", addrThird, addrFirst)
 	}
-	addrFourth, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrFourth, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving (4) google: %v", err)
+		t.Errorf("error ip any resolving (4) debug.fortio.org: %v", err)
 	}
 	if addrFourth.String() != addr6.String() {
 		log.Warnf("second cached ip %v not == ipv6 %v in cached-rr mode", addrFourth, addr6)
 	}
 	if addrFourth.String() == addrThird.String() {
-		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for google", addrFourth, addrThird)
+		t.Errorf("in cached rr mode, 2nd call %v shouldn't be same as first %v for debug.fortio.org", addrFourth, addrThird)
 	}
 	// back to first (rr) [only if there are only 2 ips]
-	addrFifth, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrFifth, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving (5) google: %v", err)
+		t.Errorf("error ip any resolving (5) debug.fortio.org: %v", err)
 	}
 	if addrThird.String() != addrFifth.String() {
 		log.Warnf("third cached ip %v not == back to first %v in cached-rr mode (if only 2 ips)", addrFifth, addrThird)
 	}
 	// clear cache we'll get first again (if we don't get a completely different one that is)
 	fnet.ClearResolveCache()
-	addrAfterCache, err := fnet.Resolve(ctx, "www.google.com", "80")
+	addrAfterCache, err := fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("error ip any resolving (6) google: %v", err)
+		t.Errorf("error ip any resolving (6) debug.fortio.org: %v", err)
 	}
 	if addrAfterCache.String() == addrFourth.String() {
 		t.Errorf("cache clear failure, we still got 2nd ip: %v", addrAfterCache)
@@ -547,17 +546,17 @@ func TestDNSMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error setting method to rnd: %v", err)
 	}
-	_, err = fnet.Resolve(ctx, "www.google.com", "80")
+	_, err = fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("unexpected error in rnd mode for resolve of google: %v", err)
+		t.Errorf("unexpected error in rnd mode for resolve of debug.fortio.org: %v", err)
 	}
 	err = fnet.FlagResolveMethod.Set("rr")
 	if err != nil {
 		t.Errorf("unexpected error setting method to rr: %v", err)
 	}
-	_, err = fnet.Resolve(ctx, "www.google.com", "80")
+	_, err = fnet.Resolve(ctx, "debug.fortio.org", "80")
 	if err != nil {
-		t.Errorf("unexpected error in rr mode for resolve of google: %v", err)
+		t.Errorf("unexpected error in rr mode for resolve of debug.fortio.org: %v", err)
 	}
 	// put it back to default
 	err = fnet.FlagResolveMethod.Set("cached-rr")
