@@ -1,5 +1,5 @@
 # Build the binaries in larger image
-FROM docker.io/fortio/fortio.build:v77@sha256:03af2e7202d5364fb3424c9ef28f372702081ee809b7f8dfbb2a1b649b0b4c2c as build
+FROM docker.io/fortio/fortio.build:v78@sha256:a9ce421715f9c05a6441e187b227c42f76f3235318267838a3ba382570a5da69 AS build
 WORKDIR /build
 COPY --chown=build:build . fortio
 ARG MODE=install
@@ -8,7 +8,7 @@ ARG MODE=install
 RUN make -C fortio official-build-version BUILD_DIR=/build MODE=${MODE}
 
 # Minimal image with just the binary and certs
-FROM scratch as release
+FROM scratch AS release
 # We don't need to copy certs anymore since cli 1.6.0
 # COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /build/result/fortio /usr/bin/fortio
