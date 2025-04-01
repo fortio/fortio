@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.23.7@sha256:7fb9682dbc6c9743cd911cedb39c84790e8dfeaaf87d229b78f3f6658fce507a
+FROM golang:1.23.8@sha256:a5339982f2e78b38b26ebbee35139854e184a4e90e1516f9f636371e720b727b
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
