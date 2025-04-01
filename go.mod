@@ -5,7 +5,6 @@ module fortio.org/fortio
 // (in part forced by grpc). we force 1.22.3 because 1.23.2 has pretty severe bug (macos) even though I think "1.23" with
 // no patch level would be better for the go.mod file.
 go 1.23.7
-toolchain go1.24.1
 
 // When needed, ie to force download of July 2nd 2024 go security and bug fix release,
 // as 1.22.5 docker images were not there yet and ditto for action/setup-go
