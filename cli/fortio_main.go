@@ -166,6 +166,7 @@ func serverArgCheck() bool {
 	return true
 }
 
+//nolint:funlen // maybe move the server section to a separate function but it's also fairly short anyway for all the modes.
 func FortioMain(hook bincommon.FortioHook) int {
 	flag.Func("P",
 		"TCP proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...",
