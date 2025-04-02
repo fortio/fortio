@@ -28,6 +28,14 @@ stdout 'POST /test-path HTTP/1.1'
 fortio script test.gr
 stdout '^42$'
 
+# Error case: bad file
+!fortio script no-such-file.gr
+stderr 'open no-such-file.gr: no such file or directory'
+
+# Error case: bad script
+!fortio script bad.gr
+stderr 'panic: runtime error: integer divide by zero'
+
 # Stdin script test
 stdin test.gr
 fortio script -
@@ -39,3 +47,6 @@ stderr 'EOF'
 
 -- test.gr --
 40+2
+
+-- bad.gr --
+1/0
