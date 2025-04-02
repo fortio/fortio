@@ -24,8 +24,18 @@ stdout 'Xyz: bar blah'
 stdout 'Content-Type: foo/bar'
 stdout 'POST /test-path HTTP/1.1'
 
+# Script command tests
 fortio script test.gr
-stdout '42'
+stdout '^42$'
+
+# Stdin script test
+stdin test.gr
+fortio script -
+stdout '^42$'
+
+# Pseudo interactive test
+fortio script
+stderr 'EOF'
 
 -- test.gr --
 40+2

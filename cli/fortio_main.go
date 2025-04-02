@@ -190,7 +190,7 @@ func FortioMain(hook bincommon.FortioHook) int {
 	cli.ArgsHelp = helpArgsString()
 	cli.CommandBeforeFlags = true
 	cli.MinArgs = 0   // because `fortio server`s don't take any args
-	cli.MaxArgs = 1   // for load, curl etc... subcommands.
+	cli.MaxArgs = 1   // for load, curl, script etc... subcommands.
 	scli.ServerMain() // will Exit if there were arguments/flags errors.
 
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
@@ -287,14 +287,11 @@ func scriptMode() int {
 	}
 	s := eval.NewState()
 
-	switch len(flag.Args()) {
-	case 0:
+	// we already have either 0 or exactly 1 argument from the flag parsing.
+	interactive := len(flag.Args()) == 0
+	if interactive {
 		log.Infof("Starting interactive grol script mode")
 		return repl.Interactive(options)
-	case 1:
-		//
-	default:
-		cli.ErrUsage("Error: fortio script needs a script file name or - for stdin", len(flag.Args()))
 	}
 	scriptFile := flag.Arg(0)
 	var reader io.Reader = os.Stdin
