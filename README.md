@@ -12,15 +12,13 @@
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
-Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
-
 Fortio runs at a specified query per second (qps) and records a histogram of execution time
 and calculates percentiles (e.g., p99 i.e., the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
 
 The name fortio comes from Greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (4Mb Docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (19Mb Docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and REST API to trigger run and see graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
 Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, TCP echoing, TCP proxying, HTTP fan out/scatter and gather proxy server, gRPC echo/health in addition to HTTP, etc...
@@ -40,6 +38,8 @@ We also have moved some of the library to their own toplevel package, like:
 If you want to connect to fortio using HTTPS and fortio to provide real TLS certificates, or to multiplex gRPC and regular HTTP behind a single port, check out [Fortio Proxy](https://github.com/fortio/proxy#fortio-proxy).
 
 If you want fortio to generate detailed Open Telemetry traces use [Fortiotel](https://github.com/fortio/fortiotel#fortiotel).
+
+Fortio now embeds the [grol scripting language](https://grol-io/), available using `fortio script`.
 
 ## Installation
 
@@ -1237,6 +1237,8 @@ New features and bug fixes should include a test.
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`).
+
+Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
 
 ## Disclaimer
 

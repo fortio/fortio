@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -45,17 +46,20 @@ import (
 	"fortio.org/log"
 	"fortio.org/safecast"
 	"fortio.org/scli"
+	"grol.io/grol/eval"
+	"grol.io/grol/repl"
 )
 
 // fortio's help/args message.
 func helpArgsString() string {
-	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
+	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
 		"where command is one of: load (load testing), server (starts ui, rest api,",
 		" http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers), ",
 		" tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),",
 		" report (report only UI server), redirect (only the redirect server),",
 		" proxies (only the -M and -P configured proxies), grpcping (gRPC client),",
 		" or curl (single URL debug), or nc (single tcp or udp:// connection),",
+		" or script (interactive grol script mode or script file),",
 		" or version (prints the full version and build details).",
 		"where target is a URL (http load tests) or host:port (grpc health test),",
 		" or tcp://host:port (tcp load test), or udp://host:port (udp load test).")
@@ -162,7 +166,7 @@ func serverArgCheck() bool {
 	return true
 }
 
-func FortioMain(hook bincommon.FortioHook) {
+func FortioMain(hook bincommon.FortioHook) int {
 	flag.Func("P",
 		"TCP proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...",
 		func(value string) error {
@@ -264,12 +268,48 @@ func FortioMain(hook bincommon.FortioHook) {
 	case "grpcping":
 		log.SetDefaultsForClientTools()
 		grpcClient()
+	case "script":
+		return scriptMode()
 	default:
 		cli.ErrUsage("Error: unknown command %q", cli.Command)
 	}
 	if isServer {
 		serverLoop(sync)
 	}
+	return 0
+}
+
+func scriptMode() int {
+	options := repl.Options{
+		ShowEval:    true,
+		HistoryFile: "",
+	}
+	s := eval.NewState()
+
+	switch len(flag.Args()) {
+	case 0:
+		log.Infof("Starting interactive grol script mode")
+		return repl.Interactive(options)
+	case 1:
+		//
+	default:
+		cli.ErrUsage("Error: fortio script needs a script file name or - for stdin", len(flag.Args()))
+	}
+	scriptFile := flag.Arg(0)
+	var reader io.Reader = os.Stdin
+	if scriptFile != "-" {
+		f, err := os.Open(scriptFile)
+		if err != nil {
+			return log.FErrf("%v", err)
+		}
+		defer f.Close()
+		reader = f
+	}
+	errs := repl.EvalAll(s, reader, os.Stdout, options)
+	if len(errs) > 0 {
+		return log.FErrf("Errors: %v", errs)
+	}
+	return 0
 }
 
 func percList() (percList []float64) {

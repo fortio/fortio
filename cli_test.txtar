@@ -23,3 +23,9 @@ stderr 'HTTP/1.1 200 OK'
 stdout 'Xyz: bar blah'
 stdout 'Content-Type: foo/bar'
 stdout 'POST /test-path HTTP/1.1'
+
+fortio script test.gr
+stdout '42'
+
+-- test.gr --
+40+2
