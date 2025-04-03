@@ -24,10 +24,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -37,6 +35,7 @@ import (
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/grol"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
@@ -47,9 +46,6 @@ import (
 	"fortio.org/log"
 	"fortio.org/safecast"
 	"fortio.org/scli"
-	"grol.io/grol/eval"
-	"grol.io/grol/extensions"
-	"grol.io/grol/repl"
 )
 
 // fortio's help/args message.
@@ -272,60 +268,12 @@ func FortioMain(hook bincommon.FortioHook) int {
 		log.SetDefaultsForClientTools()
 		grpcClient()
 	case "script":
-		return scriptMode()
+		return grol.ScriptMode()
 	default:
 		cli.ErrUsage("Error: unknown command %q", cli.Command)
 	}
 	if isServer {
 		serverLoop(sync)
-	}
-	return 0
-}
-
-func scriptMode() int {
-	// we already have either 0 or exactly 1 argument from the flag parsing.
-	interactive := len(flag.Args()) == 0
-	options := repl.Options{
-		ShowEval: true,
-	}
-	// TODO: Carry some flags from the grol binary rather than hardcoded "safe"-ish config here.
-	c := extensions.Config{
-		HasLoad:           true,
-		HasSave:           interactive,
-		UnrestrictedIOs:   interactive,
-		LoadSaveEmptyOnly: false,
-	}
-	err := extensions.Init(&c)
-	if err != nil {
-		return log.FErrf("Error initializing extensions: %v", err)
-	}
-	if interactive {
-		// Maybe move some of the logic to grol package? (it's copied from grol's main for now)
-		homeDir, err := os.UserHomeDir()
-		histFile := filepath.Join(homeDir, ".fortio_history")
-		if err != nil {
-			log.Warnf("Couldn't get user home dir: %v", err)
-			histFile = ""
-		}
-		options.HistoryFile = histFile
-		options.MaxHistory = 99
-		log.Printf("Starting interactive grol script mode")
-		return repl.Interactive(options)
-	}
-	scriptFile := flag.Arg(0)
-	var reader io.Reader = os.Stdin
-	if scriptFile != "-" {
-		f, err := os.Open(scriptFile)
-		if err != nil {
-			return log.FErrf("%v", err)
-		}
-		defer f.Close()
-		reader = f
-	}
-	s := eval.NewState()
-	errs := repl.EvalAll(s, reader, os.Stdout, options)
-	if len(errs) > 0 {
-		return log.FErrf("Errors: %v", errs)
 	}
 	return 0
 }
