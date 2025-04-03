@@ -1,4 +1,4 @@
-// Interface with the GROL scripting engine
+// Interface with the GROL scripting engine.
 package grol
 
 import (
@@ -43,11 +43,16 @@ func createFortioGrolFunctions() {
 			if err != nil {
 				return s.Error(err)
 			}
-			jsonData, jerr := json.MarshalIndent(res, "", "  ")
+			jsonData, jerr := json.Marshal(res)
 			if jerr != nil {
 				return s.Error(jerr)
 			}
-			return object.String{Value: string(jsonData)}
+			// This is basically "unjson" implementation.
+			obj, err := eval.EvalString(s, string(jsonData), true)
+			if err != nil {
+				return s.Error(err)
+			}
+			return obj
 		},
 		DontCache: true,
 	}
