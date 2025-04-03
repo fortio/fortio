@@ -70,6 +70,16 @@ stdout 'GET /groltxtar HTTP/2.0'
 !fortio script badcurl.gr
 stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
+# This may cause portability issues or even if you have fortio already running or something else on other ports
+! exec fortio server &
+fortio script test_all_modes.gr
+stdout '🎉 for http'
+stdout '🎉 for tcp'
+stdout '🎉 for udp'
+stdout '🎉 for grpc'
+exec pkill -x fortio
+wait
+
 -- badload1.gr --
 fortio.load("badtype", {})
 
@@ -94,3 +104,28 @@ curl("http:// bad")
 
 -- bad.gr --
 1/0
+
+-- test_all_modes.gr --
+url = "http://localhost:8080/echo"
+r = fortio.load("http", {"url": url, "exactly": 10, "qps": -1})
+if r.RetCodes["200"] != 10 {
+    error("Error: expected exactly 10 200s for http, got", r.RetCodes)
+}
+println("🎉 for http")
+url = "localhost:8078"
+r = fortio.load("tcp", {"url": url, "exactly": 10, "qps": -1})
+if r.RetCodes["OK"] != 10 {
+    error("Error: expected exactly 10 OK for tcp, got", r.RetCodes)
+}
+println("🎉 for tcp")
+r = fortio.load("udp", {"url": url, "exactly": 10, "qps": -1})
+if r.RetCodes["OK"] != 10 {
+    error("Error: expected exactly 10 OK for udp, got", r.RetCodes)
+}
+println("🎉 for udp")
+url = "localhost:8079"
+r = fortio.load("grpc", {"url": url, "exactly": 10, "qps": -1})
+if r.RetCodes["SERVING"] != 10 {
+    error("Error: expected exactly 10 SERVING for grpc, got", r.RetCodes)
+}
+println("🎉 for grpc")
