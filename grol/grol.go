@@ -37,6 +37,7 @@ func createFortioGrolFunctions() {
 			if err != nil {
 				return s.Error(err)
 			}
+			ro.Out = s.Out
 			log.Infof("Running %#v", ro)
 			res, err := fhttp.RunHTTPTest(&ro)
 			if err != nil {
