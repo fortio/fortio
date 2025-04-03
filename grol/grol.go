@@ -2,16 +2,56 @@
 package grol
 
 import (
+	"encoding/json"
 	"flag"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"fortio.org/fortio/fhttp"
 	"fortio.org/log"
 	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
+	"grol.io/grol/object"
 	"grol.io/grol/repl"
 )
+
+func createFortioGrolFunctions() {
+	fn := object.Extension{
+		Name:     "fortio.load",
+		MinArgs:  1,
+		MaxArgs:  1,
+		Help:     "Start a load test with the passed in map/json parameters (url, qps, etc)",
+		ArgTypes: []object.Type{object.MAP},
+		Callback: func(env any, _ string, args []object.Object) object.Object {
+			s := env.(*eval.State)
+			// to JSON and then back to RunnerOptions
+			w := strings.Builder{}
+			err := args[0].JSON(&w)
+			if err != nil {
+				return s.Error(err)
+			}
+			ro := fhttp.HTTPRunnerOptions{}
+			err = json.Unmarshal([]byte(w.String()), &ro)
+			if err != nil {
+				return s.Error(err)
+			}
+			log.Infof("Running %#v", ro)
+			res, err := fhttp.RunHTTPTest(&ro)
+			if err != nil {
+				return s.Error(err)
+			}
+			jsonData, jerr := json.MarshalIndent(res, "", "  ")
+			if jerr != nil {
+				return s.Error(jerr)
+			}
+			return object.String{Value: string(jsonData)}
+		},
+		DontCache: true,
+	}
+	extensions.MustCreate(fn)
+}
 
 func ScriptMode() int {
 	// we already have either 0 or exactly 1 argument from the flag parsing.
@@ -30,6 +70,7 @@ func ScriptMode() int {
 	if err != nil {
 		return log.FErrf("Error initializing extensions: %v", err)
 	}
+	createFortioGrolFunctions()
 	if interactive {
 		// Maybe move some of the logic to grol package? (it's copied from grol's main for now)
 		homeDir, err := os.UserHomeDir()
