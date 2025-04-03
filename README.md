@@ -98,8 +98,16 @@ It can also fetch a single URL's for debugging when using the `curl` command (or
 Likewise you can establish a single TCP (or Unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
 You can run just the redirector with `redirect` or just the TCP echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+
+You can run interactive fortio.load() scripts using `script` or already written [grol scripts](https://grol.io/), a simplified go like language, from a file, like
+```
+fortio script scripting_example.gr
+```
+See [scripting_example.gr](scripting_example.gr) or the tests in [cli_tests.txtar](cli_test.txtar).
+
 The `version` command will print the short print version. `fortio buildinfo` will print the full
 build information.
+
 Lastly, you can learn which flags are available using `help` command.
 
 Most important flags for HTTP load generation:

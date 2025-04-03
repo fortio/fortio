@@ -133,6 +133,11 @@ func createFortioGrolFunctions() {
 	if err != nil {
 		panic(err)
 	}
+	// Add a conversion from seconds to durations int.
+	err = eval.AddEvalResult("duration", "func(seconds){int(seconds * 1e9)}")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func ScriptMode() int {
