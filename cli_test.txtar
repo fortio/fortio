@@ -58,6 +58,17 @@ stderr 'wrong type of argument got=STRING, want fortio.load\(string, map\)'
 !fortio script badload3.gr
 stderr 'err: can.t resolve empty host'
 
+# Curl test
+fortio script curl.gr
+stdout 'GET /groltxtar HTTP/1.1'
+
+# h2 from flags
+fortio script -h2 curl.gr
+stdout 'GET /groltxtar HTTP/2.0'
+
+# Curl bad url error case
+!fortio script badcurl.gr
+stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
 -- badload1.gr --
 fortio.load("badtype", {})
@@ -66,7 +77,17 @@ fortio.load("badtype", {})
 fortio.load("http", "not a map")
 
 -- badload3.gr --
-fortio.load("http", {})
+hload({})
+
+-- curl.gr --
+res := curl("https://debug.fortio.org/groltxtar")
+if res.code != 200 {
+    error("expected 200, got", res.code)
+}
+println(res.body)
+
+-- badcurl.gr --
+curl("http:// bad")
 
 -- test.gr --
 40+2

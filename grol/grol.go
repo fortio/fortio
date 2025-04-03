@@ -2,6 +2,7 @@
 package grol
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/tcprunner"
@@ -102,6 +104,35 @@ func createFortioGrolFunctions() {
 		DontCache: true,
 	}
 	extensions.MustCreate(fn)
+	fn.Name = "curl"
+	fn.MinArgs = 1
+	fn.MaxArgs = 1
+	fn.Help = "fortio curl fetches the given url"
+	fn.ArgTypes = []object.Type{object.STRING}
+	fn.Callback = func(env any, _ string, args []object.Object) object.Object {
+		s := env.(*eval.State)
+		url := args[0].(object.String).Value
+		httpOpts := bincommon.SharedHTTPOptions()
+		httpOpts.URL = url
+		httpOpts.DisableFastClient = true
+		httpOpts.FollowRedirects = true
+		var w bytes.Buffer
+		httpOpts.DataWriter = &w
+		client, err := fhttp.NewClient(httpOpts)
+		if err != nil {
+			return s.Error(err)
+		}
+		code, _, _ := client.StreamFetch(context.Background())
+		return object.MakeQuad(
+			object.String{Value: "code"}, object.Integer{Value: int64(code)},
+			object.String{Value: "body"}, object.String{Value: w.String()})
+	}
+	extensions.MustCreate(fn)
+	// Shorter alias for http load test; can't use "load" as that's grol built-in for loading files.
+	err := eval.AddEvalResult("hload", "func(options){fortio.load(\"http\", options)}")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func ScriptMode() int {
@@ -132,6 +163,7 @@ func ScriptMode() int {
 		}
 		options.HistoryFile = histFile
 		options.MaxHistory = 99
+		log.SetDefaultsForClientTools()
 		log.Printf("Starting interactive grol script mode")
 		return repl.Interactive(options)
 	}
