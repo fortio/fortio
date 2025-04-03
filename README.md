@@ -101,7 +101,11 @@ If you saved JSON results (using the web UI or directly from the command line), 
 
 You can run interactive fortio.load() scripts using `script` or already written [grol scripts](https://grol.io/), a simplified go like language, from a file, like
 ```
-fortio script scripting_example.gr
+fortio script -init 'url="http://localhost:8080/"' scripting_example.gr
+...
+---- 🎉 Ramp up to 8000 qps done without error, actual qps 7993.678998 ----
+---- 🎉 Ramp up to 9000 qps done without error, actual qps 8994.693886 ----
+---- 🎉 Ramp up to 10000 qps done without error, actual qps 9996.013250 ----
 ```
 See [scripting_example.gr](scripting_example.gr) or the tests in [cli_tests.txtar](cli_test.txtar).
 
@@ -250,6 +254,8 @@ unset.
         Check for Connection: Close Header
   -https-insecure
         Long form of the -k flag
+  -init code
+        grol code to run before the script (for instance to set some arguments)
   -jitter
         set to true to de-synchronize parallel clients' by 10%
   -json path

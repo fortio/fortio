@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ import (
 	"grol.io/grol/repl"
 )
 
-func createFortioGrolFunctions() {
+func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 	fn := object.Extension{
 		Name:     "fortio.load",
 		MinArgs:  2,
@@ -129,22 +130,40 @@ func createFortioGrolFunctions() {
 	}
 	extensions.MustCreate(fn)
 	// Shorter alias for http load test; can't use "load" as that's grol built-in for loading files.
-	err := eval.AddEvalResult("hload", "func(options){fortio.load(\"http\", options)}")
+	// Note we can't use eval.AddEvalResult() as we already made the state.
+	_, err := eval.EvalString(state, "func hload(options){fortio.load(\"http\", options)}", false)
 	if err != nil {
 		panic(err)
 	}
 	// Add a conversion from seconds to durations int.
-	err = eval.AddEvalResult("duration", "func(seconds){int(seconds * 1e9)}")
+	_, err = eval.EvalString(state, "func duration(seconds){int(seconds * 1e9)}", false)
 	if err != nil {
 		panic(err)
 	}
+	// The above failure would be bug, thus the panic, while the below is a user error.
+	if scriptInit != "" {
+		obj, err := eval.EvalString(state, scriptInit, false)
+		if err != nil {
+			return fmt.Errorf("for %q: %w", scriptInit, err)
+		}
+		log.Infof("Script init %q: %v", scriptInit, obj.Inspect())
+	}
+	return nil
 }
 
-func ScriptMode() int {
+func ScriptMode(scriptInit string) int {
 	// we already have either 0 or exactly 1 argument from the flag parsing.
 	interactive := len(flag.Args()) == 0
 	options := repl.Options{
 		ShowEval: true,
+		// In interactive mode the state is created by that function, but there is a Hook so we use that so init script
+		// can also set state even in interactive mode.
+		PreInput: func(s *eval.State) {
+			err := createFortioGrolFunctions(s, scriptInit)
+			if err != nil {
+				log.Errf("Error setting up initial scripting env: %v", err)
+			}
+		},
 	}
 	// TODO: Carry some flags from the grol binary rather than hardcoded "safe"-ish config here.
 	c := extensions.Config{
@@ -157,7 +176,6 @@ func ScriptMode() int {
 	if err != nil {
 		return log.FErrf("Error initializing extensions: %v", err)
 	}
-	createFortioGrolFunctions()
 	if interactive {
 		// Maybe move some of the logic to grol package? (it's copied from grol's main for now)
 		homeDir, err := os.UserHomeDir()

@@ -1,14 +1,22 @@
 // Sample/simple grol.io (go like language) script
+// you can use fortio script -init 'url="http://localhost:8080/echo"' test_all_modes.gr
+// or use read() in the script for interactive asking the user.
 
 // url = "http://localhost:8080/echo?status=418:0.1" // 0.1% of 418s will make the script fail on purpose.
 
-url = "http://localhost:8080/echo" // all 200s.
+if catch(url).err || url == "" {
+	url = "http://localhost:8080/echo" // all 200s.
+	log("url not set from init, setting url to default", url)
+} else {
+	log("url set from -init to:", url)
+}
 
 // Check first with fortio curl that there are no errors
 // (that the fortio server has been started: run `fortio server &` before running this script)
 r = curl(url) // will abort on error
 log("Got response code", r.code)
 if r.code != 200 {
+	println(r.body)
 	error("Error: expected 200, got", r.code)
 }
 

@@ -177,6 +177,8 @@ func FortioMain(hook bincommon.FortioHook) int {
 			httpMulties = append(httpMulties, value)
 			return nil
 		})
+	// flag unique to fortio script
+	scriptInit := flag.String("init", "", "grol `code` to run before the script (for instance to set some arguments)")
 
 	bincommon.SharedMain()
 
@@ -268,7 +270,7 @@ func FortioMain(hook bincommon.FortioHook) int {
 		log.SetDefaultsForClientTools()
 		grpcClient()
 	case "script":
-		return grol.ScriptMode()
+		return grol.ScriptMode(*scriptInit)
 	default:
 		cli.ErrUsage("Error: unknown command %q", cli.Command)
 	}

@@ -72,7 +72,7 @@ stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
 # This may cause portability issues or even if you have fortio already running or something else on other ports
 ! exec fortio server &
-fortio script test_all_modes.gr
+fortio script -init 'url="http://localhost:8080/echo"' test_all_modes.gr
 stdout '🎉 for http'
 stdout '🎉 for tcp'
 stdout '🎉 for udp'
@@ -106,6 +106,10 @@ curl("http:// bad")
 1/0
 
 -- test_all_modes.gr --
+// We expect the initial url variable to be set by caller of the script
+if catch(url).err || url == "" {
+    error("initial url not set, -init issue")
+}
 url = "http://localhost:8080/echo"
 r = fortio.load("http", {"url": url, "exactly": 10, "qps": -1})
 if r.RetCodes["200"] != 10 {
