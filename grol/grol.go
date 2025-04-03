@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/tcprunner"
+	"fortio.org/fortio/udprunner"
 	"fortio.org/log"
 	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
@@ -21,15 +24,24 @@ import (
 func createFortioGrolFunctions() {
 	fn := object.Extension{
 		Name:     "fortio.load",
-		MinArgs:  1,
-		MaxArgs:  1,
-		Help:     "Start a load test with the passed in map/json parameters (url, qps, etc)",
-		ArgTypes: []object.Type{object.MAP},
+		MinArgs:  2,
+		MaxArgs:  2,
+		Help:     "Start a load test of given type (http, tcp, udp, grpc) with the passed in map/json parameters (url, qps, etc)",
+		ArgTypes: []object.Type{object.STRING, object.MAP},
 		Callback: func(env any, _ string, args []object.Object) object.Object {
 			s := env.(*eval.State)
+			runType := args[0].(object.String).Value
+			switch runType {
+			case "http":
+			case "tcp":
+			case "udp":
+			case "grpc":
+			default:
+				return s.Errorf("Run type %q not (yet) supported", runType)
+			}
 			// to JSON and then back to RunnerOptions
 			w := strings.Builder{}
-			err := args[0].JSON(&w)
+			err := args[1].JSON(&w)
 			if err != nil {
 				return s.Error(err)
 			}
@@ -44,8 +56,37 @@ func createFortioGrolFunctions() {
 			}
 			//nolint:fatcontext // we do need to update/reset the context and its cancel function.
 			s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
-			log.Infof("Running %#v", ro)
-			res, err := fhttp.RunHTTPTest(&ro)
+			log.LogVf("Running %s %#v", runType, ro)
+			var res any
+			switch runType {
+			case "http":
+				res, err = fhttp.RunHTTPTest(&ro)
+			case "tcp":
+				tro := tcprunner.RunnerOptions{
+					RunnerOptions: ro.RunnerOptions,
+				}
+				tro.Destination = ro.URL
+				res, err = tcprunner.RunTCPTest(&tro)
+			case "udp":
+				uro := udprunner.RunnerOptions{
+					RunnerOptions: ro.RunnerOptions,
+				}
+				uro.Destination = ro.URL
+				res, err = udprunner.RunUDPTest(&uro)
+			case "grpc":
+				gro := fgrpc.GRPCRunnerOptions{}
+				// re deserialize that one as grpc has unique options.
+				err = json.Unmarshal([]byte(w.String()), &gro)
+				if err != nil {
+					return s.Error(err)
+				}
+				if gro.Destination == "" {
+					gro.Destination = ro.URL
+				}
+				res, err = fgrpc.RunGRPCTest(&gro)
+			default:
+				return s.Errorf("Run type %q unexpected", runType)
+			}
 			// Put it back to grol mode when done. alternative is have ro.Out = s.Out and carry cancel function to runner's.
 			if s.Term != nil {
 				s.Context, s.Cancel = s.Term.Resume(context.Background())
