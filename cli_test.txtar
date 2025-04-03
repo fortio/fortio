@@ -43,6 +43,7 @@ stdout '^42$'
 
 # Pseudo interactive test
 fortio script
+stderr 'Starting interactive grol script mode'
 stderr 'EOF'
 
 -- test.gr --
