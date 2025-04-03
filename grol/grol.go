@@ -2,6 +2,7 @@
 package grol
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"io"
@@ -37,9 +38,17 @@ func createFortioGrolFunctions() {
 			if err != nil {
 				return s.Error(err)
 			}
-			ro.Out = s.Out
+			// Restore terminal to normal mode while the runner runs so ^C is handled by the regular fortio aborter code.
+			if s.Term != nil {
+				s.Term.Suspend()
+			}
+			s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
 			log.Infof("Running %#v", ro)
 			res, err := fhttp.RunHTTPTest(&ro)
+			// Put it back to grol mode when done. alternative is have ro.Out = s.Out and carry cancel function to runner's.
+			if s.Term != nil {
+				s.Context, s.Cancel = s.Term.Resume(context.Background())
+			}
 			if err != nil {
 				return s.Error(err)
 			}
