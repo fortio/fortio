@@ -31,20 +31,14 @@ func createFortioGrolFunctions() {
 		Callback: func(env any, _ string, args []object.Object) object.Object {
 			s := env.(*eval.State)
 			runType := args[0].(object.String).Value
-			switch runType {
-			case "http":
-			case "tcp":
-			case "udp":
-			case "grpc":
-			default:
-				return s.Errorf("Run type %q not (yet) supported", runType)
-			}
 			// to JSON and then back to RunnerOptions
 			w := strings.Builder{}
 			err := args[1].JSON(&w)
 			if err != nil {
 				return s.Error(err)
 			}
+			// Use http as the base/most common - it has everything we need and we can transfer the URL into
+			// Destination for other types.
 			ro := fhttp.HTTPRunnerOptions{}
 			err = json.Unmarshal([]byte(w.String()), &ro)
 			if err != nil {

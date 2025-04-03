@@ -46,6 +46,28 @@ fortio script
 stderr 'Starting interactive grol script mode'
 stderr 'EOF'
 
+# fortio.load tests: bad type
+!fortio script badload1.gr
+stderr 'err: Run type \\"badtype\\" unexpected'
+
+# fortio.load tests: config not a map
+!fortio script badload2.gr
+stderr 'wrong type of argument got=STRING, want fortio.load\(string, map\)'
+
+# fortio.load tests: missing destination/url
+!fortio script badload3.gr
+stderr 'err: can.t resolve empty host'
+
+
+-- badload1.gr --
+fortio.load("badtype", {})
+
+-- badload2.gr --
+fortio.load("http", "not a map")
+
+-- badload3.gr --
+fortio.load("http", {})
+
 -- test.gr --
 40+2
 
