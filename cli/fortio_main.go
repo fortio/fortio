@@ -208,12 +208,12 @@ func FortioMain(hook bincommon.FortioHook) int {
 	switch cli.Command {
 	case "curl":
 		log.SetDefaultsForClientTools()
-		fortioLoad(true, nil, hook)
+		fortioLoad(true, nil)
 	case "nc":
 		log.SetDefaultsForClientTools()
 		fortioNC()
 	case "load":
-		fortioLoad(*curlFlag, percList(), hook)
+		fortioLoad(*curlFlag, percList())
 	case "redirect":
 		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
@@ -353,7 +353,7 @@ func fortioNC() {
 }
 
 //nolint:funlen // maybe refactor/shorten later.
-func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
+func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		cli.ErrUsage("Error: fortio load/curl needs a URL or destination")
 	}
