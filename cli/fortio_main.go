@@ -180,6 +180,9 @@ func FortioMain(hook bincommon.FortioHook) int {
 	// flag unique to fortio script
 	scriptInit := flag.String("init", "", "grol `code` to run before the script (for instance to set some arguments)")
 
+	// Install the (fortiotel) hook if any.
+	rapi.SetHook(hook)
+
 	bincommon.SharedMain()
 
 	// Use the new [fortio.org/cli] package to handle usage, arguments and flags parsing.
@@ -261,7 +264,7 @@ func FortioMain(hook bincommon.FortioHook) int {
 				PercentileList: percList(),
 				TLSOptions:     tlsOptions,
 			}
-			if !ui.Serve(hook, &uiCfg) {
+			if !ui.Serve(&uiCfg) {
 				os.Exit(1) // error already logged
 			}
 		}
@@ -356,10 +359,8 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if justCurl {
-		if hook != nil {
-			ro := periodic.RunnerOptions{} // not used, just to call hook for HTTP options for fortiotel curl case
-			hook(httpOpts, &ro)
-		}
+		// RunnerOptions are not used, just to call hook for HTTP options for fortiotel curl case
+		rapi.CallHook(httpOpts, &periodic.RunnerOptions{})
 		bincommon.FetchURL(httpOpts)
 		return
 	}
@@ -424,9 +425,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		os.Exit(1)
 	}
 	var res periodic.HasRunnerResult
-	if hook != nil {
-		hook(httpOpts, &ro)
-	}
+	rapi.CallHook(httpOpts, &ro)
 	switch {
 	case *grpcFlag:
 		o := fgrpc.GRPCRunnerOptions{

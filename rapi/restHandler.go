@@ -94,6 +94,18 @@ var (
 	hook bincommon.FortioHook
 )
 
+// Called by main() to set the hook for fortiotel.
+func SetHook(h bincommon.FortioHook) {
+	hook = h
+}
+
+// Fortiotel or other hook to be called to modify options before the run starts.
+func CallHook(httpopts *fhttp.HTTPOptions, ro *periodic.RunnerOptions) {
+	if hook != nil {
+		hook(httpopts, ro)
+	}
+}
+
 // AsyncReply is returned when async=on is passed.
 type AsyncReply struct {
 	jrpc.ServerReply
@@ -361,9 +373,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
 	var res periodic.HasRunnerResult
 	var err error
 	var aborter *periodic.Aborter
-	if hook != nil {
-		hook(httpopts, ro)
-	}
+	CallHook(httpopts, ro)
 	switch {
 	case runner == ModeGRPC:
 		grpcSecure := (FormValue(r, jd, "grpc-secure") == "on")
@@ -577,8 +587,7 @@ func RESTDNSHandler(w http.ResponseWriter, r *http.Request) {
 
 // AddHandlers adds the REST API handlers for run, status and stop.
 // uiPath must end with a /.
-func AddHandlers(ahook bincommon.FortioHook, mux *http.ServeMux, baseurl, uiPath, datadir string) {
-	hook = ahook
+func AddHandlers(mux *http.ServeMux, baseurl, uiPath, datadir string) {
 	AddDataHandler(mux, baseurl, uiPath, datadir)
 	restRunPath := uiPath + RestRunURI
 	mux.HandleFunc(restRunPath, RESTRunHandler)

@@ -110,7 +110,8 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
 	}
-	AddHandlers(hookTest, mux, "", uiPath, tmpDir)
+	SetHook(hookTest)
+	AddHandlers(mux, "", uiPath, tmpDir)
 
 	dnsURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestDNS)
 	// Error case (no/empty name)
@@ -402,7 +403,7 @@ func TestRESTStopTimeBased(t *testing.T) {
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	uiPath := "/fortio3/"
 	tmpDir := t.TempDir()
-	AddHandlers(nil, mux, "https://foo.fortio.org", uiPath, tmpDir)
+	AddHandlers(mux, "https://foo.fortio.org", uiPath, tmpDir)
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	echoURL := baseURL + "foo/bar?delay=20ms&status=200:100"
 	// Start infinite running run
@@ -533,7 +534,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	// otherwise log.SetLogLevel(log.Info)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	uiPath := "/f/"
-	AddHandlers(nil, mux, "", uiPath, "/tmp")
+	AddHandlers(mux, "", uiPath, "/tmp")
 	// Error with bad host
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	// sync first:
@@ -590,7 +591,7 @@ func TestOtherRunnersRESTApi(t *testing.T) {
 	iDest := fmt.Sprintf("localhost:%d", iPort)
 
 	mux, addr := fhttp.DynamicHTTPServer(false)
-	AddHandlers(nil, mux, "", "/fortio/", ".")
+	AddHandlers(mux, "", "/fortio/", ".")
 	restURL := fmt.Sprintf("http://localhost:%d/fortio/rest/run", addr.Port)
 	qps := 3.0
 	dur := "2s"

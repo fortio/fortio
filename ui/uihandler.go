@@ -653,7 +653,7 @@ type ServerConfig struct {
 // Serve starts the fhttp.Serve() plus the UI server on the given port
 // and paths (empty disables the feature). uiPath should end with /
 // (be a 'directory' path). Returns true if server is started successfully.
-func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
+func Serve(cfg *ServerConfig) bool {
 	startTime = time.Now()
 	mux, addr := fhttp.ServeTLS(cfg.Port, cfg.DebugPath, cfg.TLSOptions)
 	if addr == nil {
@@ -684,7 +684,7 @@ func Serve(hook bincommon.FortioHook, cfg *ServerConfig) bool {
 	fhttp.CheckConnectionClosedHeader = true // needed for proxy to avoid errors
 
 	// New REST apis (includes the data/ handler)
-	rapi.AddHandlers(hook, mux, cfg.BaseURL, uiPath, cfg.DataDir)
+	rapi.AddHandlers(mux, cfg.BaseURL, uiPath, cfg.DataDir)
 	rapi.DefaultPercentileList = cfg.PercentileList
 
 	logoPath = version.Short() + "/static/img/fortio-logo-gradient-no-bg.svg"

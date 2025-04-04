@@ -56,6 +56,7 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 			// Destination for other types.
 			ro := fhttp.HTTPRunnerOptions{}
 			err := MapToStruct(&ro, omap)
+			rapi.CallHook(&ro.HTTPOptions, &ro.RunnerOptions)
 			if err != nil {
 				return s.Error(err)
 			}
@@ -147,6 +148,7 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 		}
 		var w bytes.Buffer
 		httpOpts.DataWriter = &w
+		rapi.CallHook(httpOpts, &periodic.RunnerOptions{})
 		client, err := fhttp.NewClient(httpOpts)
 		if err != nil {
 			return s.Error(err)
