@@ -24,7 +24,7 @@ func RampUp() {
 	// Ramp up from 1000 to 10000 qps
 	for i := 10 {
 		qps := (i+1)*1000
-		r = fortio.load("http", {"url": url, "duration": duration(0.5), "qps": qps})
+		r = fortio.load("http", {"url": url, "duration": duration(0.5), "qps": qps}) // add "save":true to also save the json result.
 		// debug print the formatted json result
 		// println(json_go(r, " "))
 		if r.RetCodes["200"] != r.DurationHistogram.Count {

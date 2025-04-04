@@ -12,9 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/periodic"
+	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/tcprunner"
 	"fortio.org/fortio/udprunner"
 	"fortio.org/log"
@@ -24,26 +25,37 @@ import (
 	"grol.io/grol/repl"
 )
 
+// MapToStruct converts a grol map to a struct of type T by doing a JSON roundtrip.
+func MapToStruct[T any](t *T, omap object.Map) error {
+	w := strings.Builder{}
+	err := omap.JSON(&w)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal([]byte(w.String()), t)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 	fn := object.Extension{
-		Name:     "fortio.load",
-		MinArgs:  2,
-		MaxArgs:  2,
-		Help:     "Start a load test of given type (http, tcp, udp, grpc) with the passed in map/json parameters (url, qps, etc)",
+		Name:    "fortio.load",
+		MinArgs: 2,
+		MaxArgs: 2,
+		Help: "Start a load test of given type (http, tcp, udp, grpc) with the passed in map/json parameters " +
+			"(url, qps, etc, add \"save\":true to also save the result to a file)",
 		ArgTypes: []object.Type{object.STRING, object.MAP},
 		Callback: func(env any, _ string, args []object.Object) object.Object {
 			s := env.(*eval.State)
 			runType := args[0].(object.String).Value
 			// to JSON and then back to RunnerOptions
-			w := strings.Builder{}
-			err := args[1].JSON(&w)
-			if err != nil {
-				return s.Error(err)
-			}
+			omap := args[1].(object.Map)
 			// Use http as the base/most common - it has everything we need and we can transfer the URL into
 			// Destination for other types.
 			ro := fhttp.HTTPRunnerOptions{}
-			err = json.Unmarshal([]byte(w.String()), &ro)
+			err := MapToStruct(&ro, omap)
 			if err != nil {
 				return s.Error(err)
 			}
@@ -54,7 +66,7 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 			//nolint:fatcontext // we do need to update/reset the context and its cancel function.
 			s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
 			log.LogVf("Running %s %#v", runType, ro)
-			var res any
+			var res periodic.HasRunnerResult
 			switch runType {
 			case "http":
 				res, err = fhttp.RunHTTPTest(&ro)
@@ -73,7 +85,7 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 			case "grpc":
 				gro := fgrpc.GRPCRunnerOptions{}
 				// re deserialize that one as grpc has unique options.
-				err = json.Unmarshal([]byte(w.String()), &gro)
+				err = MapToStruct(&gro, omap)
 				if err != nil {
 					return s.Error(err)
 				}
@@ -95,7 +107,17 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 			if jerr != nil {
 				return s.Error(jerr)
 			}
-			// This is basically "unjson" implementation.
+			doSave, found := omap.Get(object.String{Value: "save"})
+			if found && doSave == object.TRUE {
+				fname := res.Result().ID + rapi.JSONExtension // third place we do this or similar...
+				log.Infof("Saving %s", fname)
+				err = os.WriteFile(fname, jsonData, 0o644) //nolint:gosec // we do want 644
+				if err != nil {
+					log.Errf("Unable to save %s: %v", fname, err)
+					return s.Error(err)
+				}
+			}
+			// This is basically "unjson"'s implementation.
 			obj, err := eval.EvalString(s, string(jsonData), true)
 			if err != nil {
 				return s.Error(err)
@@ -107,16 +129,22 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 	extensions.MustCreate(fn)
 	fn.Name = "curl"
 	fn.MinArgs = 1
-	fn.MaxArgs = 1
-	fn.Help = "fortio curl fetches the given url"
-	fn.ArgTypes = []object.Type{object.STRING}
+	fn.MaxArgs = 2
+	fn.Help = "fortio curl fetches the given url, with optional options"
+	fn.ArgTypes = []object.Type{object.STRING, object.MAP}
 	fn.Callback = func(env any, _ string, args []object.Object) object.Object {
 		s := env.(*eval.State)
 		url := args[0].(object.String).Value
-		httpOpts := bincommon.SharedHTTPOptions()
-		httpOpts.URL = url
+		httpOpts := fhttp.NewHTTPOptions(url)
 		httpOpts.DisableFastClient = true
 		httpOpts.FollowRedirects = true
+		if len(args) > 1 {
+			omap := args[1].(object.Map)
+			err := MapToStruct(httpOpts, omap)
+			if err != nil {
+				return s.Error(err)
+			}
+		}
 		var w bytes.Buffer
 		httpOpts.DataWriter = &w
 		client, err := fhttp.NewClient(httpOpts)
