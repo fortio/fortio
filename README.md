@@ -39,8 +39,7 @@ If you want to connect to fortio using HTTPS and fortio to provide real TLS cert
 
 If you want fortio to generate detailed Open Telemetry traces use [Fortiotel](https://github.com/fortio/fortiotel#fortiotel).
 
-Fortio now embeds the [grol scripting language](https://grol-io/), available using `fortio script`.
-
+Fortio now embeds the [grol scripting language](https://grol.io/), available using `fortio script`.
 ## Installation
 
 We publish a multi architecture Docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
