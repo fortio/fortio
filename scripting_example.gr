@@ -4,7 +4,7 @@
 
 // url = "http://localhost:8080/echo?status=418:0.1" // 0.1% of 418s will make the script fail on purpose.
 
-if catch(url).err || url == "" {
+if !info.globals.url || url == "" {
 	url = "http://localhost:8080/echo" // all 200s.
 	log("url not set from init, setting url to default", url)
 } else {
