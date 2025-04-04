@@ -1,0 +1,41 @@
+// Sample/simple grol.io (go like language) script
+// you can use fortio script -init 'url="http://localhost:8080/echo"' test_all_modes.gr
+// or use read() in the script for interactive asking the user.
+
+// url = "http://localhost:8080/echo?status=418:0.1" // 0.1% of 418s will make the script fail on purpose.
+
+if !info.globals.url || url == "" {
+	url = "http://localhost:8080/echo" // all 200s.
+	log("url not set from init, setting url to default", url)
+} else {
+	log("url set from -init to:", url)
+}
+
+// Check first with fortio curl that there are no errors
+// (that the fortio server has been started: run `fortio server &` before running this script)
+r = curl(url) // will abort on error
+log("Got response code", r.code)
+if r.code != 200 {
+	println(r.body)
+	error("Error: expected 200, got", r.code)
+}
+
+func RampUp() {
+	// Ramp up from 1000 to 10000 qps
+	for i := 10 {
+		qps := (i+1)*1000
+		r = fortio.load("http", {"url": url, "duration": duration(0.5), "qps": qps}) // add "save":true to also save the json result.
+		// debug print the formatted json result
+		// println(json_go(r, " "))
+		if r.RetCodes["200"] != r.DurationHistogram.Count {
+			error("Error (on purpose with the sample url): expected all 200s, got", r.RetCodes, " out of ", r.DurationHistogram.Count)
+		}
+		actualQps := r.ActualQPS
+		printf("---- 🎉 Ramp up to %d qps done without error, actual qps %f ----\n", qps, actualQps)
+		if actualQps < 0.90 * qps { // change this thresold or add ?delay= to echo to see a failure.
+			error("Error: expected at least 90% of requested qps, got", actualQps, "for", qps)
+		}
+	}
+}
+
+RampUp()

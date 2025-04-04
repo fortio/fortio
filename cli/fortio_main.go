@@ -35,6 +35,7 @@ import (
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/grol"
 	"fortio.org/fortio/periodic"
 	"fortio.org/fortio/rapi"
 	"fortio.org/fortio/stats"
@@ -49,13 +50,14 @@ import (
 
 // fortio's help/args message.
 func helpArgsString() string {
-	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
+	return fmt.Sprintf("target\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
 		"where command is one of: load (load testing), server (starts ui, rest api,",
 		" http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers), ",
 		" tcp-echo (only the tcp-echo server), udp-echo (only udp-echo server),",
 		" report (report only UI server), redirect (only the redirect server),",
 		" proxies (only the -M and -P configured proxies), grpcping (gRPC client),",
 		" or curl (single URL debug), or nc (single tcp or udp:// connection),",
+		" or script (interactive grol script mode or script file),",
 		" or version (prints the full version and build details).",
 		"where target is a URL (http load tests) or host:port (grpc health test),",
 		" or tcp://host:port (tcp load test), or udp://host:port (udp load test).")
@@ -162,7 +164,8 @@ func serverArgCheck() bool {
 	return true
 }
 
-func FortioMain(hook bincommon.FortioHook) {
+//nolint:funlen // maybe move the server section to a separate function but it's also fairly short anyway for all the modes.
+func FortioMain(hook bincommon.FortioHook) int {
 	flag.Func("P",
 		"TCP proxies to run, e.g -P \"localport1 dest_host1:dest_port1\" -P \"[::1]:0 www.google.com:443\" ...",
 		func(value string) error {
@@ -174,6 +177,11 @@ func FortioMain(hook bincommon.FortioHook) {
 			httpMulties = append(httpMulties, value)
 			return nil
 		})
+	// flag unique to fortio script
+	scriptInit := flag.String("init", "", "grol `code` to run before the script (for instance to set some arguments)")
+
+	// Install the (fortiotel) hook if any.
+	rapi.SetHook(hook)
 
 	bincommon.SharedMain()
 
@@ -185,7 +193,7 @@ func FortioMain(hook bincommon.FortioHook) {
 	cli.ArgsHelp = helpArgsString()
 	cli.CommandBeforeFlags = true
 	cli.MinArgs = 0   // because `fortio server`s don't take any args
-	cli.MaxArgs = 1   // for load, curl etc... subcommands.
+	cli.MaxArgs = 1   // for load, curl, script etc... subcommands.
 	scli.ServerMain() // will Exit if there were arguments/flags errors.
 
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
@@ -200,12 +208,12 @@ func FortioMain(hook bincommon.FortioHook) {
 	switch cli.Command {
 	case "curl":
 		log.SetDefaultsForClientTools()
-		fortioLoad(true, nil, hook)
+		fortioLoad(true, nil)
 	case "nc":
 		log.SetDefaultsForClientTools()
 		fortioNC()
 	case "load":
-		fortioLoad(*curlFlag, percList(), hook)
+		fortioLoad(*curlFlag, percList())
 	case "redirect":
 		isServer = serverArgCheck()
 		fhttp.RedirectToHTTPS(*redirectFlag)
@@ -256,7 +264,7 @@ func FortioMain(hook bincommon.FortioHook) {
 				PercentileList: percList(),
 				TLSOptions:     tlsOptions,
 			}
-			if !ui.Serve(hook, &uiCfg) {
+			if !ui.Serve(&uiCfg) {
 				os.Exit(1) // error already logged
 			}
 		}
@@ -264,12 +272,15 @@ func FortioMain(hook bincommon.FortioHook) {
 	case "grpcping":
 		log.SetDefaultsForClientTools()
 		grpcClient()
+	case "script":
+		return grol.ScriptMode(*scriptInit)
 	default:
 		cli.ErrUsage("Error: unknown command %q", cli.Command)
 	}
 	if isServer {
 		serverLoop(sync)
 	}
+	return 0
 }
 
 func percList() (percList []float64) {
@@ -342,16 +353,14 @@ func fortioNC() {
 }
 
 //nolint:funlen // maybe refactor/shorten later.
-func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
+func fortioLoad(justCurl bool, percList []float64) {
 	if len(flag.Args()) != 1 {
 		cli.ErrUsage("Error: fortio load/curl needs a URL or destination")
 	}
 	httpOpts := bincommon.SharedHTTPOptions()
 	if justCurl {
-		if hook != nil {
-			ro := periodic.RunnerOptions{} // not used, just to call hook for HTTP options for fortiotel curl case
-			hook(httpOpts, &ro)
-		}
+		// RunnerOptions are not used, just to call hook for HTTP options for fortiotel curl case
+		rapi.CallHook(httpOpts, &periodic.RunnerOptions{})
 		bincommon.FetchURL(httpOpts)
 		return
 	}
@@ -416,9 +425,7 @@ func fortioLoad(justCurl bool, percList []float64, hook bincommon.FortioHook) {
 		os.Exit(1)
 	}
 	var res periodic.HasRunnerResult
-	if hook != nil {
-		hook(httpOpts, &ro)
-	}
+	rapi.CallHook(httpOpts, &ro)
 	switch {
 	case *grpcFlag:
 		o := fgrpc.GRPCRunnerOptions{

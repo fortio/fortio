@@ -14,6 +14,6 @@ func TestMain(m *testing.M) {
 	}))
 }
 
-func TestDNSPing(t *testing.T) {
+func TestFortioCli(t *testing.T) {
 	testscript.Run(t, testscript.Params{Dir: "./"})
 }

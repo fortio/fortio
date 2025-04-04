@@ -26,6 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.71.1
+	grol.io/grol v0.79.0
 )
 
 // Local dev of dependencies changes
@@ -39,14 +40,18 @@ require (
 //)
 
 require (
-	fortio.org/struct2env v0.4.1 // indirect
+	fortio.org/struct2env v0.4.2 // indirect
+	fortio.org/term v0.29.0-fortio-1 // indirect
+	fortio.org/terminal v0.27.2 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
-	golang.org/x/crypto/x509roots/fallback v0.0.0-20240904212608-c9da6b9a4008 // indirect
-	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20250118192723-a8ea4be81f07 // indirect
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
+	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
 )

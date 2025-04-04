@@ -14,17 +14,20 @@
 
 package main
 
-import "fortio.org/fortio/cli"
+import (
+	"os"
+
+	"fortio.org/fortio/cli"
+)
 
 // This file content moved to cli/fortio_main.go so it can be reused in variants of fortio
 // like fortiotel (fortio with opentelemetry)
 
 func main() {
-	cli.FortioMain(nil /* no hook needed */)
+	os.Exit(cli.FortioMain(nil /* no hook needed */))
 }
 
 // Same as real above but for testscript/txtar tests.
 func Main() int {
-	cli.FortioMain(nil /* no hook needed */)
-	return 0
+	return cli.FortioMain(nil /* no hook needed */)
 }

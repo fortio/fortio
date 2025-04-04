@@ -1,4 +1,4 @@
-<!-- 1.67.2 -->
+<!-- 1.68.0 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -12,15 +12,13 @@
 
 Fortio (Φορτίο) started as, and is, [Istio](https://istio.io/)'s load testing tool and later (2018) graduated to be its own project.
 
-Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
-
 Fortio runs at a specified query per second (qps) and records a histogram of execution time
 and calculates percentiles (e.g., p99 i.e., the response time such as 99% of the requests take less than that number (in seconds, SI unit)).
 It can run for a set duration, for a fixed number of calls, or until interrupted (at a constant target QPS, or max speed/load per connection/thread).
 
 The name fortio comes from Greek [φορτίο](https://fortio.org/fortio.mp3) which means load/burden.
 
-Fortio is a fast, small (4Mb Docker image, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
+Fortio is a fast, small (less than 6Mb Docker image download, minimal dependencies), reusable, embeddable go library as well as a command line tool and server process,
 the server includes a simple web UI and REST API to trigger run and see graphical representation of the results (both a single latency graph and a multiple results comparative min, max, avg, qps and percentiles graphs).
 
 Fortio also includes a set of server side features (similar to httpbin) to help debugging and testing: request echo back including headers, adding latency or error codes with a probability distribution, TCP echoing, TCP proxying, HTTP fan out/scatter and gather proxy server, gRPC echo/health in addition to HTTP, etc...
@@ -41,6 +39,7 @@ If you want to connect to fortio using HTTPS and fortio to provide real TLS cert
 
 If you want fortio to generate detailed Open Telemetry traces use [Fortiotel](https://github.com/fortio/fortiotel#fortiotel).
 
+Fortio now embeds the [grol scripting language](https://grol.io/), available using `fortio script`.
 ## Installation
 
 We publish a multi architecture Docker image (linux/amd64, linux/arm64, linux/ppc64le, linux/s390x) `fortio/fortio`.
@@ -60,13 +59,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.67.2/fortio-linux_amd64-1.67.2.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.68.0/fortio-linux_amd64-1.68.0.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.67.2/fortio_1.67.2_amd64.deb
-dpkg -i fortio_1.67.2_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.68.0/fortio_1.68.0_amd64.deb
+dpkg -i fortio_1.68.0_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.67.2/fortio-1.67.2-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.68.0/fortio-1.68.0-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -76,7 +75,7 @@ On macOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.67.2/fortio_win_1.67.2.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.68.0/fortio_win_1.68.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -98,8 +97,20 @@ It can also fetch a single URL's for debugging when using the `curl` command (or
 Likewise you can establish a single TCP (or Unix domain or UDP (use `udp://` prefix)) connection using the `nc` command (like the standalone netcat package).
 You can run just the redirector with `redirect` or just the TCP echo with `tcp-echo`.
 If you saved JSON results (using the web UI or directly from the command line), you can browse and graph those results using the `report` command.
+
+You can run interactive fortio.load() scripts using `script` or already written [grol scripts](https://grol.io/), a simplified go like language, from a file, like
+```
+fortio script -init 'url="http://localhost:8080/"' scripting_example.gr
+...
+---- 🎉 Ramp up to 8000 qps done without error, actual qps 7993.678998 ----
+---- 🎉 Ramp up to 9000 qps done without error, actual qps 8994.693886 ----
+---- 🎉 Ramp up to 10000 qps done without error, actual qps 9996.013250 ----
+```
+See [scripting_example.gr](scripting_example.gr) or the tests in [cli_tests.txtar](cli_test.txtar).
+
 The `version` command will print the short print version. `fortio buildinfo` will print the full
 build information.
+
 Lastly, you can learn which flags are available using `help` command.
 
 Most important flags for HTTP load generation:
@@ -130,7 +141,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.67.2 usage:
+Φορτίο 1.68.0 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -138,6 +149,7 @@ where command is one of: load (load testing), server (starts ui, rest api,
  report (report only UI server), redirect (only the redirect server),
  proxies (only the -M and -P configured proxies), grpcping (gRPC client),
  or curl (single URL debug), or nc (single tcp or udp:// connection),
+ or script (interactive grol script mode or script file),
  or version (prints the full version and build details).
 where target is a URL (http load tests) or host:port (grpc health test),
  or tcp://host:port (tcp load test), or udp://host:port (udp load test).
@@ -241,6 +253,8 @@ unset.
         Check for Connection: Close Header
   -https-insecure
         Long form of the -k flag
+  -init code
+        grol code to run before the script (for instance to set some arguments)
   -jitter
         set to true to de-synchronize parallel clients' by 10%
   -json path
@@ -1237,6 +1251,8 @@ New features and bug fixes should include a test.
 ## See also
 
 Our wiki and the [Fortio FAQ](https://github.com/fortio/fortio/wiki/FAQ) (including for instance differences between `fortio` and `wrk` or `httpbin`).
+
+Fortio is also used by, among others, [Meshery](https://docs.meshery.io/extensibility/load-generators).
 
 ## Disclaimer
 
