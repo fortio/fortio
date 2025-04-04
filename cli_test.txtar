@@ -73,6 +73,7 @@ stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
 # This may cause portability issues or even if you have fortio already running or something else on other ports
 ! exec fortio server &
+exec sleep 3 # in ci server needs a bit to start
 fortio script -init 'url="http://localhost:8080/echo"' test_all_modes.gr
 stderr 'Saving .*_test_save.json'
 stdout '🎉 for http - saved as .*_test_save'
