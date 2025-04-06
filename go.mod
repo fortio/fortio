@@ -16,7 +16,7 @@ require (
 	fortio.org/assert v1.2.1
 	fortio.org/cli v1.9.2
 	fortio.org/dflag v1.7.3
-	fortio.org/log v1.17.1
+	fortio.org/log v1.17.2
 	fortio.org/safecast v1.0.0
 	fortio.org/scli v1.15.3
 	fortio.org/sets v1.2.0
