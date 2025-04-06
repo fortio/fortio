@@ -154,9 +154,11 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 			return s.Error(err)
 		}
 		code, _, _ := client.StreamFetch(context.Background())
+		// must be pre-sorted!
 		return object.MakeQuad(
+			object.String{Value: "body"}, object.String{Value: w.String()},
 			object.String{Value: "code"}, object.Integer{Value: int64(code)},
-			object.String{Value: "body"}, object.String{Value: w.String()})
+		)
 	}
 	extensions.MustCreate(fn)
 	// Shorter alias for http load test; can't use "load" as that's grol built-in for loading files.
