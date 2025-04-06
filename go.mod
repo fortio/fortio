@@ -15,11 +15,11 @@ go 1.23.8
 require (
 	fortio.org/assert v1.2.1
 	fortio.org/cli v1.9.2
-	fortio.org/dflag v1.7.3
+	fortio.org/dflag v1.8.0
 	fortio.org/log v1.17.1
 	fortio.org/safecast v1.0.0
 	fortio.org/scli v1.15.3
-	fortio.org/sets v1.2.0
+	fortio.org/sets v1.3.0
 	fortio.org/testscript v0.3.2
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
@@ -43,11 +43,10 @@ require (
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/term v0.29.0-fortio-1 // indirect
 	fortio.org/terminal v0.27.2 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250118192723-a8ea4be81f07 // indirect
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
