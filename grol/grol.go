@@ -55,9 +55,7 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 	fn.MinArgs = 1
 	fn.MaxArgs = 2
 	fn.Help = "fortio curl fetches the given url, with optional options"
-	fn.ArgTypes = []object.Type{object.STRING, object.MAP}
 	fn.Callback = grolCurl
-	extensions.MustCreate(fn)
 	extensions.MustCreate(fn)
 	// Shorter alias for http load test; can't use "load" as that's grol built-in for loading files.
 	// Note we can't use eval.AddEvalResult() as we already made the state.
