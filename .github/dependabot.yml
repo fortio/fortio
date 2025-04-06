@@ -4,6 +4,14 @@ updates:
     directory: /
     schedule:
       interval: daily
+    groups:
+      "fortio and grol":
+        patterns:
+          - "fortio.org/*"
+          - "grol.io/*"
+      "go x":
+        patterns:
+          - "golang.org/x/*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
