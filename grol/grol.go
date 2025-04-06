@@ -46,85 +46,8 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 		MaxArgs: 2,
 		Help: "Start a load test of given type (http, tcp, udp, grpc) with the passed in map/json parameters " +
 			"(url, qps, etc, add \"save\":true to also save the result to a file)",
-		ArgTypes: []object.Type{object.STRING, object.MAP},
-		Callback: func(env any, _ string, args []object.Object) object.Object {
-			s := env.(*eval.State)
-			runType := args[0].(object.String).Value
-			// to JSON and then back to RunnerOptions
-			omap := args[1].(object.Map)
-			// Use http as the base/most common - it has everything we need and we can transfer the URL into
-			// Destination for other types.
-			ro := fhttp.HTTPRunnerOptions{}
-			err := MapToStruct(&ro, omap)
-			rapi.CallHook(&ro.HTTPOptions, &ro.RunnerOptions)
-			if err != nil {
-				return s.Error(err)
-			}
-			// Restore terminal to normal mode while the runner runs so ^C is handled by the regular fortio aborter code.
-			if s.Term != nil {
-				s.Term.Suspend()
-			}
-			//nolint:fatcontext // we do need to update/reset the context and its cancel function.
-			s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
-			log.LogVf("Running %s %#v", runType, ro)
-			var res periodic.HasRunnerResult
-			switch runType {
-			case "http":
-				res, err = fhttp.RunHTTPTest(&ro)
-			case "tcp":
-				tro := tcprunner.RunnerOptions{
-					RunnerOptions: ro.RunnerOptions,
-				}
-				tro.Destination = ro.URL
-				res, err = tcprunner.RunTCPTest(&tro)
-			case "udp":
-				uro := udprunner.RunnerOptions{
-					RunnerOptions: ro.RunnerOptions,
-				}
-				uro.Destination = ro.URL
-				res, err = udprunner.RunUDPTest(&uro)
-			case "grpc":
-				gro := fgrpc.GRPCRunnerOptions{}
-				// re deserialize that one as grpc has unique options.
-				err = MapToStruct(&gro, omap)
-				if err != nil {
-					return s.Error(err)
-				}
-				if gro.Destination == "" {
-					gro.Destination = ro.URL
-				}
-				res, err = fgrpc.RunGRPCTest(&gro)
-			default:
-				return s.Errorf("Run type %q unexpected", runType)
-			}
-			// Put it back to grol mode when done. alternative is have ro.Out = s.Out and carry cancel function to runner's.
-			if s.Term != nil {
-				s.Context, s.Cancel = s.Term.Resume(context.Background())
-			}
-			if err != nil {
-				return s.Error(err)
-			}
-			jsonData, jerr := json.Marshal(res)
-			if jerr != nil {
-				return s.Error(jerr)
-			}
-			doSave, found := omap.Get(object.String{Value: "save"})
-			if found && doSave == object.TRUE {
-				fname := res.Result().ID + rapi.JSONExtension // third place we do this or similar...
-				log.Infof("Saving %s", fname)
-				err = os.WriteFile(fname, jsonData, 0o644) //nolint:gosec // we do want 644
-				if err != nil {
-					log.Errf("Unable to save %s: %v", fname, err)
-					return s.Error(err)
-				}
-			}
-			// This is basically "unjson"'s implementation.
-			obj, err := eval.EvalString(s, string(jsonData), true)
-			if err != nil {
-				return s.Error(err)
-			}
-			return obj
-		},
+		ArgTypes:  []object.Type{object.STRING, object.MAP},
+		Callback:  grolLoad,
 		DontCache: true,
 	}
 	extensions.MustCreate(fn)
@@ -133,33 +56,8 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 	fn.MaxArgs = 2
 	fn.Help = "fortio curl fetches the given url, with optional options"
 	fn.ArgTypes = []object.Type{object.STRING, object.MAP}
-	fn.Callback = func(env any, _ string, args []object.Object) object.Object {
-		s := env.(*eval.State)
-		url := args[0].(object.String).Value
-		httpOpts := fhttp.NewHTTPOptions(url)
-		httpOpts.DisableFastClient = true
-		httpOpts.FollowRedirects = true
-		if len(args) > 1 {
-			omap := args[1].(object.Map)
-			err := MapToStruct(httpOpts, omap)
-			if err != nil {
-				return s.Error(err)
-			}
-		}
-		var w bytes.Buffer
-		httpOpts.DataWriter = &w
-		rapi.CallHook(httpOpts, &periodic.RunnerOptions{})
-		client, err := fhttp.NewClient(httpOpts)
-		if err != nil {
-			return s.Error(err)
-		}
-		code, _, _ := client.StreamFetch(context.Background())
-		// must be pre-sorted!
-		return object.MakeQuad(
-			object.String{Value: "body"}, object.String{Value: w.String()},
-			object.String{Value: "code"}, object.Integer{Value: int64(code)},
-		)
-	}
+	fn.Callback = grolCurl
+	extensions.MustCreate(fn)
 	extensions.MustCreate(fn)
 	// Shorter alias for http load test; can't use "load" as that's grol built-in for loading files.
 	// Note we can't use eval.AddEvalResult() as we already made the state.
@@ -181,6 +79,112 @@ func createFortioGrolFunctions(state *eval.State, scriptInit string) error {
 		log.Infof("Script init %q: %v", scriptInit, obj.Inspect())
 	}
 	return nil
+}
+
+func grolLoad(env any, _ string, args []object.Object) object.Object {
+	s := env.(*eval.State)
+	runType := args[0].(object.String).Value
+	// to JSON and then back to RunnerOptions
+	omap := args[1].(object.Map)
+	// Use http as the base/most common - it has everything we need and we can transfer the URL into
+	// Destination for other types.
+	ro := fhttp.HTTPRunnerOptions{}
+	err := MapToStruct(&ro, omap)
+	rapi.CallHook(&ro.HTTPOptions, &ro.RunnerOptions)
+	if err != nil {
+		return s.Error(err)
+	}
+	// Restore terminal to normal mode while the runner runs so ^C is handled by the regular fortio aborter code.
+	if s.Term != nil {
+		s.Term.Suspend()
+	}
+	s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
+	log.LogVf("Running %s %#v", runType, ro)
+	var res periodic.HasRunnerResult
+	switch runType {
+	case "http":
+		res, err = fhttp.RunHTTPTest(&ro)
+	case "tcp":
+		tro := tcprunner.RunnerOptions{
+			RunnerOptions: ro.RunnerOptions,
+		}
+		tro.Destination = ro.URL
+		res, err = tcprunner.RunTCPTest(&tro)
+	case "udp":
+		uro := udprunner.RunnerOptions{
+			RunnerOptions: ro.RunnerOptions,
+		}
+		uro.Destination = ro.URL
+		res, err = udprunner.RunUDPTest(&uro)
+	case "grpc":
+		gro := fgrpc.GRPCRunnerOptions{}
+		// re deserialize that one as grpc has unique options.
+		err = MapToStruct(&gro, omap)
+		if err != nil {
+			return s.Error(err)
+		}
+		if gro.Destination == "" {
+			gro.Destination = ro.URL
+		}
+		res, err = fgrpc.RunGRPCTest(&gro)
+	default:
+		return s.Errorf("Run type %q unexpected", runType)
+	}
+	// Put it back to grol mode when done. alternative is have ro.Out = s.Out and carry cancel function to runner's.
+	if s.Term != nil {
+		s.Context, s.Cancel = s.Term.Resume(context.Background())
+	}
+	if err != nil {
+		return s.Error(err)
+	}
+	jsonData, jerr := json.Marshal(res)
+	if jerr != nil {
+		return s.Error(jerr)
+	}
+	doSave, found := omap.Get(object.String{Value: "save"})
+	if found && doSave == object.TRUE {
+		fname := res.Result().ID + rapi.JSONExtension // third place we do this or similar...
+		log.Infof("Saving %s", fname)
+		err = os.WriteFile(fname, jsonData, 0o644) //nolint:gosec // we do want 644
+		if err != nil {
+			log.Errf("Unable to save %s: %v", fname, err)
+			return s.Error(err)
+		}
+	}
+	// This is basically "unjson"'s implementation.
+	obj, err := eval.EvalString(s, string(jsonData), true)
+	if err != nil {
+		return s.Error(err)
+	}
+	return obj
+}
+
+func grolCurl(env any, _ string, args []object.Object) object.Object {
+	s := env.(*eval.State)
+	url := args[0].(object.String).Value
+	httpOpts := fhttp.NewHTTPOptions(url)
+	httpOpts.DisableFastClient = true
+	httpOpts.FollowRedirects = true
+	if len(args) > 1 {
+		omap := args[1].(object.Map)
+		err := MapToStruct(httpOpts, omap)
+		if err != nil {
+			return s.Error(err)
+		}
+	}
+	var w bytes.Buffer
+	httpOpts.DataWriter = &w
+	rapi.CallHook(httpOpts, &periodic.RunnerOptions{})
+	client, err := fhttp.NewClient(httpOpts)
+	if err != nil {
+		return s.Error(err)
+	}
+	code, _, _ := client.StreamFetch(context.Background())
+	// must be pre-sorted!
+	return object.MakeQuad(
+		object.String{Value: "body"}, object.String{Value: w.String()},
+		object.String{Value: "code"}, object.Integer{Value: int64(code)},
+	)
 }
 
 func ScriptMode(scriptInit string) int {
