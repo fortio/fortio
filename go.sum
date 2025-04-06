@@ -1,11 +1,11 @@
 fortio.org/assert v1.2.1 h1:48I39urpeDj65RP1KguF7akCjILNeu6vICiYMEysR7Q=
 fortio.org/assert v1.2.1/go.mod h1:039mG+/iYDPO8Ibx8TrNuJCm2T2SuhwRI3uL9nHTTls=
-fortio.org/cli v1.9.2 h1:17eJ8QZPjXHcLBpeCe0QMO/0fj5Bw0ZTxVgL7V9jOqc=
-fortio.org/cli v1.9.2/go.mod h1:7r55OoTV8NXcTvJT4boWk8s3I2LP6TMZh/0LLMJEYw0=
+fortio.org/cli v1.10.0 h1:BsJXuBrJxBLqE+62gHSOQBRzY+EvE/sF1MnjIexUSI8=
+fortio.org/cli v1.10.0/go.mod h1:DNxA/oD3cQaOtTean8Sgr78lJrwGLIs06X8U/G3va+M=
 fortio.org/dflag v1.7.3 h1:yws+v+/fJ67bYgrgcWpLtgdZPEWkYuwdfqz/WyQ8UXo=
 fortio.org/dflag v1.7.3/go.mod h1:O1Pk4lKRolw9wwAGyjTo8IsNyqqNRQGKxPOfpOElMqM=
-fortio.org/log v1.17.1 h1:YQoGyZBnXTVIs77/nZw7BppwSOIamP3I092PGBenBZs=
-fortio.org/log v1.17.1/go.mod h1:t58Spg9njjymvRioh5F6qKGSupEsnMjXLGWIS1i3khE=
+fortio.org/log v1.17.2 h1:JPX/ApDXDoGzsNtXw0AJI4ai6tl9wHp4Ch6bVs1OK0Y=
+fortio.org/log v1.17.2/go.mod h1:1V7bPfFI7ZVTdtN9DnUCAN0ilEMs5VgKjHIDRO7Mjzk=
 fortio.org/safecast v1.0.0 h1:dr3131WPX8iS1pTf76+39WeXbTrerDYLvi9s7Oi3wiY=
 fortio.org/safecast v1.0.0/go.mod h1:xZmcPk3vi4kuUFf+tq4SvnlVdwViqf6ZSZl91Jr9Jdg=
 fortio.org/scli v1.15.3 h1:XZYONPupGOd1Q68G4aq0vWg9obw0M57sC4snkyiab9w=
@@ -50,8 +50,8 @@ go.opentelemetry.io/otel/sdk/metric v1.34.0 h1:5CeK9ujjbFVL5c1PhLuStg1wxA7vQv7ce
 go.opentelemetry.io/otel/sdk/metric v1.34.0/go.mod h1:jQ/r8Ze28zRKoNRdkjCZxfs6YvBTG1+YIqyFVFYec5w=
 go.opentelemetry.io/otel/trace v1.34.0 h1:+ouXS2V8Rd4hp4580a8q23bg0azF2nI8cqLYnC8mh/k=
 go.opentelemetry.io/otel/trace v1.34.0/go.mod h1:Svm7lSjQD7kG7KJ/MUHPVXSDGz2OX4h0M2jHBhmSfRE=
-golang.org/x/crypto/x509roots/fallback v0.0.0-20250118192723-a8ea4be81f07 h1:Tuk3hxOkRoX4Xwph6/tRU1wGumEsVYM2TZfvAC6MllM=
-golang.org/x/crypto/x509roots/fallback v0.0.0-20250118192723-a8ea4be81f07/go.mod h1:kNa9WdvYnzFwC79zRpLRMJbdEFlhyM5RPFBBZp/wWH8=
+golang.org/x/crypto/x509roots/fallback v0.0.0-20250203165127-fa5273e46196 h1:jNA5ftLV4UJrgO6aUB7Jg372YkLI5SP7iHYy3s6in7g=
+golang.org/x/crypto/x509roots/fallback v0.0.0-20250203165127-fa5273e46196/go.mod h1:kNa9WdvYnzFwC79zRpLRMJbdEFlhyM5RPFBBZp/wWH8=
 golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 h1:yqrTHse8TCMW1M1ZCP+VAR/l0kKxwaAIqN/il7x4voA=
 golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8/go.mod h1:tujkw807nyEEAamNbDrEGzRav+ilXA7PCRAd6xsmwiU=
 golang.org/x/image v0.25.0 h1:Y6uW6rH1y5y/LK1J8BPWZtr6yZ7hrsy6hFrXjgsc2fQ=
