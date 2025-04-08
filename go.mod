@@ -15,10 +15,10 @@ go 1.23.8
 require (
 	fortio.org/assert v1.2.1
 	fortio.org/cli v1.10.0
-	fortio.org/dflag v1.8.0
+	fortio.org/dflag v1.8.1
 	fortio.org/log v1.17.2
 	fortio.org/safecast v1.0.0
-	fortio.org/scli v1.16.0
+	fortio.org/scli v1.16.1
 	fortio.org/sets v1.3.0
 	fortio.org/testscript v0.3.2
 	fortio.org/version v1.0.4
@@ -26,7 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.71.1
-	grol.io/grol v0.80.2
+	grol.io/grol v0.80.3
 )
 
 // Local dev of dependencies changes
@@ -42,11 +42,11 @@ require (
 require (
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/term v0.29.0-fortio-1 // indirect
-	fortio.org/terminal v0.27.2 // indirect
+	fortio.org/terminal v0.29.1 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	golang.org/x/crypto/x509roots/fallback v0.0.0-20250203165127-fa5273e46196 // indirect
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20250406160420-959f8f3db0fb // indirect
 	golang.org/x/image v0.26.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
