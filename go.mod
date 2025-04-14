@@ -26,7 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.71.1
-	grol.io/grol v0.80.3
+	grol.io/grol v0.80.4
 )
 
 // Local dev of dependencies changes
@@ -42,7 +42,7 @@ require (
 require (
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/term v0.29.0-fortio-1 // indirect
-	fortio.org/terminal v0.29.1 // indirect
+	fortio.org/terminal v0.30.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
