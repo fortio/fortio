@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -223,5 +224,46 @@ func TestDefaultQueryParam(t *testing.T) {
 	code, _, _ = client.Fetch(context.Background())
 	if code != http.StatusOK {
 		t.Errorf("Got %d instead of 200 with bad default query", code)
+	}
+}
+
+func TestGzipStreaming(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			t.Fatal("Client did not send Accept-Encoding: gzip")
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatal("ResponseWriter does not implement http.Flusher")
+		}
+
+		for i := range 3 {
+			fmt.Fprintf(w, "line %d\n", i)
+			flusher.Flush()
+		}
+	})
+	wrapped := Gzip(handler)
+	server := httptest.NewServer(wrapped)
+	defer server.Close()
+
+	// Let Go set Accept-Encoding: gzip and handle decompression automatically
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Body is already decompressed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("Expected at least 3 lines, got %d: %q", len(lines), lines)
+	}
+	if lines[0] != "line 0" {
+		t.Fatalf("Expected first line to be 'line 0', got %q", lines[0])
 	}
 }
