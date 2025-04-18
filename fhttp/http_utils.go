@@ -526,6 +526,14 @@ func (w *GzipResponseWriter) Close() error {
 	return err
 }
 
+// Flush so this is a flusher.
+func (w *GzipResponseWriter) Flush() {
+	w.gz.Flush()
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // NewGzipHTTPResponseWriter returns a wrapper for gzip'ing the response.
 func NewGzipHTTPResponseWriter(w http.ResponseWriter) *GzipResponseWriter {
 	log.LogVf("Doing gzip compression")
