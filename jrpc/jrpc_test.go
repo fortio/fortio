@@ -203,6 +203,9 @@ func TestJPRC(t *testing.T) {
 	if fe.Code != http.StatusBadRequest {
 		t.Errorf("expected status code %d, got %d", http.StatusBadRequest, fe.Code)
 	}
+	if errReply == nil {
+		t.Fatalf("expected error reply, got nil")
+	}
 	if errReply.Message != "request error" {
 		t.Errorf("unexpected Message in %+v", errReply.Message)
 	}
@@ -377,6 +380,15 @@ func TestSendBadURL(t *testing.T) {
 	}
 }
 
+type TestError struct {
+	Message string
+	Extra   int
+}
+
+func (e TestError) Error() string {
+	return e.Message
+}
+
 func TestSerializeServerReply(t *testing.T) {
 	o := &jrpc.ServerReply{}
 	bytes, err := jrpc.Serialize(o)
@@ -398,14 +410,14 @@ func TestSerializeServerReply(t *testing.T) {
 	if str != expected {
 		t.Errorf("expected %s, got %s", expected, str)
 	}
-	e := errors.New("an error")
-	o = jrpc.NewErrorReply("a message", e)
+	e := TestError{Message: "an error", Extra: 42}
+	o = jrpc.NewErrorReply("a message", &e)
 	bytes, err = jrpc.Serialize(o)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
 	str = string(bytes)
-	expected = `{"error":true,"message":"a message","exception":"an error"}`
+	expected = `{"error":true,"message":"a message","exception":"an error","exceptionDetails":{"Message":"an error","Extra":42}}`
 	if str != expected {
 		t.Errorf("expected %s, got %s", expected, str)
 	}

@@ -24,9 +24,10 @@ import (
 // ServerReply is used to reply errors but can also be the base for Ok replies,
 // see the unit tests `Response` and ../rapi for examples of use.
 type ServerReply struct {
-	Error     bool   `json:"error,omitempty"` // Success if false/omitted, Error/Failure when true
-	Message   string `json:"message,omitempty"`
-	Exception string `json:"exception,omitempty"`
+	Error            bool   `json:"error,omitempty"` // Success if false/omitted, Error/Failure when true
+	Message          string `json:"message,omitempty"`
+	Exception        string `json:"exception,omitempty"`
+	ExceptionDetails any    `json:"exceptionDetails,omitempty"` // Error when serializing, map[string]any when deserializing
 }
 
 // NewErrorReply creates a new error reply with the message and err error.
@@ -34,6 +35,7 @@ func NewErrorReply(message string, err error) *ServerReply {
 	res := ServerReply{Error: true, Message: message}
 	if err != nil {
 		res.Exception = err.Error()
+		res.ExceptionDetails = err
 	}
 	return &res
 }
