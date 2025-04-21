@@ -382,7 +382,7 @@ func TestSendBadURL(t *testing.T) {
 
 type TestError struct {
 	Message string
-	Exta    int
+	Extra   int
 }
 
 func (e TestError) Error() string {
@@ -410,7 +410,7 @@ func TestSerializeServerReply(t *testing.T) {
 	if str != expected {
 		t.Errorf("expected %s, got %s", expected, str)
 	}
-	e := TestError{Message: "an error", Exta: 42}
+	e := TestError{Message: "an error", Extra: 42}
 	o = jrpc.NewErrorReply("a message", &e)
 	bytes, err = jrpc.Serialize(o)
 	if err != nil {
