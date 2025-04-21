@@ -26,7 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.39.0
 	google.golang.org/grpc v1.72.0
-	grol.io/grol v0.80.4
+	grol.io/grol v0.82.0
 )
 
 // Local dev of dependencies changes
