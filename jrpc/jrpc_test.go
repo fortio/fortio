@@ -417,7 +417,7 @@ func TestSerializeServerReply(t *testing.T) {
 		t.Errorf("expected no error, got %v", err)
 	}
 	str = string(bytes)
-	expected = `{"error":true,"message":"a message","exception":"an error","exceptionDetails":{"Message":"an error","Exta":42}}`
+	expected = `{"error":true,"message":"a message","exception":"an error","exceptionDetails":{"Message":"an error","Extra":42}}`
 	if str != expected {
 		t.Errorf("expected %s, got %s", expected, str)
 	}
