@@ -68,5 +68,5 @@ google.golang.org/grpc v1.72.0 h1:S7UkcVa60b5AAQTaO6ZKamFp1zMZSU0fGDK2WZLbBnM=
 google.golang.org/grpc v1.72.0/go.mod h1:wH5Aktxcg25y1I3w7H69nHfXdOG3UiadoBtjh3izSDM=
 google.golang.org/protobuf v1.36.5 h1:tPhr+woSbjfYvY6/GPufUoYizxw1cF/yFoxJ2fmpwlM=
 google.golang.org/protobuf v1.36.5/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
-grol.io/grol v0.83.4 h1:Z666lxqCTGxEhZwcw98gFxJ7wjGVzdAHjZTTLlsvC4I=
-grol.io/grol v0.83.4/go.mod h1:gS8j3jIOV7kOmSs/Gx0W1nCQqAeHwi9Z23yghWMdvP8=
+grol.io/grol v0.84.1 h1:jL14KFBsFNSCKkZey/VB/ncQ2+QqJlZWmcZG99mCqWI=
+grol.io/grol v0.84.1/go.mod h1:gS8j3jIOV7kOmSs/Gx0W1nCQqAeHwi9Z23yghWMdvP8=
