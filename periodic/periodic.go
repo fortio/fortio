@@ -535,12 +535,27 @@ func (r *periodicRunner) Run() RunnerResults {
 	if shouldAbort {
 		log.Warnf("Run requested to stop before even starting")
 		aborter.Reset()
-		return RunnerResults{ // A bit ugly this is almost the same as the big init below in the normal not early abort case.
-			r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-			0, 0, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
-			errorsDuration.Export().CalcPercentiles(r.Percentiles),
-			r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
-			*jrpc.NewErrorReply("Aborted before even starting", nil),
+		
+		return RunnerResults{
+			RunType:                 r.RunType,
+			Labels:                  r.Labels,
+			StartTime:               start,
+			RequestedQPS:            requestedQPS,
+			RequestedDuration:       requestedDuration,
+			ActualQPS:               0,
+			ActualDuration:          0,
+			NumThreads:              r.NumThreads,
+			Version:                 version.Short(),
+			DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
+			ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),
+			Exactly:                 r.Exactly,
+			Jitter:                  r.Jitter,
+			Uniform:                 r.Uniform,
+			NoCatchUp:               r.NoCatchUp,
+			RunID:                   r.RunID,
+			AccessLoggerInfo:        loggerInfo,
+			ID:                      r.ID,
+			ServerReply:             *jrpc.NewErrorReply("Aborted before even starting", nil),
 		}
 	}
 	if r.NumThreads <= 1 {
@@ -602,11 +617,25 @@ func (r *periodicRunner) Run() RunnerResults {
 		requestedDuration += fmt.Sprintf(", interrupted after %d", actualCount)
 	}
 	result := RunnerResults{
-		r.RunType, r.Labels, start, requestedQPS, requestedDuration,
-		actualQPS, elapsed, r.NumThreads, version.Short(), functionDuration.Export().CalcPercentiles(r.Percentiles),
-		errorsDuration.Export().CalcPercentiles(r.Percentiles),
-		r.Exactly, r.Jitter, r.Uniform, r.NoCatchUp, r.RunID, loggerInfo, r.ID,
-		jrpc.ServerReply{Error: false},
+		RunType:                 r.RunType,
+		Labels:                  r.Labels,
+		StartTime:               start,
+		RequestedQPS:            requestedQPS,
+		RequestedDuration:       requestedDuration,
+		ActualQPS:               actualQPS,
+		ActualDuration:          elapsed,
+		NumThreads:              r.NumThreads,
+		Version:                 version.Short(),
+		DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
+		ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),
+		Exactly:                 r.Exactly,
+		Jitter:                  r.Jitter,
+		Uniform:                 r.Uniform,
+		NoCatchUp:               r.NoCatchUp,
+		RunID:                   r.RunID,
+		AccessLoggerInfo:        loggerInfo,
+		ID:                      r.ID,
+		ServerReply:             jrpc.ServerReply{Error: false},
 	}
 	if log.Log(log.Warning) {
 		result.DurationHistogram.Print(r.Out, "Aggregated Function Time")
