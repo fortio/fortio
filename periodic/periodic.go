@@ -536,6 +536,7 @@ func (r *periodicRunner) Run() RunnerResults {
 		log.Warnf("Run requested to stop before even starting")
 		aborter.Reset()
 		
+		// A bit ugly this is almost the same as the big init below in the normal not early abort case.
 		return RunnerResults{
 			RunType:                 r.RunType,
 			Labels:                  r.Labels,
