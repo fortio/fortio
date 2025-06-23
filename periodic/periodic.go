@@ -494,7 +494,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 }
 
 // Run starts the runner.
-func (r *periodicRunner) Run() RunnerResults {
+func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part because of the repeat on the result initialization.
 	aborter := r.Stop
 	runnerChan, shouldAbort := aborter.RecordStart()
 	useQPS := (r.QPS > 0)
@@ -535,7 +535,7 @@ func (r *periodicRunner) Run() RunnerResults {
 	if shouldAbort {
 		log.Warnf("Run requested to stop before even starting")
 		aborter.Reset()
-		
+
 		// A bit ugly this is almost the same as the big init below in the normal not early abort case.
 		return RunnerResults{
 			RunType:                 r.RunType,
