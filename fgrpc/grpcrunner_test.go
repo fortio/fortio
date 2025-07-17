@@ -18,7 +18,9 @@ package fgrpc
 import (
 	"fmt"
 	"net"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	"fortio.org/log"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
@@ -562,4 +565,254 @@ func TestHeaderHandling(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestGRPCRunnerCustomMethod tests custom gRPC method load testing functionality.
+func TestGRPCRunnerCustomMethod(t *testing.T) {
+	log.SetLogLevel(log.Info)
+
+	// Start a test gRPC server
+	port := PingServerTCP("0", "custom-method-test", 0, noTLSO)
+	addr := fmt.Sprintf("localhost:%d", port)
+
+	// Give server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	tests := []struct {
+		name            string
+		grpcMethod      string
+		payload         string
+		numThreads      int
+		expectError     bool
+		expectedRunType string
+	}{
+		{
+			name:            "valid custom method with payload",
+			grpcMethod:      "fgrpc.PingServer/Ping",
+			payload:         `{"seq": 1, "payload": "test", "ts": 123456789}`,
+			numThreads:      1,
+			expectError:     false,
+			expectedRunType: "Custom GRPC Method fgrpc.PingServer/Ping and Payload",
+		},
+		{
+			name:            "valid custom method with empty payload",
+			grpcMethod:      "fgrpc.PingServer/Ping",
+			payload:         "",
+			numThreads:      1,
+			expectError:     false,
+			expectedRunType: "Custom GRPC Method fgrpc.PingServer/Ping and Payload",
+		},
+		{
+			name:            "valid custom method with multiple threads",
+			grpcMethod:      "fgrpc.PingServer/Ping",
+			payload:         `{"seq": 42}`,
+			numThreads:      2,
+			expectError:     false,
+			expectedRunType: "Custom GRPC Method fgrpc.PingServer/Ping and Payload",
+		},
+		{
+			name:        "invalid method name",
+			grpcMethod:  "NonExistent/Method",
+			payload:     "{}",
+			numThreads:  1,
+			expectError: true,
+		},
+		{
+			name:        "invalid method format",
+			grpcMethod:  "InvalidFormat",
+			payload:     "{}",
+			numThreads:  1,
+			expectError: true,
+		},
+		{
+			name:        "invalid JSON payload",
+			grpcMethod:  "fgrpc.PingServer/Ping",
+			payload:     `{"invalid": json}`,
+			numThreads:  1,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &GRPCRunnerOptions{
+				RunnerOptions: periodic.RunnerOptions{
+					QPS:        10,
+					Duration:   200 * time.Millisecond,
+					NumThreads: tt.numThreads,
+					Out:        os.Stderr,
+				},
+				Destination: addr,
+				GrpcMethod:  tt.grpcMethod,
+				Payload:     tt.payload,
+			}
+
+			res, err := RunGRPCTest(o)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("RunGRPCTest expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("RunGRPCTest unexpected error: %v", err)
+				return
+			}
+
+			if res == nil {
+				t.Errorf("RunGRPCTest returned nil result")
+				return
+			}
+
+			// Check that the run type is set correctly
+			if !strings.Contains(o.RunType, tt.expectedRunType) {
+				t.Errorf("RunGRPCTest RunType = %q, want to contain %q", o.RunType, tt.expectedRunType)
+			}
+
+			// Check that results contain some data
+			if len(res.RetCodes) == 0 {
+				t.Errorf("RunGRPCTest returned no return codes")
+			}
+
+			// Check that there are some successful calls
+			if res.RetCodes["SERVING"] == 0 {
+				t.Errorf("RunGRPCTest returned no successful calls: %+v", res.RetCodes)
+			}
+		})
+	}
+}
+
+// TestGRPCRunnerCustomMethodErrors tests error handling in custom gRPC method execution.
+func TestGRPCRunnerCustomMethodErrors(t *testing.T) {
+	log.SetLogLevel(log.Info)
+
+	// Start a test gRPC server
+	port := PingServerTCP("0", "error-test", 0, noTLSO)
+	addr := fmt.Sprintf("localhost:%d", port)
+
+	// Give server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Test method descriptor error
+	t.Run("method descriptor error", func(t *testing.T) {
+		o := &GRPCRunnerOptions{
+			RunnerOptions: periodic.RunnerOptions{
+				QPS:        1,
+				Duration:   100 * time.Millisecond,
+				NumThreads: 1,
+				Out:        os.Stderr,
+			},
+			Destination: addr,
+			GrpcMethod:  "NonExistent/Method",
+			Payload:     "{}",
+		}
+
+		_, err := RunGRPCTest(o)
+		if err == nil {
+			t.Errorf("RunGRPCTest expected error for non-existent method but got none")
+		}
+
+		if !strings.Contains(err.Error(), "failed to get method descriptor") {
+			t.Errorf("RunGRPCTest error = %q, want to contain 'failed to get method descriptor'", err.Error())
+		}
+	})
+
+	// Test request message error
+	t.Run("request message error", func(t *testing.T) {
+		o := &GRPCRunnerOptions{
+			RunnerOptions: periodic.RunnerOptions{
+				QPS:        1,
+				Duration:   100 * time.Millisecond,
+				NumThreads: 1,
+				Out:        os.Stderr,
+			},
+			Destination: addr,
+			GrpcMethod:  "fgrpc.PingServer/Ping",
+			Payload:     `{"invalid": json}`,
+		}
+
+		_, err := RunGRPCTest(o)
+		if err == nil {
+			t.Errorf("RunGRPCTest expected error for invalid JSON payload but got none")
+		}
+
+		if !strings.Contains(err.Error(), "failed to get request message") {
+			t.Errorf("RunGRPCTest error = %q, want to contain 'failed to get request message'", err.Error())
+		}
+	})
+}
+
+// TestGRPCRunnerCustomMethodWithConnection tests custom gRPC method with connection issues.
+func TestGRPCRunnerCustomMethodWithConnection(t *testing.T) {
+	log.SetLogLevel(log.Info)
+
+	// Test with non-existent server
+	t.Run("connection error", func(t *testing.T) {
+		o := &GRPCRunnerOptions{
+			RunnerOptions: periodic.RunnerOptions{
+				QPS:        1,
+				Duration:   100 * time.Millisecond,
+				NumThreads: 1,
+				Out:        os.Stderr,
+			},
+			Destination: "localhost:99999", // non-existent server
+			GrpcMethod:  "fgrpc.PingServer/Ping",
+			Payload:     "{}",
+		}
+
+		_, err := RunGRPCTest(o)
+		if err == nil {
+			t.Errorf("RunGRPCTest expected error for non-existent server but got none")
+		}
+	})
+}
+
+// TestDynamicGrpcCallErrors tests error handling in dynamicGrpcCall function.
+func TestDynamicGrpcCallErrors(t *testing.T) {
+	log.SetLogLevel(log.Info)
+
+	// Test with closed connection
+	t.Run("closed connection error", func(t *testing.T) {
+		// Create a connection and close it
+		conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			t.Fatalf("Failed to create connection: %v", err)
+		}
+		conn.Close()
+
+		// Try to create a call with closed connection
+		call := &DynamicGrpcCall{
+			MethodPath: "fgrpc.PingServer/Ping",
+			conn:       conn,
+		}
+
+		ctx := context.Background()
+		_, err = dynamicGrpcCall(ctx, call)
+		if err == nil {
+			t.Errorf("dynamicGrpcCall expected error with closed connection but got none")
+		}
+	})
+
+	// Test with invalid method descriptor
+	t.Run("nil method descriptor", func(t *testing.T) {
+		conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			t.Fatalf("Failed to create connection: %v", err)
+		}
+		defer conn.Close()
+
+		call := &DynamicGrpcCall{
+			MethodPath:       "fgrpc.PingServer/Ping",
+			conn:             conn,
+			methodDescriptor: nil, // nil descriptor
+		}
+
+		ctx := context.Background()
+		_, err = dynamicGrpcCall(ctx, call)
+		if err == nil {
+			t.Errorf("dynamicGrpcCall expected error with nil method descriptor but got none")
+		}
+	})
 }

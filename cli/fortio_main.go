@@ -133,7 +133,8 @@ var (
 	healthSvcFlag  = flag.String("healthservice", "", "which service string to pass to health check")
 	pingDelayFlag  = flag.Duration("grpc-ping-delay", 0, "gRPC ping delay in response")
 	streamsFlag    = flag.Int("s", 1, "Number of streams per gRPC connection")
-	grpcMethodFlag = flag.String("grpc-method", "", "Fully-qualified gRPC method to call (Service/Method). Service must have reflection enabled.")
+	grpcMethodFlag = flag.String("grpc-method", "",
+		"Fully-qualified gRPC method to call (Service/Method). Service must have reflection enabled.")
 
 	maxStreamsFlag = flag.Uint("grpc-max-streams", 0,
 		"MaxConcurrentStreams for the gRPC server. Default (0) is to leave the option unset.")

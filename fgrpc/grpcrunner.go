@@ -24,18 +24,19 @@ import (
 	"strings"
 	"time"
 
-	"fortio.org/fortio/fhttp"
-	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/periodic"
-	"fortio.org/log"
+	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // TODO: migrate to v2 API
+	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // TODO: migrate to v2 API
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
-	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/dynamic"
+
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/periodic"
+	"fortio.org/log"
 )
 
 // Dial dials gRPC using insecure or TLS transport security when serverAddr
@@ -97,16 +98,17 @@ func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.Threa
 	if len(grpcstate.Metadata) != 0 { // filtered one
 		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)
 	}
-	if grpcstate.Ping {
+	switch {
+	case grpcstate.Ping:
 		res, err = grpcstate.clientP.Ping(outCtx, &grpcstate.reqP)
-	} else if grpcstate.dynamicCall != nil {
-		res, err := dynamicGrpcCall(outCtx, grpcstate.dynamicCall)
+	case grpcstate.dynamicCall != nil:
+		res, err = dynamicGrpcCall(outCtx, grpcstate.dynamicCall)
 		if err != nil {
 			log.Warnf("Error making dynamic gRPC call: %v", err)
 			grpcstate.RetCodes[Error]++
 		}
 		log.Debugf("Dynamic gRPC call response: %s, error: %v", res, err)
-	} else {
+	default:
 		var r *grpc_health_v1.HealthCheckResponse
 		r, err = grpcstate.clientH.Check(outCtx, &grpcstate.reqH)
 		if r != nil {
@@ -159,14 +161,15 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		// sort of todo, this redoing some of periodic normalize (but we can't use normalize which does too much)
 		o.NumThreads = periodic.DefaultRunnerOptions.NumThreads
 	}
-	if o.UsePing {
+	switch {
+	case o.UsePing:
 		o.RunType = "GRPC Ping"
 		if o.Delay > 0 {
 			o.RunType += fmt.Sprintf(" Delay=%v", o.Delay)
 		}
-	} else if o.GrpcMethod != "" {
+	case o.GrpcMethod != "":
 		o.RunType = fmt.Sprintf("Custom GRPC Method %s and Payload %s", o.GrpcMethod, o.Payload)
-	} else {
+	default:
 		o.RunType = "GRPC Health for '" + o.Service + "'"
 	}
 	pll := len(o.Payload)
@@ -220,7 +223,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].Metadata = o.filteredMetadata // the one used to send
 		}
 		// TODO: support parallel warmup(implemented in http)
-		if o.UsePing { //nolint:nestif // not that complicated.
+		switch {
+		case o.UsePing:
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
@@ -229,7 +233,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			if newConn && o.Exactly <= 0 {
 				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP, callOptions...)
 			}
-		} else if o.GrpcMethod != "" {
+		case o.GrpcMethod != "":
 			// Use reflection to get method descriptor and create request message, if not already done.
 			// these can be reused across threads
 			if methodDescriptor == nil {
@@ -251,7 +255,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 				MethodPath:       o.GrpcMethod,
 				RequestMsg:       reqMsg,
 			}
-		} else {
+		default:
 			grpcstate[i].clientH = grpc_health_v1.NewHealthClient(conn)
 			if grpcstate[i].clientH == nil {
 				return nil, fmt.Errorf("unable to create health client %d for %s", i, o.Destination)
