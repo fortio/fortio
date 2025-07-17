@@ -3,6 +3,7 @@ package fgrpc // import "fortio.org/fortio/fgrpc"
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -39,7 +40,7 @@ func dynamicGrpcCall(ctx context.Context, call *DynamicGrpcCall) (string, error)
 	log.Debugf("Invoking gRPC method %s with input: %s", call.MethodPath, call.RequestMsg)
 
 	if call.methodDescriptor == nil {
-		return "", fmt.Errorf("method descriptor is nil")
+		return "", errors.New("method descriptor is nil")
 	}
 
 	stub := grpcdynamic.NewStub(call.conn)

@@ -151,7 +151,7 @@ type GRPCRunnerOptions struct {
 
 // RunGRPCTest runs an HTTP test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo
+//nolint:funlen, gocognit, gocyclo, maintidx
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Streams < 1 {
 		o.Streams = 1
@@ -223,7 +223,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 		// TODO: support parallel warmup(implemented in http)
 		switch {
-		case o.UsePing: //nolint:nestif
+		case o.UsePing:
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)
@@ -240,7 +240,6 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to get method descriptor for %s: %w", o.GrpcMethod, err)
 				}
-
 			}
 			if reqMsg == nil {
 				reqMsg, err = getRequestMessage(methodDescriptor, o.Payload)

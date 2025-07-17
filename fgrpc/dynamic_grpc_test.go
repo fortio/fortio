@@ -106,7 +106,7 @@ func TestGetMethodDescriptor(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Create a connection
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
 	if err != nil {
 		t.Fatalf("Failed to connect to test server: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestGetRequestMessage(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Create a connection
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
 	if err != nil {
 		t.Fatalf("Failed to connect to test server: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestDynamicGrpcCall(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Create a connection
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
 	if err != nil {
 		t.Fatalf("Failed to connect to test server: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestDynamicGrpcCall(t *testing.T) {
 
 func TestDynamicGrpcCallWithInvalidConnection(t *testing.T) {
 	// Create a connection to a non-existent server
-	conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
 	if err != nil {
 		t.Fatalf("Failed to create connection: %v", err)
 	}
