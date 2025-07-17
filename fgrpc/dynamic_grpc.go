@@ -5,23 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"fortio.org/log"
-	"google.golang.org/grpc"
-	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/dynamic"
+
+	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // TODO: migrate to v2 API
+	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // TODO: migrate to v2 API
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
+	"google.golang.org/grpc"
+
+	"fortio.org/log"
 )
 
 // DynamicGrpcCall represents a prepared dynamic gRPC call with all necessary components.
 type DynamicGrpcCall struct {
-	MethodPath  string           // e.g. "/Service/Method"
-	RequestMsg  *dynamic.Message // dynamic protobuf for request
+	MethodPath string           // e.g. "/Service/Method"
+	RequestMsg *dynamic.Message // dynamic protobuf for request
 
 	conn             *grpc.ClientConn       // gRPC connection to use for the call
 	methodDescriptor *desc.MethodDescriptor // Method descriptor for the gRPC method
 }
-
 
 // parseFullMethod splits "Service/Method" or "/Service/Method" into service and method.
 func parseFullMethod(full string) (string, string, error) {
@@ -37,6 +38,10 @@ func parseFullMethod(full string) (string, string, error) {
 func dynamicGrpcCall(ctx context.Context, call *DynamicGrpcCall) (string, error) {
 	log.Debugf("Invoking gRPC method %s with input: %s", call.MethodPath, call.RequestMsg)
 
+	if call.methodDescriptor == nil {
+		return "", fmt.Errorf("method descriptor is nil")
+	}
+
 	stub := grpcdynamic.NewStub(call.conn)
 	response, err := stub.InvokeRpc(ctx, call.methodDescriptor, call.RequestMsg)
 	if err != nil {
@@ -46,7 +51,7 @@ func dynamicGrpcCall(ctx context.Context, call *DynamicGrpcCall) (string, error)
 	return response.String(), nil
 }
 
-// getMethodDescriptor retrieves the method descriptor for a given full method name
+// getMethodDescriptor retrieves the method descriptor for a given full method name.
 func getMethodDescriptor(ctx context.Context, conn *grpc.ClientConn, fullMethod string) (*desc.MethodDescriptor, error) {
 	refClient := grpcreflect.NewClientAuto(ctx, conn)
 	defer refClient.Reset()
@@ -69,7 +74,7 @@ func getMethodDescriptor(ctx context.Context, conn *grpc.ClientConn, fullMethod 
 	return md, nil
 }
 
-// getRequestMessage creates a protobuf message from the JSON payload
+// getRequestMessage creates a protobuf message from the JSON payload.
 func getRequestMessage(md *desc.MethodDescriptor, jsonPayload string) (*dynamic.Message, error) {
 	inputType := md.GetInputType()
 	inMsg := dynamic.NewMessage(inputType)
