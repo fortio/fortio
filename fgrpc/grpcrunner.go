@@ -241,7 +241,6 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to get method descriptor for %s: %w", o.GrpcMethod, err)
 				}
-
 			}
 			if reqMsg == nil {
 				reqMsg, err = getRequestMessage(methodDescriptor, o.Payload)
