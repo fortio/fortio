@@ -18,6 +18,7 @@ package metrics // import "fortio.org/fortio/metrics"
 import (
 	"io"
 	"net/http"
+	"runtime"
 	"strconv"
 
 	"fortio.org/fortio/rapi"
@@ -44,5 +45,10 @@ fortio_running `)
 # TYPE fortio_runs_total counter
 fortio_runs_total `)
 	_, _ = io.WriteString(w, strconv.FormatInt(total, 10))
+	_, _ = io.WriteString(w, `
+# HELP fortio_goroutines Current number of goroutines
+# TYPE fortio_goroutines gauge
+fortio_goroutines `)
+	_, _ = io.WriteString(w, strconv.FormatInt(int64(runtime.NumGoroutine()), 10))
 	_, _ = io.WriteString(w, "\n")
 }
