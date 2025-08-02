@@ -340,7 +340,7 @@ func TestDynamicGrpcCall(t *testing.T) {
 
 func TestDynamicGrpcCallWithInvalidConnection(t *testing.T) {
 	// Create a connection to a non-existent server
-	conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
+	conn, err := grpc.NewClient("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to create connection: %v", err)
 	}
