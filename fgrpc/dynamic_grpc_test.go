@@ -176,7 +176,7 @@ func TestGetRequestMessage(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Create a connection
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials())) //nolint:staticcheck
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to connect to test server: %v", err)
 	}
