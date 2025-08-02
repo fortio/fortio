@@ -776,7 +776,7 @@ func TestDynamicGrpcCallErrors(t *testing.T) {
 	// Test with closed connection
 	t.Run("closed connection error", func(t *testing.T) {
 		// Create a connection and close it
-		conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials())) // no-lint:staticcheck
+		conn, err := grpc.NewClient("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			t.Fatalf("Failed to create connection: %v", err)
 		}
@@ -797,7 +797,7 @@ func TestDynamicGrpcCallErrors(t *testing.T) {
 
 	// Test with invalid method descriptor
 	t.Run("nil method descriptor", func(t *testing.T) {
-		conn, err := grpc.Dial("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials())) // no-lint:staticcheck
+		conn, err := grpc.NewClient("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			t.Fatalf("Failed to create connection: %v", err)
 		}
