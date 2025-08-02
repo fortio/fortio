@@ -199,6 +199,7 @@ official-build-internal: $(BUILD_DIR) $(OFFICIAL_DIR)
 	@echo "OFFICIAL_BIN=$(OFFICIAL_BIN) OFFICIAL_DIR=$(OFFICIAL_DIR) OFFICIAL_TARGET=$(OFFICIAL_TARGET)"
 	$(GO_BIN) version
 ifeq ($(MODE),install)
+	# Note that now that go build embeds the debug.BuildInfo vcs information, we don't need to do this circus anymore (TODO: clean up)
 	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -trimpath -ldflags "-s -w" $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
 	ls -lR $(BUILD_DIR_BIN)
