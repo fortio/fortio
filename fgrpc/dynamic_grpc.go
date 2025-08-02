@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"strings"
 
+	"fortio.org/log"
 	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // TODO: migrate to v2 API
 	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // TODO: migrate to v2 API
 	"github.com/jhump/protoreflect/dynamic/grpcdynamic"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
-
-	"fortio.org/log"
 )
 
 // DynamicGrpcCall represents a prepared dynamic gRPC call with all necessary components.

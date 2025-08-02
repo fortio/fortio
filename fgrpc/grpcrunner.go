@@ -24,6 +24,10 @@ import (
 	"strings"
 	"time"
 
+	"fortio.org/fortio/fhttp"
+	"fortio.org/fortio/fnet"
+	"fortio.org/fortio/periodic"
+	"fortio.org/log"
 	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // TODO: migrate to v2 API
 	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // TODO: migrate to v2 API
 	"google.golang.org/grpc"
@@ -32,11 +36,6 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
-
-	"fortio.org/fortio/fhttp"
-	"fortio.org/fortio/fnet"
-	"fortio.org/fortio/periodic"
-	"fortio.org/log"
 )
 
 // Dial dials gRPC using insecure or TLS transport security when serverAddr
