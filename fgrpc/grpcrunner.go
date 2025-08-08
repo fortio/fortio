@@ -151,7 +151,7 @@ type GRPCRunnerOptions struct {
 
 // RunGRPCTest runs an HTTP test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo // yes it's long.
+//nolint:funlen, gocognit, gocyclo, maintidx // yes it's long.
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Streams < 1 {
 		o.Streams = 1
