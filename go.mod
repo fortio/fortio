@@ -24,6 +24,7 @@ require (
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
+	github.com/jhump/protoreflect v1.17.0
 	golang.org/x/net v0.42.0
 	google.golang.org/grpc v1.74.2
 	grol.io/grol v0.91.5
@@ -42,6 +43,7 @@ require (
 require (
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/terminal v0.43.2 // indirect
+	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
