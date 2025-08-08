@@ -7,7 +7,7 @@
 IMAGES=echosrv fcurl # plus the combo image / Dockerfile without ext.
 
 DOCKER_PREFIX := docker.io/fortio/fortio
-BUILD_IMAGE_TAG := v80@sha256:55a2c0582f2c02644ea60f52ac985c474538add939549cb034a09c3317e0d0f4
+BUILD_IMAGE_TAG := v81@sha256:91033eec7a3a8ab3c8931b1cd813eec496dd0c85bae14d4496c0b234acd6ce15
 BUILDX_PLATFORMS := linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
 BUILDX_POSTFIX :=
 ifeq '$(shell echo $(BUILDX_PLATFORMS) | awk -F "," "{print NF-1}")' '0'
@@ -199,7 +199,8 @@ official-build-internal: $(BUILD_DIR) $(OFFICIAL_DIR)
 	@echo "OFFICIAL_BIN=$(OFFICIAL_BIN) OFFICIAL_DIR=$(OFFICIAL_DIR) OFFICIAL_TARGET=$(OFFICIAL_TARGET)"
 	$(GO_BIN) version
 ifeq ($(MODE),install)
-	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -ldflags -s $(OFFICIAL_TARGET)@v$(DIST_VERSION)
+	# Note that now that go build embeds the debug.BuildInfo vcs information, we don't need to do this circus anymore (TODO: clean up)
+	GOPATH=$(BUILD_DIR_ABS) CGO_ENABLED=0 GOOS=$(GOOS) $(GO_BIN) install -a -trimpath -ldflags "-s -w" $(OFFICIAL_TARGET)@v$(DIST_VERSION)
 	# rename when building cross architecture (on windows it has .exe suffix thus the *)
 	ls -lR $(BUILD_DIR_BIN)
 	-mv -f $(BUILD_DIR_BIN)/*_*/$(OFFICIAL_EXE)* $(BUILD_DIR_BIN)

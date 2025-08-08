@@ -395,7 +395,7 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	}
 }
 
-//nolint:funlen
+//nolint:funlen // mega test all in one.
 func TestRESTStopTimeBased(t *testing.T) {
 	log.SetLogLevel(log.Verbose)
 	mux, addr := fhttp.DynamicHTTPServer(false)

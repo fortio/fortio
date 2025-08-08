@@ -252,9 +252,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// new `rapi` code.
 		res, savedAs, json, err := rapi.Run(runWriter, r, nil, runner, url, &ro, httpopts, true /*HTML mode*/)
 		if err != nil {
-			_, _ = w.Write([]byte(fmt.Sprintf(
+			_, _ = fmt.Fprintf(w,
 				"❌ Aborting because of %s\n</pre><script>document.getElementById('running').style.display = 'none';</script></body></html>\n",
-				html.EscapeString(err.Error()))))
+				html.EscapeString(err.Error()))
 			return
 		}
 		if JSONOnly {
@@ -263,13 +263,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		if savedAs != "" {
 			id := res.Result().ID
-			_, _ = w.Write([]byte(fmt.Sprintf("Saved result to <a href='%s'>%s</a>"+
-				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)))
+			_, _ = fmt.Fprintf(w, "Saved result to <a href='%s'>%s</a>"+
+				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)
 		}
-		_, _ = w.Write([]byte(fmt.Sprintf("All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+		_, _ = fmt.Fprintf(w, "All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
 			res.Result().DurationHistogram.Count,
 			1000.*res.Result().DurationHistogram.Avg,
-			res.Result().ActualQPS)))
+			res.Result().ActualQPS)
 		ResultToJsData(w, json)
 		_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
 	}
@@ -415,7 +415,7 @@ func (o outHTTPWriter) Write(b []byte) (int, error) {
 
 func (o outHTTPWriter) WriteHeader(code int) {
 	*o.CodePtr = code
-	_, _ = o.Out.Write([]byte(fmt.Sprintf("\n*** result code: %d\n", code)))
+	_, _ = fmt.Fprintf(o.Out, "\n*** result code: %d\n", code)
 }
 
 func (o outHTTPWriter) Flush() {
@@ -462,7 +462,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	// If we had hundreds of thousands of entry we should stream, parallelize (connection pool)
 	// and not do multiple passes over the same data, but for small TSV this is fine.
 	// use std client to avoid chunked raw we can get with fast client:
-	client, _ := fhttp.NewStdClient(o) //nolint:contextcheck
+	client, _ := fhttp.NewStdClient(o) //nolint:contextcheck // yeah we should, possibly.
 	if client == nil {
 		_, _ = w.Write([]byte("invalid url!<script>setPB(1,1)</script></body></html>\n"))
 		// too late to write headers for real case, but we do it anyway for the Sync() startup case
@@ -472,7 +472,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	code, data, _ := client.Fetch(r.Context())
 	defer client.Close()
 	if code != http.StatusOK {
-		_, _ = w.Write([]byte(fmt.Sprintf("http error, code %d<script>setPB(1,1)</script></body></html>\n", code)))
+		_, _ = fmt.Fprintf(w, "http error, code %d<script>setPB(1,1)</script></body></html>\n", code)
 		// too late to write headers for real case, but we do it anyway for the Sync() startup case
 		w.WriteHeader(code)
 		return
@@ -495,8 +495,8 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	lines := strings.Split(sdata, "\n")
 	n := len(lines)
 
-	_, _ = w.Write([]byte(fmt.Sprintf("success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
-		n-1, n)))
+	_, _ = fmt.Fprintf(w, "success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
+		n-1, n)
 	_, _ = w.Write([]byte("<table>"))
 	flusher.Flush()
 	for i, l := range lines[1:] {
@@ -513,7 +513,7 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 			name := pathParts[len(pathParts)-1]
 			downloadOne(ctx, w, client, name, u)
 		}
-		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
+		_, _ = fmt.Fprintf(w, "</tr><script>setPB(%d)</script>\n", i+2)
 		flusher.Flush()
 	}
 	_, _ = w.Write([]byte("</table><p>All done!\n"))
@@ -547,8 +547,8 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	n := len(l.Names)
 	log.Infof("Parsed %+v", l)
 
-	_, _ = w.Write([]byte(fmt.Sprintf("success xml fetch #%d! Now fetching %d referenced objects:<script>setPB(1,%d)</script>\n",
-		level+1, n, n+1)))
+	_, _ = fmt.Fprintf(w, "success xml fetch #%d! Now fetching %d referenced objects:<script>setPB(1,%d)</script>\n",
+		level+1, n, n+1)
 	if level == 0 {
 		_, _ = w.Write([]byte("<table>"))
 	}
@@ -561,7 +561,7 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 		newURL.Path = newURL.Path + "/" + el
 		fullURL := newURL.String()
 		downloadOne(ctx, w, client, name, fullURL)
-		_, _ = w.Write([]byte(fmt.Sprintf("</tr><script>setPB(%d)</script>\n", i+2)))
+		_, _ = fmt.Fprintf(w, "</tr><script>setPB(%d)</script>\n", i+2)
 		flusher.Flush()
 	}
 	flusher.Flush()
@@ -592,7 +592,7 @@ func processXML(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	if ncode != http.StatusOK {
 		log.Errf("Can't fetch continuation with marker %+v", bu)
 
-		_, _ = w.Write([]byte(fmt.Sprintf("❌ http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)))
+		_, _ = fmt.Fprintf(w, "❌ http error, code %d<script>setPB(1,1)</script></table></body></html>\n", ncode)
 		w.WriteHeader(http.StatusFailedDependency)
 		return false
 	}
@@ -622,7 +622,7 @@ func downloadOne(ctx context.Context, w http.ResponseWriter, client *fhttp.Clien
 	_ = client.ChangeURL(u)
 	code1, data1, _ := client.Fetch(ctx)
 	if code1 != http.StatusOK {
-		_, _ = w.Write([]byte(fmt.Sprintf("<td>❌ Http error, code %d", code1)))
+		_, _ = fmt.Fprintf(w, "<td>❌ Http error, code %d", code1)
 		w.WriteHeader(http.StatusFailedDependency)
 		return
 	}

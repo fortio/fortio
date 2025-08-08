@@ -546,7 +546,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %q: %v", url, err)
-		log.Errf(msg) //nolint:govet // avoid duplicating sprintf.
+		log.Errf(msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}

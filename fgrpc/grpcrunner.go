@@ -54,8 +54,9 @@ func Dial(o *GRPCRunnerOptions) (*grpc.ClientConn, error) {
 	serverAddr := grpcDestination(o.Destination)
 	if o.UnixDomainSocket != "" {
 		log.Warnf("Using domain socket %v instead of %v for grpc connection", o.UnixDomainSocket, serverAddr)
-		opts = append(opts, grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-			return net.Dial(fnet.UnixDomainSocket, o.UnixDomainSocket)
+		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			dialer := net.Dialer{}
+			return dialer.DialContext(ctx, fnet.UnixDomainSocket, o.UnixDomainSocket)
 		}))
 	}
 	opts = append(opts, o.dialOptions...)
@@ -138,7 +139,7 @@ type GRPCRunnerOptions struct {
 
 // RunGRPCTest runs an HTTP test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo
+//nolint:funlen, gocognit, gocyclo // yes it's long.
 func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	if o.Streams < 1 {
 		o.Streams = 1
@@ -204,7 +205,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].Metadata = o.filteredMetadata // the one used to send
 		}
 		// TODO: support parallel warmup(implemented in http)
-		if o.UsePing { //nolint:nestif
+		if o.UsePing { //nolint:nestif // not that complicated.
 			grpcstate[i].clientP = NewPingServerClient(conn)
 			if grpcstate[i].clientP == nil {
 				return nil, fmt.Errorf("unable to create ping client %d for %s", i, o.Destination)

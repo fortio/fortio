@@ -141,7 +141,7 @@ func Listen(name string, port string) (net.Listener, net.Addr) {
 	} else {
 		nPort = NormalizePort(port)
 	}
-	listener, err := net.Listen(sockType, nPort)
+	listener, err := net.Listen(sockType, nPort) //nolint:noctx // for the listener it's ok to not have a context (imo).
 	if err != nil {
 		log.Critf("Can't listen to %s socket %v (%v) for %s: %v", sockType, port, nPort, name, err)
 		return nil, nil
@@ -355,7 +355,8 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	log.Debugf("Resolve() called with host=%s port=%s proto=%s", host, port, proto)
 	dest := &HostPortAddr{}
 	var err error
-	dest.Port, err = net.LookupPort(proto, port)
+	resolver := net.DefaultResolver
+	dest.Port, err = resolver.LookupPort(ctx, proto, port)
 	if err != nil {
 		log.Errf("Unable to resolve %s port '%s' : %v", proto, port, err)
 		return nil, err
@@ -526,7 +527,7 @@ func handleProxyRequest(conn net.Conn, dest net.Addr) {
 	err := ErrNilDestination
 	var d net.Conn
 	if dest != nil {
-		d, err = net.Dial(dest.Network(), dest.String())
+		d, err = net.Dial(dest.Network(), dest.String()) //nolint:noctx // we should probably have a context and we don't.
 	}
 	if err != nil {
 		log.Errf("Proxy: unable to connect to %v for %v : %v", dest, conn.RemoteAddr(), err)

@@ -139,7 +139,7 @@ func NewTCPClient(o *TCPOptions) (*TCPClient, error) {
 
 func (c *TCPClient) connect() (net.Conn, error) {
 	c.socketCount++
-	socket, err := net.Dial(c.dest.Network(), c.dest.String())
+	socket, err := net.Dial(c.dest.Network(), c.dest.String()) //nolint:noctx // TODO have contexts and not just abort channel.
 	if err != nil {
 		log.Errf("Unable to connect to %v : %v", c.dest, err)
 		return nil, err

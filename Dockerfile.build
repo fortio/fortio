@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.23.9@sha256:e36d133fbb98117cb259ec9fe3a1ac2167a8ff30b194178bc2a0dc2f03ccfa5f
+FROM golang:1.24.6@sha256:2c89c41fb9efc3807029b59af69645867cfe978d2b877d475be0d72f6c6ce6f6
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -11,8 +11,8 @@ RUN gem install --no-document fpm
 RUN go version # check it's indeed the version we expect
 
 # golangci-lint
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2
-# RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+# RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.3.1
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 RUN golangci-lint version
 
 # Docker:

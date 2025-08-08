@@ -106,7 +106,7 @@ func NewErrorResult(o *HTTPRunnerOptions, message string, err error) *HTTPRunner
 
 // RunHTTPTest runs an HTTP test and returns the aggregated stats.
 //
-//nolint:funlen, gocognit, gocyclo, maintidx
+//nolint:funlen, gocognit, gocyclo, maintidx // yeah it's long and complex, but it does a lot of things.
 func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	o.RunType = "HTTP"
 	warmupMode := "parallel"

@@ -205,7 +205,7 @@ func FormValue(r *http.Request, json map[string]interface{}, key string) string 
 
 // RESTRunHandler is API version of UI submit handler.
 // TODO: refactor common option/args/flag parsing between uihandler.go and this.
-func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
+func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen // long function, but it does a lot of things.
 	log.LogRequest(r, "REST Run call")
 	w.Header().Set("Content-Type", "application/json")
 	data, err := io.ReadAll(r.Body) // must be done before calling FormValue
@@ -350,7 +350,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	ro.GenID()
 	if async {
 		reply := AsyncReply{RunID: runid, Count: 1, ResultID: ro.ID, ResultURL: ID2URL(r, ro.ID)}
-		reply.Message = "started" //nolint:goconst
+		reply.Message = "started"
 		err := jrpc.ReplyOk(w, &reply)
 		if err != nil {
 			log.Errf("Error replying to start: %v", err)
