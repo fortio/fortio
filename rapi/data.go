@@ -82,7 +82,7 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 		return
 	}
 	gTSVCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
-	useCache := (info.ModTime() == gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
+	useCache := (info.ModTime().Equal(gTSVCache.cachedDirTime)) && (len(gTSVCache.cachedResult) > 0)
 	if !useCache {
 		var b bytes.Buffer
 		b.WriteString("TsvHttpData-1.0\n")

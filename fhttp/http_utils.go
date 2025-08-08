@@ -199,7 +199,7 @@ func ParseChunkSize(inp []byte) (int64, int64) {
 		if off >= end {
 			return off, -1
 		}
-		if inDigits { //nolint:nestif
+		if inDigits { //nolint:nestif // should/could be refactored.
 			b := toUpper(inp[off])
 			var digit int64
 			switch {

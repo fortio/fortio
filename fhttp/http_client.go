@@ -389,7 +389,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	}
 	//nolint:noctx // we pass context later in Run()/Fetch()
 	req, err := http.NewRequest(method, o.URL, body)
-	if err == nil { //nolint:nestif
+	if err == nil { //nolint:nestif // not that bad but maybe should be fixed.
 		// Additional validation for the URL so we abort early on fatal errors even for the std client.
 		// fixes #784
 		if req.URL == nil || req.URL.Host == "" {
@@ -786,7 +786,7 @@ func (c *FastClient) Close() {
 // NewFastClient makes a basic, efficient HTTP 1.0/1.1 client.
 // This function itself doesn't need to be super efficient as it is created at
 // the beginning and then reused many times.
-func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen
+func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it's long.
 	method := o.Method()
 	log.Debugf("NewFastClient %s %s", method, o.URL)
 	payloadLen := len(o.Payload)
@@ -940,7 +940,11 @@ func (c *FastClient) connect(ctx context.Context) (net.Conn, *DelayedErrorReader
 	d := &net.Dialer{Timeout: c.reqTimeout}
 	now := time.Now()
 	if c.https {
-		socket, err = tls.DialWithDialer(d, c.dest.Network(), c.dest.String(), c.tlsConfig)
+		dialer := &tls.Dialer{
+			NetDialer: d,
+			Config:    c.tlsConfig,
+		}
+		socket, err = dialer.DialContext(ctx, c.dest.Network(), c.dest.String())
 		c.connectStats.Record(time.Since(now).Seconds())
 		if err != nil {
 			log.S(log.Error, "Unable to TLS connect", log.Attr("dest", c.dest), log.Attr("err", err),
@@ -1030,7 +1034,7 @@ func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 			log.Attr("thread", c.id), log.Attr("run", c.runID))
 		return c.returnRes()
 	}
-	if !c.keepAlive && c.halfClose { //nolint:nestif
+	if !c.keepAlive && c.halfClose { //nolint:nestif // not that bad.
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			if err = tcpConn.CloseWrite(); err != nil {

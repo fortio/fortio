@@ -1798,13 +1798,13 @@ func asciiFold1(str string) []byte {
 var lw []byte
 
 func BenchmarkASCIIFoldNormalToLower(b *testing.B) {
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		lw = asciiFold0(utf8Str)
 	}
 }
 
 func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		lw = asciiFold1(utf8Str)
 	}
 }
@@ -1812,7 +1812,7 @@ func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 // Package's version (3x fastest).
 func BenchmarkASCIIToUpper(b *testing.B) {
 	log.SetLogLevel(log.Warning)
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		lw = ASCIIToUpper(utf8Str)
 	}
 }
@@ -1844,14 +1844,14 @@ func FoldFind0(haystack []byte, needle []byte) (bool, int) {
 
 func BenchmarkFoldFind0(b *testing.B) {
 	needle := []byte("VARY")
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		FoldFind0(testHaystack, needle)
 	}
 }
 
 func BenchmarkFoldFind(b *testing.B) {
 	needle := []byte("VARY")
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		FoldFind(testHaystack, needle)
 	}
 }

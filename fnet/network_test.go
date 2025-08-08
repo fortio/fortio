@@ -236,7 +236,7 @@ func TestTcpEcho(t *testing.T) {
 
 func TestUdpEcho(t *testing.T) {
 	ctx := context.Background()
-	for i := 0; i <= 1; i++ {
+	for i := range 2 {
 		async := (i == 0)
 		addr := fnet.UDPEchoServer("test-udp-echo", ":0", async)
 		port := addr.(*net.UDPAddr).Port

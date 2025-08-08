@@ -278,7 +278,7 @@ func (r *RunnerResults) Result() *RunnerResults {
 
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
 // statistics and histogram about the run.
-type PeriodicRunner interface { //nolint:revive
+type PeriodicRunner interface { //nolint:revive // stutter is ok for this (can't break api anyway).
 	// Starts the run. Returns actual QPS and Histogram of function durations.
 	Run() RunnerResults
 	// Returns the options normalized by constructor - do not mutate
@@ -597,7 +597,7 @@ func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part b
 		log.S(log.Info, "Run ended", log.Attr("run", r.RunID), log.Attr("elapsed", elapsed),
 			log.Attr("calls", functionDuration.Count), log.Attr("qps", actualQPS))
 	}
-	if useQPS { //nolint:nestif
+	if useQPS { //nolint:nestif // yeah.
 		percentNegative := 100. * float64(sleepTime.Hdata[0]) / float64(sleepTime.Count)
 		// Somewhat arbitrary percentage of time the sleep was behind so we
 		// may want to know more about the distribution of sleep time and warn the
@@ -827,7 +827,7 @@ MainLoop:
 			errTimes.Record(latency)
 		}
 		// if using QPS / pre calc expected call # mode:
-		if useQPS { //nolint:nestif
+		if useQPS { //nolint:nestif // yup.
 			for {
 				i++
 				if (useExactly || hasDuration) && i >= numCalls {
