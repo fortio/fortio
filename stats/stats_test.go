@@ -183,6 +183,15 @@ func TestHistogram(t *testing.T) {
 	}
 }
 
+const (
+	roundingPrecision = 100000
+)
+
+// roundFloat rounds a float64 to 5 decimal places.
+func roundFloat(f float64) float64 {
+	return float64(int64(f*roundingPrecision+0.5)) / roundingPrecision
+}
+
 func TestPercentiles1(t *testing.T) {
 	h := NewHistogram(0, 10)
 	h.Record(10)
@@ -218,7 +227,7 @@ func TestPercentiles1(t *testing.T) {
 		{e.CalcPercentile(101), 30, "p101"},
 	}
 	for _, tst := range tests {
-		actualRounded := float64(int64(tst.actual*100000+0.5)) / 100000.
+		actualRounded := roundFloat(tst.actual)
 		if actualRounded != tst.expected {
 			t.Errorf("%s: got %g (%g), not as expected %g", tst.msg, actualRounded, tst.actual, tst.expected)
 		}
@@ -267,7 +276,7 @@ func TestPercentilesIssue1080(t *testing.T) {
 		if tst.actual < minValue || tst.actual > maxValue {
 			t.Errorf("%s: got %g, not in range [%g, %g]", tst.msg, tst.actual, minValue, maxValue)
 		}
-		actualRounded := float64(int64(tst.actual*100000+0.5)) / 100000.
+		actualRounded := roundFloat(tst.actual)
 		if actualRounded != tst.expected {
 			t.Errorf("%s: got %g (%g), not as expected %g", tst.msg, actualRounded, tst.actual, tst.expected)
 		}
