@@ -76,6 +76,7 @@ var (
 	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
 	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
 	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	rampFlag        = flag.Duration("ramp", 0, "Ramp/Warm up time from initial to target QPS")
 	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	offsetFlag      = flag.Duration("offset", defaults.Offset, "Offset of the histogram data")
@@ -409,6 +410,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 	ro := periodic.RunnerOptions{
 		QPS:         qps,
 		Duration:    *durationFlag,
+		Ramp:        *rampFlag,
 		NumThreads:  *numThreadsFlag,
 		Percentiles: percList,
 		Resolution:  *resolutionFlag,
