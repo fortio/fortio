@@ -1,4 +1,4 @@
-<!-- 1.71.0 -->
+<!-- 1.71.1 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -59,13 +59,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.71.0/fortio-linux_amd64-1.71.0.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.71.1/fortio-linux_amd64-1.71.1.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.71.0/fortio_1.71.0_amd64.deb
-dpkg -i fortio_1.71.0_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.71.1/fortio_1.71.1_amd64.deb
+dpkg -i fortio_1.71.1_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.71.0/fortio-1.71.0-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.71.1/fortio-1.71.1-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -75,7 +75,7 @@ On macOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.71.0/fortio_win_1.71.0.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.71.1/fortio_win_1.71.1.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -124,7 +124,7 @@ Most important flags for HTTP load generation:
 | `-n numcalls` | Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). |
 | `-payload str` or `-payload-file fname` | Switch to using POST with the given payload (see also `-payload-size` for random payload)|
 | `-uniform` | Spread the calls in time across threads for a more uniform call distribution. Works even better in conjunction with `-nocatchup`. |
-| `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e, 1ms), use 1/10th of your expected typical latency |
+| `-r resolution` | Resolution of the histogram lowest buckets in seconds (default 0.001 i.e, 1ms), use 1/10th of your expected typical latency (and -offset if needed)|
 | `-H "header: value"` | Can be specified multiple times to add headers (including Host:) |
 | `-a`     |  Automatically save JSON result with filename based on labels and timestamp |
 | `-json filename` | Filename or `-` for stdout to output JSON result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typically a better option)|
@@ -141,7 +141,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.71.0 usage:
+Φορτίο 1.71.1 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
