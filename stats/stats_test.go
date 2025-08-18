@@ -225,6 +225,55 @@ func TestPercentiles1(t *testing.T) {
 	}
 }
 
+func TestPercentilesIssue1080(t *testing.T) {
+	h := NewHistogram(0, 0.000001)
+	h.Record(500.1)
+	h.Record(500.2)
+	h.Record(500.3)
+	h.Record(500.4)
+	minValue := 500.1
+	maxValue := 500.4
+	h.Print(os.Stdout, "TestPercentilesIssue1080", []float64{50})
+	e := h.Export()
+	b, err := json.MarshalIndent(e.CalcPercentiles([]float64{50}), "", "  ")
+	if err != nil {
+		t.Fatalf("Unable to create Json: %v", err)
+	}
+	fmt.Println("TestPercentilesIssue1080 json:")
+	os.Stdout.Write(b)
+	fmt.Println()
+	for i := 0; i <= 100; i += 10 {
+		v := e.CalcPercentile(float64(i))
+		fmt.Printf("%d%% at %g\n", i, v)
+		if v < minValue || v > maxValue {
+			t.Errorf("percentile %d: got %g, not in range [%g, %g]", i, v, minValue, maxValue)
+		}
+	}
+	tests := []struct {
+		actual   float64
+		expected float64
+		msg      string
+	}{
+		{h.Avg(), 500.25, "avg"},
+		{e.CalcPercentile(-1), 500.1, "p-1"}, // not valid but should return min
+		{e.CalcPercentile(0), 500.1, "p0"},
+		{e.CalcPercentile(0.1), 500.1, "p0.1"},
+		{e.CalcPercentile(1), 500.1, "p1"},
+		{e.CalcPercentile(50), 500.25, "p50"},
+		{e.CalcPercentile(100), 500.4, "p100"},
+		{e.CalcPercentile(101), 500.4, "p101"},
+	}
+	for _, tst := range tests {
+		if tst.actual < minValue || tst.actual > maxValue {
+			t.Errorf("%s: got %g, not in range [%g, %g]", tst.msg, tst.actual, minValue, maxValue)
+		}
+		actualRounded := float64(int64(tst.actual*100000+0.5)) / 100000.
+		if actualRounded != tst.expected {
+			t.Errorf("%s: got %g (%g), not as expected %g", tst.msg, actualRounded, tst.actual, tst.expected)
+		}
+	}
+}
+
 func TestHistogramData(t *testing.T) {
 	h := NewHistogram(0, 1)
 	h.Record(-1)
