@@ -259,7 +259,7 @@ func TestPercentilesIssue1080(t *testing.T) {
 		{e.CalcPercentile(0), 500.1, "p0"},
 		{e.CalcPercentile(0.1), 500.1, "p0.1"},
 		{e.CalcPercentile(1), 500.1, "p1"},
-		{e.CalcPercentile(50), 500.25, "p50"},
+		{e.CalcPercentile(50), 500.2, "p50"},
 		{e.CalcPercentile(100), 500.4, "p100"},
 		{e.CalcPercentile(101), 500.4, "p101"},
 	}

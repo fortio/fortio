@@ -379,7 +379,6 @@ func (h *Histogram) Export() *HistogramData {
 			prev = cur
 		} else {
 			// Last Entry
-			b.Start = multiplier*float64(prev) + offset
 			b.End = h.Max
 		}
 		b.Count = int64(h.Hdata[i])
