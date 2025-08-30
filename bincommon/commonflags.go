@@ -144,8 +144,8 @@ func FetchURL(o *fhttp.HTTPOptions) {
 		var data []byte
 		var headerI int
 		code, data, headerI = client.Fetch(context.Background())
-		dataLen = safecast.MustConvert[int64](len(data))
-		header = safecast.MustConvert[uint](headerI)
+		dataLen = safecast.MustConv[int64](len(data))
+		header = safecast.MustConv[uint](headerI)
 		if *curlHeadersStdout {
 			os.Stdout.Write(data)
 		} else {

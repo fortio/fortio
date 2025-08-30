@@ -17,7 +17,7 @@ require (
 	fortio.org/cli v1.10.0
 	fortio.org/dflag v1.8.1
 	fortio.org/log v1.17.2
-	fortio.org/safecast v1.1.0
+	fortio.org/safecast v1.2.0
 	fortio.org/scli v1.16.1
 	fortio.org/sets v1.3.0
 	fortio.org/testscript v0.3.2
@@ -27,7 +27,7 @@ require (
 	github.com/jhump/protoreflect v1.17.0
 	golang.org/x/net v0.43.0
 	google.golang.org/grpc v1.75.0
-	grol.io/grol v0.91.11
+	grol.io/grol v0.91.12
 )
 
 // Local dev of dependencies changes
@@ -42,7 +42,7 @@ require (
 
 require (
 	fortio.org/struct2env v0.4.2 // indirect
-	fortio.org/terminal v0.51.1 // indirect
+	fortio.org/terminal v0.52.0 // indirect
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
