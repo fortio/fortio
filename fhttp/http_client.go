@@ -523,7 +523,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 			body = strings.Replace(body, uuidToken, generateUUID(), 1)
 		}
 		bodyBytes := []byte(body)
-		req.ContentLength = safecast.MustConvert[int64](len(bodyBytes))
+		req.ContentLength = safecast.MustConv[int64](len(bodyBytes))
 		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	} else if len(c.body) > 0 {
 		req.Body = io.NopCloser(bytes.NewReader(c.body))
@@ -980,7 +980,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	c.dataWriter = nil
 	// we're inlining the old returnRes() below so no need to capture the return values
 	code, _, _ := c.StreamFetch(ctx)
-	return code, c.buffer[:c.size], safecast.MustConvert[int](c.headerLen)
+	return code, c.buffer[:c.size], safecast.MustConv[int](c.headerLen)
 }
 
 // Fetch fetches the URL content. Returns HTTP code, data written to the writer, length of headers.
@@ -1094,7 +1094,7 @@ func (d *DelayedErrorReader) Close() error {
 //
 //nolint:nestif,funlen,gocognit,gocyclo,maintidx // TODO: refactor - unwiedly/ugly atm.
 func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reusedSocket bool) {
-	maxV := safecast.MustConvert[int64](len(c.buffer))
+	maxV := safecast.MustConv[int64](len(c.buffer))
 	parsedHeaders := false
 	// TODO: safer to start with -1 / SocketError and fix ok for HTTP/1.0
 	c.code = http.StatusOK // In HTTP/1.0 mode we don't bother parsing anything
@@ -1108,7 +1108,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 		// TODO: need automated tests
 		if !skipRead {
 			nI, err := conn.Read(c.buffer[c.size:])
-			n := safecast.MustConvert[int64](nI)
+			n := safecast.MustConv[int64](nI)
 			if err != nil {
 				if reusedSocket && c.size == 0 {
 					// Ok for reused socket to be dead once (close by server)
@@ -1140,7 +1140,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 			c.size += n
 			if log.LogDebug() {
 				log.Debugf("[%d] Read ok %d total %d so far (-%d headers = %d data) %s",
-					c.id, n, c.size, c.headerLen, c.size-safecast.MustConvert[int64](c.headerLen), DebugSummary(c.buffer[c.size-n:c.size], 256))
+					c.id, n, c.size, c.headerLen, c.size-safecast.MustConv[int64](c.headerLen), DebugSummary(c.buffer[c.size-n:c.size], 256))
 			}
 		}
 		skipRead = false
@@ -1165,11 +1165,11 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 			idx := endofHeadersStart
 			for idx < c.size-1 {
 				if c.buffer[idx] == '\r' && c.buffer[idx+1] == '\n' {
-					if safecast.MustConvert[int64](c.headerLen) == idx-2 { // found end of headers
+					if safecast.MustConv[int64](c.headerLen) == idx-2 { // found end of headers
 						parsedHeaders = true
 						break
 					}
-					c.headerLen = safecast.MustConvert[uint](idx)
+					c.headerLen = safecast.MustConv[uint](idx)
 					idx++
 				}
 				idx++
@@ -1194,7 +1194,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 							keepAlive = false
 							break
 						}
-						maxV = safecast.MustConvert[int64](c.headerLen) + contentLength
+						maxV = safecast.MustConv[int64](c.headerLen) + contentLength
 						if log.LogDebug() { // somehow without the if we spend 400ms/10s in LogV (!)
 							log.Debugf("[%d] found content length %d", c.id, contentLength)
 						}
@@ -1207,12 +1207,12 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 							if contentLength == -1 {
 								// chunk length not available yet
 								log.LogVf("[%d] chunk mode but no first chunk length yet, reading more", c.id)
-								maxV = safecast.MustConvert[int64](c.headerLen)
+								maxV = safecast.MustConv[int64](c.headerLen)
 								continue
 							}
-							maxV = safecast.MustConvert[int64](c.headerLen) + dataStart + contentLength + 2 // extra CR LF
+							maxV = safecast.MustConv[int64](c.headerLen) + dataStart + contentLength + 2 // extra CR LF
 							log.Debugf("[%d] chunk-length is %d (%s) setting max to %d",
-								c.id, contentLength, c.buffer[c.headerLen:safecast.MustConvert[int64](c.headerLen)+dataStart-2],
+								c.id, contentLength, c.buffer[c.headerLen:safecast.MustConv[int64](c.headerLen)+dataStart-2],
 								maxV)
 						} else {
 							if log.LogVerbose() {
@@ -1225,21 +1225,21 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 							break
 						}
 					} // end of content-length section
-					if maxV > safecast.MustConvert[int64](len(c.buffer)) {
+					if maxV > safecast.MustConv[int64](len(c.buffer)) {
 						log.S(log.Warning, "Buffer is too small for headers + data - change -httpbufferkb flag",
 							log.Attr("header_len", c.headerLen),
 							log.Attr("content_length", contentLength),
-							log.Attr("buffer_needed", (safecast.MustConvert[int64](c.headerLen)+contentLength)/1024+1),
+							log.Attr("buffer_needed", (safecast.MustConv[int64](c.headerLen)+contentLength)/1024+1),
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 						// TODO: just consume the extra instead
 						// or rather use the dataWriter post headers
-						maxV = safecast.MustConvert[int64](len(c.buffer))
+						maxV = safecast.MustConv[int64](len(c.buffer))
 					}
 					if checkConnectionClosedHeader {
 						if found, _ := FoldFind(c.buffer[:c.headerLen], connectionCloseHeader); found {
 							log.S(log.Info, "Server wants to close connection, no keep-alive!", log.Attr("thread", c.id), log.Attr("run", c.runID))
 							keepAlive = false
-							maxV = safecast.MustConvert[int64](len(c.buffer)) // reset to read as much as available
+							maxV = safecast.MustConv[int64](len(c.buffer)) // reset to read as much as available
 						}
 					}
 				}
@@ -1279,7 +1279,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 				default:
 					maxV += dataStart + nextChunkLen + 2 // extra CR LF
 					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, maxV)
-					if maxV > safecast.MustConvert[int64](len(c.buffer)) {
+					if maxV > safecast.MustConv[int64](len(c.buffer)) {
 						log.S(log.Error, "Buffer too small for data", log.Attr("size", maxV), log.Attr("thread", c.id), log.Attr("run", c.runID))
 					} else {
 						if maxV <= c.size {

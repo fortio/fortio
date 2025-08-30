@@ -338,7 +338,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 		return
 	}
 	found = true
-	idx := dnsRoundRobin % safecast.MustConvert[uint32](len(dnsAddrs))
+	idx := dnsRoundRobin % safecast.MustConv[uint32](len(dnsAddrs))
 	dnsRoundRobin++
 	res = dnsAddrs[idx]
 	dnsMutex.Unlock() // unlock before IOs
@@ -376,7 +376,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	if err != nil {
 		return nil, err // error already logged
 	}
-	l := safecast.MustConvert[uint32](len(addrs))
+	l := safecast.MustConv[uint32](len(addrs))
 	if l > 1 {
 		switch dnsMethod {
 		case "cached-rr":
@@ -393,14 +393,14 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 			dnsMutex.Unlock()
 			log.Debugf("First time/new host for caching address for %s : %v", host, addrs)
 		case "rr":
-			idx = dnsRoundRobin % safecast.MustConvert[uint32](len(addrs))
+			idx = dnsRoundRobin % safecast.MustConv[uint32](len(addrs))
 			dnsRoundRobin++
 			log.Debugf("Using rr address #%d for %s : %v", idx, host, addrs)
 		case "first":
 			log.Debugf("Using first address for %s : %v", host, addrs)
 		case "rnd":
 			//nolint:gosec // we want fast not crypto
-			idx = safecast.MustConvert[uint32](rand.Intn(safecast.MustConvert[int](l)))
+			idx = safecast.MustConv[uint32](rand.Intn(safecast.MustConv[int](l)))
 			log.Debugf("Using rnd address #%d for %s : %v", idx, host, addrs)
 		}
 	}
