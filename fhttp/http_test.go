@@ -30,6 +30,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"fortio.org/duration"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
 	"fortio.org/log"
@@ -479,8 +480,9 @@ func TestRoundDuration(t *testing.T) {
 		{1299 * time.Millisecond, 1300 * time.Millisecond},
 	}
 	for _, tst := range tests {
-		if actual := RoundDuration(tst.input); actual != tst.expected {
-			t.Errorf("Got %v, expected %v for RoundDuration(%v)", actual, tst.expected, tst.input)
+		expected := duration.Duration(tst.expected)
+		if actual := RoundDuration(tst.input); actual != expected {
+			t.Errorf("Got %v, expected %v for RoundDuration(%v)", actual, expected, tst.input)
 		}
 	}
 }

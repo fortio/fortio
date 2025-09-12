@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"fortio.org/dflag/endpoint"
+	"fortio.org/duration"
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fhttp"
 	"fortio.org/fortio/fnet"
@@ -221,7 +222,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			TargetURL                   string
 			Labels                      string
 			RunID                       int64
-			UpTime                      time.Duration
+			UpTime                      duration.Duration
 			TestExpectedDurationSeconds float64
 			URLHostPort                 string
 			DoStop                      bool

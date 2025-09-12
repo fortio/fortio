@@ -31,6 +31,7 @@ import (
 	"unicode/utf8"
 
 	"fortio.org/dflag"
+	"fortio.org/duration"
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/stats"
@@ -485,8 +486,8 @@ func generateGzip(gzipStr string) bool {
 }
 
 // RoundDuration rounds to 10th of second.
-func RoundDuration(d time.Duration) time.Duration {
-	return d.Round(100 * time.Millisecond)
+func RoundDuration(d time.Duration) duration.Duration {
+	return duration.Duration(d.Round(100 * time.Millisecond))
 }
 
 // Inspired by https://gist.github.com/CJEnright/bc2d8b8dc0c1389a9feeddb110f822d7 (thanks!)
