@@ -1,4 +1,4 @@
-<!-- 1.71.2 -->
+<!-- 1.71.3 -->
 # Fortio
 
 [![Awesome Go](https://fortio.org/mentioned-badge.svg)](https://github.com/avelino/awesome-go#networking)
@@ -59,13 +59,13 @@ You can install from source:
 The [releases](https://github.com/fortio/fortio/releases) page has binaries for many OS/architecture combinations (see assets):
 
 ```shell
-curl -L https://github.com/fortio/fortio/releases/download/v1.71.2/fortio-linux_amd64-1.71.2.tgz \
+curl -L https://github.com/fortio/fortio/releases/download/v1.71.3/fortio-linux_amd64-1.71.3.tgz \
  | sudo tar -C / -xvzpf -
 # or the debian package
-wget https://github.com/fortio/fortio/releases/download/v1.71.2/fortio_1.71.2_amd64.deb
-dpkg -i fortio_1.71.2_amd64.deb
+wget https://github.com/fortio/fortio/releases/download/v1.71.3/fortio_1.71.3_amd64.deb
+dpkg -i fortio_1.71.3_amd64.deb
 # or the rpm
-rpm -i https://github.com/fortio/fortio/releases/download/v1.71.2/fortio-1.71.2-1.x86_64.rpm
+rpm -i https://github.com/fortio/fortio/releases/download/v1.71.3/fortio-1.71.3-1.x86_64.rpm
 # and more, see assets in release page
 ```
 
@@ -75,7 +75,7 @@ On macOS you can also install Fortio using [Homebrew](https://brew.sh/):
 brew install fortio
 ```
 
-On Windows, download https://github.com/fortio/fortio/releases/download/v1.71.2/fortio_win_1.71.2.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
+On Windows, download https://github.com/fortio/fortio/releases/download/v1.71.3/fortio_win_1.71.3.zip and extract `fortio.exe` to any location, then using the Windows Command Prompt:
 ```
 fortio.exe server
 ```
@@ -120,7 +120,7 @@ Most important flags for HTTP load generation:
 | `-qps rate` | Total Queries Per Seconds across all connections/threads or 0 for no wait/max qps |
 | `-nocatchup` | Do not try to reach the target qps by going faster when the service falls behind and then recovers. Makes QPS an absolute ceiling even if the service has some spikes in latency, fortio will not compensate (but also won't stress the target more than the set qps). Recommended to use jointly with `-uniform`. |
 | `-c connections` | Number of parallel simultaneous connections (and matching go routine) |
-| `-t duration` | How long to run the test (for instance `-t 30m` for 30 minutes) or 0 to run until ^C, example (default 5s) |
+| `-t duration` | How long to run the test (for instance `-t 30m` for 30 minutes or `-t 1d4h` for 28h) or 0 to run until ^C, example (default 5s) |
 | `-n numcalls` | Run for exactly this number of calls instead of duration. Default (0) is to use duration (-t). |
 | `-payload str` or `-payload-file fname` | Switch to using POST with the given payload (see also `-payload-size` for random payload)|
 | `-uniform` | Spread the calls in time across threads for a more uniform call distribution. Works even better in conjunction with `-nocatchup`. |
@@ -141,7 +141,7 @@ Full list of command line flags (`fortio help`):
 <!-- use release/updateFlags.sh to update this section -->
 <pre>
 <!-- USAGE_START -->
-Φορτίο 1.71.2 usage:
+Φορτίο 1.71.3 usage:
         fortio command [flags] target
 where command is one of: load (load testing), server (starts ui, rest api,
  http-echo, redirect, proxies, tcp-echo, udp-echo and grpc ping servers),
@@ -366,7 +366,7 @@ pre 1.21 behavior
   -sync-interval duration
         Refresh the URL every given interval (default, no refresh)
   -t duration
-        How long to run the test or 0 to run until ^C (default 5s)
+        How long (duration) to run the test or 0 to run until ^C (default 5s)
   -tcp-port port
         tcp-echo server port. Can be in the form of host:port, ip:port, port or
 /unix/domain/path or "disabled". (default "8078")

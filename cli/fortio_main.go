@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"fortio.org/cli"
+	"fortio.org/duration"
 	"fortio.org/fortio/bincommon"
 	"fortio.org/fortio/fgrpc"
 	"fortio.org/fortio/fhttp"
@@ -73,9 +74,10 @@ const (
 var (
 	defaults = &periodic.DefaultRunnerOptions
 	// Very small default so people just trying with random URLs don't affect the target.
-	qpsFlag         = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
-	numThreadsFlag  = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
-	durationFlag    = flag.Duration("t", defaults.Duration, "How long to run the test or 0 to run until ^C")
+	qpsFlag        = flag.Float64("qps", defaults.QPS, "Queries Per Seconds or 0 for no wait/max qps")
+	numThreadsFlag = flag.Int("c", defaults.NumThreads, "Number of connections/goroutine/threads")
+	// Only duration where "1d" for instance might be useful.
+	durationFlag    = duration.Flag("t", defaults.Duration, "How long (`duration`) to run the test or 0 to run until ^C")
 	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	offsetFlag      = flag.Duration("offset", defaults.Offset, "Offset of the histogram data")
