@@ -485,7 +485,9 @@ func generateGzip(gzipStr string) bool {
 	return generateSingleProbability(gzipStr, "gzip")
 }
 
-// RoundDuration rounds to 10th of second.
+// RoundDuration rounds to 10th of second. Returned type is [fortio.org/duration.Duration]
+// which has a String() version returning weeks and days (eg 2w3d21h30m45.3s) thus making
+// more readable for long durations (like the server uptime).
 func RoundDuration(d time.Duration) duration.Duration {
 	return duration.Duration(d.Round(100 * time.Millisecond))
 }
