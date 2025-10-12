@@ -91,6 +91,7 @@ type Aborter struct {
 	stopRequested bool
 }
 
+// String returns a string representation of the Aborter.
 // Note this can cause data race if called without holding the lock. TODO: maybe use reentrant lock. but this is for debug only.
 func (a *Aborter) String() string {
 	return fmt.Sprintf("{Aborter %p stopChan %v startChan %v hasStarted %v stopRequested %v}",
@@ -427,7 +428,7 @@ func (r *periodicRunner) runQPSSetup(extra string) (requestedDuration string, re
 		// Always print that as we need ^C to interrupt, in that case the user need to notice
 		_, _ = fmt.Fprintf(r.Out, "Starting at %g qps with %d thread(s) [gomax %d] until interrupted%s\n",
 			r.QPS, r.NumThreads, runtime.GOMAXPROCS(0), extra)
-		return //nolint:nakedret // it's fine/cleaner to not repeat all the parameters we just set/we return.
+		return requestedDuration, requestedQPS, numCalls, leftOver
 	}
 	// else:
 	requestedDuration = fmt.Sprint(r.Duration)
@@ -470,7 +471,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 		// Always log something when waiting for ^C
 		_, _ = fmt.Fprintf(r.Out, "Starting at max qps with %d thread(s) [gomax %d] until interrupted%s\n",
 			r.NumThreads, runtime.GOMAXPROCS(0), extra)
-		return
+		return requestedDuration, numCalls, leftOver
 	}
 	// else:
 	if log.Log(log.Warning) {
@@ -490,7 +491,7 @@ func (r *periodicRunner) runMaxQPSSetup(extra string) (requestedDuration string,
 			_, _ = fmt.Fprintf(r.Out, "for %s%s\n", requestedDuration, extra)
 		}
 	}
-	return
+	return requestedDuration, numCalls, leftOver
 }
 
 // Run starts the runner.
@@ -737,7 +738,7 @@ func NewFileAccessLoggerByType(filePath string, accessType AccessLoggerType) (Ac
 	return &fileAccessLogger{file: f, format: accessType, info: infoStr}, nil
 }
 
-// Before each Run().
+// Start is called before each Run().
 func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter int64, startTime time.Time) context.Context {
 	log.Debugf("fileAccessLogger start thread %d iter %d, %v", threadID, iter, startTime)
 	return ctx

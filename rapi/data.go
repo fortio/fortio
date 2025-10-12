@@ -42,7 +42,7 @@ func DataList() (dataList []string) {
 	files, err := os.ReadDir(dataDir)
 	if err != nil {
 		log.Critf("Can list directory %s: %v", dataDir, err)
-		return
+		return dataList
 	}
 	// Newest files at the top:
 	for i := len(files) - 1; i >= 0; i-- {
@@ -72,7 +72,7 @@ var (
 	baseURL string
 )
 
-// format for gcloud transfer
+// SendTSVDataIndex is the index format for gcloud transfer
 // https://cloud.google.com/storage/transfer/create-url-list
 func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 	info, err := os.Stat(dataDir)

@@ -28,6 +28,7 @@ func main() {
 }
 
 // Same as real above but for testscript/txtar tests.
+
 func Main() int {
 	return cli.FortioMain(nil /* no hook needed */)
 }

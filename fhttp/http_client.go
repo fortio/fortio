@@ -713,7 +713,7 @@ func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 	return StreamFetch(httpOptions), w.Bytes()
 }
 
-// Fetch creates a client an performs a fetch according to the HTTP options passed in.
+// StreamFetch creates a client an performs a fetch according to the HTTP options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
 func StreamFetch(httpOptions *HTTPOptions) int {
 	cli, _ := NewClient(httpOptions)
@@ -983,7 +983,7 @@ func (c *FastClient) Fetch(ctx context.Context) (int, []byte, int) {
 	return code, c.buffer[:c.size], safecast.MustConv[int](c.headerLen)
 }
 
-// Fetch fetches the URL content. Returns HTTP code, data written to the writer, length of headers.
+// StreamFetch fetches the URL content. Returns HTTP code, data written to the writer, length of headers.
 func (c *FastClient) StreamFetch(ctx context.Context) (int, int64, uint) {
 	c.code = SocketError
 	c.size = 0

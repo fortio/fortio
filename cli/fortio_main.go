@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Originally fortio_main.go at the root of fortio.orf/fortio
+// Package cli was originally just fortio_main.go at the root of fortio.org/fortio
 // now moved here it can be customized and reused in variants of fortio
-// like fortiotel (fortio with opentelemetry)
+// like fortiotel (fortio with opentelemetry).
 package cli // import "fortio.org/fortio/cli"
 
 // Do not add any external dependencies we want to keep fortio minimal.
@@ -292,7 +292,7 @@ func percList() (percList []float64) {
 	if err != nil {
 		cli.ErrUsage("Unable to extract percentiles from -p: %v", err)
 	}
-	return
+	return percList
 }
 
 func serverLoop(sync string) {

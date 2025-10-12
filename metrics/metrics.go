@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Minimal metrics export package for Fortio.
+// Package metrics provides a minimal metrics export package for Fortio.
 package metrics // import "fortio.org/fortio/metrics"
 
 import (
