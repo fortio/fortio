@@ -335,7 +335,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 	dnsMutex.Lock() // unlock before IOs
 	if dnsAddrs == nil || host != dnsHost {
 		// keep the lock locked
-		return
+		return found, res
 	}
 	found = true
 	idx := dnsRoundRobin % safecast.MustConv[uint32](len(dnsAddrs))
@@ -343,7 +343,7 @@ func checkCache(host, port string) (found bool, res net.IP) {
 	res = dnsAddrs[idx]
 	dnsMutex.Unlock() // unlock before IOs
 	log.LogVf("Resolved %s:%s to cached #%d addr %+v", host, port, idx, res)
-	return
+	return found, res
 }
 
 // ResolveByProto returns the address of the host,port suitable for net.Dial.

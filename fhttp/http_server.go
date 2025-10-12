@@ -70,7 +70,7 @@ func (fw FlushWriter) Write(p []byte) (n int, err error) {
 	n, err = fw.w.Write(p)
 	log.Debugf("FlushWriter wrote %d", n)
 	Flush(fw.w)
-	return
+	return n, err
 }
 
 // QueryArg(r,...) is like r.FormValue(...) but exclusively
@@ -201,7 +201,7 @@ func handleCommonArgs(w http.ResponseWriter, r *http.Request) (rqNum int64) {
 		}
 		w.Header().Add(s[0], s[1])
 	}
-	return // rqNum ie 0 most of the time
+	return rqNum // rqNum ie 0 most of the time
 }
 
 func writePayload(w http.ResponseWriter, status int, size int) {
@@ -546,7 +546,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %q: %v", url, err)
-		log.Errf(msg)
+		log.Errf("%s", msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}

@@ -1,4 +1,4 @@
-// Interface with the GROL scripting engine.
+// Package grol interfaces with the GROL scripting engine.
 package grol
 
 import (

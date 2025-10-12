@@ -259,16 +259,16 @@ func gUnzipData(t *testing.T, data []byte) (resData []byte) {
 	r, err := gzip.NewReader(b)
 	if err != nil {
 		t.Errorf("gunzip NewReader: %v", err)
-		return
+		return resData
 	}
 	var resB bytes.Buffer
 	_, err = resB.ReadFrom(r)
 	if err != nil {
 		t.Errorf("gunzip ReadFrom: %v", err)
-		return
+		return resData
 	}
 	resData = resB.Bytes()
-	return
+	return resData
 }
 
 func TestAccessLogAndTrace(t *testing.T) {

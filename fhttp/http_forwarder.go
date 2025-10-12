@@ -175,7 +175,7 @@ func (mcfg *MultiServerConfig) TeeSerialHandler(w http.ResponseWriter, r *http.R
 		resp, err := mcfg.client.Do(req)
 		if err != nil {
 			msg := fmt.Sprintf("Error for %s: %v", url, err)
-			log.Warnf(msg)
+			log.Warnf("%s", msg)
 			if first {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				first = false
@@ -202,7 +202,7 @@ func singleRequest(client *http.Client, w io.Writer, req *http.Request, statusPt
 	resp, err := client.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %s: %v", url, err)
-		log.Warnf(msg)
+		log.Warnf("%s", msg)
 		_, _ = w.Write([]byte(msg))
 		_, _ = w.Write([]byte{'\n'})
 		*statusPtr = -1

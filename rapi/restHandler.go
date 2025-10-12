@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Remote API to trigger load tests package (REST API).
+
+// Package rapi provides a remote API to trigger load tests package (REST API).
 package rapi // import "fortio.org/fortio/rapi"
 
 import (
@@ -88,18 +88,18 @@ var (
 	runs          = make(StatusMap)
 	// Directory where results are written to/read from.
 	dataDir string
-	// Default percentiles when not otherwise specified.
+	// DefaultPercentileList is the default percentiles when not otherwise specified.
 	DefaultPercentileList []float64
 	// Hook to install OTEL or other options.
 	hook bincommon.FortioHook
 )
 
-// Called by main() to set the hook for fortiotel.
+// SetHook is called by main() to set the hook for fortiotel.
 func SetHook(h bincommon.FortioHook) {
 	hook = h
 }
 
-// Fortiotel or other hook to be called to modify options before the run starts.
+// CallHook is the hook used to allow Fortiotel or other hook to be called to modify options before the run starts.
 func CallHook(httpopts *fhttp.HTTPOptions, ro *periodic.RunnerOptions) {
 	if hook != nil {
 		hook(httpopts, ro)
@@ -626,7 +626,7 @@ func NextRunID() int64 {
 	return runid
 }
 
-// Must be called exactly once for each runner. Responsible for normalization (abort channel setup)
+// UpdateRun must be called exactly once for each runner. Responsible for normalization (abort channel setup)
 // and making sure the options object returned in status is same as the actual one.
 // Note that the Aborter/Stop field is being "moved" into the runner when making the concrete runner
 // and cleared from the original options object so we need to keep our own copy of the aborter pointer.

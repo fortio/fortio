@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Opiniated JSON-RPC / REST style library. Facilitates web JSON calls,
+// Package jrpc is an opinionated JSON-RPC / REST style library. Facilitates web JSON calls,
 // using generics to serialize/deserialize any type.
 package jrpc // import "fortio.org/fortio/jrpc"
 
@@ -282,7 +282,7 @@ func FetchURL(url string) (int, []byte, error) {
 	return Send(NewDestination(url), []byte{})
 }
 
-// Fetch is Send without a payload (so will be a GET request).
+// FetchBytes is Send without a payload (so will be a GET request).
 // Used to be called Fetch() but we needed that shorter name to
 // simplify the former CallWithPayload function name.
 func FetchBytes(url *Destination) (int, []byte, error) {
