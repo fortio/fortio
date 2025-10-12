@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.24.6@sha256:2c89c41fb9efc3807029b59af69645867cfe978d2b877d475be0d72f6c6ce6f6
+FROM golang:1.24.8@sha256:273d4e65baa782dbe293c9192d600b72b17d415c1429e16bed99efcc5e61efb8
 # Need gcc for -race test (and some linters though those work with CGO_ENABLED=0)
 RUN apt-get -y update && \
   apt-get --no-install-recommends -y upgrade && \
@@ -11,16 +11,17 @@ RUN gem install --no-document fpm
 RUN go version # check it's indeed the version we expect
 
 # golangci-lint
-# RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.3.1
+# RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 RUN golangci-lint version
 
 # Docker:
-RUN set -x; if [ x"$(dpkg --print-architecture)" != x"s390x" ]; then \
-  curl -fsSL "https://download.docker.com/linux/debian/gpg" | apt-key add; \
-  echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian bullseye stable" > /etc/apt/sources.list.d/docker.list && \
-  apt-get -y update && apt-get install --no-install-recommends -y docker-ce docker-buildx-plugin; \
-  fi
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc; \
+  echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null; \
+  apt-get -y update && apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # govulncheck
 RUN go install golang.org/x/vuln/cmd/govulncheck@latest
