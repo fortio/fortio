@@ -157,7 +157,7 @@ func GetURL[Q any](url string) (*Q, error) {
 }
 
 // Serialize serializes the object as json.
-func Serialize(obj interface{}) ([]byte, error) {
+func Serialize(obj any) ([]byte, error) {
 	return json.Marshal(obj)
 }
 

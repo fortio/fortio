@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1285,13 +1286,7 @@ func TestEchoHeaders(t *testing.T) {
 		}
 		for _, pair := range headers {
 			got := resp.Header[pair.key]
-			found := false
-			for _, v := range got {
-				if v == pair.value {
-					found = true
-					break // found == good
-				}
-			}
+			found := slices.Contains(got, pair.value)
 			if !found {
 				t.Errorf("Mismatch: got %+v and didn't find \"%s\" for header %s (url %s)", got, pair.value, pair.key, url)
 			}
@@ -1800,13 +1795,13 @@ func asciiFold1(str string) []byte {
 var lw []byte
 
 func BenchmarkASCIIFoldNormalToLower(b *testing.B) {
-	for range b.N {
+	for b.Loop() {
 		lw = asciiFold0(utf8Str)
 	}
 }
 
 func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
-	for range b.N {
+	for b.Loop() {
 		lw = asciiFold1(utf8Str)
 	}
 }
@@ -1814,7 +1809,7 @@ func BenchmarkASCIIFoldCustomToLowerMap(b *testing.B) {
 // Package's version (3x fastest).
 func BenchmarkASCIIToUpper(b *testing.B) {
 	log.SetLogLevel(log.Warning)
-	for range b.N {
+	for b.Loop() {
 		lw = ASCIIToUpper(utf8Str)
 	}
 }
@@ -1846,14 +1841,14 @@ func FoldFind0(haystack []byte, needle []byte) (bool, int) {
 
 func BenchmarkFoldFind0(b *testing.B) {
 	needle := []byte("VARY")
-	for range b.N {
+	for b.Loop() {
 		FoldFind0(testHaystack, needle)
 	}
 }
 
 func BenchmarkFoldFind(b *testing.B) {
 	needle := []byte("VARY")
-	for range b.N {
+	for b.Loop() {
 		FoldFind(testHaystack, needle)
 	}
 }

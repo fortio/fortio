@@ -92,7 +92,7 @@ type GRPCRunnerResults struct {
 func (grpcstate *GRPCRunnerResults) Run(outCtx context.Context, t periodic.ThreadID) (bool, string) {
 	log.Debugf("Calling in %d", t)
 	var err error
-	var res interface{}
+	var res any
 	status := grpc_health_v1.HealthCheckResponse_SERVING
 	if len(grpcstate.Metadata) != 0 { // filtered one
 		outCtx = metadata.NewOutgoingContext(outCtx, grpcstate.Metadata)

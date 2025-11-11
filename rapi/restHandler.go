@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path"
@@ -143,9 +144,9 @@ func Error(w http.ResponseWriter, msg string, err error) {
 // extracts the map at the given path (only supports simple expression):
 // . is all the JSON
 // .foo.bar.blah will extract that part of the tree.
-func GetConfigAtPath(path string, data []byte) (map[string]interface{}, error) {
+func GetConfigAtPath(path string, data []byte) (map[string]any, error) {
 	// that's what Unmarshal does anyway if you pass interface{} var, skips a cast even for dynamic/unknown json
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, err
 	}
@@ -153,7 +154,7 @@ func GetConfigAtPath(path string, data []byte) (map[string]interface{}, error) {
 }
 
 // recurse on the requested path.
-func getConfigAtPath(path string, m map[string]interface{}) (map[string]interface{}, error) {
+func getConfigAtPath(path string, m map[string]any) (map[string]any, error) {
 	path = strings.TrimLeft(path, ".")
 	if path == "" {
 		return m, nil
@@ -169,7 +170,7 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 	if !found {
 		return nil, fmt.Errorf("%q not found in json", first)
 	}
-	mm, ok := nm.(map[string]interface{})
+	mm, ok := nm.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("%q path is not a map", first)
 	}
@@ -178,7 +179,7 @@ func getConfigAtPath(path string, m map[string]interface{}) (map[string]interfac
 
 // FormValue gets the value from the query arguments/URL parameter or from the
 // provided map (JSON data).
-func FormValue(r *http.Request, json map[string]interface{}, key string) string {
+func FormValue(r *http.Request, json map[string]any, key string) string {
 	// query args have priority
 	res := r.FormValue(key)
 	if res != "" {
@@ -216,7 +217,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen //
 	}
 	log.Infof("REST body: %s", fhttp.DebugSummary(data, 250))
 	jsonPath := r.FormValue("jsonPath")
-	var jd map[string]interface{}
+	var jd map[string]any
 	if len(data) > 0 {
 		// JSON input and deserialize options from that path, e.g., for flagger:
 		// JSONPath=.metadata
@@ -315,7 +316,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen //
 	}
 	jsonHeaders, found := jd["headers"]
 	for found { // really an if, but using while to break out without else below
-		res, ok := jsonHeaders.([]interface{})
+		res, ok := jsonHeaders.([]any)
 		if !ok {
 			log.Warnf("Json Headers is %T %v / not an array, can't be used", jsonHeaders, jsonHeaders)
 			break
@@ -367,7 +368,7 @@ func RESTRunHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen //
 // Run executes the run (can be called async or not, writer is nil for async mode).
 // API is a bit awkward to be compatible with both this new now main REST code but
 // also the old one in ui/uihandler.go.
-func Run(w http.ResponseWriter, r *http.Request, jd map[string]interface{},
+func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 	runner, url string, ro *periodic.RunnerOptions, httpopts *fhttp.HTTPOptions, htmlMode bool,
 ) (periodic.HasRunnerResult, string, []byte, error) {
 	var res periodic.HasRunnerResult
@@ -660,9 +661,7 @@ func GetAllRuns() StatusMap {
 	// make a copy - we could use the hint of the size, but that would require locking
 	res := make(StatusMap)
 	uiRunMapMutex.Lock()
-	for k, v := range runs {
-		res[k] = v
-	}
+	maps.Copy(res, runs)
 	uiRunMapMutex.Unlock()
 	return res
 }

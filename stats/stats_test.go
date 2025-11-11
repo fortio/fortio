@@ -923,14 +923,14 @@ func TestMultipleConnIPOccurrence(t *testing.T) {
 
 func BenchmarkBucketLookUpWithHighestValue(b *testing.B) {
 	testHistogram := NewHistogram(0, 1)
-	for range b.N {
+	for b.Loop() {
 		testHistogram.Record(99999)
 	}
 }
 
 func BenchmarkBucketLookUpWithRandomValues(b *testing.B) {
 	testHistogram := NewHistogram(0, 1)
-	for range b.N {
+	for b.Loop() {
 		testHistogram.Record(float64(rand.Intn(100000)))
 	}
 }
