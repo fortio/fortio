@@ -143,7 +143,7 @@ func FetchURL(o *fhttp.HTTPOptions) {
 		// Fast client
 		var data []byte
 		var headerI int
-		code, data, headerI = client.Fetch(context.Background())
+		code, data, headerI = client.Fetch(context.Background()) //nolint:staticcheck // keep using backward compatible Fetch for now
 		dataLen = safecast.MustConv[int64](len(data))
 		header = safecast.MustConv[uint](headerI)
 		if *curlHeadersStdout {

@@ -924,6 +924,7 @@ func (r *RunnerOptions) GenID() {
 	}
 	last := '_'
 	base += string(last)
+	var baseSb927 strings.Builder
 	for _, rune := range r.Labels {
 		if (rune >= 'a' && rune <= 'z') || (rune >= 'A' && rune <= 'Z') || (rune >= '0' && rune <= '9') {
 			last = rune
@@ -933,8 +934,9 @@ func (r *RunnerOptions) GenID() {
 			}
 			last = '_'
 		}
-		base += string(last)
+		baseSb927.WriteRune(last)
 	}
+	base += baseSb927.String()
 	if last == '_' {
 		base = base[:len(base)-1]
 	}

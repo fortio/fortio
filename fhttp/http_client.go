@@ -46,6 +46,7 @@ import (
 type Fetcher interface {
 	// Fetch returns HTTP Status code, data, offset of body (for client which returns
 	// headers)
+	//
 	// Deprecated: use StreamFetch with a DataWriter (nil if you don't need the data) instead.
 	Fetch(ctx context.Context) (int, []byte, int)
 	// StreamFetch returns HTTP Status code and body bytes read
@@ -483,7 +484,7 @@ func (c *Client) ChangeURL(urlStr string) (err error) {
 // Fetch is the backward compatible version of StreamFetch to avoid
 // rewriting a bunch of tests but should not be used for load tests
 // (where we don't care about the data and only the stats)
-// Deprecated: use StreamFetch instead.
+// Use StreamFetch instead.
 func (c *Client) Fetch(ctx context.Context) (int, []byte, int) {
 	var buf bytes.Buffer
 	c.dataWriter = &buf
@@ -688,6 +689,7 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 // FetchURL fetches the data at the given URL using the standard client and default options.
 // Returns the HTTP status code (http.StatusOK == 200 for success) and the data.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+//
 // Deprecated: use StreamURL instead.
 func FetchURL(url string) (int, []byte) {
 	var w bytes.Buffer
@@ -706,6 +708,7 @@ func StreamURL(url string, w io.Writer) int {
 
 // Fetch creates a client an performs a fetch according to the HTTP options passed in.
 // To be used only for single fetches or when performance doesn't matter as the client is closed at the end.
+//
 // Deprecated: use StreamFetch instead.
 func Fetch(httpOptions *HTTPOptions) (int, []byte) {
 	var w bytes.Buffer

@@ -103,11 +103,7 @@ func init() {
 
 // ChangeMaxPayloadSize is used to change max payload size and fill it with pseudorandom content.
 func ChangeMaxPayloadSize(newMaxPayloadSize int) {
-	if newMaxPayloadSize >= 0 {
-		MaxPayloadSize = newMaxPayloadSize
-	} else {
-		MaxPayloadSize = 0
-	}
+	MaxPayloadSize = max(newMaxPayloadSize, 0)
 	Payload = make([]byte, MaxPayloadSize)
 	// One shared and 'constant' (over time) but pseudo random content for payload
 	// (to defeat compression).

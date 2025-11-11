@@ -496,7 +496,7 @@ func RoundDuration(d time.Duration) duration.Duration {
 // (with fixes/adaptation)
 
 var gzPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		log.LogVf("Pool new gzip")
 		w := gzip.NewWriter(io.Discard)
 		return w
