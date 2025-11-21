@@ -27,7 +27,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.17.0
 	golang.org/x/net v0.47.0
-	google.golang.org/grpc v1.76.0
+	google.golang.org/grpc v1.77.0
 	grol.io/grol v0.95.1
 )
 
@@ -55,6 +55,6 @@ require (
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 )
