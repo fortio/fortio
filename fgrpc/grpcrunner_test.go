@@ -16,6 +16,7 @@
 package fgrpc
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -29,7 +30,6 @@ import (
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/periodic"
 	"fortio.org/log"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"

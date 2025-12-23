@@ -16,6 +16,7 @@
 package fgrpc
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/stats"
 	"fortio.org/log"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
