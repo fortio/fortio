@@ -28,7 +28,7 @@ require (
 	github.com/jhump/protoreflect v1.17.0
 	golang.org/x/net v0.48.0
 	google.golang.org/grpc v1.78.0
-	grol.io/grol v0.96.3
+	grol.io/grol v0.97.0
 )
 
 // Local dev of dependencies changes
