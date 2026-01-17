@@ -26,7 +26,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.17.0
-	golang.org/x/net v0.48.0
+	golang.org/x/net v0.49.0
 	google.golang.org/grpc v1.78.0
 	grol.io/grol v0.97.1
 )
