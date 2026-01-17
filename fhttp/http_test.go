@@ -1268,7 +1268,7 @@ func TestEchoHeaders(t *testing.T) {
 		v.Add("header", pair.key+":"+pair.value)
 	}
 	// minimal manual encoding (only escape the space) + errors for coverage sake
-	var urls []string
+	urls := make([]string, 0, 2)
 	urls = append(urls,
 		fmt.Sprintf("http://localhost:%d/echo?size=10&header=Foo:Bar1&header=Foo:Bar2&header=X:Y&header=Z:abc+def:xyz&header=&header=Foo",
 			a.Port))
