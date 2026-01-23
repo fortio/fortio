@@ -88,5 +88,5 @@ google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aO
 google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-grol.io/grol v0.97.3 h1:kPbDVQAxKMF0KTgafaLGM7ahNnRKKeRxWljXN+/02d4=
-grol.io/grol v0.97.3/go.mod h1:1OQEblDOnf3kTPUC/3xLqVAfGtZJLe24g7LpvBlx25Y=
+grol.io/grol v0.98.0 h1:JpRGmbDcIGIkj+ipwBxzElst0/Vu83DqNBIljWU1bSY=
+grol.io/grol v0.98.0/go.mod h1:1OQEblDOnf3kTPUC/3xLqVAfGtZJLe24g7LpvBlx25Y=
