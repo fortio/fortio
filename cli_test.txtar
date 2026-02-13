@@ -34,7 +34,7 @@ stderr 'open no-such-file.gr: no such file or directory'
 
 # Error case: bad script
 !fortio script bad.gr
-stderr 'panic: runtime error: integer divide by zero'
+stderr 'err: division by zero'
 
 # Stdin script test
 stdin test.gr

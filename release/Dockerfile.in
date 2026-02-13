@@ -1,5 +1,5 @@
 # Concatenated after ../Dockerfile to create the tgz
-FROM docker.io/fortio/fortio.build:v84@sha256:870da6fb8f8ef3afd7f2fc6c6fa74e5befa2a058d74a4fcda78b881c2656eefc AS stage
+FROM docker.io/fortio/fortio.build:v85@sha256:482b0ba1bb5215393f1896919a3ebcb13a27dbae7626888d1d013e9b183ae926 AS stage
 ARG archs="amd64 arm64 ppc64le s390x"
 ENV archs=${archs}
 # Build image defaults to build user, switch back to root for
