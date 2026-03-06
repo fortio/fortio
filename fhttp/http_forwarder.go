@@ -172,6 +172,7 @@ func (mcfg *MultiServerConfig) TeeSerialHandler(w http.ResponseWriter, r *http.R
 			continue
 		}
 		url := req.URL.String()
+		//nolint:gosec // the url is indeed user provided.
 		resp, err := mcfg.client.Do(req)
 		if err != nil {
 			msg := fmt.Sprintf("Error for %s: %v", url, err)
@@ -180,6 +181,7 @@ func (mcfg *MultiServerConfig) TeeSerialHandler(w http.ResponseWriter, r *http.R
 				w.WriteHeader(http.StatusServiceUnavailable)
 				first = false
 			}
+			//nolint:gosec // the payload is indeed user provided.
 			_, _ = w.Write([]byte(msg))
 			_, _ = w.Write([]byte("\n"))
 			continue
@@ -199,6 +201,7 @@ func (mcfg *MultiServerConfig) TeeSerialHandler(w http.ResponseWriter, r *http.R
 
 func singleRequest(client *http.Client, w io.Writer, req *http.Request, statusPtr *int) {
 	url := req.URL.String()
+	//nolint:gosec // the url is indeed user provided.
 	resp, err := client.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %s: %v", url, err)

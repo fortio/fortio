@@ -409,6 +409,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		return
 	}
 	// the base counterpart:
+	//nolint:gosec // bugged: it's not a format string, it's a message prefix.
 	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n",
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
 	_, _ = fmt.Fprintln(out, "# range, mid point, percentile, count")
@@ -418,10 +419,12 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 		if i > 0 {
 			sep = ">" // last interval is inclusive (of max value)
 		}
+		//nolint:gosec // bugged: it's not a format string, it's a message prefix.
 		_, _ = fmt.Fprintf(out, "%s %.6g <= %.6g , %.6g , %.2f, %d\n", sep, b.Start, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
 	// print the information of target percentiles
 	for _, p := range e.Percentiles {
+		//nolint:gosec // bugged: it's not a format string, it's a message prefix.
 		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 	}
 }
@@ -590,7 +593,7 @@ func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
 			sb.WriteString(", ")
 		}
 		sb.WriteString(k)
-		sb.WriteString(fmt.Sprintf(" (%d)", v))
+		fmt.Fprintf(&sb, " (%d)", v)
 	}
 	sb.WriteString("]")
 	return sb.String()

@@ -606,14 +606,12 @@ func TestEarlyAbort(t *testing.T) {
 	count = 0
 	// Early abort, with wait
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		aborter.Abort(true)
 		lock.Lock()
 		count -= 42
 		lock.Unlock()
-		wg.Done()
-	}()
+	})
 	// Let the above go routine run
 	time.Sleep(1 * time.Second)
 	// we don't want to see 42 yet
@@ -647,16 +645,14 @@ func TestWAbortWait(t *testing.T) {
 	r.Options().MakeRunners(&c)
 	var afterAbortCount int64
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		time.Sleep(1 * time.Second)
 		log.LogVf("Calling abort with wait true after 1 sec")
 		aborter.Abort(true)
 		lock.Lock()
 		afterAbortCount = count
 		lock.Unlock()
-		wg.Done()
-	}()
+	})
 	res := r.Run()
 	wg.Wait()
 	if count == 0 {

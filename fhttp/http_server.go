@@ -368,7 +368,7 @@ func DebugHandler(w http.ResponseWriter, r *http.Request) {
 	buf.WriteString("Φορτίο version ")
 	buf.WriteString(version.Long())
 	buf.WriteString(" echo debug server up for ")
-	buf.WriteString(fmt.Sprint(RoundDuration(time.Since(startTime))))
+	fmt.Fprint(&buf, RoundDuration(time.Since(startTime)))
 	buf.WriteString(" on ")
 	hostname, _ := os.Hostname()
 	buf.WriteString(hostname)
@@ -543,6 +543,7 @@ func FetcherHandler2(w http.ResponseWriter, r *http.Request) {
 	OnBehalfOfRequest(req, r)
 	proxyClient := getProxyClient()
 	setClientOptions(proxyClient, opts)
+	//nolint:gosec // the url is indeed config provided.
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("Error for %q: %v", url, err)
