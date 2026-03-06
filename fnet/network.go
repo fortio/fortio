@@ -648,6 +648,7 @@ func GetUniqueUnixDomainPath(prefix string) string {
 	fname := f.Name()
 	_ = f.Close()
 	// for the bind to succeed we need the file to not pre exist:
+	//nolint:gosec // yes user provided path.
 	_ = os.Remove(fname)
 	return fname
 }

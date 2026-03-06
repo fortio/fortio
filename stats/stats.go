@@ -590,7 +590,7 @@ func (o *Occurrence) AggregateAndToString(totals map[string]int) string {
 			sb.WriteString(", ")
 		}
 		sb.WriteString(k)
-		sb.WriteString(fmt.Sprintf(" (%d)", v))
+		fmt.Fprintf(&sb, " (%d)", v)
 	}
 	sb.WriteString("]")
 	return sb.String()

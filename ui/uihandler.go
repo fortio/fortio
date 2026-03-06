@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+//nolint:gosec // lots of false positives.
 package ui // import "fortio.org/fortio/ui"
 
 import (
@@ -100,7 +101,7 @@ const (
 // Handler is the main UI handler creating the web forms and processing them.
 // TODO: refactor common option/args/flag parsing between restHandle.go and this.
 //
-//nolint:funlen, nestif // should be refactored indeed (TODO)
+//nolint:funlen, nestif, gosec // should be refactored indeed (TODO)
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// logging of request and response is done by log.LogAndCall in mux setup
 	if r.Method != http.MethodPost && r.Method != http.MethodGet {
@@ -473,6 +474,7 @@ func SyncHandler(w http.ResponseWriter, r *http.Request) {
 	code, data, _ := client.Fetch(r.Context())
 	defer client.Close()
 	if code != http.StatusOK {
+		//nolint:gosec // bugged as an int code isn't going to do xss.
 		_, _ = fmt.Fprintf(w, "http error, code %d<script>setPB(1,1)</script></body></html>\n", code)
 		// too late to write headers for real case, but we do it anyway for the Sync() startup case
 		w.WriteHeader(code)
@@ -495,7 +497,7 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 	}
 	lines := strings.Split(sdata, "\n")
 	n := len(lines)
-
+	//nolint:gosec // bugged as an int code isn't going to do xss.
 	_, _ = fmt.Fprintf(w, "success tsv fetch! Now fetching %d referenced URLs:<script>setPB(1,%d)</script>\n",
 		n-1, n)
 	_, _ = w.Write([]byte("<table>"))
@@ -504,6 +506,7 @@ func processTSV(ctx context.Context, w http.ResponseWriter, client *fhttp.Client
 		parts := strings.Split(l, "\t")
 		u := parts[0]
 		_, _ = w.Write([]byte("<tr><td>"))
+		//nolint:gosec // bugged: it's escaped.
 		_, _ = w.Write([]byte(template.HTMLEscapeString(u)))
 		ur, err := url.Parse(u)
 		if err != nil {
