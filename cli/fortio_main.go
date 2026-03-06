@@ -518,6 +518,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 				log.Fatalf("Close error for %s: %v", jsonFileName, err)
 			}
 		}
+		//nolint:gosec // the filename is indeed potentially user provided.
 		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }

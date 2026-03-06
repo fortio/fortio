@@ -110,7 +110,7 @@ func ASCIIToUpper(str string) []byte {
 	// less surprising if we only mangle the extended characters
 	i := 0
 	for _, c := range str { // Attention: _ here != i for Unicode characters
-		res[i] = toUpper(byte(c))
+		res[i] = toUpper(byte(c)) //nolint:gosec // not meant for unicode indeed as documented.
 		i++
 	}
 	return res

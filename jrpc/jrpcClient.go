@@ -261,6 +261,7 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 		client = http.DefaultClient
 	}
 	var resp *http.Response
+	//nolint:gosec // the url is indeed user provided.
 	resp, err = client.Do(req)
 	if err != nil {
 		return -1, res, err

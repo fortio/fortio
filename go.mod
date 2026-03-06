@@ -4,7 +4,7 @@ module fortio.org/fortio
 // And we're started to use the new features in 1.22 and 1.23
 // (in part forced by grpc). we force 1.22.3 because 1.23.2 has pretty severe bug (macos) even though I think "1.23" with
 // no patch level would be better for the go.mod file.
-go 1.24.0
+go 1.25.0
 
 // When needed, ie to force download of July 2nd 2024 go security and bug fix release,
 // as 1.22.5 docker images were not there yet and ditto for action/setup-go
@@ -26,7 +26,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.18.0
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	google.golang.org/grpc v1.79.1
 	grol.io/grol v0.100.1
 )

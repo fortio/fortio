@@ -5,9 +5,11 @@
 Package fgrpc is a generated protocol buffer package.
 
 It is generated from these files:
+
 	ping.proto
 
 It has these top-level messages:
+
 	PingMessage
 */
 package fgrpc
@@ -20,7 +22,7 @@ import (
 )
 
 import (
-	context "golang.org/x/net/context"
+	context "context"
 	grpc "google.golang.org/grpc"
 )
 
