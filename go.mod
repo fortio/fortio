@@ -27,7 +27,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.18.0
 	golang.org/x/net v0.51.0
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.3
 	grol.io/grol v0.101.0
 )
 
