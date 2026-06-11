@@ -1,5 +1,5 @@
 # Dependencies and linters for build:
-FROM golang:1.25.8@sha256:779b230b2508037a8095c9e2d223a6405f8426e12233b694dbae50197b9f6d04
+FROM golang:1.25.11@sha256:379065f16fe8cce7949001ba9cffc827cd4b93d69495dec405befd1c13e19bb3
 # When the image isn't yet available and it's urgent:
 # ENV GOTOOLCHAIN=go1.25.8
 # RUN go version
@@ -16,7 +16,8 @@ RUN go version # check it's indeed the version we expect
 
 # golangci-lint
 # RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.9.0
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+# RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+RUN curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
 RUN golangci-lint version
 
 # Docker:
