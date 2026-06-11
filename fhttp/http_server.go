@@ -37,8 +37,6 @@ import (
 	"fortio.org/fortio/jrpc"
 	"fortio.org/fortio/version"
 	"fortio.org/log"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // -- Echo Server --
@@ -244,13 +242,16 @@ func HTTPServer(name string, port string) (*http.ServeMux, net.Addr) {
 // Port can include binding address and/or be port 0.
 // Takes in a handler.
 func HTTPServerWithHandler(name string, port string, hdlr http.Handler) net.Addr {
-	h2s := &http2.Server{}
 	s := &http.Server{
 		ReadHeaderTimeout: ServerIdleTimeout.Get(),
 		IdleTimeout:       ServerIdleTimeout.Get(),
-		Handler:           h2c.NewHandler(hdlr, h2s),
+		Handler:           hdlr,
 		ErrorLog:          log.NewStdLogger("http2c srv "+name, log.Error),
 	}
+	s.Protocols = new(http.Protocols)
+	s.Protocols.SetHTTP1(true)
+	s.Protocols.SetHTTP2(true)
+	s.Protocols.SetUnencryptedHTTP2(true)
 	listener, addr := fnet.Listen(name, port)
 	if listener == nil {
 		return nil // error already logged
