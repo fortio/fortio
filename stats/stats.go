@@ -410,7 +410,7 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 	}
 	// the base counterpart:
 
-	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n", //nolint:gosec // G705 false positive: text stats output, not HTML rendering.
+	_, _ = fmt.Fprintf(out, "%s : count %d avg %.8g +/- %.4g min %g max %g sum %.9g\n",
 		msg, e.Count, e.Avg, e.StdDev, e.Min, e.Max, e.Sum)
 	_, _ = fmt.Fprintln(out, "# range, mid point, percentile, count")
 	sep := ">="
@@ -420,11 +420,11 @@ func (e *HistogramData) Print(out io.Writer, msg string) {
 			sep = ">" // last interval is inclusive (of max value)
 		}
 
-		_, _ = fmt.Fprintf(out, "%s %.6g <= %.6g , %.6g , %.2f, %d\n", sep, b.Start, b.End, (b.Start+b.End)/2., b.Percent, b.Count) //nolint:gosec // G705 false positive: plain text histogram line.
+		_, _ = fmt.Fprintf(out, "%s %.6g <= %.6g , %.6g , %.2f, %d\n", sep, b.Start, b.End, (b.Start+b.End)/2., b.Percent, b.Count)
 	}
 	// print the information of target percentiles
 	for _, p := range e.Percentiles {
-		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value) //nolint:gosec // G705 false positive: plain text percentile line.
+		_, _ = fmt.Fprintf(out, "# target %g%% %.6g\n", p.Percentile, p.Value)
 	}
 }
 
