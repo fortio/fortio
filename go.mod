@@ -28,7 +28,7 @@ require (
 	github.com/jhump/protoreflect v1.18.0
 	golang.org/x/net v0.57.0
 	google.golang.org/grpc v1.82.0
-	grol.io/grol v0.101.3
+	grol.io/grol v0.101.4
 )
 
 // Local dev of dependencies changes
@@ -43,7 +43,7 @@ require (
 
 require (
 	fortio.org/struct2env v0.4.2 // indirect
-	fortio.org/terminal v0.65.3 // indirect
+	fortio.org/terminal v0.65.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/jbuchbinder/gopnm v0.0.0-20220507095634-e31f54490ce0 // indirect
 	github.com/jhump/protoreflect/v2 v2.0.0-beta.1 // indirect
