@@ -823,6 +823,13 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	}
 }
 
+func closeRawTCPListener(t *testing.T, listener net.Listener) {
+	t.Helper()
+	if closeErr := listener.Close(); closeErr != nil {
+		t.Errorf("raw TCP listener close failed: %v", closeErr)
+	}
+}
+
 func TestFastClientOversizedChunkedResponses(t *testing.T) {
 	oldBufferSizeKb := BufferSizeKb
 	BufferSizeKb = 4
@@ -838,7 +845,7 @@ func TestFastClientOversizedChunkedResponses(t *testing.T) {
 			if err != nil {
 				t.Fatalf("raw TCP listener setup failed: %v", err)
 			}
-			defer listener.Close()
+			defer closeRawTCPListener(t, listener)
 			opts := HTTPOptions{URL: "http://" + listener.Addr().String(), HTTPReqTimeOut: 300 * time.Millisecond}
 			fetcher, err := NewFastClient(&opts)
 			if err != nil {
