@@ -869,11 +869,9 @@ func TestFastClientOversizedChunkedResponses(t *testing.T) {
 				}()
 				select {
 				case code := <-done:
-					if code != http.StatusOK {
-						t.Errorf("%s: Fetch %d returned HTTP %d, want 200", test.name, fetch, code)
-					}
-					if client.socket != nil {
-						t.Errorf("%s: Fetch %d retained an incomplete connection", test.name, fetch)
+					if code != http.StatusOK || client.socket != nil {
+						t.Errorf("%s: Fetch %d returned HTTP %d, want 200; retained an incomplete connection: %t",
+							test.name, fetch, code, client.socket != nil)
 					}
 				case <-time.After(2 * time.Second):
 					t.Errorf("%s: Fetch %d did not return within 2s", test.name, fetch)
