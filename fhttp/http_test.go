@@ -823,6 +823,67 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	}
 }
 
+func TestFastClientOversizedChunkedResponses(t *testing.T) {
+	oldBufferSizeKb := BufferSizeKb
+	BufferSizeKb = 4
+	defer func() { BufferSizeKb = oldBufferSizeKb }()
+
+	chunk := strings.Repeat("x", 8*1024)
+	for _, test := range []struct{ name, body string }{
+		{"first_chunk_larger_than_buffer", fmt.Sprintf("2000\r\n%s\r\n0\r\n\r\n", chunk)},
+		{"later_chunk_larger_than_remaining_buffer", fmt.Sprintf("1\r\na\r\n2000\r\n%s\r\n0\r\n\r\n", chunk)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("raw TCP listener setup failed: %v", err)
+			}
+			defer listener.Close()
+			opts := HTTPOptions{URL: "http://" + listener.Addr().String(), HTTPReqTimeOut: 300 * time.Millisecond}
+			fetcher, err := NewFastClient(&opts)
+			if err != nil {
+				t.Fatalf("FastClient setup failed: %v", err)
+			}
+			client := fetcher.(*FastClient)
+			defer client.Close()
+			response := []byte("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n" + test.body)
+			go func() {
+				request := make([]byte, len(client.req))
+				for conn, err := listener.Accept(); err == nil; conn, err = listener.Accept() {
+					for {
+						if _, err := io.ReadFull(conn, request); err != nil {
+							break
+						}
+						if _, err := io.Copy(conn, bytes.NewReader(response)); err != nil {
+							break
+						}
+					}
+					conn.Close()
+				}
+			}()
+			done := make(chan int, 1)
+			for fetch := 1; fetch <= 2; fetch++ {
+				go func() {
+					code, _, _ := client.Fetch(context.Background())
+					done <- code
+				}()
+				select {
+				case code := <-done:
+					if code != http.StatusOK {
+						t.Errorf("%s: Fetch %d returned HTTP %d, want 200", test.name, fetch, code)
+					}
+					if client.socket != nil {
+						t.Errorf("%s: Fetch %d retained an incomplete connection", test.name, fetch)
+					}
+				case <-time.After(2 * time.Second):
+					t.Errorf("%s: Fetch %d did not return within 2s", test.name, fetch)
+					return
+				}
+			}
+		})
+	}
+}
+
 func TestInvalidRequest(t *testing.T) {
 	o := HTTPOptions{
 		URL:            "http://www.google.com/", // valid url
