@@ -15,7 +15,7 @@
 // Package cli was originally just fortio_main.go at the root of fortio.org/fortio
 // now moved here it can be customized and reused in variants of fortio
 // like fortiotel (fortio with opentelemetry).
-package cli // import "fortio.org/fortio/cli"
+package cli
 
 // Do not add any external dependencies we want to keep fortio minimal.
 
@@ -518,7 +518,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 				log.Fatalf("Close error for %s: %v", jsonFileName, err)
 			}
 		}
-		//nolint:gosec // the filename is indeed potentially user provided.
+
 		_, _ = fmt.Fprintf(out, "Successfully wrote %d bytes of Json data to %s\n", n, jsonFileName)
 	}
 }

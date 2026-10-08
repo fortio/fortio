@@ -96,7 +96,7 @@ func grolLoad(env any, _ string, args []object.Object) object.Object {
 	if s.Term != nil {
 		s.Term.Suspend()
 	}
-	s.Context, s.Cancel = context.WithCancel(context.Background()) // no timeout.
+	s.Context, s.Cancel = context.WithCancel(context.Background()) //nolint:gosec // no timeout; cancel stored in s.Cancel.
 	log.LogVf("Running %s %#v", runType, ro)
 	var res periodic.HasRunnerResult
 	switch runType {

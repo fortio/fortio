@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jrpc // import "fortio.org/fortio/jrpc"
+package jrpc
 
 // Server side additional code (compared to jrpcClient.go).
 

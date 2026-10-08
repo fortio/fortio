@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "fortio.org/fortio/fhttp"
+package fhttp
 
 import (
 	"compress/gzip"
@@ -71,7 +71,7 @@ func (to *TLSOptions) TLSConfig() (*tls.Config, error) {
 	}
 	if len(to.CACert) > 0 {
 		// Load CA cert
-		caCert, err := os.ReadFile(to.CACert)
+		caCert, err := os.ReadFile(to.CACert) //nolint:gosec // G703: CA path is user provided CLI/config option.
 		if err != nil {
 			log.Errf("Unable to read CA from %v: %v", to.CACert, err)
 			return nil, err

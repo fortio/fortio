@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fnet // import "fortio.org/fortio/fnet"
+package fnet
 
 import (
 	"context"
@@ -72,7 +72,7 @@ var (
 	// FlagResolveMethod decides which method to use when multiple IPs are returned for a given name
 	// default assumes one gets all the IPs in the first call and does round-robin across these.
 	// first just picks the first answer, rr rounds robin on each answer.
-	FlagResolveMethod = dflag.New("cached-rr",
+	FlagResolveMethod = dflag.New(cachedRR,
 		"When a name resolves to multiple ip, which `method` to pick: cached-rr for cached round-robin, rnd for random, "+
 			"first for first answer (pre 1.30 behavior), rr for round-robin.").WithValidator(dnsMethodValidator)
 	// cache for cached-rr mode.
@@ -83,12 +83,14 @@ var (
 	dnsRoundRobin uint32
 )
 
+const cachedRR = "cached-rr"
+
 func dnsMethodValidator(inp string) error {
 	valid := map[string]bool{
-		"cached-rr": true,
-		"rnd":       true,
-		"rr":        true,
-		"first":     true,
+		cachedRR: true,
+		"rnd":    true,
+		"rr":     true,
+		"first":  true,
 	}
 	if valid[inp] {
 		return nil
@@ -361,7 +363,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	dnsMethod := FlagResolveMethod.Get()
 	idx := uint32(0)
 	inCache := false
-	if dnsMethod == "cached-rr" {
+	if dnsMethod == cachedRR {
 		inCache, dest.IP = checkCache(host, port)
 		if inCache {
 			return dest, nil
@@ -375,7 +377,7 @@ func ResolveByProto(ctx context.Context, host string, port string, proto string)
 	l := safecast.MustConv[uint32](len(addrs))
 	if l > 1 {
 		switch dnsMethod {
-		case "cached-rr":
+		case cachedRR:
 			// (re)check if we're the first to grab this lock (other threads may be here as well)
 			inCache, dest.IP = checkCache(host, port)
 			if inCache {
@@ -648,7 +650,7 @@ func GetUniqueUnixDomainPath(prefix string) string {
 	fname := f.Name()
 	_ = f.Close()
 	// for the bind to succeed we need the file to not pre exist:
-	//nolint:gosec // yes user provided path.
+
 	_ = os.Remove(fname)
 	return fname
 }

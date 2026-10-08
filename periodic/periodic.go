@@ -20,7 +20,7 @@
 // is also ../histogram to use the stats from the command line and ../echosrv
 // as a very light HTTP server that can be used to test proxies etc like
 // the Istio components.
-package periodic // import "fortio.org/fortio/periodic"
+package periodic
 
 import (
 	"context"
