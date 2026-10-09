@@ -14,7 +14,7 @@
 
 // Package jrpc is an opinionated JSON-RPC / REST style library. Facilitates web JSON calls,
 // using generics to serialize/deserialize any type.
-package jrpc // import "fortio.org/fortio/jrpc"
+package jrpc
 
 // This package is a true self-contained library, that doesn't rely on our logger nor other packages
 // in fortio/ outside of version/ (which now also doesn't rely on logger or any other package).
@@ -261,7 +261,7 @@ func Send(dest *Destination, jsonPayload []byte) (int, []byte, error) {
 		client = http.DefaultClient
 	}
 	var resp *http.Response
-	//nolint:gosec // the url is indeed user provided.
+
 	resp, err = client.Do(req)
 	if err != nil {
 		return -1, res, err
