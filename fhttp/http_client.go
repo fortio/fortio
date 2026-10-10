@@ -387,7 +387,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	} else if len(o.Payload) > 0 || method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
-	//nolint:noctx,gosec // we pass context later in Run()/Fetch(); and yes the url is input.
+	//nolint:noctx,gosec,nolintlint // nolintlint: gosec G704 flaky (securego/gosec#1712); ctx passed in Run()/Fetch(), url is input.
 	req, err := http.NewRequest(method, o.URL, body)
 	if err == nil { //nolint:nestif // not that bad but maybe should be fixed.
 		// Additional validation for the URL so we abort early on fatal errors even for the std client.
@@ -528,7 +528,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	} else if len(c.body) > 0 {
 		req.Body = io.NopCloser(bytes.NewReader(c.body))
 	}
-	//nolint:gosec // the url is indeed user provided.
+	//nolint:gosec,nolintlint // nolintlint: gosec G704 is non-deterministic (securego/gosec#1712); the url is indeed user provided.
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.S(log.Error, "Unable to send request",
