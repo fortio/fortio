@@ -80,7 +80,8 @@ stdout '🎉 for http - saved as .*_test_save'
 stdout '🎉 for tcp'
 stdout '🎉 for udp'
 stdout '🎉 for grpc'
-exec pkill -x fortio
+[!windows] exec pkill -x fortio
+[windows] exec taskkill /F /IM fortio.exe
 wait
 
 -- badload1.gr --
