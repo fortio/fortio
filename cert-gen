@@ -13,6 +13,12 @@ SAN=DNS.1:localhost,IP.1:127.0.0.1
 
 set -e
 
+# Git Bash converts OpenSSL's /CN=... subject values into Windows paths.
+# This is a distinguished name, not a path; leave argv unchanged in MSYS.
+if [ -n "${MSYSTEM:-}" ]; then
+    export MSYS_NO_PATHCONV=1
+fi
+
 # Skip cert creation if the certs already exist
 if [ -d $CERT_TEMP_DIR ]
 then
