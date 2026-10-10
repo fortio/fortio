@@ -53,14 +53,8 @@ TEST_TIMEOUT:=90s
 OS:=$(shell go env GOOS)
 
 # Local test
-ifeq ($(OS),windows)
-test:
-	@echo "Skipping most tests on Windows until we can get cert-gen to work there."
-	go test ./stats
-else
 test: dependencies
 	go test -tags netgo -timeout $(TEST_TIMEOUT) -race $(PACKAGES)
-endif
 
 # To debug strange linter errors, uncomment
 # DEBUG_LINTERS="--debug"

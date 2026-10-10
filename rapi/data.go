@@ -97,8 +97,9 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 			//nolint:gosec // This isn't a crypto hash, more like a checksum - and mandated by the spec above, not our choice
 			h := md5.New()
 			var sz int64
-			if sz, err = io.Copy(h, f); err != nil {
-				f.Close()
+			sz, err = io.Copy(h, f)
+			f.Close()
+			if err != nil {
 				log.Errf("Copy/read error for %s: %v", fname, err)
 				continue
 			}
