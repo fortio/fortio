@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"os"
 	"path"
@@ -391,6 +390,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 		if grpcSecure {
 			o.Destination = fhttp.AddHTTPS(url)
 		}
+		o.RunType = "GRPC" // for status snapshot, runner sets the final value
 		aborter = UpdateRun(&o.RunnerOptions)
 		// TODO: ReqTimeout: timeout
 		res, err = fgrpc.RunGRPCTest(&o)
@@ -402,6 +402,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
+		o.RunType = "TCP" // for status snapshot, runner sets the final value
 		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = tcprunner.RunTCPTest(&o)
 	case strings.HasPrefix(url, udprunner.UDPURLPrefix):
@@ -412,6 +413,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 		o.ReqTimeout = httpopts.HTTPReqTimeOut
 		o.Destination = url
 		o.Payload = httpopts.Payload
+		o.RunType = "UDP" // for status snapshot, runner sets the final value
 		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = udprunner.RunUDPTest(&o)
 	default:
@@ -420,6 +422,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 			RunnerOptions:      *ro,
 			AllowInitialErrors: true,
 		}
+		o.RunType = "HTTP" // for status snapshot, runner sets the final value
 		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = fhttp.RunHTTPTest(&o)
 	}
@@ -628,7 +631,8 @@ func NextRunID() int64 {
 }
 
 // UpdateRun must be called exactly once for each runner. Responsible for normalization (abort channel setup)
-// and making sure the options object returned in status is same as the actual one.
+// and snapshotting the options returned in status (the runner keeps mutating its own options, e.g. RunType,
+// NumThreads, Stop, so status must not point to them or reading the status would race with the run).
 // Note that the Aborter/Stop field is being "moved" into the runner when making the concrete runner
 // and cleared from the original options object so we need to keep our own copy of the aborter pointer.
 // See newPeriodicRunner. Note this is arguably not the best behavior design/could be changed.
@@ -641,28 +645,35 @@ func UpdateRun(ro *periodic.RunnerOptions) *periodic.Aborter {
 		log.Fatalf("Logic bug: updating unexpected state for rid %d: %v", ro.RunID, status)
 	}
 	status.State = StateRunning
-	status.RunnerOptions = ro
-	status.RunnerOptions.Normalize()
-	status.aborter = status.RunnerOptions.Stop // save the aborter before it gets cleared in newPeriodicRunner.
+	ro.Normalize()
+	snapshot := *ro
+	status.RunnerOptions = &snapshot
+	status.aborter = ro.Stop // save the aborter before it gets cleared in newPeriodicRunner.
 	uiRunMapMutex.Unlock()
 	return status.aborter
 }
 
+// GetRun returns a copy of the status for the given run id, or nil if not found.
 func GetRun(id int64) *Status {
 	uiRunMapMutex.Lock()
-	res := runs[id] // TODO: race: need to copy because the pointers to options can be changed by the runners
-	uiRunMapMutex.Unlock()
-	return res
+	defer uiRunMapMutex.Unlock()
+	v, found := runs[id]
+	if !found {
+		return nil
+	}
+	res := *v
+	return &res
 }
 
-// GetAllRuns returns a copy of the status map
-// (note maps are always reference types, so no copy is done when returning the map value).
+// GetAllRuns returns a copy of the status map (and of each status).
 func GetAllRuns() StatusMap {
-	// make a copy - we could use the hint of the size, but that would require locking
-	res := make(StatusMap)
 	uiRunMapMutex.Lock()
-	maps.Copy(res, runs)
-	uiRunMapMutex.Unlock()
+	defer uiRunMapMutex.Unlock()
+	res := make(StatusMap, len(runs))
+	for k, v := range runs {
+		c := *v
+		res[k] = &c
+	}
 	return res
 }
 
