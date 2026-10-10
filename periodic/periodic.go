@@ -867,7 +867,14 @@ MainLoop:
 				case <-runnerChan:
 					break MainLoop
 				case <-time.After(sleepDuration):
-					// continue normal execution
+					// When behind (sleepDuration <= 0) both cases can be ready and select picks randomly,
+					// so check again for stop to not keep going after an abort.
+					select {
+					case <-runnerChan:
+						break MainLoop
+					default:
+						// continue normal execution
+					}
 				}
 				break // NoCatchUp false or sleepDuration > 0
 			}
