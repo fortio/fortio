@@ -37,7 +37,11 @@ function fortio_load(url) {
       showChart(data)
       var urldiv = document.getElementById('url')
       urldiv.innerHTML = "<a href='browse?url=" + url + "'>" + url + "</a> (<a href='data/" + url +"'>json</a>)"
-    }).catch(err => { throw err })
+    }).catch(err => {
+      const urldiv = document.getElementById('url')
+      urldiv.textContent = "Unable to load result: " + url
+      console.warn("Unable to load Fortio result", url, err)
+    })
   } else {
     var urldiv = document.getElementById('url')
     urldiv.innerHTML = "Multiple runs (URL is a permalink)..."
@@ -46,31 +50,71 @@ function fortio_load(url) {
       var dataPromiseA = fetch(RAPI_DATA_DIR+urlA)
           .then(response => response.json())
           .then(fortioResult => fortioResultToJsChartData(fortioResult))
+          .catch(err => {
+            console.warn("Skipping invalid Fortio result", urlA, err)
+            return null
+          })
 
       var urlB = list[1].value
       var dataPromiseB = fetch(RAPI_DATA_DIR+urlB)
           .then(response => response.json())
           .then(fortioResult => fortioResultToJsChartData(fortioResult))
+          .catch(err => {
+            console.warn("Skipping invalid Fortio result", urlB, err)
+            return null
+          })
 
       Promise.all([dataPromiseA, dataPromiseB]).then(dataArray => {
-        var dataA = dataArray[0]
-        var dataB = dataArray[1]
-        makeOverlayChart(dataA, dataB)
+        var validData = dataArray.filter(data => data !== null)
+        if (validData.length == 2) {
+          makeOverlayChart(validData[0], validData[1])
+        } else if (validData.length == 1) {
+          showChart(validData[0])
+          urldiv.textContent = "Showing one valid result; the other result could not be loaded."
+        } else {
+          urldiv.textContent = "No valid JSON results to graph."
+        }
       })
     } else {
       makeMultiChart()
       var promises = []
+      var urls = []
       for (var i = 0, len = list.length; i < len; i++) {
         var v = list[len-i-1].value;
         (function (idx, u) {
-          promises.push(fetch(RAPI_DATA_DIR+u).then(doc => doc.json()).then((out) => {
-            fortioAddToMultiResult(idx, out)
+          urls[idx] = u
+          promises.push(fetch(RAPI_DATA_DIR+u).then(doc => doc.json()).catch(err => {
+            console.warn("Skipping invalid Fortio result", u, err)
+            return null
           }))
         })(i, v)
       }
-      Promise.all(promises).then( () => {
-        endMultiChart(list.length)
-      }).catch(err => { throw err })
+      Promise.all(promises).then(results => {
+        var validCount = 0
+        var skippedCount = 0
+        results.forEach((out, idx) => {
+          if (out === null) {
+            skippedCount++
+            return
+          }
+          try {
+            fortioAddToMultiResult(validCount, out)
+            validCount++
+          } catch (err) {
+            skippedCount++
+            console.warn("Skipping invalid Fortio result", urls[idx], err)
+          }
+        })
+        if (validCount == 0) {
+          deleteMultiChart()
+          urldiv.textContent = "No valid JSON results to graph."
+          return
+        }
+        endMultiChart(validCount)
+        if (skippedCount > 0) {
+          urldiv.textContent = `Showing ${validCount} results; skipped ${skippedCount} invalid result(s).`
+        }
+      })
     }
   }
 }
