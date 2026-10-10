@@ -1225,6 +1225,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 							log.Attr("thread", c.id), log.Attr("run", c.runID))
 						// TODO: just consume the extra instead
 						// or rather use the dataWriter post headers
+						keepAlive = false // the truncated response leaves unread data on the socket
 						maxV = safecast.MustConv[int64](len(c.buffer))
 					}
 					if checkConnectionClosedHeader {
