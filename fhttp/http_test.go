@@ -823,6 +823,33 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	}
 }
 
+func oversizedChunks(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Has("later") {
+		w.Write([]byte("a"))
+		w.(http.Flusher).Flush()
+	}
+	w.Write(make([]byte, 8*1024)) // single 8k chunk, larger than the 4k buffer
+}
+
+func TestFastClientOversizedChunks(t *testing.T) {
+	oldBufferSizeKb := BufferSizeKb
+	BufferSizeKb = 4
+	defer func() { BufferSizeKb = oldBufferSizeKb }()
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", oversizedChunks)
+	for _, query := range []string{"", "?later"} {
+		o := NewHTTPOptions(fmt.Sprintf("http://localhost:%d/%s", a.Port, query))
+		o.HTTPReqTimeOut = time.Second
+		client, _ := NewFastClient(o)
+		for i := range 2 { // first chunk used to spin forever, later chunk used to break the next request
+			if code, _, _ := client.Fetch(context.Background()); code != http.StatusOK {
+				t.Errorf("%q fetch %d: got %d instead of 200", query, i, code)
+			}
+		}
+		client.Close()
+	}
+}
+
 func TestInvalidRequest(t *testing.T) {
 	o := HTTPOptions{
 		URL:            "http://www.google.com/", // valid url
