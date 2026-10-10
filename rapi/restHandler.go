@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package rapi provides a remote API to trigger load tests package (REST API).
-package rapi // import "fortio.org/fortio/rapi"
+package rapi
 
 import (
 	"encoding/json"
@@ -420,7 +420,7 @@ func Run(w http.ResponseWriter, r *http.Request, jd map[string]any,
 			RunnerOptions:      *ro,
 			AllowInitialErrors: true,
 		}
-		aborter = UpdateRun(&(o.RunnerOptions))
+		aborter = UpdateRun(&o.RunnerOptions)
 		res, err = fhttp.RunHTTPTest(&o)
 	}
 	defer RemoveRun(ro.RunID)

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "fortio.org/fortio/fhttp"
+package fhttp
 
 import (
 	"bufio"
@@ -39,7 +39,6 @@ import (
 	"fortio.org/safecast"
 	"fortio.org/scli"
 	"github.com/google/uuid"
-	"golang.org/x/net/http2"
 )
 
 // Fetcher is the URL content fetcher that the different client implements.
@@ -584,7 +583,7 @@ func NewClient(o *HTTPOptions) (Fetcher, error) {
 	return NewFastClient(o)
 }
 
-// Transport common interface between http.Transport and http2.Transport.
+// Transport common interface for http.Transport (and wrappers).
 type Transport interface {
 	http.RoundTripper
 	CloseIdleConnections()
@@ -658,20 +657,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			return nil, err
 		}
 	} else if o.H2 {
-		// Need to do h2c instead of normal transport
-		// Note: this likely means connection multiplexing / not sure how to force unique connections
-		// with http2.Transport.
-		if err != nil {
-			return nil, err
-		}
-		tr2 := &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				return dialCtx(ctx, network, addr)
-			},
-			DisableCompression: !o.Compression,
-		}
-		client.transport = tr2
+		// Need to do h2c (prior knowledge) instead of normal transport
+		tr.Protocols = new(http.Protocols)
+		tr.Protocols.SetUnencryptedHTTP2(true)
 	}
 	var rt http.RoundTripper = client.transport
 	if o.Transport != nil {

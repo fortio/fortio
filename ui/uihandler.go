@@ -14,7 +14,7 @@
 //
 
 //nolint:gosec // lots of false positives.
-package ui // import "fortio.org/fortio/ui"
+package ui
 
 import (
 	"context"

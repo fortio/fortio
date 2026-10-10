@@ -4,7 +4,7 @@ module fortio.org/fortio
 // And we're started to use the new features in 1.22 and 1.23
 // (in part forced by grpc). we force 1.22.3 because 1.23.2 has pretty severe bug (macos) even though I think "1.23" with
 // no patch level would be better for the go.mod file.
-go 1.25.0
+go 1.26.0
 
 // When needed, ie to force download of July 2nd 2024 go security and bug fix release,
 // as 1.22.5 docker images were not there yet and ditto for action/setup-go
@@ -26,7 +26,6 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.18.0
-	golang.org/x/net v0.58.0
 	google.golang.org/grpc v1.83.2
 	grol.io/grol v0.101.4
 )
@@ -50,11 +49,12 @@ require (
 	github.com/kortschak/goroutine v1.1.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250406160420-959f8f3db0fb // indirect
-	golang.org/x/image v0.44.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/image v0.46.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
