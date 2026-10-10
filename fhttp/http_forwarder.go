@@ -14,7 +14,7 @@
 
 // Tee off traffic
 
-package fhttp // import "fortio.org/fortio/fhttp"
+package fhttp
 
 import (
 	"bufio"
@@ -61,7 +61,7 @@ type MultiServerConfig struct {
 func makeMirrorRequest(baseURL string, r *http.Request, data []byte) *http.Request {
 	url := baseURL + r.RequestURI
 	bodyReader := io.NopCloser(bytes.NewReader(data))
-	req, err := http.NewRequestWithContext(r.Context(), r.Method, url, bodyReader)
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, url, bodyReader) //nolint:gosec // mirroring to user configured URL
 	if err != nil {
 		log.Warnf("new mirror request error for %q: %v", url, err)
 		return nil
@@ -100,7 +100,7 @@ func MakeSimpleRequest(url string, r *http.Request, copyAllHeaders bool) (*http.
 	if len(opts.Payload) > 0 {
 		body = bytes.NewReader(opts.Payload)
 	}
-	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, body)
+	req, err := http.NewRequestWithContext(r.Context(), opts.Method(), url, body) //nolint:gosec // forwarding to user configured URL
 	if err != nil {
 		log.Warnf("new request error for %q: %v", url, err)
 		return nil, opts

@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"net/http/httptrace"
@@ -321,6 +322,8 @@ func TestAccessLogAndTrace(t *testing.T) {
 			t.Errorf("Mismatch between requests %d and ok+555 %v", totalReq, res.RetCodes)
 		}
 		file, _ := os.Open(fname)
+		al := opts.AccessLogger.(io.Closer)
+		t.Cleanup(func() { _ = file.Close(); _ = al.Close() }) // before TempDir removal (needed on windows)
 		scanner := bufio.NewScanner(file)
 		lineCount := 0
 		linesOk := 0
@@ -527,7 +530,7 @@ func TestConnectionReuseRange(t *testing.T) {
 			t.Error(err)
 		}
 
-		if res.SocketCount != (int64)(expectedSocketReuse) {
+		if res.SocketCount != int64(expectedSocketReuse) {
 			t.Errorf("Expecting %f socket to be used, got %d", expectedSocketReuse, res.SocketCount)
 		}
 	}

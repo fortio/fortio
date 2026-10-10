@@ -446,15 +446,16 @@ func TestResolveBW(t *testing.T) {
 	if err == nil {
 		t.Errorf("should have errored out but got %v", addr)
 	}
-	addr, err = fnet.Resolve(ctx, "8.8.4.4", "domain")
+	// Use a service name that is in go's builtin table (no /etc/services on windows/netgo).
+	addr, err = fnet.Resolve(ctx, "8.8.4.4", "https")
 	if err != nil {
 		t.Errorf("should have not errored out but got %v", err)
 	}
-	expecting := "8.8.4.4:53"
+	expecting := "8.8.4.4:443"
 	if addr.String() != expecting {
 		t.Errorf("expecting %q got %q", expecting, addr.String())
 	}
-	addr, err = fnet.ResolveDestination(ctx, "8.8.4.4:domain")
+	addr, err = fnet.ResolveDestination(ctx, "8.8.4.4:https")
 	if err != nil {
 		t.Errorf("should have not errored out but got %v", err)
 	}

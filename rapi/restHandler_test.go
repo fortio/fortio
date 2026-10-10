@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -103,9 +104,9 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	baseURL := fmt.Sprintf("http://localhost:%d/", addr.Port)
 	uiPath := "/fortioCustom/"
 	tmpDir := t.TempDir()
-	os.Create(path.Join(tmpDir, "foo.txt")) // not a json, will be skipped over
+	_ = os.WriteFile(path.Join(tmpDir, "foo.txt"), nil, 0o644) // not a json, will be skipped over
 	badJSON := path.Join(tmpDir, "bad.json")
-	os.Create(badJSON)
+	_ = os.WriteFile(badJSON, nil, 0o644)
 	err := os.Chmod(badJSON, 0) // make the file un readable so it should also be skipped (doesn't work on ci(!))
 	if err != nil {
 		t.Errorf("Unable to make file unreadable, will make test about bad.json fail later: %v", err)
@@ -364,8 +365,8 @@ func TestHTTPRunnerRESTApi(t *testing.T) {
 	if strings.Contains(str, "foo.txt") {
 		t.Errorf("Result of index.tsv should not include non .json files: %s", str)
 	}
-	// Note this test fails if running as root.
-	if strings.Contains(str, "bad.json") {
+	// Note this test fails if running as root. And chmod 0 doesn't make files unreadable on windows.
+	if runtime.GOOS != "windows" && strings.Contains(str, "bad.json") {
 		t.Errorf("Result of index.tsv should not include unreadble .json files (%q): %s", badJSON, str)
 	}
 	files := DataList()
@@ -534,7 +535,7 @@ func TestHTTPRunnerRESTApiBadHost(t *testing.T) {
 	// otherwise log.SetLogLevel(log.Info)
 	mux, addr := fhttp.DynamicHTTPServer(false)
 	uiPath := "/f/"
-	AddHandlers(mux, "", uiPath, "/tmp")
+	AddHandlers(mux, "", uiPath, t.TempDir())
 	// Error with bad host
 	restURL := fmt.Sprintf("http://localhost:%d%s%s", addr.Port, uiPath, RestRunURI)
 	// sync first:

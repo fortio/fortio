@@ -14,7 +14,8 @@
 
 // Package version for fortio holds version information and build information.
 // The reusable library part and examples moved to [fortio.org/version].
-package version // import "fortio.org/fortio/version"
+package version
+
 import (
 	"fortio.org/version"
 )

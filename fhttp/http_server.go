@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "fortio.org/fortio/fhttp"
+package fhttp
 
 // pprof import to get /debug/pprof endpoints on a mux through SetupPPROF.
 
@@ -306,10 +306,8 @@ func DynamicHTTPServer(closing bool) (*http.ServeMux, *net.TCPAddr) {
 	log.Warnf("Closing server requested (for error testing)")
 	listener, addr := fnet.Listen("closing server", "0")
 	go func() {
-		err := closingServer(listener)
-		if err != nil {
-			log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), err)
-		}
+		// closingServer only returns on error.
+		log.Fatalf("Unable to serve closing server on %s: %v", addr.String(), closingServer(listener))
 	}()
 	return nil, addr.(*net.TCPAddr)
 }
@@ -610,7 +608,7 @@ func FetcherHandler(w http.ResponseWriter, r *http.Request) {
 func RedirectToHTTPSHandler(w http.ResponseWriter, r *http.Request) {
 	dest := fnet.PrefixHTTPS + r.Host + r.URL.String()
 	log.LogRequest(r, "Redirecting to "+dest)
-	http.Redirect(w, r, dest, http.StatusSeeOther)
+	http.Redirect(w, r, dest, http.StatusSeeOther) //nolint:gosec // G710: https redirect to same host, by design.
 }
 
 // RedirectToHTTPS Sets up a redirector to https on the given port.
