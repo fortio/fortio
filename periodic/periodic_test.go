@@ -17,6 +17,7 @@ package periodic
 import (
 	"bufio"
 	"context"
+	"io"
 	"math"
 	"os"
 	"path"
@@ -359,6 +360,8 @@ func TestAccessLogFile(t *testing.T) {
 			t.Errorf("Unexpected ok count %d should be ~ 50%% of %d", numOk, expected)
 		}
 		file, _ := os.Open(fname)
+		al := o.AccessLogger.(io.Closer)
+		t.Cleanup(func() { _ = file.Close(); _ = al.Close() }) // before TempDir removal (needed on windows)
 		scanner := bufio.NewScanner(file)
 		lineCount := 0
 		linesOk := 0

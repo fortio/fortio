@@ -127,14 +127,14 @@ func NormalizePort(port string) string {
 // Listen returns a listener for the port. Port can be a port or a
 // bind address and a port (e.g. "8080" or "[::1]:8080"...). If the
 // port component is 0 a free port will be returned by the system.
-// If the port is a pathname (contains a /) a Unix domain socket listener
+// If the port is a pathname (contains a / or the OS path separator) a Unix domain socket listener
 // will be used instead of regular TCP socket.
 // This logs critical on error and returns nil (is meant for servers
 // that must start).
 func Listen(name string, port string) (net.Listener, net.Addr) {
 	sockType := "tcp"
 	nPort := port
-	if strings.Contains(port, "/") {
+	if strings.ContainsAny(port, "/"+string(os.PathSeparator)) {
 		sockType = UnixDomainSocket
 	} else {
 		nPort = NormalizePort(port)

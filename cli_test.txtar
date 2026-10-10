@@ -30,7 +30,7 @@ stdout '^42$'
 
 # Error case: bad file
 !fortio script no-such-file.gr
-stderr 'open no-such-file.gr: no such file or directory'
+stderr 'open no-such-file.gr: (no such file or directory|The system cannot find the file specified)'
 
 # Error case: bad script
 !fortio script bad.gr
