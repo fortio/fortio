@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"fortio.org/fortio/jrpc"
 )
@@ -108,7 +109,8 @@ func TestMultiProxyErrors(t *testing.T) {
 		}
 		_, multiAddr := MultiServer("0", &mcfg)
 		url := fmt.Sprintf("http://%s/debug", multiAddr)
-		opts := HTTPOptions{URL: url}
+		// Longer than the proxy's own (default 3s) timeout so a slow NXDOMAIN on CI still yields a 503.
+		opts := HTTPOptions{URL: url, HTTPReqTimeOut: 10 * time.Second}
 		code, data := Fetch(&opts)
 		if code != http.StatusServiceUnavailable {
 			t.Errorf("Got %d %s instead of StatusServiceUnavailable for %s", code, DebugSummary(data, 256), url)
