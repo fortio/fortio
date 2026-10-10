@@ -20,7 +20,7 @@
 // is also ../histogram to use the stats from the command line and ../echosrv
 // as a very light HTTP server that can be used to test proxies etc like
 // the Istio components.
-package periodic // import "fortio.org/fortio/periodic"
+package periodic
 
 import (
 	"context"
@@ -744,6 +744,13 @@ func (a *fileAccessLogger) Start(ctx context.Context, threadID ThreadID, iter in
 	return ctx
 }
 
+// Close closes the underlying access log file.
+func (a *fileAccessLogger) Close() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.file.Close()
+}
+
 // Report logs a single request to a file.
 func (a *fileAccessLogger) Report(_ context.Context, thread ThreadID, iter int64, time time.Time,
 	latency float64, status bool, details string,
@@ -860,7 +867,14 @@ MainLoop:
 				case <-runnerChan:
 					break MainLoop
 				case <-time.After(sleepDuration):
-					// continue normal execution
+					// When behind (sleepDuration <= 0) both cases can be ready and select picks randomly,
+					// so check again for stop to not keep going after an abort.
+					select {
+					case <-runnerChan:
+						break MainLoop
+					default:
+						// continue normal execution
+					}
 				}
 				break // NoCatchUp false or sleepDuration > 0
 			}

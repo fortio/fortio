@@ -30,7 +30,7 @@ stdout '^42$'
 
 # Error case: bad file
 !fortio script no-such-file.gr
-stderr 'open no-such-file.gr: no such file or directory'
+stderr 'open no-such-file.gr: (no such file or directory|The system cannot find the file specified)'
 
 # Error case: bad script
 !fortio script bad.gr
@@ -80,7 +80,8 @@ stdout '🎉 for http - saved as .*_test_save'
 stdout '🎉 for tcp'
 stdout '🎉 for udp'
 stdout '🎉 for grpc'
-exec pkill -x fortio
+[!windows] exec pkill -x fortio
+[windows] exec taskkill /F /IM fortio.exe
 wait
 
 -- badload1.gr --

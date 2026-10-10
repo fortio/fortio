@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fhttp // import "fortio.org/fortio/fhttp"
+package fhttp
 
 import (
 	"bufio"
@@ -39,7 +39,6 @@ import (
 	"fortio.org/safecast"
 	"fortio.org/scli"
 	"github.com/google/uuid"
-	"golang.org/x/net/http2"
 )
 
 // Fetcher is the URL content fetcher that the different client implements.
@@ -388,7 +387,7 @@ func newHTTPRequest(o *HTTPOptions) (*http.Request, error) {
 	} else if len(o.Payload) > 0 || method == fnet.POST {
 		body = bytes.NewReader(o.Payload)
 	}
-	//nolint:noctx,gosec // we pass context later in Run()/Fetch(); and yes the url is input.
+	//nolint:noctx,gosec,nolintlint // nolintlint: gosec G704 flaky (securego/gosec#1712); ctx passed in Run()/Fetch(), url is input.
 	req, err := http.NewRequest(method, o.URL, body)
 	if err == nil { //nolint:nestif // not that bad but maybe should be fixed.
 		// Additional validation for the URL so we abort early on fatal errors even for the std client.
@@ -529,7 +528,7 @@ func (c *Client) StreamFetch(ctx context.Context) (int, int64, uint) {
 	} else if len(c.body) > 0 {
 		req.Body = io.NopCloser(bytes.NewReader(c.body))
 	}
-	//nolint:gosec // the url is indeed user provided.
+	//nolint:gosec,nolintlint // nolintlint: gosec G704 is non-deterministic (securego/gosec#1712); the url is indeed user provided.
 	resp, err := c.client.Do(req)
 	if err != nil {
 		log.S(log.Error, "Unable to send request",
@@ -584,7 +583,7 @@ func NewClient(o *HTTPOptions) (Fetcher, error) {
 	return NewFastClient(o)
 }
 
-// Transport common interface between http.Transport and http2.Transport.
+// Transport common interface for http.Transport (and wrappers).
 type Transport interface {
 	http.RoundTripper
 	CloseIdleConnections()
@@ -658,20 +657,9 @@ func NewStdClient(o *HTTPOptions) (*Client, error) {
 			return nil, err
 		}
 	} else if o.H2 {
-		// Need to do h2c instead of normal transport
-		// Note: this likely means connection multiplexing / not sure how to force unique connections
-		// with http2.Transport.
-		if err != nil {
-			return nil, err
-		}
-		tr2 := &http2.Transport{
-			AllowHTTP: true,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-				return dialCtx(ctx, network, addr)
-			},
-			DisableCompression: !o.Compression,
-		}
-		client.transport = tr2
+		// Need to do h2c (prior knowledge) instead of normal transport
+		tr.Protocols = new(http.Protocols)
+		tr.Protocols.SetUnencryptedHTTP2(true)
 	}
 	var rt http.RoundTripper = client.transport
 	if o.Transport != nil {

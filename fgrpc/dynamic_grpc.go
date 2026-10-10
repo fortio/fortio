@@ -1,4 +1,4 @@
-package fgrpc // import "fortio.org/fortio/fgrpc"
+package fgrpc
 
 import (
 	"context"

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rapi // import "fortio.org/fortio/rapi"
+package rapi
 
 import (
 	"bytes"
@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,10 +46,10 @@ func DataList() (dataList []string) {
 		return dataList
 	}
 	// Newest files at the top:
-	for i := len(files) - 1; i >= 0; i-- {
-		name := files[i].Name()
+	for _, file := range slices.Backward(files) {
+		name := file.Name()
 		ext := JSONExtension
-		if !strings.HasSuffix(name, ext) || files[i].IsDir() {
+		if !strings.HasSuffix(name, ext) || file.IsDir() {
 			log.LogVf("Skipping non %s file: %s", ext, name)
 			continue
 		}
@@ -82,7 +83,7 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 		return
 	}
 	gTSVCacheMutex.Lock() // Kind of a long time to hold a lock... hopefully the FS doesn't hang...
-	useCache := (info.ModTime().Equal(gTSVCache.cachedDirTime)) && (len(gTSVCache.cachedResult) > 0)
+	useCache := info.ModTime().Equal(gTSVCache.cachedDirTime) && (len(gTSVCache.cachedResult) > 0)
 	if !useCache {
 		var b bytes.Buffer
 		b.WriteString("TsvHttpData-1.0\n")
@@ -96,8 +97,9 @@ func SendTSVDataIndex(urlPrefix string, w http.ResponseWriter) {
 			//nolint:gosec // This isn't a crypto hash, more like a checksum - and mandated by the spec above, not our choice
 			h := md5.New()
 			var sz int64
-			if sz, err = io.Copy(h, f); err != nil {
-				f.Close()
+			sz, err = io.Copy(h, f)
+			f.Close()
+			if err != nil {
 				log.Errf("Copy/read error for %s: %v", fname, err)
 				continue
 			}
