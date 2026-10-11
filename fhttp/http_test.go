@@ -698,15 +698,24 @@ func TestH10Cli(t *testing.T) {
 func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
+	oldBufferSizeKb := BufferSizeKb
 	BufferSizeKb = 16
+	t.Cleanup(func() { BufferSizeKb = oldBufferSizeKb })
 	sz := BufferSizeKb * 1024
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
-	_, data, _ := cli.Fetch(context.Background())
+	code, data, _ := cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("config1: expected first fetch to return 200, got %d", code)
+	}
 	recSz := len(data)
 	if recSz > sz {
 		t.Errorf("config1: was expecting truncated read, got %d", recSz)
+	}
+	code, _, _ = cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("config1: expected second fetch to return 200, got %d", code)
 	}
 	cli.Close()
 	// Same test without keepalive (exercises a different path)
@@ -820,6 +829,33 @@ func TestNoFirstChunkSizeInitially(t *testing.T) {
 	expected := "17\r\n" + testBody + "\r\n0\r\n\r\n" // 17 is hex size of testBody
 	if string(data[header:]) != expected {
 		t.Errorf("Got %s not as expected %q at offset %d", DebugSummary(data, 256), expected, header)
+	}
+}
+
+func oversizedChunks(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Has("later") {
+		w.Write([]byte("a"))
+		w.(http.Flusher).Flush()
+	}
+	w.Write(make([]byte, 8*1024)) // single 8k chunk, larger than the 4k buffer
+}
+
+func TestFastClientOversizedChunks(t *testing.T) {
+	oldBufferSizeKb := BufferSizeKb
+	BufferSizeKb = 4
+	defer func() { BufferSizeKb = oldBufferSizeKb }()
+	m, a := DynamicHTTPServer(false)
+	m.HandleFunc("/", oversizedChunks)
+	for _, query := range []string{"", "?later"} {
+		o := NewHTTPOptions(fmt.Sprintf("http://localhost:%d/%s", a.Port, query))
+		o.HTTPReqTimeOut = time.Second
+		client, _ := NewFastClient(o)
+		for i := range 2 { // first chunk used to spin forever, later chunk used to break the next request
+			if code, _, _ := client.Fetch(context.Background()); code != http.StatusOK {
+				t.Errorf("%q fetch %d: got %d instead of 200", query, i, code)
+			}
+		}
+		client.Close()
 	}
 }
 
