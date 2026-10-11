@@ -1099,6 +1099,10 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 		// Ugly way to cover the case where we get more than 1 chunk at the end
 		// TODO: need automated tests
 		if !skipRead {
+			if c.size == safecast.MustConv[int64](len(c.buffer)) {
+				keepAlive = false
+				break
+			}
 			nI, err := conn.Read(c.buffer[c.size:])
 			n := safecast.MustConv[int64](nI)
 			if err != nil {
@@ -1273,6 +1277,7 @@ func (c *FastClient) readResponse(conn *DelayedErrorReader, socket net.Conn, reu
 					log.Debugf("[%d] One more chunk %d -> new max %d", c.id, nextChunkLen, maxV)
 					if maxV > safecast.MustConv[int64](len(c.buffer)) {
 						log.S(log.Error, "Buffer too small for data", log.Attr("size", maxV), log.Attr("thread", c.id), log.Attr("run", c.runID))
+						keepAlive = false
 					} else {
 						if maxV <= c.size {
 							log.Debugf("[%d] Enough data to reach next chunk, skipping a read", c.id)
