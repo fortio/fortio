@@ -698,15 +698,24 @@ func TestH10Cli(t *testing.T) {
 func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	m, a := DynamicHTTPServer(false)
 	m.HandleFunc("/", EchoHandler)
+	oldBufferSizeKb := BufferSizeKb
 	BufferSizeKb = 16
+	t.Cleanup(func() { BufferSizeKb = oldBufferSizeKb })
 	sz := BufferSizeKb * 1024
 	url := fmt.Sprintf("http://localhost:%d/?size=%d", a.Port, sz+1) // trigger buffer problem
 	opts := NewHTTPOptions(url)
 	cli, _ := NewFastClient(opts)
-	_, data, _ := cli.Fetch(context.Background())
+	code, data, _ := cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("config1: expected first fetch to return 200, got %d", code)
+	}
 	recSz := len(data)
 	if recSz > sz {
 		t.Errorf("config1: was expecting truncated read, got %d", recSz)
+	}
+	code, _, _ = cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("config1: expected second fetch to return 200, got %d", code)
 	}
 	cli.Close()
 	// Same test without keepalive (exercises a different path)
