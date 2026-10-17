@@ -28,9 +28,9 @@ import (
 	"fortio.org/fortio/fnet"
 	"fortio.org/fortio/periodic"
 	"fortio.org/log"
-	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // TODO: migrate to v2 API
-	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // TODO: migrate to v2 API
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
@@ -199,8 +199,8 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	out := r.Options().Out // Important as the default value is set from nil to stdout inside NewPeriodicRunner
 	var conn *grpc.ClientConn
 	var err error
-	var methodDescriptor *desc.MethodDescriptor
-	var reqMsg *dynamic.Message
+	var methodDescriptor protoreflect.MethodDescriptor
+	var reqMsg proto.Message
 	ts := time.Now().UnixNano()
 	for i := range numThreads {
 		r.Options().Runners[i] = &grpcstate[i]

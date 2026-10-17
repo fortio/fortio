@@ -78,3 +78,5 @@ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 grol.io/grol v0.101.4 h1:+JJyAbZxQ3pk7Zh3DEU3KDODgl9Eoq0i/mtPV50Wjic=
 grol.io/grol v0.101.4/go.mod h1:0j+6BlYTCfD5Zo6zaooWBnP4msCgNPbBGSBvgFAy1Eo=
+github.com/jhump/protoreflect/v2 v2.0.0 h1:dBg0utH2witLqXfczkVVrHFrFQc8SN1rvaKkOR5ALDg=
+github.com/jhump/protoreflect/v2 v2.0.0/go.mod h1:Sz8TB0WtuTKOF4eYj2iZovXSSU3tqZ5Ii8Oeg9k9vKY=
