@@ -357,3 +357,64 @@ func TestDynamicGrpcCallWithInvalidConnection(t *testing.T) {
 		t.Errorf("getMethodDescriptor expected error with invalid connection but got none")
 	}
 }
+
+func TestDynamicGrpcCallNilDescriptor(t *testing.T) {
+	conn, err := grpc.NewClient("localhost:99999", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to create connection: %v", err)
+	}
+	defer conn.Close()
+
+	call := &DynamicGrpcCall{
+		MethodPath:       "/fgrpc.PingServer/Ping",
+		conn:             conn,
+		methodDescriptor: nil,
+	}
+
+	ctx := context.Background()
+	_, err = dynamicGrpcCall(ctx, call)
+	if err == nil {
+		t.Errorf("dynamicGrpcCall expected error with nil method descriptor but got none")
+	}
+}
+
+func TestDynamicGrpcCallContextCanceled(t *testing.T) {
+	port := PingServerTCP("0", "test", 0, noTLSO)
+	addr := fmt.Sprintf("localhost:%d", port)
+	time.Sleep(100 * time.Millisecond)
+
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	md, err := getMethodDescriptor(ctx, conn, "/fgrpc.PingServer/Ping")
+	if err != nil {
+		t.Fatalf("Failed to get method descriptor: %v", err)
+	}
+
+	reqMsg, err := getRequestMessage(md, `{"seq": 1, "delayNanos": 500000000}`)
+	if err != nil {
+		t.Fatalf("Failed to create request message: %v", err)
+	}
+
+	call := &DynamicGrpcCall{
+		MethodPath:       "/fgrpc.PingServer/Ping",
+		RequestMsg:       reqMsg,
+		conn:             conn,
+		methodDescriptor: md,
+	}
+
+	canceledCtx, cancelImmediate := context.WithCancel(context.Background())
+	cancelImmediate()
+
+	_, err = dynamicGrpcCall(canceledCtx, call)
+	if err == nil {
+		t.Errorf("dynamicGrpcCall expected error with canceled context but got none")
+	}
+}
+
