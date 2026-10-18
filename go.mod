@@ -27,6 +27,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect/v2 v2.0.0
 	google.golang.org/grpc v1.84.0
+	google.golang.org/protobuf v1.36.12
 	grol.io/grol v0.102.1
 )
 
@@ -41,7 +42,6 @@ require (
 //)
 
 require (
-	github.com/bufbuild/protocompile v0.14.1 // indirect
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/terminal v0.66.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
@@ -56,5 +56,4 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
 )

@@ -70,7 +70,7 @@ func getMethodDescriptor(ctx context.Context, conn *grpc.ClientConn, fullMethod 
 
 	var sd protoreflect.ServiceDescriptor
 	services := fileDesc.Services()
-	for i := 0; i < services.Len(); i++ {
+	for i := range services.Len() {
 		s := services.Get(i)
 		if string(s.FullName()) == serviceName || string(s.Name()) == serviceName {
 			sd = s

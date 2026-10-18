@@ -417,4 +417,3 @@ func TestDynamicGrpcCallContextCanceled(t *testing.T) {
 		t.Errorf("dynamicGrpcCall expected error with canceled context but got none")
 	}
 }
-
