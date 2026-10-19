@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
+      exclude:
+        - "fortio.org/*" # our own releases: pick up immediately
+        - "grol.io/*"
     groups:
       "fortio and grol":
         patterns:
