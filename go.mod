@@ -27,7 +27,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jhump/protoreflect v1.19.0
 	google.golang.org/grpc v1.84.0
-	grol.io/grol v0.102.0
+	grol.io/grol v0.102.1
 )
 
 // Local dev of dependencies changes
