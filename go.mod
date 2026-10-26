@@ -25,8 +25,9 @@ require (
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	github.com/jhump/protoreflect v1.19.0
+	github.com/jhump/protoreflect/v2 v2.0.0
 	google.golang.org/grpc v1.84.0
+	google.golang.org/protobuf v1.36.12
 	grol.io/grol v0.102.1
 )
 
@@ -45,7 +46,6 @@ require (
 	fortio.org/terminal v0.66.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/jbuchbinder/gopnm v0.0.0-20220507095634-e31f54490ce0 // indirect
-	github.com/jhump/protoreflect/v2 v2.0.0-beta.1 // indirect
 	github.com/kortschak/goroutine v1.1.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250406160420-959f8f3db0fb // indirect
@@ -56,5 +56,4 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/protobuf v1.36.12 // indirect
 )
