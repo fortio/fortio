@@ -57,7 +57,7 @@ func (c *Counter) RecordN(v float64, n int) {
 	}
 	s := v * float64(n)
 	c.Sum += s
-	c.sumOfSquares += (s * s)
+	c.sumOfSquares += v * s
 }
 
 // Avg returns the average.
