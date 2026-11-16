@@ -17,9 +17,15 @@ package fhttp
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -1637,28 +1643,240 @@ func TestValidateAndAddBasicAuthentication(t *testing.T) {
 	}
 }
 
-func TestInsecureRequest(t *testing.T) {
-	expiredURL := "https://expired.badssl.com/"
-	tests := []struct {
-		fastClient bool // use FastClient
-		insecure   bool // insecure option
-		code       int  // expected code
-	}{
-		{false, true, http.StatusOK},
-		{false, false, -1},
-		{true, true, http.StatusOK},
-		{true, false, -1},
+func createExpiredCertServerWithCA(handler http.Handler, caCertBytes []byte, caKey *rsa.PrivateKey) *httptest.Server {
+	// Generate a private key for the server cert
+	serverKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
 	}
+
+	// Parse the CA certificate to get its info
+	caCert, err := x509.ParseCertificate(caCertBytes)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create an expired server certificate signed by the CA
+	serverTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		NotBefore:    time.Now().Add(-24 * time.Hour),
+		NotAfter:     time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:     []string{"localhost", "127.0.0.1"},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
+	}
+
+	serverCertBytes, err := x509.CreateCertificate(rand.Reader, serverTemplate, caCert, &serverKey.PublicKey, caKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// Encode certificate to PEM
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: serverCertBytes,
+	})
+
+	// Encode private key to PEM
+	privKeyBytes, err := x509.MarshalPKCS8PrivateKey(serverKey)
+	if err != nil {
+		panic(err)
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privKeyBytes,
+	})
+
+	// Load the certificate and key into a tls.Certificate
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a test server with the expired certificate
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+
+	server := &httptest.Server{
+		Listener: listener,
+		TLS:      &tls.Config{Certificates: []tls.Certificate{cert}},
+		Config:   &http.Server{Handler: handler},
+	}
+
+	server.StartTLS()
+
+	return server
+}
+
+func createValidCertServer(handler http.Handler, caCertBytes []byte, caKey *rsa.PrivateKey) *httptest.Server {
+	// Generate a private key for the server cert
+	serverKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+
+	// Parse the CA certificate to get its info
+	caCert, err := x509.ParseCertificate(caCertBytes)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a valid (non-expired) server certificate signed by the CA
+	serverTemplate := &x509.Certificate{
+		SerialNumber: big.NewInt(3),
+		NotBefore:    time.Now().Add(-1 * time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour), // Valid for 24 hours
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:     []string{"localhost", "127.0.0.1"},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
+	}
+
+	serverCertBytes, err := x509.CreateCertificate(rand.Reader, serverTemplate, caCert, &serverKey.PublicKey, caKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// Encode certificate to PEM
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: serverCertBytes,
+	})
+
+	// Encode private key to PEM
+	privKeyBytes, err := x509.MarshalPKCS8PrivateKey(serverKey)
+	if err != nil {
+		panic(err)
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privKeyBytes,
+	})
+
+	// Load the certificate and key into a tls.Certificate
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a test server with the valid certificate
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+
+	server := &httptest.Server{
+		Listener: listener,
+		TLS:      &tls.Config{Certificates: []tls.Certificate{cert}},
+		Config:   &http.Server{Handler: handler},
+	}
+
+	server.StartTLS()
+
+	return server
+}
+
+func TestInsecureRequest(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Create a CA and generate both expired and valid certs from it
+	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("Failed to generate CA key: %v", err)
+	}
+
+	caTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		NotBefore:             time.Now().Add(-24 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		DNSNames:              []string{"localhost", "127.0.0.1"},
+	}
+
+	caCertBytes, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatalf("Failed to create CA certificate: %v", err)
+	}
+
+	// Write CA certificate to a temp file
+	caCertPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caCertBytes,
+	})
+
+	tmpCA, err := os.CreateTemp(t.TempDir(), "ca-cert-*.pem")
+	if err != nil {
+		t.Fatalf("Failed to create temp CA file: %v", err)
+	}
+	defer os.Remove(tmpCA.Name())
+
+	if _, err := tmpCA.Write(caCertPEM); err != nil {
+		t.Fatalf("Failed to write CA cert: %v", err)
+	}
+	tmpCA.Close()
+
+	// Create servers with both expired and valid certs signed by the same CA
+	expiredSrv := createExpiredCertServerWithCA(handler, caCertBytes, caKey)
+	defer expiredSrv.Close()
+
+	validSrv := createValidCertServer(handler, caCertBytes, caKey)
+	defer validSrv.Close()
+
+	// Also test with self-signed (httptest.NewTLSServer)
+	selfSignedSrv := httptest.NewTLSServer(handler)
+	defer selfSignedSrv.Close()
+
+	tests := []struct {
+		name       string
+		url        string
+		caCert     string // path to CA cert file, if any
+		fastClient bool   // use FastClient
+		insecure   bool   // insecure option
+		code       int    // expected code
+	}{
+		// Self-signed cert tests (no CA provided)
+		{"self-signed-insecure-false", selfSignedSrv.URL, "", false, false, -1},
+		{"self-signed-insecure-true", selfSignedSrv.URL, "", false, true, http.StatusOK},
+		{"self-signed-fastclient-insecure-false", selfSignedSrv.URL, "", true, false, -1},
+		{"self-signed-fastclient-insecure-true", selfSignedSrv.URL, "", true, true, http.StatusOK},
+
+		// Valid cert with CA provided (should succeed without insecure)
+		{"valid-cert-with-ca-insecure-false", validSrv.URL, tmpCA.Name(), false, false, http.StatusOK},
+		{"valid-cert-with-ca-insecure-true", validSrv.URL, tmpCA.Name(), false, true, http.StatusOK},
+		{"valid-cert-with-ca-fastclient-insecure-false", validSrv.URL, tmpCA.Name(), true, false, http.StatusOK},
+		{"valid-cert-with-ca-fastclient-insecure-true", validSrv.URL, tmpCA.Name(), true, true, http.StatusOK},
+
+		// Expired cert with CA provided (should fail because of expiration, not CA)
+		{"expired-cert-with-ca-insecure-false", expiredSrv.URL, tmpCA.Name(), false, false, -1},
+		{"expired-cert-with-ca-insecure-true", expiredSrv.URL, tmpCA.Name(), false, true, http.StatusOK},
+		{"expired-cert-with-ca-fastclient-insecure-false", expiredSrv.URL, tmpCA.Name(), true, false, -1},
+		{"expired-cert-with-ca-fastclient-insecure-true", expiredSrv.URL, tmpCA.Name(), true, true, http.StatusOK},
+	}
+
 	for _, tst := range tests {
-		o := HTTPOptions{
-			DisableFastClient: tst.fastClient,
-			URL:               expiredURL,
-			TLSOptions:        TLSOptions{Insecure: tst.insecure},
-		}
-		code, _ := Fetch(&o)
-		if code != tst.code {
-			t.Errorf("Got %d code while expecting status (%d)", code, tst.code)
-		}
+		t.Run(tst.name, func(t *testing.T) {
+			o := HTTPOptions{
+				DisableFastClient: !tst.fastClient,
+				URL:               tst.url,
+				TLSOptions: TLSOptions{
+					Insecure: tst.insecure,
+					CACert:   tst.caCert,
+				},
+			}
+			code, _ := Fetch(&o)
+			if code != tst.code {
+				t.Errorf("Got %d code while expecting status (%d) for insecure=%t, caCert=%s", code, tst.code, tst.insecure, tst.caCert)
+			}
+		})
 	}
 }
 
