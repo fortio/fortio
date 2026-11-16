@@ -772,6 +772,15 @@ func TestRound(t *testing.T) {
 	}
 }
 
+func TestRecordN(t *testing.T) {
+	var a, b Counter
+	a.RecordN(5, 3)
+	for range 3 {
+		b.Record(5)
+	}
+	assert.CheckEquals(t, a, b, "RecordN(5, 3) should be the same as 3 x Record(5)")
+}
+
 func TestNaN(t *testing.T) {
 	var c Counter
 	for i := 599713; i > 0; i-- {
