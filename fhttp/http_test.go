@@ -735,6 +735,94 @@ func TestSmallBufferAndNoKeepAlive(t *testing.T) {
 	cli.Close()
 }
 
+func TestFastClientHTTPProxy(t *testing.T) {
+	targets := make(chan string, 1)
+	proxySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targets <- r.RequestURI
+		_, _ = w.Write([]byte("via proxy"))
+	}))
+	defer proxySrv.Close()
+	proxyURL, err := url.Parse(proxySrv.URL)
+	if err != nil {
+		t.Fatalf("parsing proxy url: %v", err)
+	}
+	saved := proxyFunc
+	proxyFunc = func(*http.Request) (*url.URL, error) { return proxyURL, nil }
+	defer func() { proxyFunc = saved }()
+	// The target host does not resolve: only the proxy is reachable.
+	cli, err := NewFastClient(NewHTTPOptions("http://target.invalid:8080/foo"))
+	if err != nil {
+		t.Fatalf("NewFastClient error through proxy: %v", err)
+	}
+	defer cli.Close()
+	code, _, _ := cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Errorf("fast client via proxy: got status %d, want %d", code, http.StatusOK)
+	}
+	got := <-targets
+	if want := "http://target.invalid:8080/foo"; got != want {
+		t.Errorf("proxy got request target %q, want %q", got, want)
+	}
+}
+
+func TestFastClientHTTPSProxyConnect(t *testing.T) {
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("via tunnel"))
+	}))
+	defer target.Close()
+	// Minimal CONNECT proxy: requires Basic auth (user:pass) and tunnels bytes to the requested host.
+	proxySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodConnect {
+			http.Error(w, "only CONNECT", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("Proxy-Authorization") != "Basic dXNlcjpwYXNz" { // base64("user:pass")
+			http.Error(w, "proxy auth required", http.StatusProxyAuthRequired)
+			return
+		}
+		dst, err := net.Dial("tcp", r.Host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer dst.Close()
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		_, _ = conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
+		go func() {
+			_, _ = io.Copy(dst, conn)
+			_ = dst.Close()
+		}()
+		_, _ = io.Copy(conn, dst)
+	}))
+	defer proxySrv.Close()
+	proxyURL, err := url.Parse(proxySrv.URL)
+	if err != nil {
+		t.Fatalf("parsing proxy url: %v", err)
+	}
+	proxyURL.User = url.UserPassword("user", "pass")
+	saved := proxyFunc
+	proxyFunc = func(*http.Request) (*url.URL, error) { return proxyURL, nil }
+	defer func() { proxyFunc = saved }()
+	opts := NewHTTPOptions(target.URL + "/foo")
+	opts.Insecure = true // the httptest certificate is self-signed
+	cli, err := NewFastClient(opts)
+	if err != nil {
+		t.Fatalf("NewFastClient error through CONNECT proxy: %v", err)
+	}
+	defer cli.Close()
+	code, data, _ := cli.Fetch(context.Background())
+	if code != http.StatusOK {
+		t.Fatalf("fast client via CONNECT tunnel: got status %d, want %d", code, http.StatusOK)
+	}
+	if !strings.Contains(string(data), "via tunnel") {
+		t.Errorf("fast client via CONNECT tunnel: body %q does not contain %q", data, "via tunnel")
+	}
+}
+
 func TestBadUrlFastClient(t *testing.T) {
 	opts := NewHTTPOptions("not a valid url")
 	cli, err := NewFastClient(opts)

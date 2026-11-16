@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -715,6 +716,10 @@ func StreamFetch(httpOptions *HTTPOptions) int {
 }
 
 // FastClient is a fast, lockfree single purpose HTTP 1.0/1.1 client.
+// proxyFunc selects the proxy for a request, like the std client's Transport does.
+// It is a variable so tests can replace it.
+var proxyFunc = http.ProxyFromEnvironment
+
 type FastClient struct {
 	buffer       []byte
 	req          []byte
@@ -751,6 +756,13 @@ type FastClient struct {
 	reuseCount     int
 	connectStats   *stats.Histogram
 	dataWriter     io.Writer
+	// Host and port to dial: the target, or the HTTP proxy when proxy is set.
+	dialHost string
+	dialPort string
+	// HTTP proxy (from proxyFunc) if any; https goes through a CONNECT to tunnelAddr.
+	proxy      *url.URL
+	proxyAuth  string // Proxy-Authorization header line, empty if none
+	tunnelAddr string
 }
 
 // GetIPAddress get ip address that DNS resolved to when using fast client and connection stats.
@@ -843,6 +855,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it'
 		bc.port = url.Scheme // ie HTTP which turns into 80 later
 		log.LogVf("[%d] No port specified, using %s", bc.id, bc.port)
 	}
+	bc.dialHost, bc.dialPort = bc.hostname, bc.port
 	var addr net.Addr
 	if o.UnixDomainSocket != "" {
 		log.S(log.Info, "Using unix domain socket", log.Attr("path", o.UnixDomainSocket),
@@ -852,7 +865,39 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it'
 	} else {
 		var tAddr *net.TCPAddr // strangely we get a non nil wrap of nil if assigning to addr directly
 		var err error
-		tAddr, err = resolve(context.Background(), bc.hostname, bc.port, o.Resolve, bc.ipAddrUsage)
+		overrideIP := o.Resolve
+		proxyURL, err := proxyFunc(&http.Request{URL: url})
+		if err != nil {
+			return nil, err
+		}
+		if proxyURL != nil && proxyURL.Scheme != "http" {
+			// Keep working where https/socks5 proxies are set: connect directly, as before.
+			log.S(log.Warning, "Ignoring unsupported proxy scheme, only http proxies are supported",
+				log.Str("scheme", proxyURL.Scheme), log.Attr("proxy", proxyURL.Redacted()))
+			proxyURL = nil
+		}
+		if proxyURL != nil {
+			bc.proxy = proxyURL
+			bc.dialHost, bc.dialPort = proxyURL.Hostname(), proxyURL.Port()
+			if bc.dialPort == "" {
+				bc.dialPort = "80"
+			}
+			overrideIP = "" // -resolve applies to the target, not the proxy
+			bc.resolve = ""
+			if proxyURL.User != nil {
+				pw, _ := proxyURL.User.Password()
+				creds := base64.StdEncoding.EncodeToString([]byte(proxyURL.User.Username() + ":" + pw))
+				bc.proxyAuth = "Proxy-Authorization: Basic " + creds + "\r\n"
+			}
+			if bc.https {
+				tunnelPort := url.Port()
+				if tunnelPort == "" {
+					tunnelPort = "443"
+				}
+				bc.tunnelAddr = net.JoinHostPort(bc.hostname, tunnelPort)
+			}
+		}
+		tAddr, err = resolve(context.Background(), bc.dialHost, bc.dialPort, overrideIP, bc.ipAddrUsage)
 		if tAddr == nil {
 			// Error already logged
 			return nil, err
@@ -870,9 +915,16 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it'
 		bc.tlsConfig.ServerName = bc.hostname // Shouldn't have a port #571
 	}
 	var buf bytes.Buffer
-	buf.WriteString(method + " " + url.RequestURI() + " HTTP/" + proto + "\r\n")
+	target := url.RequestURI()
+	if bc.proxy != nil && !bc.https {
+		target = urlString // absolute-form request target, as required for a plain http proxy
+	}
+	buf.WriteString(method + " " + target + " HTTP/" + proto + "\r\n")
 	if !bc.http10 || customHostHeader {
 		buf.WriteString("Host: " + host + "\r\n")
+	}
+	if bc.proxy != nil && !bc.https {
+		buf.WriteString(bc.proxyAuth)
 	}
 	if !bc.http10 {
 		// Rest of normal HTTP 1.1 processing:
@@ -920,7 +972,7 @@ func (c *FastClient) connect(ctx context.Context) (net.Conn, *DelayedErrorReader
 
 	// Resolve the DNS name when making new connections.
 	if c.socketCount > 1 && !c.noResolveEachConn {
-		c.dest, err = resolve(ctx, c.hostname, c.port, c.resolve, c.ipAddrUsage)
+		c.dest, err = resolve(ctx, c.dialHost, c.dialPort, c.resolve, c.ipAddrUsage)
 		log.Debugf("[%d] Hostname %v resolve to ip %v", c.id, c.hostname, c.dest)
 		if err != nil {
 			log.S(log.Error, "Unable to resolve hostname", log.Str("hostname", c.hostname), log.Attr("err", err),
@@ -931,7 +983,15 @@ func (c *FastClient) connect(ctx context.Context) (net.Conn, *DelayedErrorReader
 
 	d := &net.Dialer{Timeout: c.reqTimeout}
 	now := time.Now()
-	if c.https {
+	if c.proxy != nil {
+		socket, err = c.dialProxy(ctx, d)
+		c.connectStats.Record(time.Since(now).Seconds())
+		if err != nil {
+			log.S(log.Error, "Unable to connect through proxy", log.Attr("proxy", c.proxy.Redacted()),
+				log.Attr("err", err), log.Attr("thread", c.id), log.Attr("run", c.runID))
+			return nil, nil
+		}
+	} else if c.https {
 		dialer := &tls.Dialer{
 			NetDialer: d,
 			Config:    c.tlsConfig,
@@ -955,6 +1015,39 @@ func (c *FastClient) connect(ctx context.Context) (net.Conn, *DelayedErrorReader
 	}
 	fnet.SetSocketBuffers(socket, len(c.buffer), len(c.req))
 	return socket, &DelayedErrorReader{r: socket}
+}
+
+// dialProxy connects to the HTTP proxy. For https targets it then opens a CONNECT
+// tunnel to the target and runs the TLS handshake through it.
+func (c *FastClient) dialProxy(ctx context.Context, d *net.Dialer) (net.Conn, error) {
+	socket, err := d.DialContext(ctx, c.dest.Network(), c.dest.String())
+	if err != nil {
+		return nil, err
+	}
+	if !c.https {
+		return socket, nil
+	}
+	req := "CONNECT " + c.tunnelAddr + " HTTP/1.1\r\nHost: " + c.tunnelAddr + "\r\n" + c.proxyAuth + "\r\n"
+	if _, err = socket.Write([]byte(req)); err != nil {
+		_ = socket.Close()
+		return nil, err
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(socket), &http.Request{Method: http.MethodConnect})
+	if err != nil {
+		_ = socket.Close()
+		return nil, err
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		_ = socket.Close()
+		return nil, fmt.Errorf("proxy refused CONNECT to %s: %s", c.tunnelAddr, resp.Status)
+	}
+	tlsConn := tls.Client(socket, c.tlsConfig)
+	if err = tlsConn.HandshakeContext(ctx); err != nil {
+		_ = socket.Close()
+		return nil, err
+	}
+	return tlsConn, nil
 }
 
 // Extra error codes outside of the HTTP Status code ranges. ie negative.
