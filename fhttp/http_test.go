@@ -1793,13 +1793,13 @@ func TestInsecureRequest(t *testing.T) {
 	}
 
 	caTemplate := &x509.Certificate{
-		SerialNumber:       big.NewInt(1),
-		NotBefore:          time.Now().Add(-24 * time.Hour),
-		NotAfter:           time.Now().Add(24 * time.Hour),
-		KeyUsage:           x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(1),
+		NotBefore:             time.Now().Add(-24 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
-		IsCA:                true,
-		DNSNames:           []string{"localhost", "127.0.0.1"},
+		IsCA:                  true,
+		DNSNames:              []string{"localhost", "127.0.0.1"},
 	}
 
 	caCertBytes, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
@@ -1813,7 +1813,7 @@ func TestInsecureRequest(t *testing.T) {
 		Bytes: caCertBytes,
 	})
 
-	tmpCA, err := os.CreateTemp("", "ca-cert-*.pem")
+	tmpCA, err := os.CreateTemp(t.TempDir(), "ca-cert-*.pem")
 	if err != nil {
 		t.Fatalf("Failed to create temp CA file: %v", err)
 	}
