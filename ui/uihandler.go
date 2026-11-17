@@ -268,10 +268,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			_, _ = fmt.Fprintf(w, "Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)
 		}
-		_, _ = fmt.Fprintf(w, "All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-			res.Result().DurationHistogram.Count,
-			1000.*res.Result().DurationHistogram.Avg,
-			res.Result().ActualQPS)
+		rr := res.Result()
+		warmup := rr.NumThreads
+		if rr.Exactly > 0 {
+			warmup = 0 // same rule as the CLI: no warmup calls with -n
+		}
+		_, _ = fmt.Fprintf(w, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
+			rr.DurationHistogram.Count,
+			warmup,
+			1000.*rr.DurationHistogram.Avg,
+			rr.ActualQPS)
 		ResultToJsData(w, json)
 		_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
 	}
