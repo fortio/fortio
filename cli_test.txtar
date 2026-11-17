@@ -84,6 +84,14 @@ stdout '🎉 for grpc'
 [windows] exec taskkill /F /IM fortio.exe
 wait
 
+# -gomaxprocs must also apply to the server, not just to load
+! exec fortio server -gomaxprocs 3 &
+exec sleep 3 # in ci server needs a bit to start
+[!windows] exec pkill -x fortio
+[windows] exec taskkill /F /IM fortio.exe
+wait
+stderr '"msg":"GOMAXPROCS is 3 '
+
 -- badload1.gr --
 fortio.load("badtype", {})
 

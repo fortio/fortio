@@ -168,6 +168,9 @@ func serverArgCheck() bool {
 	return true
 }
 
+// prevGoMaxProcs is the GOMAXPROCS value from before -gomaxprocs was applied.
+var prevGoMaxProcs int
+
 //nolint:funlen // maybe move the server section to a separate function but it's also fairly short anyway for all the modes.
 func FortioMain(hook bincommon.FortioHook) int {
 	flag.Func("P",
@@ -199,6 +202,9 @@ func FortioMain(hook bincommon.FortioHook) int {
 	cli.MinArgs = 0   // because `fortio server`s don't take any args
 	cli.MaxArgs = 1   // for load, curl, script etc... subcommands.
 	scli.ServerMain() // will Exit if there were arguments/flags errors.
+
+	// Common to all commands (load and servers); < 1 leaves the default unchanged.
+	prevGoMaxProcs = runtime.GOMAXPROCS(*goMaxProcsFlag)
 
 	fnet.ChangeMaxPayloadSize(*newMaxPayloadSizeKb * fnet.KILOBYTE)
 	baseURL := strings.Trim(*baseURLFlag, " \t\n\r/") // remove trailing slash and other whitespace
@@ -244,6 +250,7 @@ func FortioMain(hook bincommon.FortioHook) int {
 		}
 	case "server":
 		isServer = serverArgCheck()
+		log.Infof("GOMAXPROCS is %d (was %d)", runtime.GOMAXPROCS(0), prevGoMaxProcs)
 		tlsOptions := &bincommon.SharedHTTPOptions().TLSOptions
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
@@ -369,7 +376,6 @@ func fortioLoad(justCurl bool, percList []float64) {
 		return
 	}
 	url := httpOpts.URL
-	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	if *calcQPS {
