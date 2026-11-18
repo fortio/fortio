@@ -250,7 +250,6 @@ func FortioMain(hook bincommon.FortioHook) int {
 		}
 	case "server":
 		isServer = serverArgCheck()
-		log.Infof("GOMAXPROCS is %d (was %d)", runtime.GOMAXPROCS(0), prevGoMaxProcs)
 		tlsOptions := &bincommon.SharedHTTPOptions().TLSOptions
 		if *tcpPortFlag != disabled {
 			fnet.TCPEchoServer("tcp-echo", *tcpPortFlag)
@@ -304,7 +303,8 @@ func percList() (percList []float64) {
 
 func serverLoop(sync string) {
 	// To get a start time log/timestamp in the logs
-	log.Infof("All fortio %s servers started!", version.Long())
+	log.Infof("All fortio %s servers started! GOMAXPROCS is %d (was %d)",
+		version.Long(), runtime.GOMAXPROCS(0), prevGoMaxProcs)
 	d := *syncIntervalFlag
 	if sync != "" && d > 0 {
 		log.Infof("Will re-sync data dir every %s", d)

@@ -90,7 +90,7 @@ exec sleep 3 # in ci server needs a bit to start
 [!windows] exec pkill -x fortio
 [windows] exec taskkill /F /IM fortio.exe
 wait
-stderr '"msg":"GOMAXPROCS is 3 '
+stderr 'servers started! GOMAXPROCS is 3 '
 
 -- badload1.gr --
 fortio.load("badtype", {})
