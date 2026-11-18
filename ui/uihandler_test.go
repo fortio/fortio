@@ -41,6 +41,7 @@ func TestHandlerAllDoneWarmup(t *testing.T) {
 		want   string
 	}{
 		{"duration based run warms up each thread", "&t=100ms&qps=-1&c=3", "(plus 3 warmup)"},
+		{"qps limited run still counts warmup before threads are lowered", "&t=1s&qps=2&c=10", "(plus 10 warmup)"},
 		{"exact count run has no warmup", "&n=6&qps=-1&c=3", "(plus 0 warmup)"},
 	}
 	for _, tt := range tests {

@@ -269,7 +269,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)
 		}
 		rr := res.Result()
-		warmup := rr.NumThreads
+		warmup := c // requested threads: rr.NumThreads may have been lowered after warmup
+		if c == 0 {
+			warmup = periodic.DefaultRunnerOptions.NumThreads
+		}
 		if rr.Exactly > 0 {
 			warmup = 0 // same rule as the CLI: no warmup calls with -n
 		}
