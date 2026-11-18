@@ -472,6 +472,14 @@ function updateQueryString () {
   params.set('yMin', form.yMin)
   params.set('yMax', form.yMax)
   params.set('yLog', form.yIsLogarithmic)
+  params.delete('hide')
+  if (objHasProps(mchart)) {
+    for (const dataset of mchart.data.datasets) {
+      if (dataset.hidden) {
+        params.append('hide', dataset.label)
+      }
+    }
+  }
   const selectedResults = getSelectedResults()
   params.delete('sel')
   if (selectedResults) {
@@ -727,18 +735,26 @@ function makeMultiChart () {
       }
     }
   })
-  // Hide QPS axis on clicking QPS dataset.
+  // The QPS y-axis is shown only when the QPS dataset is.
+  const syncQPSAxis = () => {
+    const qps = mchart.data.datasets.find(d => d.label === 'QPS')
+    mchart.options.scales.yAxes[1].display = !qps.hidden
+  }
   mchart.options.legend.onClick = (event, legendItem) => {
     // Toggle dataset hidden (default behavior).
     const dataset = mchart.data.datasets[legendItem.datasetIndex]
     dataset.hidden = !dataset.hidden
-    if (dataset.label === 'QPS') {
-      // Toggle QPS y-axis.
-      const qpsYAxis = mchart.options.scales.yAxes[1]
-      qpsYAxis.display = !qpsYAxis.display
-    }
+    syncQPSAxis()
     mchart.update()
+    updateQueryString()
   }
+  // Restore the datasets hidden in the permalink (hide=<label> parameters).
+  // No mchart.update() needed here: adding the results data afterwards does it.
+  const hidden = new URLSearchParams(document.location.search).getAll('hide')
+  for (const dataset of mchart.data.datasets) {
+    dataset.hidden = hidden.includes(dataset.label)
+  }
+  syncQPSAxis()
 }
 
 function runTestForDuration (durationInSeconds) {
