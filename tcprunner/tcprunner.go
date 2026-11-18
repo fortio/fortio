@@ -249,6 +249,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 	total.Destination = o.Destination
 	tcpstate := make([]RunnerResults, numThreads)
 	var err error
+	warmupCalls := 0
 	for i := range numThreads {
 		r.Options().Runners[i] = &tcpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
@@ -259,6 +260,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 		tcpstate[i].client.connID = i
 		if o.Exactly <= 0 {
 			data, err := tcpstate[i].client.Fetch()
+			warmupCalls++
 			if i == 0 && log.LogVerbose() {
 				log.LogVf("first hit of %s: err %v, received %d: %q", o.Destination, err, len(data), data)
 			}
@@ -268,6 +270,7 @@ func RunTCPTest(o *RunnerOptions) (*RunnerResults, error) {
 		tcpstate[i].RetCodes = make(TCPResultMap)
 	}
 	total.RunnerResults = r.Run()
+	total.WarmupCalls = warmupCalls
 	// Numthreads may have reduced, but it should be ok to accumulate 0s from
 	// unused ones. We also must clean up all the created clients.
 	keys := []string{}

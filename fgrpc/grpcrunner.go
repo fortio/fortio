@@ -202,6 +202,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 	var methodDescriptor protoreflect.MethodDescriptor
 	var reqMsg proto.Message
 	ts := time.Now().UnixNano()
+	warmupCalls := 0
 	for i := range numThreads {
 		r.Options().Runners[i] = &grpcstate[i]
 		newConn := i%o.Streams == 0
@@ -231,6 +232,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].reqP = PingMessage{Payload: o.Payload, DelayNanos: o.Delay.Nanoseconds(), Seq: int64(i), Ts: ts}
 			if newConn && o.Exactly <= 0 {
 				_, err = grpcstate[i].clientP.Ping(outCtx, &grpcstate[i].reqP, callOptions...)
+				warmupCalls++
 			}
 		case o.GrpcMethod != "":
 			// Use reflection to get method descriptor and create request message, if not already done.
@@ -261,6 +263,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 			grpcstate[i].reqH = grpc_health_v1.HealthCheckRequest{Service: o.Service}
 			if newConn && o.Exactly <= 0 {
 				_, err = grpcstate[i].clientH.Check(outCtx, &grpcstate[i].reqH)
+				warmupCalls++
 			}
 		}
 		if !o.AllowInitialErrors && err != nil {
@@ -282,6 +285,7 @@ func RunGRPCTest(o *GRPCRunnerOptions) (*GRPCRunnerResults, error) {
 		}
 	}
 	total.RunnerResults = r.Run()
+	total.WarmupCalls = warmupCalls
 	if o.Profiler != "" {
 		pprof.StopCPUProfile()
 		fm, err := os.Create(o.Profiler + ".mem")

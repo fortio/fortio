@@ -194,6 +194,9 @@ func TestGRPCRunnerMaxStreams(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	if res.WarmupCalls != 1 {
+		t.Errorf("Expected 1 warmup call for 1 connection with 10 streams, got %d", res.WarmupCalls)
+	}
 	totalReq := res.DurationHistogram.Count
 	avg10 := res.DurationHistogram.Avg
 	ok := res.RetCodes[grpc_health_v1.HealthCheckResponse_SERVING.String()]

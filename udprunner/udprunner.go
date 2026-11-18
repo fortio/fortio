@@ -237,6 +237,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 	total.Destination = o.Destination
 	udpstate := make([]RunnerResults, numThreads)
 	var err error
+	warmupCalls := 0
 	for i := range numThreads {
 		r.Options().Runners[i] = &udpstate[i]
 		// Create a client (and transport) and connect once for each 'thread'
@@ -247,6 +248,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 		udpstate[i].client.connID = i
 		if o.Exactly <= 0 {
 			data, err := udpstate[i].client.Fetch()
+			warmupCalls++
 			if i == 0 && log.LogVerbose() {
 				log.LogVf("first hit of %s: err %v, received %d: %q", o.Destination, err, len(data), data)
 			}
@@ -256,6 +258,7 @@ func RunUDPTest(o *RunnerOptions) (*RunnerResults, error) {
 		udpstate[i].RetCodes = make(UDPResultMap)
 	}
 	total.RunnerResults = r.Run()
+	total.WarmupCalls = warmupCalls
 	// Numthreads may have reduced, but it should be ok to accumulate 0s from
 	// unused ones. We also must clean up all the created clients.
 	keys := []string{}
