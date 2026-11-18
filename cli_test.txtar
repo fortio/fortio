@@ -72,17 +72,24 @@ stdout 'abcdef' # debug.fortio.org echoes back the payload
 stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
 # This may cause portability issues or even if you have fortio already running or something else on other ports
-! exec fortio server &
+! exec fortio server -gomaxprocs 5 &
 exec sleep 3 # in ci server needs a bit to start
-fortio script -init 'url="http://localhost:8080/echo"' test_all_modes.gr
+fortio script -gomaxprocs 3 -init 'url="http://localhost:8080/echo"' test_all_modes.gr
 stderr 'Saving .*_test_save.json'
+stderr '"msg":"Changed GOMAXPROCS","old":[0-9]+,"new":3}'
 stdout '🎉 for http - saved as .*_test_save'
+stdout '🎉 for NumCPU [0-9]+'
+stdout '🎉 for GOMAXPROCS'
 stdout '🎉 for tcp'
 stdout '🎉 for udp'
 stdout '🎉 for grpc'
 [!windows] exec pkill -x fortio
 [windows] exec taskkill /F /IM fortio.exe
 wait
+# background server output is available after wait
+stderr '"msg":"Changed GOMAXPROCS","old":[0-9]+,"new":5}'
+stderr '"msg":"Starting".*"gomaxprocs":5}'
+stdout 'UI started'
 
 -- badload1.gr --
 fortio.load("badtype", {})
@@ -123,6 +130,14 @@ if r.RetCodes["200"] != 10 {
     error("Error: expected exactly 10 200s for http, got", r.RetCodes)
 }
 println("🎉 for http - saved as", r.ID)
+if r.GoMaxProcs != 3 {
+    error("Error: expected gomaxprocs to have been set to 3 by flag, got", r.GoMaxProcs)
+}
+if r.NumCPU < 1 {
+    error("Error: expected NumCPU to be at least 1, got", r.NumCPU)
+}
+println("🎉 for NumCPU", r.NumCPU)
+println("🎉 for GOMAXPROCS")
 url = "localhost:8078"
 r = fortio.load("tcp", {"url": url, "exactly": 10, "qps": -1})
 if r.RetCodes["OK"] != 10 {
