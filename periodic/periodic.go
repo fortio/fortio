@@ -248,6 +248,7 @@ type RunnerResults struct {
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
+	GoMaxProcs        int // runtime.GOMAXPROCS value during the run
 	Version           string
 	// DurationHistogram all the Run. If you want to exclude the error cases; subtract ErrorsDurationHistogram to each bucket.
 	DurationHistogram *stats.HistogramData
@@ -547,6 +548,7 @@ func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part b
 			ActualQPS:               0,
 			ActualDuration:          0,
 			NumThreads:              r.NumThreads,
+			GoMaxProcs:              runtime.GOMAXPROCS(0),
 			Version:                 version.Short(),
 			DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
 			ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),
@@ -627,6 +629,7 @@ func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part b
 		ActualQPS:               actualQPS,
 		ActualDuration:          elapsed,
 		NumThreads:              r.NumThreads,
+		GoMaxProcs:              runtime.GOMAXPROCS(0),
 		Version:                 version.Short(),
 		DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
 		ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),
