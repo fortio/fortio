@@ -28,6 +28,7 @@ import (
 	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -813,7 +814,7 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it'
 		return nil, err
 	}
 
-	warnIfProxy(url)
+	warnIfProxy()
 
 	if o.NoResolveEachConn && o.Resolve != "" {
 		log.Warnf("Both `-resolve` and `-no-reresolve` flags are defined, will use same ip address on new conn")
@@ -1353,15 +1354,15 @@ func resolve(ctx context.Context, hostname string, port string,
 
 var proxyWarnOnce sync.Once
 
-// warnIfProxy logs (once) a warning if the environment sets a proxy for the target url,
-// as the fast client doesn't use proxies (use -stdclient for that).
-func warnIfProxy(u *url.URL) {
-	proxyURL, err := http.ProxyFromEnvironment(&http.Request{URL: u})
-	if err != nil || proxyURL == nil {
-		return
-	}
+// warnIfProxy logs (once) a warning if proxy env vars are set, as the fast client
+// doesn't use them (use -stdclient for that).
+func warnIfProxy() {
 	proxyWarnOnce.Do(func() {
-		log.S(log.Warning, "Proxy set in environment is ignored by the fast client, use -stdclient to use it",
-			log.Str("proxy", proxyURL.Redacted()), log.Str("url", u.Redacted()))
+		for _, v := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
+			if os.Getenv(v) != "" {
+				log.Warnf("%s is set but the fast client ignores proxy env vars, use -stdclient to use them", v)
+				return
+			}
+		}
 	})
 }
