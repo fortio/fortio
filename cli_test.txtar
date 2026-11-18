@@ -77,7 +77,7 @@ env GOMAXPROCS=1
 exec sleep 3 # in ci server needs a bit to start
 fortio script -gomaxprocs 3 -init 'url="http://localhost:8080/echo"' test_all_modes.gr
 stderr 'Saving .*_test_save.json'
-stderr '"msg":"Changed GOMAXPROCS","old":[0-9]+,"new":3}'
+stderr '"msg":"Changed GOMAXPROCS","old":1,"new":3}'
 stdout '🎉 for http - saved as .*_test_save'
 stdout '🎉 for NumCPU [0-9]+'
 stdout '🎉 for GOMAXPROCS'
