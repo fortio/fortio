@@ -81,7 +81,6 @@ var (
 	percentilesFlag = flag.String("p", "50,75,90,99,99.9", "List of pXX to calculate")
 	resolutionFlag  = flag.Float64("r", defaults.Resolution, "Resolution of the histogram lowest buckets in seconds")
 	offsetFlag      = flag.Duration("offset", defaults.Offset, "Offset of the histogram data")
-	goMaxProcsFlag  = flag.Int("gomaxprocs", 0, "Setting for runtime.GOMAXPROCS, < 1 doesn't change the default")
 	profileFlag     = flag.String("profile", "", "write .cpu and .mem profiles to `file`")
 	grpcFlag        = flag.Bool("grpc", false, "Use gRPC (health check by default, add -ping for ping) for load testing")
 	grpcCompression = flag.Bool("grpc-compression", false, "Enable gRPC compression")
@@ -369,7 +368,6 @@ func fortioLoad(justCurl bool, percList []float64) {
 		return
 	}
 	url := httpOpts.URL
-	prevGoMaxProcs := runtime.GOMAXPROCS(*goMaxProcsFlag)
 	out := os.Stderr
 	qps := *qpsFlag // TODO possibly use translated <=0 to "max" from results/options normalization in periodic/
 	if *calcQPS {
@@ -379,8 +377,8 @@ func fortioLoad(justCurl bool, percList []float64) {
 		qps = float64(*exactlyFlag) / durationFlag.Seconds()
 		log.LogVf("Calculated QPS to do %d request in %v: %f", *exactlyFlag, *durationFlag, qps)
 	}
-	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d->%d procs",
-		version.Short(), qps, prevGoMaxProcs, runtime.GOMAXPROCS(0))
+	_, _ = fmt.Fprintf(out, "Fortio %s running at %g queries per second, %d procs",
+		version.Short(), qps, runtime.GOMAXPROCS(0))
 	if *exactlyFlag > 0 {
 		_, _ = fmt.Fprintf(out, ", for %d calls: %s\n", *exactlyFlag, url)
 	} else {
