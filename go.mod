@@ -25,7 +25,7 @@ require (
 	fortio.org/version v1.0.4
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	github.com/jhump/protoreflect/v2 v2.0.0
+	github.com/jhump/protoreflect/v2 v2.0.1
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	grol.io/grol v0.102.1
