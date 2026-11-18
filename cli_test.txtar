@@ -72,6 +72,7 @@ stdout 'abcdef' # debug.fortio.org echoes back the payload
 stderr 'err: parse \\"http:// bad\\": invalid character \\" \\" in host name'
 
 # This may cause portability issues or even if you have fortio already running or something else on other ports
+env GOMAXPROCS=1
 ! exec fortio server -gomaxprocs 5 &
 exec sleep 3 # in ci server needs a bit to start
 fortio script -gomaxprocs 3 -init 'url="http://localhost:8080/echo"' test_all_modes.gr
