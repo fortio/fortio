@@ -28,8 +28,10 @@ import (
 	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"fortio.org/fortio/fnet"
@@ -812,6 +814,8 @@ func NewFastClient(o *HTTPOptions) (Fetcher, error) { //nolint:funlen // yes it'
 		return nil, err
 	}
 
+	warnIfProxy()
+
 	if o.NoResolveEachConn && o.Resolve != "" {
 		log.Warnf("Both `-resolve` and `-no-reresolve` flags are defined, will use same ip address on new conn")
 	}
@@ -1346,4 +1350,19 @@ func resolve(ctx context.Context, hostname string, port string,
 	ipAddrUsage.Record(addr.String())
 
 	return addr, err
+}
+
+var proxyWarnOnce sync.Once
+
+// warnIfProxy logs (once) a warning if proxy env vars are set, as the fast client
+// doesn't use them (use -stdclient for that).
+func warnIfProxy() {
+	proxyWarnOnce.Do(func() {
+		for _, v := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
+			if os.Getenv(v) != "" {
+				log.Warnf("%s is set but the fast client ignores proxy env vars, use -stdclient to use them", v)
+				return
+			}
+		}
+	})
 }

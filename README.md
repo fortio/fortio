@@ -130,6 +130,7 @@ Most important flags for HTTP load generation:
 | `-json filename` | Filename or `-` for stdout to output JSON result (relative to `-data-dir` by default, should end with .json if you want `fortio report` to show them; using `-a` is typically a better option)|
 | `-labels "l1 l2 ..."` |  Additional config data/labels to add to the resulting JSON, defaults to target URL and hostname|
 | `-h2` |  Client calls will attempt to negotiate HTTP/2 instead of HTTP/1.1, implies `-stdclient`|
+| `-stdclient` | Use the net/http standard client: slower but needed for h2/h2c or to go through an `HTTP_PROXY`/`HTTPS_PROXY` (ignored by the default fast client)|
 | `-X method` | Change HTTP method to the one specified instead of automatic HTTP GET or POST based on `-payload-*` or `-content-type`|
 | `-logger-force-color` | For interactive runs for color instead of JSON output|
 | `-logger-no-color` | Force JSON output even when run from terminal|
@@ -358,7 +359,8 @@ pre 1.21 behavior
   -static-dir path
         Deprecated/unused path.
   -stdclient
-        Use the slower net/http standard client (slower but supports h2/h2c)
+        Use the slower net/http standard client (slower but supports h2/h2c and
+HTTP_PROXY/HTTPS_PROXY env vars)
   -stream
         Stream payload from stdin (only for fortio curl mode)
   -sync URL
