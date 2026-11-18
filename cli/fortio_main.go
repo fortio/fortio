@@ -476,16 +476,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 		_, _ = fmt.Fprintf(out, "Aborting because of %v\n", err)
 		os.Exit(1)
 	}
-	rr := res.Result()
-	warmup := *numThreadsFlag
-	if ro.Exactly > 0 {
-		warmup = 0
-	}
-	_, _ = fmt.Fprintf(out, "All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps\n",
-		rr.DurationHistogram.Count,
-		warmup,
-		1000.*rr.DurationHistogram.Avg,
-		rr.ActualQPS)
+	_, _ = fmt.Fprintln(out, res.Result().AllDone())
 	jsonFileName := *jsonFlag
 	if *autoSaveFlag || len(jsonFileName) > 0 { //nolint:nestif // but probably should breakup this function
 		var j []byte
@@ -499,7 +490,7 @@ func fortioLoad(justCurl bool, percList []float64) {
 			jsonFileName = "stdout"
 		} else {
 			if len(jsonFileName) == 0 {
-				jsonFileName = path.Join(*dataDirFlag, rr.ID+rapi.JSONExtension)
+				jsonFileName = path.Join(*dataDirFlag, res.Result().ID+rapi.JSONExtension)
 			}
 			f, err = os.Create(jsonFileName)
 			if err != nil {
