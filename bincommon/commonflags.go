@@ -43,8 +43,9 @@ var (
 	keepAliveFlag   = flag.Bool("keepalive", true, "Keep connection alive (only for fast HTTP/1.1)")
 	halfCloseFlag   = flag.Bool("halfclose", false,
 		"When not keepalive, whether to half close the connection (only for fast http)")
-	httpReqTimeoutFlag  = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for HTTP)")
-	stdClientFlag       = flag.Bool("stdclient", false, "Use the slower net/http standard client (slower but supports h2/h2c and HTTP_PROXY/HTTPS_PROXY env vars)")
+	httpReqTimeoutFlag = flag.Duration("timeout", fhttp.HTTPReqTimeOutDefaultValue, "Connection and read timeout value (for HTTP)")
+	stdClientFlag      = flag.Bool("stdclient", false,
+		"Use the slower net/http standard client (slower but supports h2/h2c and HTTP_PROXY/HTTPS_PROXY env vars)")
 	http10Flag          = flag.Bool("http1.0", false, "Use HTTP/1.0 (instead of HTTP/1.1)")
 	h2Flag              = flag.Bool("h2", false, "Attempt to use HTTP/2.0 / h2 (instead of HTTP/1.1) for both TLS and h2c")
 	httpsInsecureFlag   = flag.Bool("k", false, "Do not verify certs in HTTPS/TLS/gRPC connections")
