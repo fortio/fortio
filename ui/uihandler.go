@@ -268,10 +268,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			_, _ = fmt.Fprintf(w, "Saved result to <a href='%s'>%s</a>"+
 				" (<a href='browse?url=%s.json' target='_new'>graph link</a>)\n", savedAs, savedAs, id)
 		}
-		_, _ = fmt.Fprintf(w, "All done %d calls %.3f ms avg, %.1f qps\n</pre>\n<script>\n",
-			res.Result().DurationHistogram.Count,
-			1000.*res.Result().DurationHistogram.Avg,
-			res.Result().ActualQPS)
+		_, _ = fmt.Fprintf(w, "%s\n</pre>\n<script>\n", res.Result().AllDone())
 		ResultToJsData(w, json)
 		_, _ = w.Write([]byte("</script><p>Go to <a href='./'>Top</a>.</p></body></html>\n"))
 	}

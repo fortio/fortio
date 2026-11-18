@@ -248,6 +248,9 @@ type RunnerResults struct {
 	ActualQPS         float64
 	ActualDuration    time.Duration
 	NumThreads        int
+	GoMaxProcs        int // runtime.GOMAXPROCS value during the run
+	NumCPU            int // runtime.NumCPU() number of logical CPUs usable by the process
+	WarmupCalls       int // Number of initial warmup calls made before the run (not included in the histograms)
 	Version           string
 	// DurationHistogram all the Run. If you want to exclude the error cases; subtract ErrorsDurationHistogram to each bucket.
 	DurationHistogram *stats.HistogramData
@@ -275,6 +278,13 @@ type HasRunnerResult interface {
 // Result returns the common RunnerResults.
 func (r *RunnerResults) Result() *RunnerResults {
 	return r
+}
+
+// AllDone returns the one line end of run summary shared by the CLI and the UI
+// (without trailing newline).
+func (r *RunnerResults) AllDone() string {
+	return fmt.Sprintf("All done %d calls (plus %d warmup) %.3f ms avg, %.1f qps",
+		r.DurationHistogram.Count, r.WarmupCalls, 1000.*r.DurationHistogram.Avg, r.ActualQPS)
 }
 
 // PeriodicRunner let's you exercise the Function at the given QPS and collect
@@ -547,6 +557,8 @@ func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part b
 			ActualQPS:               0,
 			ActualDuration:          0,
 			NumThreads:              r.NumThreads,
+			GoMaxProcs:              runtime.GOMAXPROCS(0),
+			NumCPU:                  runtime.NumCPU(),
 			Version:                 version.Short(),
 			DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
 			ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),
@@ -627,6 +639,8 @@ func (r *periodicRunner) Run() RunnerResults { //nolint:funlen // long in part b
 		ActualQPS:               actualQPS,
 		ActualDuration:          elapsed,
 		NumThreads:              r.NumThreads,
+		GoMaxProcs:              runtime.GOMAXPROCS(0),
+		NumCPU:                  runtime.NumCPU(),
 		Version:                 version.Short(),
 		DurationHistogram:       functionDuration.Export().CalcPercentiles(r.Percentiles),
 		ErrorsDurationHistogram: errorsDuration.Export().CalcPercentiles(r.Percentiles),

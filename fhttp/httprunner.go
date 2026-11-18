@@ -147,6 +147,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 	// First build all the clients sequentially. This ensures we do not have data races when
 	// constructing requests.
 	ctx := context.Background()
+	warmupCalls := 0
 	for i := range numThreads {
 		r.Options().Runners[i] = &httpstate[i]
 		// Temp mutate the option so each client gets a logging id
@@ -161,6 +162,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		}
 		if o.SequentialWarmup && o.Exactly <= 0 {
 			code, dataLen, headerSize := httpstate[i].client.StreamFetch(ctx)
+			warmupCalls++
 			if !o.AllowInitialErrors && !codeIsOK(code) {
 				codeErr := fmt.Errorf("error %d for %s (%d body bytes), thread# %d", code, o.URL, dataLen, i)
 				aborter.RecordStart()
@@ -194,6 +196,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		if err := warmup.Wait(); err != nil {
 			return NewErrorResult(o, "warmup error", err), err
 		}
+		warmupCalls += numThreads // one parallel warmup call per thread
 	}
 	// TODO avoid copy pasta with grpcrunner
 	var fc *os.File
@@ -209,6 +212,7 @@ func RunHTTPTest(o *HTTPRunnerOptions) (*HTTPRunnerResults, error) {
 		}
 	}
 	total.RunnerResults = r.Run()
+	total.WarmupCalls = warmupCalls
 	if o.Profiler != "" {
 		pprof.StopCPUProfile()
 		fc.Close()
